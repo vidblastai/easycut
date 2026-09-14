@@ -314,3 +314,55 @@ describe('global edits', () => {
     expect(() => EdlSchema.parse(edl)).not.toThrow();
   });
 });
+
+describe('adding clips', () => {
+  it('inserts a B-roll slot at the playhead', () => {
+    const { edl, rejected } = run(makeEdl(), {
+      op: 'clip.add', track: 'broll', atSec: 2, durationSec: 1.5, value: 'airplane window clouds',
+    });
+
+    expect(rejected).toEqual([]);
+    const added = edl.broll.find((b) => b.query === 'airplane window clouds')!;
+    expect(added).toBeDefined();
+    expect(added.outStartSec).toBeCloseTo(2, 5);
+    expect(added.outEndSec).toBeCloseTo(3.5, 5);
+    // No URL yet — the asset stage resolves the query on the next render.
+    expect(added.url).toBe('');
+  });
+
+  it('inserts a sound effect as an instant, not a span', () => {
+    const { edl } = run(makeEdl(), { op: 'clip.add', track: 'sfx', atSec: 6.25, value: 'impact' });
+    const added = edl.sfx.find((s) => s.sound === 'impact')!;
+    expect(added.atSec).toBeCloseTo(6.25, 5);
+    expect(added.url).toBe('/audio/sfx/impact.wav');
+  });
+
+  it('inserts a stat card with the requested type', () => {
+    const { edl } = run(makeEdl(), {
+      op: 'clip.add', track: 'graphics', atSec: 1, durationSec: 2, value: '42', graphicType: 'stat',
+    });
+    const added = edl.graphics.find((g) => g.text === '42')!;
+    expect(added.type).toBe('stat');
+  });
+
+  it('never adds a clip that runs past the end of the video', () => {
+    const { edl } = run(makeEdl(), {
+      op: 'clip.add', track: 'broll', atSec: 11.8, durationSec: 5, value: 'x',
+    });
+    const added = edl.broll.find((b) => b.query === 'x')!;
+    expect(added.outEndSec).toBeLessThanOrEqual(edl.format.durationSec + 1e-6);
+  });
+
+  it('carries an added clip through a later re-timing', () => {
+    // Add, then trim upstream: the new clip has to move like any other.
+    let edl = run(makeEdl(), {
+      op: 'clip.add', track: 'graphics', atSec: 9, durationSec: 1, value: 'new', graphicType: 'icon',
+    }).edl;
+    const before = edl.graphics.find((g) => g.text === 'new')!.outStartSec;
+
+    edl = run(edl, { op: 'segment.trim', id: 'seg-0', sourceStartSec: 11 }).edl;
+    const after = edl.graphics.find((g) => g.text === 'new')!.outStartSec;
+
+    expect(after).toBeCloseTo(before - 1, 5);
+  });
+});

@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { clsx } from 'clsx';
+import type { PlayerRef } from '@remotion/player';
 import { applyOperations, describeOperation, type ClipTrack, type EdlOperation } from '@/lib/edl/operations';
 import type { Edl } from '@/lib/edl/types';
 
@@ -34,6 +35,17 @@ interface TimelineEditorProps {
   /** Commits the accumulated operations. Resolves when the server has them. */
   onCommit: (operations: EdlOperation[]) => Promise<void>;
   busy?: boolean;
+  /**
+   * The preview, so the timeline can drive it.
+   *
+   * This is what turns a diagram into an instrument. Without it the playhead is
+   * a line on a chart and you are trimming blind; with it, dragging the playhead
+   * scrubs the video and pressing play walks the playhead. One transport, two
+   * views of the same moment.
+   */
+  playerRef?: React.RefObject<PlayerRef | null>;
+  /** The working document, lifted so the preview renders the pending edits. */
+  onWorkingEdlChange?: (edl: Edl) => void;
 }
 
 type Selection = { kind: 'segment' | ClipTrack | 'caption'; id: string } | null;
@@ -52,7 +64,13 @@ const ZOOMS = [12, 20, 32, 50, 80, 130, 210];
 const SNAP_PX = 7;
 const TRACK_LABEL_W = 92;
 
-export function TimelineEditor({ edl: committedEdl, onCommit, busy = false }: TimelineEditorProps) {
+export function TimelineEditor({
+  edl: committedEdl,
+  onCommit,
+  busy = false,
+  playerRef,
+  onWorkingEdlChange,
+}: TimelineEditorProps) {
   const [ops, setOps] = useState<EdlOperation[]>([]);
   const [redoStack, setRedoStack] = useState<EdlOperation[]>([]);
   const [selection, setSelection] = useState<Selection>(null);
@@ -83,6 +101,47 @@ export function TimelineEditor({ edl: committedEdl, onCommit, busy = false }: Ti
   const pps = ZOOMS[zoomIndex];
   const duration = edl.format.durationSec;
   const width = Math.max(320, duration * pps);
+  const fps = edl.format.fps || 30;
+
+  const [playing, setPlaying] = useState(false);
+
+  /* ───────────────────────────────────────────── player binding ─── */
+
+  // Hand the pending edit up so the preview shows what you are editing, not
+  // what was last rendered.
+  useEffect(() => { onWorkingEdlChange?.(edl); }, [edl, onWorkingEdlChange]);
+
+  /** Timeline → player. */
+  const seek = useCallback((sec: number) => {
+    const clamped = Math.max(0, Math.min(duration, sec));
+    setPlayhead(clamped);
+    playerRef?.current?.seekTo(Math.round(clamped * fps));
+  }, [duration, fps, playerRef]);
+
+  /** Player → timeline, so playback walks the playhead. */
+  useEffect(() => {
+    const player = playerRef?.current;
+    if (!player) return;
+
+    const onFrame = (e: { detail: { frame: number } }) => setPlayhead(e.detail.frame / fps);
+    const onPlay = () => setPlaying(true);
+    const onPause = () => setPlaying(false);
+
+    player.addEventListener('frameupdate', onFrame);
+    player.addEventListener('play', onPlay);
+    player.addEventListener('pause', onPause);
+    return () => {
+      player.removeEventListener('frameupdate', onFrame);
+      player.removeEventListener('play', onPlay);
+      player.removeEventListener('pause', onPause);
+    };
+  }, [playerRef, fps]);
+
+  const togglePlay = useCallback(() => {
+    const player = playerRef?.current;
+    if (!player) { setPlaying((p) => !p); return; }
+    player.toggle();
+  }, [playerRef]);
 
   /* ─────────────────────────────────────────────── op plumbing ─── */
 
@@ -187,7 +246,7 @@ export function TimelineEditor({ edl: committedEdl, onCommit, busy = false }: Ti
       if (Math.abs(event.clientX - drag.startX) > 2) drag.moved = true;
 
       if (drag.kind === 'playhead') {
-        setPlayhead(secAtClientX(event.clientX));
+        seek(secAtClientX(event.clientX));
         return;
       }
       setDragPreview({
@@ -240,7 +299,7 @@ export function TimelineEditor({ edl: committedEdl, onCommit, busy = false }: Ti
       window.removeEventListener('pointermove', onMove);
       window.removeEventListener('pointerup', onUp);
     };
-  }, [pps, secAtClientX, snap, push, edl.segments]);
+  }, [pps, secAtClientX, snap, push, edl.segments, seek]);
 
   /* ──────────────────────────────────────────────── keyboard ─── */
 
@@ -266,22 +325,35 @@ export function TimelineEditor({ edl: committedEdl, onCommit, busy = false }: Ti
         return;
       }
 
+      if (event.code === 'Space' || event.key.toLowerCase() === 'k') {
+        event.preventDefault();
+        togglePlay();
+        return;
+      }
+
       if (event.key.toLowerCase() === 's') {
         const segment = edl.segments.find((s) => playhead > s.outStartSec && playhead < s.outEndSec);
         if (segment) { event.preventDefault(); push({ op: 'segment.split', id: segment.id, atOutSec: playhead }); }
         return;
       }
 
+      // J / L step a second back and forward — the shuttle keys every editor's
+      // left hand already knows.
+      if (event.key.toLowerCase() === 'j') { event.preventDefault(); seek(playhead - 1); return; }
+      if (event.key.toLowerCase() === 'l') { event.preventDefault(); seek(playhead + 1); return; }
+      if (event.key === 'Home') { event.preventDefault(); seek(0); return; }
+      if (event.key === 'End') { event.preventDefault(); seek(duration); return; }
+
       if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
         event.preventDefault();
-        const step = event.shiftKey ? 1 : 1 / edl.format.fps;
-        setPlayhead((p) => Math.max(0, Math.min(duration, p + (event.key === 'ArrowRight' ? step : -step))));
+        const step = event.shiftKey ? 1 : 1 / fps;
+        seek(playhead + (event.key === 'ArrowRight' ? step : -step));
       }
     };
 
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [selection, playhead, edl.segments, edl.format.fps, duration, push, undo, redo]);
+  }, [selection, playhead, edl.segments, fps, duration, push, undo, redo, seek, togglePlay]);
 
   /* ───────────────────────────────────────────────── rendering ─── */
 
@@ -294,13 +366,28 @@ export function TimelineEditor({ edl: committedEdl, onCommit, busy = false }: Ti
     <div className="card overflow-hidden">
       {/* ─────────────────────────────────────────────── toolbar ─── */}
       <div className="flex flex-wrap items-center gap-2 border-b border-line px-4 py-3">
-        <span className="text-sm font-bold">Timeline</span>
+        <button
+          type="button"
+          onClick={togglePlay}
+          title="Play or pause (Space)"
+          className="flex h-8 w-8 items-center justify-center rounded-full bg-violet text-ink transition-colors hover:bg-violet-hover"
+        >
+          {playing ? (
+            <svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor">
+              <rect x="4" y="2.5" width="3" height="11" rx="1" /><rect x="9" y="2.5" width="3" height="11" rx="1" />
+            </svg>
+          ) : (
+            <svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor"><path d="M4 2.5v11l9-5.5-9-5.5Z" /></svg>
+          )}
+        </button>
 
         <span className="rounded-md bg-ink px-2 py-1 font-mono text-[11px] tabular-nums text-muted">
           {formatTc(playhead)} / {formatTc(duration)}
         </span>
 
         <div className="mx-1 h-5 w-px bg-line" />
+
+        <AddMenu atSec={playhead} onAdd={push} />
 
         <ToolButton
           onClick={() => {
@@ -362,7 +449,7 @@ export function TimelineEditor({ edl: committedEdl, onCommit, busy = false }: Ti
           {/* ruler */}
           <div
             className="sticky top-0 z-20 flex h-7 cursor-ew-resize select-none border-b border-line bg-charcoal"
-            onPointerDown={(e) => { beginDrag(e, 'playhead', null, 0, 0); setPlayhead(secAtClientX(e.clientX)); }}
+            onPointerDown={(e) => { beginDrag(e, 'playhead', null, 0, 0); seek(secAtClientX(e.clientX)); }}
           >
             <div className="shrink-0 border-r border-line" style={{ width: TRACK_LABEL_W }} />
             <div className="relative" style={{ width }}>
@@ -379,6 +466,7 @@ export function TimelineEditor({ edl: committedEdl, onCommit, busy = false }: Ti
           </div>
 
           <Track label="Video" labelHint={`${edl.segments.length} clips`}>
+            <SpeechTrack edl={edl} pps={pps} />
             {edl.segments.map((segment) => {
               const g = geometry(segment.id, segment.outStartSec, segment.outEndSec);
               const selected = selection?.kind === 'segment' && selection.id === segment.id;
@@ -544,6 +632,48 @@ export function TimelineEditor({ edl: committedEdl, onCommit, busy = false }: Ti
 }
 
 /* ────────────────────────────────────────────────── sub-components ─── */
+
+/**
+ * Where the speech is, drawn behind the clips.
+ *
+ * You trim against sound, not against labels — the whole point of a waveform is
+ * seeing the breath before the sentence so you know where to cut. We already
+ * have word-level timings in the EDL, so this is drawn from the transcript
+ * rather than by decoding audio: it is free, exact about where words start and
+ * stop, and available before any audio has loaded.
+ */
+function SpeechTrack({ edl, pps }: { edl: Edl; pps: number }) {
+  const bars = useMemo(() => {
+    const duration = edl.format.durationSec;
+    if (!duration) return [];
+    const count = Math.min(1400, Math.max(40, Math.round(duration * 14)));
+
+    return Array.from({ length: count }, (_, i) => {
+      const at = (i / count) * duration;
+      const word = edl.captions
+        .flatMap((c) => c.words)
+        .find((w) => at >= w.startSec - 0.02 && at <= w.endSec + 0.02);
+      if (!word) return 0.1;
+      // Height varies within the word so it reads as speech, not a block.
+      const through = (at - word.startSec) / Math.max(0.05, word.endSec - word.startSec);
+      return 0.35 + Math.sin(through * Math.PI) * 0.55 + (word.emphasis ? 0.1 : 0);
+    });
+  }, [edl.captions, edl.format.durationSec]);
+
+  if (!bars.length) return null;
+
+  return (
+    <div className="pointer-events-none absolute inset-0 flex items-center gap-px overflow-hidden px-px opacity-40">
+      {bars.map((h, i) => (
+        <span
+          key={i}
+          className="flex-1 rounded-[1px] bg-violet"
+          style={{ height: `${Math.min(92, h * 100)}%`, minWidth: 1 }}
+        />
+      ))}
+    </div>
+  );
+}
 
 function Track({
   label,
@@ -800,6 +930,87 @@ function Inspector({
   }
 
   return null;
+}
+
+/**
+ * Insert a clip at the playhead.
+ *
+ * Deleting what the AI chose was only ever half of fine-tuning — "put a whoosh
+ * here" is the other half, and without it the timeline is a veto rather than an
+ * instrument.
+ */
+function AddMenu({ atSec, onAdd }: { atSec: number; onAdd: (op: EdlOperation) => void }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const close = (e: MouseEvent) => {
+      if (!ref.current?.contains(e.target as Node)) setOpen(false);
+    };
+    window.addEventListener('mousedown', close);
+    return () => window.removeEventListener('mousedown', close);
+  }, [open]);
+
+  const add = (op: EdlOperation) => { onAdd(op); setOpen(false); };
+
+  return (
+    <div className="relative" ref={ref}>
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        title="Add something at the playhead"
+        className="rounded-lg border border-line px-2.5 py-1.5 text-xs font-semibold text-chalk transition-colors hover:bg-charcoal2"
+      >
+        + Add
+      </button>
+
+      {open ? (
+        <div className="absolute left-0 top-full z-50 mt-1 w-52 overflow-hidden rounded-xl border border-line bg-charcoal shadow-card">
+          <MenuItem onClick={() => add({ op: 'clip.add', track: 'broll', atSec, durationSec: 2, value: '' })}>
+            B-roll insert
+            <span className="block text-[10px] font-normal text-muted">2s — type what it shows</span>
+          </MenuItem>
+          <MenuItem onClick={() => add({ op: 'clip.add', track: 'graphics', atSec, durationSec: 2.5, value: 'Label', graphicType: 'icon' })}>
+            Icon + label
+          </MenuItem>
+          <MenuItem onClick={() => add({ op: 'clip.add', track: 'graphics', atSec, durationSec: 2.5, value: '100', graphicType: 'stat' })}>
+            Stat card
+          </MenuItem>
+          <MenuItem onClick={() => add({ op: 'clip.add', track: 'punchIns', atSec, durationSec: 2, value: '' })}>
+            Punch-in
+          </MenuItem>
+          <div className="border-t border-line-soft px-3 pt-2 pb-1 text-[10px] font-bold uppercase tracking-wider text-faint">
+            Sound
+          </div>
+          <div className="flex flex-wrap gap-1 p-2 pt-0">
+            {(['whoosh', 'pop', 'impact', 'swipe', 'riser', 'ding', 'click', 'sub-drop'] as const).map((sound) => (
+              <button
+                key={sound}
+                type="button"
+                onClick={() => add({ op: 'clip.add', track: 'sfx', atSec, durationSec: 0.4, value: sound })}
+                className="rounded border border-line px-2 py-0.5 text-[11px] font-semibold text-muted transition-colors hover:border-violet hover:text-violet"
+              >
+                {sound}
+              </button>
+            ))}
+          </div>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function MenuItem({ children, onClick }: { children: React.ReactNode; onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="block w-full px-3 py-2 text-left text-xs font-semibold text-chalk transition-colors hover:bg-charcoal2"
+    >
+      {children}
+    </button>
+  );
 }
 
 function ToolButton({

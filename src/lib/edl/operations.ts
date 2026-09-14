@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { TimeMapper, layoutSegments } from '@/lib/timeline/time-mapper';
 import {
   CAPTION_ANIMATIONS,
+  GRAPHIC_TYPES,
   TRANSITION_TYPES,
   type CaptionCue,
   type Edl,
@@ -65,6 +66,15 @@ export const EdlOperationSchema = z.discriminatedUnion('op', [
     outEndSec: z.number().nonnegative().optional(),
   }),
   z.object({ op: z.literal('clip.delete'), track: z.enum(CLIP_TRACKS), id: z.string() }),
+  z.object({
+    op: z.literal('clip.add'),
+    track: z.enum(CLIP_TRACKS),
+    atSec: z.number().nonnegative(),
+    durationSec: z.number().positive().default(2),
+    /** Seed content: a B-roll query, a graphic's text, a sound effect name. */
+    value: z.string().default(''),
+    graphicType: z.enum(GRAPHIC_TYPES).optional(),
+  }),
   z.object({
     op: z.literal('clip.update'),
     track: z.enum(CLIP_TRACKS),
@@ -272,6 +282,53 @@ function applyOne(edl: Edl, op: EdlOperation): Edl {
         : wanted;
 
       return writeTime(edl, op.track, op.id, placed.start, placed.end);
+    }
+
+    case 'clip.add': {
+      const id = `${op.track}-${Math.random().toString(36).slice(2, 8)}`;
+      const start = clamp(op.atSec, 0, Math.max(0, edl.format.durationSec - 0.2));
+      const end = Math.min(edl.format.durationSec, start + op.durationSec);
+
+      if (op.track === 'sfx') {
+        return { ...edl, sfx: [...edl.sfx, {
+          id, atSec: start, sound: (op.value || 'pop') as never, gainDb: -15,
+          url: `/audio/sfx/${op.value || 'pop'}.wav`,
+        }] };
+      }
+      if (op.track === 'transitions') {
+        return { ...edl, transitions: [...edl.transitions, {
+          id, atSec: start, type: (op.value || 'dissolve') as never, durationSec: 0.24,
+        }] };
+      }
+      if (op.track === 'broll') {
+        // An insert with no query yet is fine — the asset stage resolves it on
+        // the next render, and the user types what it should show.
+        return { ...edl, broll: [...edl.broll, {
+          id, outStartSec: start, outEndSec: end, kind: 'stock-video' as const,
+          url: '', clipStartSec: 0, scale: 1, kenBurns: 'in' as const,
+          audioGainDb: -60, opacity: 1, intent: 'Added by hand', query: op.value, attribution: undefined,
+        }] };
+      }
+      if (op.track === 'graphics') {
+        return { ...edl, graphics: [...edl.graphics, {
+          id, type: op.graphicType ?? 'icon', outStartSec: start, outEndSec: end,
+          animation: 'pop' as const, x: 0.76, y: 0.22, scale: 1,
+          text: op.value, subtext: '', items: [], assetUrl: null,
+          iconQuery: op.value, imagePrompt: '', color: edl.captionStyle.emphasisColor,
+        }] };
+      }
+      if (op.track === 'punchIns') {
+        return { ...edl, punchIns: [...edl.punchIns, {
+          id, outStartSec: start, outEndSec: end, scale: 1.15,
+          x: edl.reframe?.keyframes[0]?.cx ?? 0.5,
+          y: edl.reframe?.keyframes[0]?.cy ?? 0.42,
+          easing: 'snap' as const,
+        }] };
+      }
+      return { ...edl, overlays: [...edl.overlays, {
+        id, type: 'lower-third' as const, outStartSec: start, outEndSec: end,
+        text: op.value, subtext: '', color: edl.captionStyle.emphasisColor, opacity: 1,
+      }] };
     }
 
     case 'clip.delete': {
@@ -632,6 +689,7 @@ export function describeOperation(op: EdlOperation): string {
     case 'segment.speed': return `Set clip speed to ${op.speed}×`;
     case 'clip.move': return `Moved ${trackNoun(op.track)}`;
     case 'clip.trim': return `Trimmed ${trackNoun(op.track)}`;
+    case 'clip.add': return `Added ${trackNoun(op.track)}`;
     case 'clip.delete': return `Deleted ${trackNoun(op.track)}`;
     case 'clip.update': return `Changed ${trackNoun(op.track)}`;
     case 'caption.text': return 'Edited a caption';

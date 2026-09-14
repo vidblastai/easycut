@@ -258,6 +258,24 @@ Two collision rules, because they should feel different:
 - **Trimming** clamps only the dragged edge — moving the whole clip because its
   edge met something would feel like the timeline fighting you.
 
+**Why not an off-the-shelf timeline?** Remotion sells an
+[Editor Starter](https://www.remotion.dev/docs/editor-starter/) ($600/project)
+and a [Timeline component](https://www.remotion.dev/docs/timeline), and there
+are open-source React editors built on Remotion. All of them are
+*general-purpose* editors that own their own document model — and our EDL is not
+an implementation detail, it is the product: the renderer executes it, the cost
+guard prices it, versioning forks it, and the re-timing above keeps captions
+locked to words. Adopting one means either rewriting the pipeline around their
+model or maintaining a lossy adapter.
+
+What was actually missing was never the track-drawing widget. It was that the
+timeline had no player attached. So we take the one piece worth taking —
+[`@remotion/player`](https://www.remotion.dev/docs/player/player), which we
+already depend on and which exposes `seekTo`, `play`, `pause` and `frameupdate`
+— and bind it to the playhead. The timeline and the preview are now one
+transport with two views, rendering the WORKING document, so you see the edit in
+your hands rather than the last render.
+
 Cross-track stacking (a label over a B-roll shot) is allowed. The director
 avoids it unattended because two focal points usually fight, but a person doing
 it deliberately is ordinary editing, and manual mode does not overrule the

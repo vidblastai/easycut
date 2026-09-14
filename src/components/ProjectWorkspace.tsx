@@ -1,7 +1,9 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { clsx } from 'clsx';
+import dynamic from 'next/dynamic';
+import type { PlayerRef } from '@remotion/player';
 import { TimelineEditor } from '@/components/TimelineEditor';
 import type { EdlOperation } from '@/lib/edl/operations';
 import type { Edl } from '@/lib/edl/types';
@@ -68,6 +70,17 @@ export function ProjectWorkspace({ projectId, styles }: { projectId: string; sty
    * second early, you fix it yourself rather than re-rolling the whole edit.
    */
   const [mode, setMode] = useState<'simple' | 'timeline'>('simple');
+
+  /**
+   * The live preview, driven by the timeline.
+   *
+   * In simple mode the finished MP4 is the right thing to show — it is what you
+   * will post. In fine-tune mode it is the wrong thing: it shows the last
+   * render, not the edit in your hands. So the timeline gets a Remotion Player
+   * rendering the WORKING document, and the two share one playhead.
+   */
+  const playerRef = useRef<PlayerRef | null>(null);
+  const [workingEdl, setWorkingEdl] = useState<Edl | null>(null);
 
   const load = useCallback(async () => {
     const response = await fetch(`/api/projects/${projectId}`, { cache: 'no-store' });
@@ -205,7 +218,14 @@ export function ProjectWorkspace({ projectId, styles }: { projectId: string; sty
       <div className="mt-8 grid gap-6 lg:grid-cols-[1.35fr_1fr]">
         {/* ------------------------------------------------------- the video */}
         <div>
-          {project.status === 'processing' || !project.previewUrl ? (
+          {mode === 'timeline' && (workingEdl ?? doc) ? (
+            <div className="card overflow-hidden">
+              <LivePreview edl={(workingEdl ?? doc)!} playerRef={playerRef} mode={project.mode} />
+              <p className="border-t border-line px-4 py-2.5 text-xs text-muted">
+                Live preview of your edit &mdash; including changes you haven&rsquo;t applied yet.
+              </p>
+            </div>
+          ) : project.status === 'processing' || !project.previewUrl ? (
             <ProgressPanel job={job} mode={project.mode} />
           ) : (
             <div className="card overflow-hidden">
@@ -251,7 +271,13 @@ export function ProjectWorkspace({ projectId, styles }: { projectId: string; sty
 
           {doc && mode === 'timeline' ? (
             <div className="mt-4">
-              <TimelineEditor edl={doc} onCommit={applyOperations} busy={busy} />
+              <TimelineEditor
+                edl={doc}
+                onCommit={applyOperations}
+                busy={busy}
+                playerRef={playerRef}
+                onWorkingEdlChange={setWorkingEdl}
+              />
             </div>
           ) : null}
 
@@ -284,6 +310,48 @@ export function ProjectWorkspace({ projectId, styles }: { projectId: string; sty
           />
         </aside>
       </div>
+    </div>
+  );
+}
+
+/**
+ * Remotion's Player, rendering the same composition the cloud renderer does.
+ *
+ * Loaded dynamically because it pulls in the whole renderer runtime, which has
+ * no business in the bundle for people who never open the timeline.
+ */
+const Player = dynamic(() => import('@remotion/player').then((m) => m.Player), { ssr: false });
+const EasyCutVideo = dynamic(
+  () => import('@remotion-app/EasyCutVideo').then((m) => m.EasyCutVideo),
+  { ssr: false },
+);
+
+function LivePreview({
+  edl,
+  playerRef,
+  mode,
+}: {
+  edl: Edl;
+  playerRef: React.RefObject<PlayerRef | null>;
+  mode: 'short' | 'long';
+}) {
+  const fps = edl.format.fps || 30;
+  return (
+    <div className="bg-black" style={{ aspectRatio: mode === 'short' ? '9 / 16' : '16 / 9', maxHeight: '62vh' }}>
+      <Player
+        ref={playerRef}
+        component={EasyCutVideo as never}
+        inputProps={{ edl, previewAudio: true } as never}
+        durationInFrames={Math.max(1, Math.round(edl.format.durationSec * fps))}
+        fps={fps}
+        compositionWidth={edl.format.width}
+        compositionHeight={edl.format.height}
+        style={{ width: '100%', height: '100%' }}
+        // The timeline is the transport; a second set of controls inside the
+        // frame would be two things claiming to be in charge.
+        controls={false}
+        acknowledgeRemotionLicense
+      />
     </div>
   );
 }
