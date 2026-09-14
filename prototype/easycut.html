@@ -1,0 +1,2774 @@
+<title>EasyCut AI</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap">
+
+<style>
+/* ───────────────────────────────────────────────────────────────────────────
+   EasyCut AI — interface prototype.
+
+   Palette and type come straight from the project's brand kit, so this page
+   and the real app are the same object. One committed dark world: the kit's
+   instruction is "use soft black for the canvas", so there is no light theme
+   to design — every colour is painted explicitly instead of inherited.
+   ─────────────────────────────────────────────────────────────────────────── */
+:root {
+  --ink:       #0D0D10;
+  --charcoal:  #19191F;
+  --raised:    #22222A;
+  --line:      #2C2C36;
+  --line-soft: #232330;
+  --violet:    #9B7BFF;
+  --violet-hi: #B39AFF;
+  --violet-dim: rgba(155,123,255,.13);
+  --chalk:     #F5F5F7;
+  --muted:     #A5A5B3;
+  --faint:     #6E6E7C;
+  --ok:        #5BD6A0;
+  --warn:      #F5C453;
+  --bad:       #FF7B7B;
+
+  --sans: "Plus Jakarta Sans", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  --r-sm: 8px; --r: 12px; --r-lg: 18px; --r-xl: 24px;
+  color-scheme: dark;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--ink);
+  color: var(--chalk);
+  font-family: var(--sans);
+  font-size: 15px;
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1, h2, h3, h4 { margin: 0; letter-spacing: -.03em; text-wrap: balance; }
+p { margin: 0; }
+button { font: inherit; color: inherit; background: none; border: none; cursor: pointer; }
+:focus-visible { outline: 2px solid var(--violet); outline-offset: 2px; border-radius: 4px; }
+
+.wrap { max-width: 1180px; margin: 0 auto; padding-inline: 20px; }
+
+/* ───────────────────────────────────────────────────────────── header ─── */
+.top {
+  position: sticky; top: 0; z-index: 40;
+  background: rgba(13,13,16,.86);
+  backdrop-filter: blur(14px);
+  border-bottom: 1px solid var(--line-soft);
+}
+.top-in {
+  display: flex; align-items: center; gap: 14px;
+  padding-block: 13px;
+  flex-wrap: wrap;
+}
+.brand { display: flex; align-items: center; gap: 9px; padding: 0; }
+.brand svg { display: block; }
+.brand b { font-size: 17px; font-weight: 800; letter-spacing: -.035em; }
+
+.chip {
+  font-size: 11px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase;
+  padding: 4px 9px; border-radius: 99px;
+  border: 1px solid var(--line); color: var(--muted);
+}
+.chip.live { border-color: rgba(155,123,255,.4); color: var(--violet); }
+
+.top-right { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+.ghost {
+  border: 1px solid var(--line); border-radius: var(--r);
+  padding: 7px 13px; font-size: 13px; font-weight: 600; color: var(--chalk);
+  transition: background .15s, border-color .15s;
+  text-decoration: none; display: inline-block;
+}
+.ghost:hover { background: var(--raised); border-color: #3a3a47; }
+.ghost.tl-open { border-color: rgba(155,123,255,.45); color: var(--violet); }
+.ghost.tl-open:hover { background: var(--violet-dim); border-color: var(--violet); }
+
+/* ───────────────────────────────────────────────────────────── stepper ─── */
+.steps { display: flex; gap: 4px; padding-block: 18px 0; flex-wrap: wrap; }
+.step {
+  display: flex; align-items: center; gap: 9px;
+  padding: 9px 15px 9px 11px; border-radius: 99px;
+  border: 1px solid transparent; color: var(--faint);
+  font-size: 13px; font-weight: 600;
+  transition: color .18s, background .18s, border-color .18s;
+}
+.step:hover { color: var(--muted); }
+.step .num {
+  width: 20px; height: 20px; border-radius: 99px;
+  display: grid; place-items: center;
+  font-family: var(--mono); font-size: 11px; font-weight: 700;
+  background: var(--raised); color: var(--faint);
+  transition: background .18s, color .18s;
+}
+.step[aria-current="true"] { color: var(--chalk); background: var(--violet-dim); border-color: rgba(155,123,255,.3); }
+.step[aria-current="true"] .num { background: var(--violet); color: var(--ink); }
+.step.done .num { background: rgba(91,214,160,.15); color: var(--ok); }
+.step.done { color: var(--muted); }
+
+/* ─────────────────────────────────────────────────────────────── layout ─── */
+.grid {
+  display: grid;
+  grid-template-columns: minmax(0,1fr) 384px;
+  gap: 40px;
+  padding-block: 0 40px;
+  align-items: start;
+}
+/* Fine-tuning needs the width, so the preview shrinks rather than the timeline. */
+.grid.tlmode { grid-template-columns: minmax(0,1fr) 252px; gap: 22px; }
+/* While the wizard is asking a question that has nothing to do with the
+   picture, the preview is competing for attention rather than helping. It
+   reappears on the last step — so the question column stays pinned to the same
+   left edge either way, and only the preview moves. */
+.grid.wizsolo { grid-template-columns: minmax(0,1fr); }
+.grid.wizsolo .rail { display: none; }
+.grid.wizsolo .wiz { margin-left: 0; }
+@media (max-width: 960px) {
+  .grid { grid-template-columns: minmax(0,1fr); gap: 30px; }
+  .rail { order: -1; position: static !important; }
+}
+
+.panel { display: none; }
+.panel.on { display: block; }
+
+/* ─────────────────────────────────────────────────────────── form bits ─── */
+.sec { margin-bottom: 26px; }
+.sec-head { display: flex; align-items: baseline; gap: 10px; margin-bottom: 11px; }
+.sec-head h3 { font-size: 15px; font-weight: 700; }
+.sec-head .opt { font-size: 12px; color: var(--faint); font-weight: 500; }
+.sec-head .idx {
+  font-family: var(--mono); font-size: 11px; font-weight: 700;
+  color: var(--violet); letter-spacing: .06em;
+}
+
+.drop {
+  border: 1px dashed var(--line); border-radius: var(--r-lg);
+  background: var(--charcoal);
+  padding: 22px; display: flex; align-items: center; gap: 16px;
+  transition: border-color .18s, background .18s;
+}
+.drop:hover { border-color: rgba(155,123,255,.45); }
+.film {
+  width: 52px; height: 52px; flex: none; border-radius: var(--r);
+  background: linear-gradient(150deg, #2b2b3a, #191921);
+  border: 1px solid var(--line);
+  display: grid; place-items: center;
+}
+.drop .meta { min-width: 0; }
+.drop .name { font-weight: 700; font-size: 14px; }
+.drop .sub { font-size: 12.5px; color: var(--muted); font-family: var(--mono); }
+.sample-tag {
+  font-size: 10.5px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase;
+  color: var(--warn); border: 1px solid rgba(245,196,83,.32);
+  padding: 2px 7px; border-radius: 99px; white-space: nowrap;
+}
+
+.opts { display: grid; gap: 10px; }
+.opts.two { grid-template-columns: 1fr 1fr; }
+.opts.three { grid-template-columns: repeat(3, 1fr); }
+@media (max-width: 620px) { .opts.two, .opts.three { grid-template-columns: 1fr; } }
+
+.opt-card {
+  text-align: left; border: 1px solid var(--line); border-radius: var(--r-lg);
+  background: var(--charcoal); padding: 15px 16px;
+  transition: border-color .18s, background .18s, transform .18s;
+}
+.opt-card:hover { background: var(--raised); }
+.opt-card[aria-pressed="true"] { border-color: var(--violet); background: var(--violet-dim); }
+.opt-card .row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.opt-card .t { font-weight: 700; font-size: 14px; display: flex; align-items: center; gap: 8px; }
+.opt-card .d { font-size: 12.5px; color: var(--muted); margin-top: 5px; line-height: 1.45; }
+.opt-card .ratio { font-family: var(--mono); font-size: 11px; color: var(--faint); }
+.dot { width: 8px; height: 8px; border-radius: 99px; flex: none; }
+.tags { display: flex; gap: 5px; flex-wrap: wrap; margin-top: 9px; }
+.tags span {
+  font-size: 10.5px; font-weight: 600; color: var(--muted);
+  border: 1px solid var(--line); border-radius: 6px; padding: 2px 6px;
+}
+
+.note {
+  width: 100%; background: var(--charcoal); border: 1px solid var(--line);
+  border-radius: var(--r); padding: 12px 14px; color: var(--chalk);
+  font-family: var(--sans); font-size: 14px;
+}
+.note::placeholder { color: var(--faint); }
+.note:focus { outline: none; border-color: var(--violet); }
+
+.go {
+  width: 100%; background: var(--violet); color: var(--ink);
+  border-radius: var(--r-lg); padding: 15px; font-size: 15px; font-weight: 700;
+  transition: background .15s, transform .12s;
+}
+.go:hover { background: var(--violet-hi); }
+.go:active { transform: translateY(1px); }
+
+.disclaim {
+  margin-top: 14px; font-size: 12.5px; color: var(--faint); line-height: 1.6;
+}
+.disclaim code { font-family: var(--mono); font-size: 11.5px; color: var(--muted); }
+
+/* ──────────────────────────────────────────────────────── processing ─── */
+.stages { display: grid; gap: 2px; }
+.stage {
+  display: grid; grid-template-columns: 18px minmax(0,1fr) auto;
+  align-items: center; gap: 12px;
+  padding: 9px 12px; border-radius: var(--r-sm);
+  transition: background .2s;
+}
+.stage .tick {
+  width: 16px; height: 16px; border-radius: 99px;
+  border: 1.5px solid var(--line); display: grid; place-items: center;
+}
+.stage .lbl { font-size: 13.5px; color: var(--faint); transition: color .2s; }
+.stage .ms { font-family: var(--mono); font-size: 11.5px; color: var(--faint); font-variant-numeric: tabular-nums; }
+.stage.run { background: var(--violet-dim); }
+.stage.run .lbl { color: var(--chalk); font-weight: 600; }
+.stage.run .tick { border-color: var(--violet); border-right-color: transparent; animation: spin .7s linear infinite; }
+.stage.ok .lbl { color: var(--muted); }
+.stage.ok .tick { border-color: rgba(91,214,160,.45); background: rgba(91,214,160,.13); }
+.stage.warn .tick { border-color: rgba(245,196,83,.5); background: rgba(245,196,83,.12); }
+.stage.warn .lbl { color: var(--warn); }
+@keyframes spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .stage.run .tick { animation: none; } }
+
+.bar { height: 6px; border-radius: 99px; background: var(--raised); overflow: hidden; }
+.bar > i { display: block; height: 100%; background: var(--violet); border-radius: 99px; transition: width .35s cubic-bezier(.4,0,.2,1); }
+
+/* ──────────────────────────────────────────────────────────── editor ─── */
+.card { border: 1px solid var(--line); border-radius: var(--r-lg); background: var(--charcoal); }
+.card > .hd {
+  padding: 14px 18px; border-bottom: 1px solid var(--line-soft);
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+}
+.card > .hd h3 { font-size: 14px; font-weight: 700; }
+.card > .bd { padding: 16px 18px; }
+
+.stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1px; background: var(--line-soft); }
+@media (max-width: 720px) { .stats { grid-template-columns: repeat(2, 1fr); } }
+.stat { background: var(--charcoal); padding: 14px 16px; }
+.stat dt { font-size: 10.5px; letter-spacing: .07em; text-transform: uppercase; color: var(--faint); font-weight: 600; }
+/* Number on its own line, caption beneath: keeps every tile the same height
+   however long the caption runs. */
+.stat dd { margin: 4px 0 0; font-size: 20px; font-weight: 700; letter-spacing: -.02em; font-variant-numeric: tabular-nums; line-height: 1.2; }
+.stat dd small { display: block; font-size: 12px; font-weight: 500; color: var(--muted); letter-spacing: 0; line-height: 1.35; margin-top: 1px; }
+
+/* Segment strip — source→output timecode is the thing only this product has. */
+.edl-rows { display: grid; gap: 1px; }
+.edl-row {
+  display: grid; grid-template-columns: 74px 128px 16px 118px minmax(0,1fr);
+  align-items: center; gap: 12px;
+  font-family: var(--mono); font-size: 11.5px;
+  padding: 8px 0; border-top: 1px solid var(--line-soft);
+  font-variant-numeric: tabular-nums;
+}
+.edl-row:first-child { border-top: 0; }
+.edl-row .why {
+  font-size: 10px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase;
+  padding: 2px 7px; border-radius: 5px; text-align: center;
+}
+.why.hook { background: rgba(155,123,255,.16); color: var(--violet); }
+.why.keep { background: var(--raised); color: var(--muted); }
+.edl-row .src { color: var(--faint); }
+.edl-row .arr { color: var(--faint); text-align: center; }
+.edl-row .out { color: var(--chalk); }
+.edl-row .say { font-family: var(--sans); font-size: 12.5px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+@media (max-width: 620px) {
+  .edl-row { grid-template-columns: 66px 1fr; row-gap: 3px; }
+  .edl-row .arr { display: none; }
+  .edl-row .say { grid-column: 1 / -1; white-space: normal; }
+}
+
+.blist { display: grid; gap: 9px; }
+.bitem { display: flex; align-items: baseline; gap: 10px; font-size: 13px; }
+.bitem .tc { font-family: var(--mono); font-size: 11px; color: var(--faint); flex: none; }
+.bitem .q { color: var(--chalk); font-weight: 600; }
+.bitem .i { color: var(--muted); font-size: 12.5px; }
+
+.cost { display: grid; gap: 7px; }
+.cost-row { display: flex; align-items: baseline; gap: 10px; font-size: 13px; }
+.cost-row .k { color: var(--muted); }
+.cost-row .fill { flex: 1; border-bottom: 1px dotted var(--line); transform: translateY(-3px); }
+.cost-row .v { font-family: var(--mono); font-size: 12px; font-variant-numeric: tabular-nums; }
+.cost-row.total { border-top: 1px solid var(--line); padding-top: 9px; margin-top: 3px; font-weight: 700; }
+.cost-row.total .k, .cost-row.total .v { color: var(--chalk); }
+.headroom { font-size: 12px; color: var(--ok); margin-top: 8px; font-family: var(--mono); }
+
+/* ─────────────────────────────────────────────────────────── tweaks ─── */
+.pills { display: flex; flex-wrap: wrap; gap: 6px; }
+.pill {
+  border: 1px solid var(--line); border-radius: 99px; padding: 5px 11px;
+  font-size: 12px; font-weight: 600; color: var(--muted);
+  transition: border-color .15s, color .15s, background .15s;
+}
+.pill:hover { color: var(--chalk); border-color: #3a3a47; }
+.pill[aria-pressed="true"] { border-color: var(--violet); color: var(--violet); background: var(--violet-dim); }
+.pill.off { color: var(--faint); border-style: dashed; }
+
+.slider { display: block; margin-top: 12px; }
+.slider .lab { display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 5px; }
+.slider .lab b { font-weight: 600; color: var(--muted); }
+.slider .lab i { font-style: normal; font-family: var(--mono); font-size: 11px; color: var(--faint); }
+input[type=range] { width: 100%; accent-color: var(--violet); }
+
+/* ─────────────────────────────────────────────── the preview (hero) ─── */
+.rail { position: sticky; top: 74px; display: grid; gap: 12px; }
+
+.phone {
+  position: relative; width: 100%; aspect-ratio: 9 / 16;
+  border-radius: var(--r-xl); overflow: hidden;
+  background: #07070a;
+  border: 1px solid var(--line);
+  box-shadow: 0 30px 80px -40px rgba(0,0,0,.95);
+  container-type: inline-size;
+}
+
+/* The "footage": an abstract figure in a lit room. */
+.room { position: absolute; inset: 0; background:
+  radial-gradient(120% 80% at 62% 26%, #25252f 0%, #16161d 45%, #0b0b10 100%); }
+.figure {
+  position: absolute; inset: 0;
+  transform-origin: 50% 38%;
+  will-change: transform;
+}
+/* Head-to-shoulder ratio is what makes an abstract figure read as a person
+   rather than a lamp: shoulders run about three head-widths across. */
+.head {
+  position: absolute; left: 50%; top: 31%;
+  width: 15%; aspect-ratio: 1/1.16; margin-left: -7.5%;
+  border-radius: 40% 40% 44% 44%;
+  background: linear-gradient(165deg, #f0d3a8, #d5ac78);
+}
+.torso {
+  position: absolute; left: 50%; top: 40%;
+  width: 45%; height: 60%; margin-left: -22.5%;
+  border-radius: 46% 46% 0 0 / 27% 27% 0 0;
+  background: linear-gradient(170deg, #3d3d58, #23232f);
+}
+.vig { position: absolute; inset: 0; background:
+  radial-gradient(ellipse at 50% 42%, rgba(0,0,0,0) 44%, rgba(0,0,0,.55) 100%); }
+
+/* B-roll insert */
+.broll {
+  position: absolute; inset: 0; opacity: 0;
+  background: linear-gradient(135deg, #1d3a4d, #3d5a4a 55%, #6b5a3a);
+  display: grid; place-items: end start; padding: 7%;
+  will-change: transform, opacity;
+}
+.broll .q {
+  font-family: var(--mono); font-size: 3.2cqw; color: rgba(255,255,255,.72);
+  border: 1px solid rgba(255,255,255,.22); border-radius: 6px; padding: 3px 8px;
+  backdrop-filter: blur(4px);
+}
+.broll .grain { position: absolute; inset: 0; background:
+  repeating-linear-gradient(115deg, rgba(255,255,255,.05) 0 2px, transparent 2px 7px); }
+
+/* Stat card graphic */
+.gfx {
+  position: absolute; left: 50%; top: 24%; transform: translate(-50%,-50%) scale(.7);
+  opacity: 0; text-align: center; will-change: transform, opacity;
+  background: rgba(25,25,31,.93); backdrop-filter: blur(10px);
+  border: 1px solid rgba(155,123,255,.4); border-radius: 4cqw;
+  padding: 4.5cqw 6cqw; min-width: 44%;
+}
+.gfx .n { font-size: 15cqw; font-weight: 800; letter-spacing: -.05em; line-height: 1; color: var(--violet); }
+.gfx .c { font-size: 3.6cqw; color: var(--muted); font-weight: 500; margin-top: 1.5cqw; }
+
+/* Captions */
+.caps {
+  position: absolute; left: 7%; right: 7%;
+  display: flex; flex-wrap: wrap; justify-content: center; align-items: baseline;
+  gap: .35em .5em; text-align: center;
+  transform: translateY(-50%);
+}
+.caps .w { display: inline-block; will-change: transform, opacity; line-height: 1.12; }
+.caps.plate {
+  background: rgba(13,13,16,.72); border-radius: 2.4cqw;
+  padding: 2.4cqw 3.4cqw; left: 5%; right: 5%;
+}
+
+.flash { position: absolute; inset: 0; background: #fff; opacity: 0; pointer-events: none; }
+.prog { position: absolute; left: 0; bottom: 0; height: 3px; background: var(--violet); width: 0; }
+
+.badge-fmt {
+  position: absolute; left: 12px; top: 12px; z-index: 3;
+  font-family: var(--mono); font-size: 10px; font-weight: 500;
+  background: rgba(7,7,10,.72); backdrop-filter: blur(6px);
+  border: 1px solid rgba(255,255,255,.1); border-radius: 6px; padding: 3px 7px;
+  color: var(--muted);
+}
+
+/* transport + audio lane */
+.transport { display: flex; align-items: center; gap: 11px; }
+.pbtn {
+  width: 36px; height: 36px; flex: none; border-radius: 99px;
+  background: var(--violet); color: var(--ink); display: grid; place-items: center;
+  transition: background .15s;
+}
+.pbtn:hover { background: var(--violet-hi); }
+.scrub { flex: 1; }
+.tcode { font-family: var(--mono); font-size: 11.5px; color: var(--muted); font-variant-numeric: tabular-nums; flex: none; }
+
+.lane { border: 1px solid var(--line); border-radius: var(--r); background: var(--charcoal); padding: 10px 12px; }
+.lane h4 {
+  font-size: 10px; letter-spacing: .08em; text-transform: uppercase;
+  color: var(--faint); font-weight: 700; margin: 0 0 7px;
+}
+.track { position: relative; height: 20px; border-radius: 5px; overflow: hidden; background: var(--ink); }
+.track + .track { margin-top: 5px; }
+.seg-blk { position: absolute; top: 0; bottom: 0; border-radius: 3px; }
+.seg-blk.hook { background: rgba(155,123,255,.5); }
+.seg-blk.keep { background: rgba(155,123,255,.22); }
+.wave { position: absolute; inset: 0; display: flex; align-items: center; gap: 1px; padding-inline: 2px; }
+.wave i { flex: 1; background: rgba(155,123,255,.35); border-radius: 1px; }
+.music { position: absolute; inset: 0; background: repeating-linear-gradient(90deg, rgba(91,214,160,.25) 0 3px, transparent 3px 6px); }
+.sfx-tick { position: absolute; top: 2px; bottom: 2px; width: 2px; background: var(--warn); border-radius: 2px; }
+.playhead { position: absolute; top: 0; bottom: 0; width: 1.5px; background: var(--chalk); box-shadow: 0 0 6px rgba(245,245,247,.6); }
+.lane-key { display: flex; gap: 12px; margin-top: 8px; font-size: 10.5px; color: var(--faint); flex-wrap: wrap; }
+.lane-key span { display: flex; align-items: center; gap: 5px; }
+.lane-key i { width: 8px; height: 8px; border-radius: 2px; display: block; }
+
+/* ────────────────────────────────────────────────────── app shell ─── */
+.shell { display: none; }
+.shell.on { display: flex; align-items: stretch; min-height: calc(100vh - 57px); }
+
+.side {
+  width: 232px; flex: none; border-right: 1px solid var(--line-soft);
+  display: flex; flex-direction: column; padding: 14px 0 10px;
+  position: sticky; top: 57px; height: calc(100vh - 57px);
+  background: #0B0B0E;
+}
+@media (max-width: 880px) {
+  .shell.on { flex-direction: column; }
+  .side { width: auto; height: auto; position: static; border-right: 0; border-bottom: 1px solid var(--line-soft); }
+  .side .recents, .side .sidefoot { display: none; }
+  .nav { flex-direction: row; overflow-x: auto; padding-bottom: 6px; }
+  .nav a { white-space: nowrap; }
+}
+
+.nav { display: flex; flex-direction: column; gap: 1px; padding: 0 10px; }
+.nav a {
+  display: flex; align-items: center; gap: 11px;
+  padding: 9px 11px; border-radius: 9px;
+  font-size: 13.5px; font-weight: 500; color: var(--muted);
+  cursor: pointer; transition: background .14s, color .14s;
+}
+.nav a:hover { background: var(--charcoal); color: var(--chalk); }
+.nav a[aria-current="true"] { background: var(--violet-dim); color: var(--chalk); font-weight: 600; }
+.nav a[aria-current="true"] svg { color: var(--violet); }
+.nav a svg { width: 17px; height: 17px; flex: none; color: var(--faint); }
+.nav a:hover svg { color: var(--muted); }
+
+.navsep { height: 1px; background: var(--line-soft); margin: 9px 20px; }
+
+.recents { flex: 1; overflow-y: auto; padding: 0 10px; margin-top: 4px; min-height: 0; }
+.recents h6 {
+  margin: 10px 11px 6px; font-size: 10px; letter-spacing: .09em;
+  text-transform: uppercase; color: var(--faint); font-weight: 700;
+}
+.rec {
+  display: flex; align-items: center; gap: 9px; padding: 7px 11px;
+  border-radius: 9px; cursor: pointer; transition: background .14s;
+}
+.rec:hover { background: var(--charcoal); }
+.rec .thumb {
+  width: 34px; height: 44px; flex: none; border-radius: 5px; overflow: hidden;
+  background: linear-gradient(160deg, #26263a, #14141c); position: relative;
+}
+.rec .thumb.wide { width: 48px; height: 27px; }
+.rec .thumb b {
+  position: absolute; inset: 0; display: grid; place-items: center;
+  font-size: 9px; font-weight: 700; color: rgba(255,255,255,.35);
+}
+.rec .meta { min-width: 0; flex: 1; }
+.rec .meta span { display: block; font-size: 12.5px; color: var(--chalk); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rec .meta i { font-style: normal; font-size: 10.5px; color: var(--faint); }
+.rec .dot { width: 6px; height: 6px; border-radius: 99px; flex: none; }
+
+.sidefoot { padding: 8px 10px 0; border-top: 1px solid var(--line-soft); margin-top: 6px; }
+.acct {
+  display: flex; align-items: center; gap: 10px; padding: 9px 11px; margin-top: 4px;
+  border: 1px solid var(--line); border-radius: 11px; cursor: pointer; transition: background .14s;
+}
+.acct:hover { background: var(--charcoal); }
+.acct .av {
+  width: 30px; height: 30px; flex: none; border-radius: 99px; display: grid; place-items: center;
+  background: var(--violet); color: var(--ink); font-size: 12px; font-weight: 800;
+}
+.acct .meta { min-width: 0; flex: 1; }
+.acct .meta b { display: block; font-size: 12.5px; font-weight: 600; }
+.acct .meta i { font-style: normal; display: block; font-size: 10.5px; color: var(--faint); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.mainarea { flex: 1; min-width: 0; padding: 26px 26px 70px; }
+@media (max-width: 880px) { .mainarea { padding: 20px 16px 60px; } }
+
+/* ─────────────────────────────────────────────── the upload wizard ─── */
+/* One question per screen. The old version stacked five sections at once,
+   which is a form, not a flow — and the whole promise is that there is almost
+   nothing to decide. */
+.wiz { max-width: 640px; margin: 0; padding-top: 26px; }
+
+.wizrail { margin-bottom: 30px; }
+.wizdots { display: flex; gap: 22px; margin-bottom: 12px; flex-wrap: wrap; }
+.wizdots span {
+  font-size: 12px; font-weight: 600; color: var(--faint);
+  display: flex; align-items: center; gap: 7px; transition: color .2s;
+}
+.wizdots span b {
+  width: 19px; height: 19px; border-radius: 99px; display: grid; place-items: center;
+  font-family: var(--mono); font-size: 10px; font-weight: 700;
+  background: var(--charcoal); color: var(--faint); transition: background .2s, color .2s;
+}
+.wizdots span.now { color: var(--chalk); }
+.wizdots span.now b { background: var(--violet); color: var(--ink); }
+.wizdots span.was { color: var(--muted); }
+.wizdots span.was b { background: rgba(91,214,160,.16); color: var(--ok); }
+
+.wizbar { height: 3px; border-radius: 99px; background: var(--charcoal); overflow: hidden; }
+.wizbar i { display: block; height: 100%; background: var(--violet); border-radius: 99px; transition: width .35s cubic-bezier(.4,0,.2,1); }
+
+.wiz h1 { font-size: 30px; font-weight: 800; }
+.wizsub { margin-top: 7px; font-size: 15px; color: var(--muted); }
+#wiz-body { margin-top: 26px; }
+
+.wizfoot { display: flex; gap: 10px; margin-top: 30px; }
+.wizfoot .cta-primary { flex: 1; padding: 14px; font-size: 15px; }
+.wizfoot .cta-ghost { padding: 14px 22px; font-size: 15px; }
+.wizfoot .cta-ghost[hidden] { display: none; }
+.wizhint { margin-top: 14px; font-size: 12.5px; color: var(--faint); line-height: 1.6; }
+
+/* step 1 — the file */
+.bigdrop {
+  border: 1px dashed var(--line); border-radius: var(--r-xl); background: var(--charcoal);
+  padding: 44px 28px; text-align: center; cursor: pointer;
+  transition: border-color .18s, background .18s;
+}
+.bigdrop:hover { border-color: rgba(155,123,255,.5); background: var(--raised); }
+.bigdrop .ic {
+  width: 52px; height: 52px; margin: 0 auto 16px; border-radius: 14px;
+  display: grid; place-items: center; background: var(--violet-dim); color: var(--violet);
+}
+.bigdrop b { display: block; font-size: 16px; font-weight: 700; }
+.bigdrop span { display: block; margin-top: 5px; font-size: 13px; color: var(--muted); }
+
+.picked {
+  display: flex; align-items: center; gap: 14px;
+  border: 1px solid var(--violet); background: var(--violet-dim);
+  border-radius: var(--r-xl); padding: 18px 20px;
+}
+.picked .ic { width: 44px; height: 44px; flex: none; border-radius: 11px; background: rgba(0,0,0,.28); display: grid; place-items: center; color: var(--violet); }
+.picked .meta { flex: 1; min-width: 0; }
+.picked .meta b { display: block; font-size: 14.5px; font-weight: 700; }
+.picked .meta i { font-style: normal; display: block; margin-top: 3px; font-family: var(--mono); font-size: 11.5px; color: var(--muted); }
+.picked .swap { font-size: 12px; font-weight: 600; color: var(--muted); text-decoration: underline; text-underline-offset: 3px; }
+.picked .swap:hover { color: var(--chalk); }
+
+/* steps 2 & 3 — two big choices */
+.pair { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+@media (max-width: 620px) { .pair { grid-template-columns: 1fr; } }
+.choice {
+  border: 1px solid var(--line); background: var(--charcoal); border-radius: var(--r-xl);
+  padding: 22px 20px; text-align: left; transition: border-color .16s, background .16s;
+  display: flex; flex-direction: column; align-items: stretch; justify-content: flex-start;
+}
+.choice:hover { background: var(--raised); }
+.choice[aria-pressed="true"] { border-color: var(--violet); background: var(--violet-dim); }
+.choice .hd { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.choice .hd b { font-size: 16px; font-weight: 700; }
+.choice .hd .tag { font-family: var(--mono); font-size: 10.5px; color: var(--faint); }
+.choice p { margin-top: 8px; font-size: 13px; color: var(--muted); line-height: 1.55; }
+.choice .chips { display: flex; gap: 5px; flex-wrap: wrap; margin-top: auto; padding-top: 12px; }
+.choice .chips span { font-size: 10.5px; font-weight: 600; color: var(--muted); border: 1px solid var(--line); border-radius: 6px; padding: 2px 7px; }
+
+/* step 4 — the look */
+.looks { display: grid; grid-template-columns: repeat(3, 1fr); gap: 9px; }
+@media (max-width: 620px) { .looks { grid-template-columns: repeat(2, 1fr); } }
+.lookcard {
+  border: 1px solid var(--line); background: var(--charcoal); border-radius: var(--r-lg);
+  padding: 14px; text-align: left; transition: border-color .16s, background .16s;
+  display: flex; flex-direction: column; align-items: stretch; justify-content: flex-start;
+}
+.lookcard:hover { background: var(--raised); }
+.lookcard[aria-pressed="true"] { border-color: var(--violet); background: var(--violet-dim); }
+.lookcard b { display: flex; align-items: center; gap: 7px; font-size: 13.5px; font-weight: 700; }
+.lookcard i { font-style: normal; display: block; margin-top: 5px; font-size: 11.5px; color: var(--muted); line-height: 1.45; }
+
+.noteline { margin-top: 16px; }
+.noteline label { display: block; font-size: 12.5px; font-weight: 600; color: var(--muted); margin-bottom: 7px; }
+
+/* ──────────────────────────────────────────────────── dashboard ─── */
+.dash-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin-bottom: 22px; }
+.dash-head h1 { font-size: 27px; font-weight: 800; }
+.dash-head p { margin-top: 5px; font-size: 13.5px; color: var(--muted); }
+
+.kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 24px; }
+@media (max-width: 760px) { .kpis { grid-template-columns: repeat(2, 1fr); } }
+.kpi { border: 1px solid var(--line); border-radius: var(--r-lg); background: var(--charcoal); padding: 14px 16px; }
+.kpi dt { font-size: 10px; letter-spacing: .07em; text-transform: uppercase; color: var(--faint); font-weight: 700; }
+.kpi dd { margin: 5px 0 0; font-size: 22px; font-weight: 800; letter-spacing: -.03em; font-variant-numeric: tabular-nums; }
+.kpi dd small { font-size: 11.5px; font-weight: 500; color: var(--muted); letter-spacing: 0; }
+
+.vidgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(212px, 1fr)); gap: 14px; }
+.vid {
+  border: 1px solid var(--line); border-radius: var(--r-lg); background: var(--charcoal);
+  overflow: hidden; cursor: pointer; align-self: start;
+  transition: border-color .16s, transform .16s;
+}
+.vid:hover { border-color: rgba(155,123,255,.5); transform: translateY(-2px); }
+.vid .shot { position: relative; background: linear-gradient(160deg, #232334, #101018); display: grid; place-items: center; }
+.vid .shot .ratio { font-family: var(--mono); font-size: 10px; color: rgba(255,255,255,.3); }
+.vid .shot .badge {
+  position: absolute; left: 8px; top: 8px; font-family: var(--mono); font-size: 9.5px;
+  background: rgba(7,7,10,.8); border: 1px solid rgba(255,255,255,.1);
+  border-radius: 5px; padding: 2px 6px; color: var(--muted);
+}
+.vid .shot .len {
+  position: absolute; right: 8px; bottom: 8px; font-family: var(--mono); font-size: 9.5px;
+  background: rgba(7,7,10,.8); border-radius: 5px; padding: 2px 6px; color: var(--muted);
+}
+.vid .body { padding: 11px 13px 13px; }
+.vid .body b { display: block; font-size: 13px; font-weight: 700; letter-spacing: -.01em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.vid .body .row { display: flex; align-items: center; justify-content: space-between; margin-top: 6px; font-size: 11.5px; color: var(--muted); }
+.vid .body .row .st { display: flex; align-items: center; gap: 5px; }
+
+.newcard {
+  border: 1px dashed var(--line); border-radius: var(--r-lg); background: transparent;
+  display: grid; place-items: center; cursor: pointer; align-self: start;
+  aspect-ratio: 3 / 4; transition: border-color .16s, background .16s;
+  text-align: center; padding: 20px;
+}
+.newcard:hover { border-color: var(--violet); background: var(--violet-dim); }
+.newcard b { display: block; font-size: 14px; font-weight: 700; }
+.newcard span { display: block; margin-top: 4px; font-size: 12px; color: var(--muted); }
+
+.emptyish { border: 1px solid var(--line); border-radius: var(--r-lg); background: var(--charcoal); padding: 26px; }
+.emptyish h3 { font-size: 15px; font-weight: 700; }
+.emptyish p { margin-top: 6px; font-size: 13px; color: var(--muted); max-width: 54ch; line-height: 1.6; }
+
+/* ─────────────────────────────────────────────────── timeline editor ─── */
+.modeswitch { display: flex; gap: 2px; border: 1px solid var(--line); border-radius: var(--r); padding: 3px; }
+.modeswitch button {
+  border-radius: 8px; padding: 6px 13px; font-size: 12.5px; font-weight: 600; color: var(--muted);
+  transition: background .15s, color .15s;
+}
+.modeswitch button:hover { color: var(--chalk); }
+.modeswitch button[aria-pressed="true"] { background: var(--violet); color: var(--ink); }
+
+.tl { border: 1px solid var(--line); border-radius: var(--r-lg); background: var(--charcoal); overflow: hidden; }
+.tl-bar {
+  display: flex; align-items: center; gap: 7px; flex-wrap: wrap;
+  padding: 10px 13px; border-bottom: 1px solid var(--line-soft);
+}
+.tl-bar .tc {
+  font-family: var(--mono); font-size: 11.5px; color: var(--muted);
+  background: var(--ink); padding: 4px 8px; border-radius: 6px; font-variant-numeric: tabular-nums;
+}
+.tbtn {
+  border: 1px solid var(--line); border-radius: 8px; padding: 5px 10px;
+  font-size: 12px; font-weight: 600; color: var(--chalk);
+  transition: background .15s, opacity .15s;
+}
+.tbtn:hover:not(:disabled) { background: var(--raised); }
+.tbtn:disabled { opacity: .32; cursor: default; }
+.tbtn.apply { background: var(--violet); color: var(--ink); border-color: var(--violet); }
+.tbtn.apply:hover:not(:disabled) { background: var(--violet-hi); }
+.tl-sep { width: 1px; height: 18px; background: var(--line); }
+.tl-playbtn {
+  width: 28px; height: 28px; border-radius: 99px; background: var(--violet); color: var(--ink);
+  display: grid; place-items: center; flex: none; transition: background .15s;
+}
+.tl-playbtn:hover { background: var(--violet-hi); }
+.tbtn.export { background: var(--violet); color: var(--ink); border-color: var(--violet); }
+.tbtn.export:hover { background: var(--violet-hi); }
+
+.addwrap { position: relative; }
+.addmenu {
+  position: absolute; left: 0; top: calc(100% + 5px); z-index: 60; width: 210px;
+  background: var(--charcoal); border: 1px solid var(--line); border-radius: var(--r);
+  box-shadow: var(--r) 0 40px -14px rgba(0,0,0,.9), 0 20px 50px -20px rgba(0,0,0,.9);
+  overflow: hidden; padding-bottom: 6px;
+}
+.addmenu > button {
+  display: block; width: 100%; text-align: left; padding: 8px 12px;
+  font-size: 12px; font-weight: 600; color: var(--chalk); transition: background .12s;
+}
+.addmenu > button:hover { background: var(--raised); }
+.addmenu > button i { display: block; font-style: normal; font-size: 10px; font-weight: 400; color: var(--faint); }
+.addhead { padding: 7px 12px 4px; font-size: 9.5px; letter-spacing: .07em; text-transform: uppercase; color: var(--faint); font-weight: 700; border-top: 1px solid var(--line-soft); margin-top: 4px; }
+.addsfx { display: flex; flex-wrap: wrap; gap: 4px; padding: 0 10px; }
+.addsfx button {
+  border: 1px solid var(--line); border-radius: 5px; padding: 2px 6px;
+  font-size: 10.5px; font-weight: 600; color: var(--muted);
+}
+.addsfx button:hover { border-color: var(--violet); color: var(--violet); }
+
+/* Speech, drawn inside each clip — you trim against sound, not against labels. */
+.clipwave {
+  position: absolute; top: 0; bottom: 0; display: flex; align-items: center;
+  gap: 1px; opacity: .3; pointer-events: none;
+}
+.clipwave i { flex: 1; min-width: 1px; background: #fff; border-radius: 1px; }
+.tl-clip span { position: relative; z-index: 1; }
+
+.snapline { position: absolute; top: 0; bottom: 0; width: 1px; background: var(--warn); opacity: .8; pointer-events: none; z-index: 4; }
+
+.tl-scroll { overflow-x: auto; position: relative; }
+.tl-inner { position: relative; }
+.tl-ruler {
+  height: 26px; display: flex; border-bottom: 1px solid var(--line-soft);
+  cursor: ew-resize; user-select: none; position: sticky; top: 0; z-index: 6;
+  background: var(--charcoal);
+}
+.tl-gutter { flex: none; border-right: 1px solid var(--line); background: var(--charcoal);
+  position: sticky; left: 0; z-index: 4; }
+.tl-tickarea { position: relative; }
+.tl-tick {
+  position: absolute; top: 0; border-left: 1px solid var(--line);
+  padding-left: 4px; font-family: var(--mono); font-size: 9.5px; line-height: 26px; color: var(--faint);
+}
+
+.tl-track { display: flex; border-bottom: 1px solid var(--line-soft); }
+/* Sticky, so the track names stay readable once the timeline is scrolled. */
+.tl-label {
+  flex: none; border-right: 1px solid var(--line); background: var(--charcoal);
+  padding: 0 11px; display: flex; flex-direction: column; justify-content: center;
+  position: sticky; left: 0; z-index: 3;
+}
+.tl-label b { font-size: 11px; font-weight: 600; line-height: 1.2; }
+.tl-label i { font-style: normal; font-family: var(--mono); font-size: 9px; color: var(--faint); }
+.tl-lane { position: relative; flex: 1; }
+
+.tl-clip {
+  position: absolute; top: 4px; bottom: 4px; border-radius: 6px; border: 1px solid;
+  padding: 0 7px; font-size: 10.5px; line-height: 1; display: flex; align-items: center;
+  overflow: hidden; cursor: grab; white-space: nowrap;
+}
+.tl-clip:active { cursor: grabbing; }
+.tl-clip span { overflow: hidden; text-overflow: ellipsis; pointer-events: none; }
+.tl-clip.sel { outline: 2px solid var(--chalk); outline-offset: 1px; }
+.tl-clip .h { position: absolute; top: 0; bottom: 0; width: 6px; cursor: ew-resize; }
+.tl-clip .h.l { left: 0; } .tl-clip .h.r { right: 0; }
+.tl-clip:hover .h { background: rgba(245,245,247,.35); }
+
+.c-video { background: rgba(155,123,255,.22); border-color: rgba(155,123,255,.4); color: var(--chalk); }
+.c-hook  { background: rgba(155,123,255,.55); border-color: var(--violet); color: var(--ink); font-weight: 700; }
+.c-cap   { background: var(--raised); border-color: var(--line); color: var(--muted); }
+.c-broll { background: rgba(91,214,160,.2); border-color: rgba(91,214,160,.42); color: var(--chalk); }
+.c-gfx   { background: rgba(245,196,83,.2); border-color: rgba(245,196,83,.42); color: var(--chalk); }
+.c-punch { background: rgba(255,123,123,.16); border-color: rgba(255,123,123,.36); color: var(--chalk); }
+
+.tl-sfx { position: absolute; top: 5px; width: 3px; height: 16px; border-radius: 2px; background: var(--warn); transform: translateX(-50%); cursor: grab; }
+.tl-sfx.sel { background: var(--chalk); }
+.tl-trans { position: absolute; bottom: 4px; width: 7px; height: 7px; background: var(--violet); transform: translateX(-50%) rotate(45deg); border-radius: 1px; }
+
+.tl-head { position: absolute; top: 0; bottom: 0; width: 1px; background: var(--chalk); box-shadow: 0 0 7px rgba(245,245,247,.55); pointer-events: none; z-index: 5; }
+
+.tl-foot { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; padding: 13px; border-top: 1px solid var(--line-soft); }
+@media (max-width: 620px) { .tl-foot { grid-template-columns: 1fr; } }
+.tl-foot h5 { margin: 0 0 7px; font-size: 10px; letter-spacing: .07em; text-transform: uppercase; color: var(--faint); font-weight: 700; }
+.tl-foot p { font-size: 12px; color: var(--muted); line-height: 1.55; }
+.tl-foot kbd {
+  font-family: var(--mono); font-size: 10.5px; background: var(--ink);
+  border: 1px solid var(--line); border-radius: 4px; padding: 1px 5px; color: var(--chalk);
+}
+.tl-ops { list-style: none; margin: 0; padding: 0; max-height: 96px; overflow-y: auto; }
+.tl-ops li { display: flex; gap: 8px; font-size: 12px; color: var(--muted); padding: 1px 0; }
+.tl-ops li b { font-family: var(--mono); font-size: 10px; color: var(--faint); font-weight: 400; }
+.tl-warn { padding: 8px 13px; border-bottom: 1px solid var(--line-soft); background: rgba(245,196,83,.08); font-size: 12px; color: var(--warn); }
+
+.insp { display: grid; gap: 8px; }
+.insp input {
+  width: 100%; background: var(--ink); border: 1px solid var(--line); border-radius: 8px;
+  padding: 7px 10px; color: var(--chalk); font-family: var(--sans); font-size: 12.5px;
+}
+.insp input:focus { outline: none; border-color: var(--violet); }
+.insp .words { display: flex; flex-wrap: wrap; gap: 4px; }
+.insp .words button {
+  border: 1px solid var(--line); border-radius: 5px; padding: 2px 6px;
+  font-size: 11px; font-weight: 600; color: var(--muted);
+}
+.insp .words button[aria-pressed="true"] { border-color: var(--violet); color: var(--violet); background: var(--violet-dim); }
+.insp .meta { font-family: var(--mono); font-size: 11px; color: var(--faint); }
+
+/* ───────────────────────────────────────────────────────── homepage ─── */
+.home { display: none; padding-block: 44px 0; }
+.home.on { display: block; }
+
+.hero {
+  display: grid; grid-template-columns: minmax(0,1fr) 316px;
+  gap: 56px; align-items: center; padding-bottom: 72px;
+}
+@media (max-width: 900px) {
+  .hero { grid-template-columns: minmax(0,1fr); gap: 36px; }
+  #hero-preview { max-width: 300px; margin-inline: auto; }
+}
+
+.eyebrow {
+  display: inline-flex; align-items: center; gap: 8px;
+  border: 1px solid var(--line); background: var(--charcoal);
+  border-radius: 99px; padding: 6px 13px;
+  font-size: 12px; font-weight: 600; color: var(--muted);
+}
+.eyebrow i { width: 6px; height: 6px; border-radius: 99px; background: var(--violet); }
+@media (prefers-reduced-motion: no-preference) {
+  .eyebrow i { animation: blip 1.5s ease-in-out infinite; }
+}
+@keyframes blip { 0%,100% { opacity: 1 } 50% { opacity: .3 } }
+
+.hero h1 {
+  font-size: clamp(36px, 5.6vw, 58px); font-weight: 800; line-height: 1.04;
+  margin: 20px 0 0; letter-spacing: -.038em;
+}
+.hero h1 em { font-style: normal; color: var(--violet); }
+.hero .lede { margin-top: 18px; font-size: 17px; line-height: 1.62; color: var(--muted); max-width: 54ch; }
+.hero .curt { margin-top: 10px; font-size: 14px; color: var(--faint); }
+.hero-cta { display: flex; gap: 10px; margin-top: 28px; flex-wrap: wrap; }
+.cta-primary {
+  background: var(--violet); color: var(--ink); border-radius: var(--r-lg);
+  padding: 13px 24px; font-size: 15px; font-weight: 700;
+  transition: background .15s, transform .12s;
+}
+.cta-primary:hover { background: var(--violet-hi); }
+.cta-primary:active { transform: translateY(1px); }
+.cta-ghost {
+  border: 1px solid var(--line); border-radius: var(--r-lg);
+  padding: 13px 24px; font-size: 15px; font-weight: 600; color: var(--chalk);
+  transition: background .15s, border-color .15s;
+}
+.cta-ghost:hover { background: var(--raised); border-color: #3a3a47; }
+
+.home-sec { padding-block: 60px; border-top: 1px solid var(--line-soft); }
+.home-sec > h2 { font-size: clamp(24px, 3.4vw, 34px); font-weight: 800; }
+.home-sec > .sub { margin-top: 12px; color: var(--muted); max-width: 58ch; font-size: 15px; }
+
+/* Numbered only because these really are a sequence: you do them in order. */
+.flow { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-top: 28px; }
+@media (max-width: 760px) { .flow { grid-template-columns: 1fr; } }
+.flow-item { border: 1px solid var(--line); border-radius: var(--r-lg); background: var(--charcoal); padding: 20px; }
+.flow-item .n { font-family: var(--mono); font-size: 11px; font-weight: 700; color: var(--violet); letter-spacing: .1em; }
+.flow-item h3 { font-size: 16px; font-weight: 700; margin-top: 10px; }
+.flow-item p { margin-top: 7px; font-size: 13.5px; color: var(--muted); line-height: 1.55; }
+
+/* Layers are a list, not steps — so no numbers, and the rule carries the accent. */
+.layers { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0; margin-top: 28px; }
+@media (max-width: 860px) { .layers { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 560px) { .layers { grid-template-columns: 1fr; } }
+.layer { padding: 18px 20px 18px 0; border-top: 1px solid var(--line-soft); }
+.layer h4 { font-size: 14.5px; font-weight: 700; display: flex; align-items: center; gap: 9px; }
+.layer h4::before { content: ''; width: 3px; height: 14px; border-radius: 2px; background: var(--violet); flex: none; }
+.layer p { margin-top: 7px; font-size: 13px; color: var(--muted); line-height: 1.55; padding-left: 12px; }
+
+.look-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-top: 28px; }
+@media (max-width: 860px) { .look-grid { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 560px) { .look-grid { grid-template-columns: 1fr; } }
+.look {
+  border: 1px solid var(--line); border-radius: var(--r-lg);
+  background: var(--charcoal); padding: 17px 18px; text-align: left;
+  transition: border-color .18s, background .18s;
+}
+.look:hover { background: var(--raised); border-color: #3a3a47; }
+.look .t { font-weight: 700; font-size: 14.5px; display: flex; align-items: center; gap: 8px; }
+.look .l { margin-top: 6px; font-size: 13px; color: var(--chalk); opacity: .85; }
+.look .b { margin-top: 5px; font-size: 12.5px; color: var(--muted); line-height: 1.5; }
+
+/* The economics, stated plainly — it is the reason this exists. */
+.money { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px; background: var(--line-soft);
+  border: 1px solid var(--line); border-radius: var(--r-lg); overflow: hidden; margin-top: 28px; }
+@media (max-width: 700px) { .money { grid-template-columns: 1fr; } }
+.money div { background: var(--charcoal); padding: 22px 20px; }
+.money dt { font-size: 11px; letter-spacing: .07em; text-transform: uppercase; color: var(--faint); font-weight: 700; }
+.money dd { margin: 8px 0 0; font-size: 28px; font-weight: 800; letter-spacing: -.035em; font-variant-numeric: tabular-nums; }
+.money dd span { color: var(--violet); }
+.money p { margin-top: 6px; font-size: 12.5px; color: var(--muted); line-height: 1.5; }
+
+.closer { padding-block: 66px 8px; border-top: 1px solid var(--line-soft); text-align: center; }
+.closer h2 { font-size: clamp(24px, 3.6vw, 36px); font-weight: 800; margin-top: 18px; }
+.closer p { margin-top: 12px; color: var(--muted); }
+
+/* ─────────────────────────────────────────────────────────── footer ─── */
+.foot { border-top: 1px solid var(--line-soft); padding-block: 26px 46px; }
+.foot p { font-size: 13px; color: var(--faint); max-width: 62ch; line-height: 1.7; }
+.foot a { color: var(--violet); text-decoration: none; }
+.foot a:hover { text-decoration: underline; }
+
+.hint { font-size: 12.5px; color: var(--faint); margin-top: 10px; line-height: 1.6; }
+.warnbox {
+  border: 1px solid rgba(245,196,83,.28); background: rgba(245,196,83,.06);
+  border-radius: var(--r); padding: 12px 14px; font-size: 12.5px; color: var(--muted);
+}
+.warnbox b { color: var(--warn); font-weight: 700; }
+</style>
+
+<header class="top">
+  <div class="wrap top-in">
+    <button class="brand" id="to-home" aria-label="Back to the homepage">
+      <svg width="26" height="26" viewBox="0 0 100 100" fill="none" aria-hidden="true">
+        <path d="M12 14.5C12 9.6 17.3 6.6 21.5 9.1l58 34.4c1.9 1.1 1.9 3.9 0 5L21.5 82.9C17.3 85.4 12 82.4 12 77.5V14.5Z" fill="#9B7BFF"/>
+        <path d="M46.2 24.4c.5-1.3 2.4-1.2 2.7.2 1.4 6.6 3.7 13.6 7.6 17.9 3.9 4.3 10.5 6.9 16.6 8.5 1.3.3 1.4 2.2.1 2.7-6 2.2-12.4 5.2-16 9.6-3.6 4.4-5.5 11.3-6.6 17.7-.2 1.4-2.2 1.5-2.6.2-2-6.2-4.7-12.7-8.6-16.6-3.9-3.9-10-6.1-15.6-7.6-1.3-.4-1.4-2.3-.1-2.8 5.6-2 11.4-4.7 15.1-8.8 3.7-4.1 5.7-11 7.4-17.3Z" fill="#0D0D10"/>
+      </svg>
+      <b>EasyCut</b>
+    </button>
+    <span class="chip">Interface prototype</span>
+    <div class="top-right">
+      <button class="ghost tl-open" data-route="dashboard">Dashboard</button>
+      <a class="ghost" href="https://github.com/vidblastai/easycut/tree/claude/easycut-ai-video-editor-cnpana" target="_blank" rel="noopener">Source</a>
+    </div>
+  </div>
+</header>
+
+<div class="wrap" id="homewrap">
+  <!-- ═══════════════════════════════════════════════ homepage ═══ -->
+  <section class="home on" id="home">
+    <div class="hero">
+      <div>
+        <span class="eyebrow"><i></i>Short video in ~90 seconds. Long form in under six minutes.</span>
+        <h1>Upload your footage.<br><em>Get a finished video.</em></h1>
+        <p class="lede">
+          You talk to camera. We do the rest &mdash; cutting out the pauses and the
+          &ldquo;umm&rdquo;s, adding captions, B-roll, graphics, sound design and music,
+          and framing it for wherever you&rsquo;re posting it.
+        </p>
+        <p class="curt">No timeline required. No editing knowledge of any kind. Full manual control if you want it.</p>
+        <div class="hero-cta">
+          <button class="cta-primary" data-route="dashboard">Open the dashboard</button>
+          <button class="cta-ghost" data-route="new">Upload your footage</button>
+          <button class="cta-ghost" data-route="timeline">Open the timeline editor</button>
+        </div>
+      </div>
+      <div id="hero-preview"></div>
+    </div>
+
+    <div class="home-sec">
+      <h2>Three decisions, then it&rsquo;s done.</h2>
+      <div class="flow">
+        <div class="flow-item">
+          <div class="n">01</div><h3>Drop in your footage</h3>
+          <p>Raw and rambling, or already trimmed &mdash; tell us which and we adjust how hard we cut.</p>
+        </div>
+        <div class="flow-item">
+          <div class="n">02</div><h3>Pick short or long</h3>
+          <p>Vertical and hook-first, or widescreen and chaptered. Then choose a look.</p>
+        </div>
+        <div class="flow-item">
+          <div class="n">03</div><h3>Get a finished video</h3>
+          <p>Post it as-is, or open the timeline and fine-tune every cut before you export.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="home-sec">
+      <h2>Everything a good editor would add.</h2>
+      <p class="sub">Not filters on top of your video &mdash; an actual edit, built from what you said.</p>
+      <div class="layers">
+        <div class="layer"><h4>Captions</h4><p>Word-perfect, animated, with the words that matter picked out in your accent colour.</p></div>
+        <div class="layer"><h4>B-roll</h4><p>Real footage cut in wherever you name something concrete. Never generic, never over your punchline.</p></div>
+        <div class="layer"><h4>Motion graphics</h4><p>Numbers become stat cards. Lists build in. Named ideas get an animated icon.</p></div>
+        <div class="layer"><h4>Sound design</h4><p>Whooshes on cuts, pops on graphics, a music bed that ducks under your voice automatically.</p></div>
+        <div class="layer"><h4>Transitions</h4><p>Whip pans, zoom punches and glitches &mdash; placed only on real cuts, never for decoration.</p></div>
+        <div class="layer"><h4>Reframing</h4><p>Shot landscape, posting vertical? We track you through the frame so you never lose your head.</p></div>
+      </div>
+    </div>
+
+    <div class="home-sec">
+      <h2>Pick a look.</h2>
+      <p class="sub">Each one changes the pacing, the captions, the sound design and how much happens on screen. Switch after the edit and re-render for free.</p>
+      <div class="look-grid" id="home-looks"></div>
+    </div>
+
+    <div class="home-sec">
+      <h2>A fraction of what an editor costs.</h2>
+      <p class="sub">Measured, not estimated. The ceilings are enforced in code &mdash; a job that would overrun drops its most expensive optional layers rather than overspending.</p>
+      <dl class="money">
+        <div><dt>60-second short</dt><dd><span>$0.12</span></dd><p>Against a $1.00 ceiling. 8.1&times; headroom.</p></div>
+        <div><dt>10-minute long form</dt><dd><span>$0.74</span></dd><p>Against a $5.00 ceiling. 6.8&times; headroom.</p></div>
+        <div><dt>Every edit after that</dt><dd>Free</dd><p>Restyle, re-cut, re-crop and re-export replay cached analysis.</p></div>
+      </dl>
+    </div>
+
+    <div class="closer">
+      <svg width="40" height="40" viewBox="0 0 100 100" fill="none" aria-hidden="true">
+        <path d="M12 14.5C12 9.6 17.3 6.6 21.5 9.1l58 34.4c1.9 1.1 1.9 3.9 0 5L21.5 82.9C17.3 85.4 12 82.4 12 77.5V14.5Z" fill="#9B7BFF"/>
+        <path d="M46.2 24.4c.5-1.3 2.4-1.2 2.7.2 1.4 6.6 3.7 13.6 7.6 17.9 3.9 4.3 10.5 6.9 16.6 8.5 1.3.3 1.4 2.2.1 2.7-6 2.2-12.4 5.2-16 9.6-3.6 4.4-5.5 11.3-6.6 17.7-.2 1.4-2.2 1.5-2.6.2-2-6.2-4.7-12.7-8.6-16.6-3.9-3.9-10-6.1-15.6-7.6-1.3-.4-1.4-2.3-.1-2.8 5.6-2 11.4-4.7 15.1-8.8 3.7-4.1 5.7-11 7.4-17.3Z" fill="#0D0D10"/>
+      </svg>
+      <h2>Your next video is one upload away.</h2>
+      <p>Bring the footage. We&rsquo;ll bring the edit.</p>
+      <div class="hero-cta" style="justify-content:center">
+        <button class="cta-primary" data-route="dashboard">Open the dashboard</button>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<!-- The app shell breaks out of the centred marketing wrapper: a sidebar that
+     stops 200px from the window edge is not a sidebar. -->
+<div class="shell" id="shell">
+    <aside class="side">
+      <nav class="nav" id="nav">
+        <a data-route="dashboard">${''}</a>
+      </nav>
+      <div class="navsep"></div>
+      <div class="recents">
+        <h6>Recent</h6>
+        <div id="recents"></div>
+      </div>
+      <div class="sidefoot">
+        <nav class="nav" id="navfoot"></nav>
+        <div class="acct">
+          <span class="av">C</span>
+          <span class="meta"><b>carl temming</b><i>carl.temming@gmail.com</i></span>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+               style="color:var(--faint);flex:none"><path d="m9 18 6-6-6-6"/></svg>
+        </div>
+      </div>
+    </aside>
+
+    <div class="mainarea">
+
+      <!-- ═══════════════════════════════════ dashboard ═══ -->
+      <section class="panel" id="p-dash">
+        <div class="dash-head">
+          <div>
+            <h1 id="dash-title">Your videos</h1>
+            <p id="dash-sub">Upload footage and it comes back edited.</p>
+          </div>
+          <button class="cta-primary" style="padding:11px 20px;font-size:14px" data-route="new">New video</button>
+        </div>
+        <dl class="kpis" id="kpis"></dl>
+        <div class="vidgrid" id="vidgrid"></div>
+      </section>
+
+      <!-- ═══════════════════════════════════ media ═══ -->
+      <section class="panel" id="p-media">
+        <div class="dash-head"><div><h1>Media library</h1>
+          <p>Your footage, the B-roll we fetched, and the music you&rsquo;ve added.</p></div></div>
+        <div class="emptyish">
+          <h3>Nothing uploaded yet in this prototype</h3>
+          <p>In the app this lists every source file with its probe data, the stock clips each
+          project pulled, and your music manifest &mdash; so you can reuse a clip across videos
+          instead of fetching it twice.</p>
+        </div>
+      </section>
+
+      <!-- ═══════════════════════════════════ settings ═══ -->
+      <section class="panel" id="p-settings">
+        <div class="dash-head"><div><h1>Settings</h1>
+          <p>Defaults for every new video, and what&rsquo;s switched on.</p></div></div>
+        <div class="emptyish" style="margin-bottom:12px">
+          <h3>Default look</h3>
+          <p>Pre-selects a style on upload so you stop choosing the same one every time.</p>
+          <div class="pills" id="set-styles" style="margin-top:12px"></div>
+        </div>
+        <div class="emptyish">
+          <h3>Providers</h3>
+          <p>Transcription, the AI director, B-roll and rendering each fall back gracefully when
+          a key is missing &mdash; the app tells you which layer you lost rather than failing.</p>
+          <div id="set-caps" style="margin-top:12px"></div>
+        </div>
+      </section>
+
+  <nav class="steps" aria-label="Stages">
+    <button class="step" data-go="0" aria-current="true"><span class="num">1</span> Upload</button>
+    <button class="step" data-go="1"><span class="num">2</span> Editing</button>
+    <button class="step" data-go="2"><span class="num">3</span> Your video</button>
+  </nav>
+
+  <div class="grid">
+    <!-- ═══════════════════════════════════════════════════ left column ═══ -->
+    <div>
+
+      <!-- ─────────────────────────────────────────────── 1 · upload ─── -->
+      <section class="panel on" id="p0">
+        <div class="wiz">
+          <div class="wizrail">
+            <div class="wizdots" id="wiz-dots"></div>
+            <div class="wizbar"><i id="wiz-fill"></i></div>
+          </div>
+
+          <h1 id="wiz-title">Your footage</h1>
+          <p class="wizsub" id="wiz-sub">Drop in the video you filmed.</p>
+
+          <div id="wiz-body"></div>
+
+          <div class="wizfoot">
+            <button class="cta-ghost" id="wiz-back">Back</button>
+            <button class="cta-primary" id="wiz-next">Continue</button>
+          </div>
+
+          <p class="wizhint" id="wiz-hint"></p>
+        </div>
+      </section>
+
+      <!-- ────────────────────────────────────────── 2 · processing ─── -->
+      <section class="panel" id="p1">
+        <h1 style="font-size:30px;font-weight:800;margin-bottom:6px" id="proc-title">Working on it</h1>
+        <p style="color:var(--muted);margin-bottom:22px" id="proc-sub">Usually about 90 seconds, start to finish.</p>
+
+        <div class="bar" style="margin-bottom:20px"><i id="proc-bar" style="width:0%"></i></div>
+        <div class="stages" id="stages"></div>
+
+        <div class="warnbox" style="margin-top:20px" id="degraded" hidden></div>
+      </section>
+
+      <!-- ───────────────────────────────────────────── 3 · editor ─── -->
+      <section class="panel" id="p2">
+        <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:20px">
+          <div>
+            <h1 style="font-size:30px;font-weight:800;margin-bottom:4px">Most people get pricing backwards</h1>
+            <p style="color:var(--muted);font-size:14px" id="hdr-sub"></p>
+          </div>
+          <div style="display:flex;align-items:center;gap:10px">
+            <div class="modeswitch" id="modeswitch">
+              <button data-mode="simple" aria-pressed="true">Simple</button>
+              <button data-mode="timeline" aria-pressed="false">Fine-tune</button>
+            </div>
+            <button class="ghost" id="dl" style="padding:9px 15px">Download</button>
+          </div>
+        </div>
+
+        <!-- The timeline editor, for when the AI got something nearly right. -->
+        <div id="tl-wrap" hidden style="margin-bottom:14px">
+          <div class="tl">
+            <div class="tl-bar">
+              <button class="tl-playbtn" id="tl-play" title="Play or pause (Space)">
+                <svg id="tl-play-icon" width="11" height="11" viewBox="0 0 16 16" fill="currentColor"><path d="M4 2.5v11l9-5.5-9-5.5Z"/></svg>
+              </button>
+              <span class="tc" id="tl-tc">0:00.00 / 0:13.90</span>
+              <span class="tl-sep"></span>
+              <div class="addwrap">
+                <button class="tbtn" id="tl-add">+ Add</button>
+                <div class="addmenu" id="tl-addmenu" hidden>
+                  <button data-add="broll">B-roll insert<i>2s &mdash; type what it shows</i></button>
+                  <button data-add="icon">Icon + label</button>
+                  <button data-add="stat">Stat card</button>
+                  <button data-add="punch">Punch-in</button>
+                  <div class="addhead">Sound</div>
+                  <div class="addsfx">
+                    ${''}
+                  </div>
+                </div>
+              </div>
+              <button class="tbtn" id="tl-split">Split</button>
+              <button class="tbtn" id="tl-del">Delete</button>
+              <span class="tl-sep"></span>
+              <button class="tbtn" id="tl-undo">Undo</button>
+              <button class="tbtn" id="tl-redo">Redo</button>
+              <span style="margin-left:auto;display:flex;gap:7px;align-items:center">
+                <button class="tbtn" id="tl-zout">&minus;</button>
+                <button class="tbtn" id="tl-zin">+</button>
+                <button class="tbtn" id="tl-apply">No changes</button>
+                <button class="tbtn export" id="tl-export">Export</button>
+              </span>
+            </div>
+            <div class="tl-warn" id="tl-warn" hidden></div>
+            <div class="tl-scroll" id="tl-scroll">
+              <div class="tl-inner" id="tl-inner"></div>
+            </div>
+            <div class="tl-foot">
+              <div>
+                <h5>Selected</h5>
+                <div class="insp" id="tl-insp"><p style="font-size:12px;color:var(--muted);margin:0">Click a clip to edit what&rsquo;s in it.</p></div>
+              </div>
+              <div>
+                <h5 id="tl-ops-h">Pending changes</h5>
+                <div id="tl-ops-body">
+                  <p>Drag a clip to move it, drag its edges to trim. <kbd>S</kbd> splits at the
+                  playhead, <kbd>Del</kbd> removes what&rsquo;s selected, <kbd>&#8984;Z</kbd> undoes.
+                  Nothing re-renders until you apply.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card" style="margin-bottom:14px">
+          <div class="hd"><h3>What we did</h3><span class="chip" id="from-tag"></span></div>
+          <dl class="stats" id="stats"></dl>
+        </div>
+
+        <div class="card" style="margin-bottom:14px">
+          <div class="hd">
+            <h3>The cut</h3>
+            <span style="font-family:var(--mono);font-size:11px;color:var(--faint)">source&nbsp;&rarr;&nbsp;output</span>
+          </div>
+          <div class="bd"><div class="edl-rows" id="edl"></div>
+            <p class="hint" id="hook-note"></p>
+          </div>
+        </div>
+
+        <div class="card" style="margin-bottom:14px">
+          <div class="hd"><h3>B-roll we chose</h3></div>
+          <div class="bd"><div class="blist" id="broll-list"></div>
+            <p class="hint">B-roll illustrates the noun, never the vibe. &ldquo;Growth has been incredible&rdquo; gets nothing &mdash; that&rsquo;s a feeling, not an object.</p>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="hd"><h3>What it cost</h3><span class="chip" id="budget-tag"></span></div>
+          <div class="bd"><div class="cost" id="cost"></div><div class="headroom" id="headroom"></div></div>
+        </div>
+      </section>
+    </div>
+
+    <!-- ══════════════════════════════════════════════ right rail ═══ -->
+    <aside class="rail">
+      <div id="stage-unit">
+      <div class="phone" id="phone">
+        <span class="badge-fmt" id="fmt-badge">9:16 · 1080×1920</span>
+        <div class="room"></div>
+        <div class="figure" id="figure">
+          <div class="head"></div>
+          <div class="torso"></div>
+        </div>
+        <div class="vig"></div>
+        <div class="broll" id="broll"><div class="grain"></div><span class="q" id="broll-q"></span></div>
+        <div class="gfx" id="gfx"><div class="n">3&times;</div><div class="c">what we raised prices</div></div>
+        <div class="caps" id="caps"></div>
+        <div class="flash" id="flash"></div>
+        <div class="prog" id="prog"></div>
+      </div>
+
+      <div class="transport">
+        <button class="pbtn" id="play" aria-label="Play or pause the preview">
+          <svg id="play-icon" width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M4 2.5v11l9-5.5-9-5.5Z"/></svg>
+        </button>
+        <input class="scrub" id="scrub" type="range" min="0" max="1390" value="0" aria-label="Scrub the preview">
+        <span class="tcode" id="tc">0:00 / 0:13</span>
+      </div>
+      </div>
+
+      <div class="lane">
+        <h4>Timeline</h4>
+        <div class="track" id="tr-video"></div>
+        <div class="track" id="tr-audio">
+          <div class="wave" id="wave"></div>
+        </div>
+        <div class="lane-key">
+          <span><i style="background:rgba(155,123,255,.5)"></i>Hook</span>
+          <span><i style="background:rgba(155,123,255,.22)"></i>Kept</span>
+          <span><i style="background:var(--warn)"></i>Sound effect</span>
+        </div>
+      </div>
+
+      <div class="lane">
+        <h4>Change anything &mdash; free</h4>
+        <div class="pills" id="tweak-styles" style="margin-bottom:11px"></div>
+        <div class="pills" id="tweak-layers"></div>
+        <label class="slider" for="cap-size">
+          <span class="lab"><b>Caption size</b><i id="cap-size-v"></i></span>
+          <input type="range" id="cap-size" min="30" max="90" step="2">
+        </label>
+        <label class="slider" for="cap-pos">
+          <span class="lab"><b>Caption height</b><i id="cap-pos-v"></i></span>
+          <input type="range" id="cap-pos" min="40" max="92" step="2">
+        </label>
+        <p class="hint">Every one of these re-renders from cached analysis &mdash; no transcription, no AI call, no re-upload.</p>
+      </div>
+    </aside>
+  </div>
+    </div>
+</div>
+
+<div class="wrap" id="footwrap">
+  <footer class="foot">
+    <p>
+      EasyCut cuts talking-head footage for people who will never open a timeline. The AI writes an
+      edit plan; deterministic renderers execute it &mdash; which is how a finished short lands at
+      about twelve cents.
+      <a href="https://github.com/vidblastai/easycut/tree/claude/easycut-ai-video-editor-cnpana" target="_blank" rel="noopener">Read the source</a>.
+    </p>
+  </footer>
+</div>
+
+<script>
+'use strict';
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Style presets — the same numbers as src/lib/styles/presets.ts.
+
+   The point of the real system is that a style is DATA, not a code path. This
+   page keeps that property: changing the selection below re-derives the layer
+   counts, the caption treatment and the preview. Nothing branches on a name.
+   ═══════════════════════════════════════════════════════════════════════════ */
+const STYLES = {
+  clean: {
+    name: 'Clean', tagline: 'Let the message carry it.', accent: '#9B7BFF',
+    cap: { anim: 'karaoke', weight: 700, size: .046, words: 5, y: .78, upper: false, plate: true, stroke: false },
+    short: { broll: 12, gfx: 14, punch: 7, sfx: .2, trans: .25 },
+    progress: false, music: 'minimal ambient',
+  },
+  punchy: {
+    name: 'Punchy', tagline: 'Built to stop the scroll.', accent: '#9B7BFF',
+    cap: { anim: 'bounce', weight: 800, size: .068, words: 3, y: .70, upper: true, plate: false, stroke: true },
+    short: { broll: 7, gfx: 9, punch: 4.5, sfx: .8, trans: .65 },
+    progress: true, music: 'upbeat energetic',
+  },
+  documentary: {
+    name: 'Documentary', tagline: 'Cinematic, patient, considered.', accent: '#E8C89A',
+    cap: { anim: 'fade', weight: 600, size: .038, words: 7, y: .86, upper: false, plate: false, stroke: false },
+    short: { broll: 9, gfx: 30, punch: 9.5, sfx: .15, trans: .3 },
+    progress: false, music: 'cinematic emotional',
+  },
+  explainer: {
+    name: 'Explainer', tagline: 'Every idea gets a picture.', accent: '#5BD6A0',
+    cap: { anim: 'pop', weight: 700, size: .050, words: 4, y: .80, upper: false, plate: true, stroke: false },
+    short: { broll: 14, gfx: 5, punch: 7, sfx: .45, trans: .35 },
+    progress: true, music: 'light curious',
+  },
+  podcast: {
+    name: 'Podcast', tagline: 'Long conversations, watchable.', accent: '#9B7BFF',
+    cap: { anim: 'karaoke', weight: 600, size: .036, words: 8, y: .88, upper: false, plate: true, stroke: false },
+    short: { broll: 11, gfx: 16, punch: 8.5, sfx: .25, trans: .2 },
+    progress: false, music: 'low-key groove',
+  },
+  vlog: {
+    name: 'Vlog', tagline: 'Loose, warm, personal.', accent: '#F5C453',
+    cap: { anim: 'pop', weight: 800, size: .052, words: 4, y: .76, upper: false, plate: false, stroke: true },
+    short: { broll: 9, gfx: 13, punch: 6, sfx: .5, trans: .45 },
+    progress: false, music: 'warm lo-fi',
+  },
+};
+
+const FORMATS = {
+  short: { label: 'Short form', desc: 'Vertical, up to 90 seconds, hook-first.', ratio: '9:16',
+           dims: '1080×1920', platforms: ['TikTok', 'Reels', 'Shorts'] },
+  long:  { label: 'Long form', desc: 'Widescreen, up to 10 minutes, chaptered.', ratio: '16:9',
+           dims: '1920×1080', platforms: ['YouTube', 'LinkedIn', 'Web'] },
+};
+
+const INPUT_MODES = {
+  raw: { label: 'Completely raw',
+         desc: "Straight off the camera. We'll cut the pauses, the ums, the false starts and the takes you redid." },
+  roughcut: { label: 'Already trimmed',
+         desc: "You cut your own mistakes. We'll respect your edit and only add the layers on top." },
+};
+
+/* Real figures from `npm run doctor`, priced against Remotion Lambda. */
+const COSTS = {
+  short: { transcription: .0065, director: .0974, images: .0030, render: .0138, storage: .0028, budget: 1 },
+  long:  { transcription: .0559, director: .4975, images: .0060, render: .1500, storage: .0259, budget: 5 },
+};
+
+/* ═══════════════════════════════════════════ the edit itself ═══ */
+const SOURCE_SEC = 47;
+const DURATION = 13.9;
+
+/* Note the first row: the hook was buried at 41 seconds and moved to frame 0. */
+const SEGMENTS = [
+  { why: 'hook', s: [41.20, 45.90], o: [0.00, 4.70], say: 'Most people get pricing completely backwards.' },
+  { why: 'keep', s: [3.40, 10.10],  o: [4.70, 11.40], say: 'They pick a number, then look for customers…' },
+  { why: 'keep', s: [12.60, 15.10], o: [11.40, 13.90], say: 'We raised ours 3× and kept every client.' },
+];
+
+/* Word timings drive the captions exactly as the real renderer does. */
+const WORDS = [
+  ['Most',.25,.55],['people',.55,.95],['get',.95,1.20],['pricing',1.20,1.75,1],
+  ['completely',1.75,2.35],['backwards.',2.35,3.15,1],
+  ['They',4.85,5.08],['pick',5.08,5.32],['a',5.32,5.44],['number,',5.44,5.98],
+  ['then',6.08,6.30],['look',6.30,6.56],['for',6.56,6.73],['customers',6.73,7.36],
+  ["who'll",7.36,7.66],['pay',7.66,7.92],['it.',7.92,8.18],
+  ['Do',8.42,8.62],['it',8.62,8.77],['the',8.77,8.92],['other',8.92,9.22],['way',9.22,9.46],['round.',9.46,9.98],
+  ['Find',10.12,10.42],['who',10.42,10.60],['you',10.60,10.78],['want',10.78,11.02],['to',11.02,11.14],['serve.',11.14,11.38],
+  ['We',11.58,11.78],['raised',11.78,12.12],['ours',12.12,12.42],['3×',12.42,12.88,1],
+  ['and',12.98,13.15],['kept',13.15,13.42],['every',13.42,13.70],['client.',13.70,13.90],
+];
+
+const CUTS = [4.70, 11.40];
+const BROLL = { in: 5.05, out: 6.70, q: 'calculator desk notepad', why: 'Shows the number being picked' };
+const GFX = { in: 12.15, out: 13.90 };
+const PUNCHES = [[1.15, 3.25, 1.19], [8.40, 10.00, 1.13]];
+const SFX = [
+  { t: 4.70, k: 'whoosh' }, { t: 5.05, k: 'swipe' },
+  { t: 11.40, k: 'impact' }, { t: 12.15, k: 'pop' },
+];
+
+/* ═══════════════════════════════════════════════════ state ═══ */
+const state = {
+  view: 'home', route: 'home', mode: 'simple', wiz: 0,
+  file: { name: 'pricing-talk-take3.mov', meta: '0:47 · 1920×1080 · 412 MB' },
+  note: 'Keep the bit about raising prices.',
+  fmt: 'short', style: 'punchy', inmode: 'raw', step: 0,
+                layers: { captions: true, broll: true, graphics: true, sfx: true, punchIns: true, music: true },
+                capScale: 1, capPos: null, edited: false };
+
+const $ = (id) => document.getElementById(id);
+const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+/* ═══════════════════════════════════════════════ step 1 UI ═══ */
+function buildHomeLooks() {
+  $('home-looks').innerHTML = Object.entries(STYLES).map(([k, s]) => `
+    <button class="look" data-style="${k}" data-route="new">
+      <span class="t"><i class="dot" style="background:${s.accent}"></i>${s.name}</span>
+      <span class="l">${s.tagline}</span>
+      <span class="b">${s.cap.words} words a card · ${s.cap.upper ? 'all caps' : 'sentence case'} · ${s.music}</span>
+    </button>`).join('');
+}
+
+const WIZ = [
+  { key: 'file',   title: 'Your footage',        sub: 'Drop in the video you filmed.' },
+  { key: 'format', title: 'Where is it going?',  sub: 'This changes how it gets cut, not just the shape.' },
+  { key: 'input',  title: 'How finished is it?', sub: 'So we know how hard to cut.' },
+  { key: 'look',   title: 'Pick a look',         sub: 'Changes the pacing, captions and sound. You can switch later.' },
+];
+
+const HINTS = {
+  file: 'MP4, MOV or WebM. Up to 4&nbsp;GB. A sample file is already loaded so you can walk the flow.',
+  format: 'Short form opens on your strongest line and tracks your face into vertical. Long form is chaptered and calmer.',
+  input: 'Raw means we cut the pauses, the ums, the false starts and the takes you redid. Already trimmed means we respect your edit and only add layers.',
+  look: 'Every one of these re-renders for free afterwards &mdash; nothing here is a one-way door.',
+};
+
+function buildWizard() {
+  const step = WIZ[state.wiz];
+
+  $('wiz-dots').innerHTML = WIZ.map((w, i) => `
+    <span class="${i === state.wiz ? 'now' : i < state.wiz ? 'was' : ''}">
+      <b>${i < state.wiz ? '✓' : i + 1}</b>${w.title.replace('?', '')}
+    </span>`).join('');
+  $('wiz-fill').style.width = ((state.wiz + 1) / WIZ.length * 100) + '%';
+
+  $('wiz-title').textContent = step.title;
+  $('wiz-sub').textContent = step.sub;
+  $('wiz-hint').innerHTML = HINTS[step.key];
+
+  $('wiz-body').innerHTML = {
+    file: () => state.file
+      ? `<div class="picked">
+           <span class="ic">${filmIcon()}</span>
+           <span class="meta"><b>${state.file.name}</b><i>${state.file.meta}</i></span>
+           <button class="swap" data-wiz="clear">Choose another</button>
+         </div>`
+      : `<div class="bigdrop" data-wiz="pick">
+           <span class="ic">${filmIcon()}</span>
+           <b>Drop your video here</b>
+           <span>MP4, MOV or WebM &mdash; or click to browse</span>
+         </div>`,
+
+    format: () => `<div class="pair">${Object.entries(FORMATS).map(([k, f]) => `
+      <button class="choice" data-fmt="${k}" aria-pressed="${state.fmt === k}">
+        <span class="hd"><b>${f.label}</b><span class="tag">${f.ratio}</span></span>
+        <p>${f.desc}</p>
+        <span class="chips">${f.platforms.map((x) => `<span>${x}</span>`).join('')}</span>
+      </button>`).join('')}</div>`,
+
+    input: () => `<div class="pair">${Object.entries(INPUT_MODES).map(([k, m]) => `
+      <button class="choice" data-inmode="${k}" aria-pressed="${state.inmode === k}">
+        <span class="hd"><b>${m.label}</b></span>
+        <p>${m.desc}</p>
+      </button>`).join('')}</div>`,
+
+    look: () => `<div class="looks">${Object.entries(STYLES).map(([k, st]) => `
+      <button class="lookcard" data-style="${k}" aria-pressed="${state.style === k}">
+        <b><i class="dot" style="background:${st.accent}"></i>${st.name}</b>
+        <i>${st.tagline}</i>
+      </button>`).join('')}</div>
+      <div class="noteline">
+        <label for="note">Anything we should know? <span style="color:var(--faint);font-weight:400">optional</span></label>
+        <input class="note" id="note" type="text" maxlength="120" value="${state.note}"
+               placeholder="e.g. keep the bit about pricing">
+      </div>`,
+  }[step.key]();
+
+  $('wiz-back').hidden = state.wiz === 0;
+  $('wiz-next').textContent = state.wiz === WIZ.length - 1 ? 'Make my video' : 'Continue';
+  $('wiz-next').disabled = step.key === 'file' && !state.file;
+
+  const noteEl = $('note');
+  if (noteEl) noteEl.addEventListener('input', (e) => { state.note = e.target.value; });
+
+  // The preview is only meaningful once a look is on the table; before that it
+  // is decoration competing with the question being asked.
+  document.querySelector('.grid').classList.toggle('wizsolo', step.key !== 'look');
+}
+
+const filmIcon = () => `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+  stroke-width="1.7" stroke-linecap="round"><rect x="2.5" y="5" width="19" height="14" rx="2.5"/>
+  <path d="M7 5v14M17 5v14M2.5 12h19"/></svg>`;
+
+$('wiz-next').addEventListener('click', () => {
+  if (state.wiz < WIZ.length - 1) { state.wiz++; buildWizard(); window.scrollTo({ top: 0, behavior: 'smooth' }); }
+  else runPipeline();
+});
+$('wiz-back').addEventListener('click', () => {
+  if (state.wiz > 0) { state.wiz--; buildWizard(); }
+});
+
+document.addEventListener('click', (e) => {
+  const b = e.target.closest('[data-fmt],[data-inmode],[data-style],[data-go],[data-layer],[data-tstyle],[data-timeline],[data-wiz]');
+  if (!b) return;
+
+  if (b.hasAttribute('data-timeline')) return openTimeline();
+
+  if (b.dataset.wiz === 'clear') { state.file = null; buildWizard(); return; }
+  if (b.dataset.wiz === 'pick') {
+    state.file = { name: 'pricing-talk-take3.mov', meta: '0:47 · 1920×1080 · 412 MB' };
+    buildWizard();
+    return;
+  }
+
+  if (b.dataset.fmt)    { state.fmt = b.dataset.fmt; }
+  if (b.dataset.inmode) { state.inmode = b.dataset.inmode; }
+  if (b.dataset.style || b.dataset.tstyle) {
+    state.style = b.dataset.style || b.dataset.tstyle;
+    state.capScale = 1; state.capPos = null;
+    // A restyle is a REBUILD from cached analysis, so it replaces the cut — and
+    // therefore discards manual timeline edits, exactly as the app does.
+    BASE_OVERRIDE = null; tl.ops = []; tl.redo = []; tl.sel = null;
+    refreshDoc();
+    if (state.step === 2) { state.edited = true; }
+  }
+  if (b.dataset.layer) {
+    state.layers[b.dataset.layer] = !state.layers[b.dataset.layer];
+    state.edited = true;
+  }
+  if (b.dataset.go !== undefined) {
+    const n = +b.dataset.go;
+    // Clicking "Editing" from the start runs the pipeline; jumping straight to
+    // "Your video" skips it, which is what you want when reviewing screens.
+    if (n === 1 && state.step === 0) return runPipeline();
+    goto(n);
+  }
+  buildWizard(); syncTweaks(); render(); paintPreview(); drawTimeline(); buildLanes();
+});
+
+/* ═══════════════════════════════════════════ step 2 · pipeline ═══ */
+/* Stage names and weights mirror src/lib/pipeline/types.ts. */
+const STAGES = [
+  ['Reading your footage', .08, 'ingest'],
+  ['Listening to what you said', .10, 'transcribe'],
+  ['Finding the dead air', .02, 'silence'],
+  ['Cutting the ums and restarts', .02, 'cleanup'],
+  ['Planning the edit', .16, 'direct'],
+  ['Building the timeline', .02, 'timeline'],
+  ['Keeping you in frame', .06, 'reframe'],
+  ['Gathering B-roll, icons and music', .10, 'assets'],
+  ['Assembling the edit', .02, 'edl'],
+  ['Rendering your video', .36, 'render'],
+  ['Finishing up', .06, 'deliver'],
+];
+
+const STAGE_DETAIL = {
+  ingest: '1920×1080 · 47.0s · proxy + audio extracted',
+  transcribe: '118 words · deepgram nova-3',
+  silence: '11 gaps · 24.3s of dead air',
+  cleanup: '6 fillers · 1 stammer · 2 retakes',
+  direct: 'hook found at 41.2s · 2 B-roll · 1 stat',
+  timeline: '3 segments · 13.9s',
+  reframe: 'subject tracked · 41 keyframes',
+  assets: 'pexels · iconify · library',
+  edl: 'validated · within budget',
+  render: '417 frames · h.264 crf 21',
+  deliver: 'thumbnail · caption · hashtags',
+};
+
+let procTimer = null;
+
+function runPipeline() {
+  goto(1);
+  const rawOnly = state.inmode === 'raw';
+  $('proc-sub').textContent = state.fmt === 'short'
+    ? 'Usually about 90 seconds, start to finish.'
+    : 'Usually about five minutes, start to finish.';
+
+  $('stages').innerHTML = STAGES.map((s, i) => `
+    <div class="stage" data-i="${i}">
+      <span class="tick"></span>
+      <span class="lbl">${s[0]}</span>
+      <span class="ms"></span>
+    </div>`).join('');
+  $('degraded').hidden = true;
+
+  let i = 0, acc = 0;
+  clearTimeout(procTimer);
+
+  const tick = () => {
+    if (i > 0) {
+      const prev = $('stages').children[i - 1];
+      prev.classList.remove('run');
+      prev.classList.add(STAGES[i - 1][2] === 'cleanup' && !rawOnly ? 'warn' : 'ok');
+      prev.querySelector('.ms').textContent = STAGE_DETAIL[STAGES[i - 1][2]];
+    }
+    if (i >= STAGES.length) {
+      $('proc-bar').style.width = '100%';
+      $('proc-title').textContent = 'Done';
+      if (!rawOnly) {
+        $('degraded').hidden = false;
+        $('degraded').innerHTML =
+          '<b>Respected your edit.</b> You told us the footage was already trimmed, so we skipped ' +
+          'false-start and retake detection entirely and only removed genuine dead air.';
+      }
+      setTimeout(() => goto(2), 520);
+      return;
+    }
+    const el = $('stages').children[i];
+    el.classList.add('run');
+    $('proc-title').textContent = STAGES[i][0];
+    acc += STAGES[i][1];
+    $('proc-bar').style.width = (acc * 100).toFixed(1) + '%';
+    i++;
+    procTimer = setTimeout(tick, reduced ? 120 : 210 + STAGES[i - 1][1] * 900);
+  };
+  tick();
+}
+
+/* ═══════════════════════════════════════════ step 3 · the editor ═══ */
+/* Counts come from the LIVE document, so a hand-trimmed edit reports what it
+   actually contains rather than what the style profile would have produced. */
+function layerCounts() {
+  return {
+    broll: state.layers.broll ? DOC.broll.length : 0,
+    gfx: state.layers.graphics ? DOC.graphics.length : 0,
+    punch: state.layers.punchIns ? DOC.punches.length : 0,
+    sfx: state.layers.sfx ? DOC.sfx.length : 0,
+    trans: DOC.transitions.length,
+    caps: state.layers.captions ? DOC.captions.length : 0,
+  };
+}
+
+function render() {
+  const s = STYLES[state.style], f = FORMATS[state.fmt], c = layerCounts();
+  const removed = (SOURCE_SEC - DOC.duration).toFixed(0);
+
+  $('hdr-sub').textContent =
+    `${f.label} · ${s.name} · 0:${String(Math.round(DOC.duration)).padStart(2, '0')} · ${f.dims}`;
+  $('from-tag').textContent = state.edited ? 'Re-rendered · no new analysis' : 'First edit';
+
+  $('stats').innerHTML = [
+    ['Removed', `${removed}s`, 'pauses, ums, retakes'],
+    ['Cuts', DOC.segments.length - 1, 'visible splices'],
+    ['Captions', c.caps, `cards, ${s.cap.words} words each`],
+    ['B-roll', c.broll, 'inserts'],
+    ['Graphics', c.gfx, 'stat cards'],
+    ['Sound effects', c.sfx, 'cues'],
+    ['Punch-ins', c.punch, 'second camera'],
+    ['Music', state.layers.music ? '1' : '—', state.layers.music ? s.music : 'turned off'],
+  ].map(([k, v, sub]) => `
+    <div class="stat"><dt>${k}</dt><dd>${v} <small>${sub}</small></dd></div>`).join('');
+
+  $('edl').innerHTML = DOC.segments.map((g) => `
+    <div class="edl-row">
+      <span class="why ${g.why}">${g.why}</span>
+      <span class="src">${tc(g.s0)}–${tc(g.s1)}</span>
+      <span class="arr">&rarr;</span>
+      <span class="out">${tc(g.o0)}–${tc(g.o1)}</span>
+      <span class="say">${g.say}</span>
+    </div>`).join('');
+
+  $('hook-note').innerHTML =
+    'The strongest line was buried at <b style="color:var(--chalk);font-family:var(--mono)">41.2s</b>. ' +
+    'For short form it gets moved to frame&nbsp;0 and removed from where it was, so nobody hears it twice.';
+
+  $('broll-list').innerHTML = DOC.broll.length === 0
+    ? '<p class="hint" style="margin:0">No B-roll in this edit.</p>'
+    : DOC.broll.map((b) => `<div class="bitem"><span class="tc">${tc(b.a)}</span>
+         <span><span class="q">${b.q}</span> <span class="i">— ${b.why}</span></span></div>`).join('');
+
+  const cost = COSTS[state.fmt];
+  const lines = [
+    ['Transcription', cost.transcription, 'deepgram nova-3'],
+    ['AI director', cost.director, 'claude opus 5'],
+    ['Generated images', c.gfx ? cost.images : 0, 'flux schnell'],
+    ['B-roll, icons, music, SFX', 0, 'free by design'],
+    ['Render', cost.render, 'remotion lambda'],
+    ['Storage + egress', cost.storage, 'cloudflare r2'],
+  ];
+  const total = lines.reduce((a, [, v]) => a + v, 0);
+  $('cost').innerHTML = lines.map(([k, v, note]) => `
+    <div class="cost-row"><span class="k">${k}</span><span class="fill"></span>
+      <span class="v" style="color:${v ? 'var(--muted)' : 'var(--ok)'}">${v ? '$' + v.toFixed(4) : 'free'}</span></div>`).join('')
+    + `<div class="cost-row total"><span class="k">Total</span><span class="fill"></span>
+        <span class="v">$${total.toFixed(4)}</span></div>`;
+  $('budget-tag').textContent = `budget $${cost.budget.toFixed(2)}`;
+  $('headroom').textContent = `${(cost.budget / total).toFixed(1)}× under the ceiling — enforced in code, not hoped for.`;
+}
+
+const tc = (s) => `${Math.floor(s / 60)}:${(s % 60).toFixed(2).padStart(5, '0')}`;
+
+/* ═══════════════════════════════════════════════ the tweak panel ═══ */
+function syncTweaks() {
+  $('tweak-styles').innerHTML = Object.entries(STYLES).map(([k, s]) => `
+    <button class="pill" data-tstyle="${k}" aria-pressed="${state.style === k}">${s.name}</button>`).join('');
+
+  const L = [['captions', 'Captions'], ['broll', 'B-roll'], ['graphics', 'Graphics'],
+             ['sfx', 'Sound FX'], ['punchIns', 'Punch-ins'], ['music', 'Music']];
+  $('tweak-layers').innerHTML = L.map(([k, n]) => `
+    <button class="pill ${state.layers[k] ? '' : 'off'}" data-layer="${k}"
+      aria-pressed="false">${state.layers[k] ? n : n + ' off'}</button>`).join('');
+
+  const cap = STYLES[state.style].cap;
+  $('cap-size').value = Math.round(cap.size * state.capScale * 1000);
+  $('cap-size-v').textContent = Math.round(state.capScale * 100) + '%';
+  const pos = state.capPos ?? cap.y;
+  $('cap-pos').value = Math.round(pos * 100);
+  $('cap-pos-v').textContent = Math.round(pos * 100) + '%';
+}
+
+$('cap-size').addEventListener('input', (e) => {
+  state.capScale = (+e.target.value / 1000) / STYLES[state.style].cap.size;
+  state.edited = true;
+  $('cap-size-v').textContent = Math.round(state.capScale * 100) + '%';
+  paintPreview(); render();
+});
+$('cap-pos').addEventListener('input', (e) => {
+  state.capPos = +e.target.value / 100;
+  state.edited = true;
+  $('cap-pos-v').textContent = e.target.value + '%';
+  paintPreview(); render();
+});
+
+/* ═══════════════════════════════════════════════ the preview ═══ */
+/* Everything below draws what the Remotion composition draws, from the same
+   style data — so switching styles here shows the real difference. */
+
+let playing = !reduced, last = performance.now();
+
+/* The playhead IS the time. The preview reads it, the timeline draws it, and
+   dragging either one moves the other — because they are the same number. */
+Object.defineProperty(window, 't', { get: () => tl.head, set: (v) => { tl.head = v; } });
+
+function cueFor(time) {
+  const cue = DOC.captions.find((c) => time >= c.a - .12 && time <= c.b + .30);
+  return cue ? cue.words.map((w) => [w.t, w.a, w.b, w.em ? 1 : 0]) : [];
+}
+
+function paintPreview() {
+  const s = STYLES[state.style], cap = s.cap;
+  const ph = $('phone');
+  ph.style.aspectRatio = state.fmt === 'short' ? '9 / 16' : '16 / 9';
+  $('fmt-badge').textContent = `${FORMATS[state.fmt].ratio} · ${FORMATS[state.fmt].dims}`;
+
+  const H = ph.clientHeight || 600;
+
+  /* Captions ------------------------------------------------------------- */
+  const caps = $('caps');
+  caps.style.top = ((state.capPos ?? cap.y) * 100) + '%';
+  caps.classList.toggle('plate', !!cap.plate && state.layers.captions);
+
+  const grp = state.layers.captions ? cueFor(t) : [];
+  const size = H * cap.size * state.capScale;
+
+  caps.innerHTML = grp.map(([txt, a, b, em]) => {
+    const on = t >= a;
+    let op = 1, sc = 1, ty = 0, col = em ? s.accent : '#fff';
+
+    if (cap.anim === 'karaoke') {
+      op = on ? 1 : .42;
+      if (t >= a && t < b) { col = s.accent; sc = 1.04; }
+    } else if (cap.anim === 'fade') {
+      op = Math.min(1, Math.max(0, (t - grp[0][1] + .12) / .3));
+    } else {
+      if (!on) return '';
+      const k = Math.min(1, (t - a) / .22);
+      const over = cap.anim === 'bounce' ? Math.sin(k * Math.PI) * .13 : 0;
+      sc = .74 + k * .26 + over;
+      op = Math.min(1, k * 1.7);
+      ty = (1 - k) * size * .26;
+    }
+
+    const stroke = cap.stroke
+      ? `-webkit-text-stroke:${Math.max(1, size * .085)}px #000;paint-order:stroke fill;` : '';
+    return `<span class="w" style="font-size:${size}px;font-weight:${em ? Math.min(900, cap.weight + 100) : cap.weight};
+      color:${col};opacity:${op};transform:scale(${sc}) translateY(${ty}px);
+      text-shadow:0 ${size * .07}px ${size * .3}px rgba(0,0,0,.6);${stroke}">${
+        cap.upper ? txt.toUpperCase() : txt}</span>`;
+  }).join('');
+
+  /* Camera: reframe drift + punch-in -------------------------------------- */
+  let scale = 1;
+  if (state.layers.punchIns) {
+    for (const { a, b, z } of DOC.punches) {
+      if (t >= a && t <= b) {
+        const inK = Math.min(1, (t - a) / .2), outK = Math.min(1, (b - t) / .25);
+        scale = 1 + (z - 1) * Math.min(inK, outK);
+      }
+    }
+  }
+  const drift = Math.sin(t * .42) * (state.fmt === 'short' ? 1.6 : 0.6);
+  $('figure').style.transform = `scale(${scale.toFixed(4)}) translateX(${drift.toFixed(2)}%)`;
+
+  /* B-roll ---------------------------------------------------------------- */
+  const active = DOC.broll.find((c) => t >= c.a && t <= c.b);
+  const br = $('broll'), on = state.layers.broll && !!active;
+  const k = on ? (t - active.a) / Math.max(.01, active.b - active.a) : 0;
+  br.style.opacity = on ? String(Math.min(1, Math.min(t - active.a, active.b - t) / .14)) : '0';
+  br.style.transform = `scale(${(1.04 + k * .09).toFixed(3)})`;
+  if (active) $('broll-q').textContent = active.q;
+
+  /* Stat card ------------------------------------------------------------- */
+  const card = DOC.graphics.find((c) => t >= c.a && t <= c.b);
+  const g = $('gfx'), gon = state.layers.graphics && !!card;
+  const gk = gon ? Math.min(1, (t - card.a) / .3) : 0;
+  if (card) { g.querySelector('.n').textContent = card.text; g.querySelector('.c').textContent = card.sub; }
+  g.style.opacity = gon ? String(Math.min(1, gk * 1.6)) : '0';
+  g.style.transform = `translate(-50%,-50%) scale(${(.72 + gk * .28 + Math.sin(gk * Math.PI) * .07).toFixed(3)})`;
+  g.style.borderColor = s.accent + '66';
+  g.querySelector('.n').style.color = s.accent;
+
+  /* Transition flash + progress bar --------------------------------------- */
+  let fl = 0;
+  for (const c of DOC.transitions) { const d = Math.abs(t - c.at); if (d < .14) fl = Math.max(fl, (1 - d / .14) * .5); }
+  $('flash').style.opacity = String(fl);
+  $('prog').style.width = s.progress ? (t / DOC.duration * 100) + '%' : '0';
+  $('prog').style.background = s.accent;
+
+  /* Transport ------------------------------------------------------------- */
+  $('scrub').max = String(Math.round(DOC.duration * 100));
+  $('scrub').value = String(Math.round(t * 100));
+  $('tc').textContent = `0:${String(Math.floor(t)).padStart(2, '0')} / 0:${String(Math.round(DOC.duration)).padStart(2, '0')}`;
+  document.querySelectorAll('.playhead').forEach((p) => { p.style.left = (t / DOC.duration * 100) + '%'; });
+}
+
+function buildLanes() {
+  $('tr-video').innerHTML = DOC.segments.map((g) => `
+    <div class="seg-blk ${g.why}" style="left:${g.o0 / DOC.duration * 100}%;
+      width:${(g.o1 - g.o0) / DOC.duration * 100 - .5}%"></div>`).join('') + '<div class="playhead"></div>';
+
+  const bars = Array.from({ length: 64 }, (_, i) => {
+    const time = i / 64 * DOC.duration;
+    const speaking = DOC.captions.some((c) => c.words.some((w) => time >= w.a - .05 && time <= w.b + .05));
+    const h = speaking ? 30 + Math.abs(Math.sin(i * 1.7)) * 62 : 7;
+    return `<i style="height:${h}%"></i>`;
+  }).join('');
+  $('wave').innerHTML = bars;
+  $('tr-audio').insertAdjacentHTML('beforeend',
+    DOC.sfx.map((f) => `<div class="sfx-tick" style="left:${f.at / DOC.duration * 100}%" title="${f.k}"></div>`).join('')
+    + '<div class="playhead"></div>');
+}
+
+/* transport */
+$('to-home').addEventListener('click', showHome);
+
+$('dl').addEventListener('click', () => {
+  const b = $('dl');
+  b.textContent = 'Needs the real renderer';
+  b.style.color = 'var(--warn)';
+  setTimeout(() => { b.textContent = 'Download'; b.style.color = ''; }, 2200);
+});
+
+$('play').addEventListener('click', () => { playing = !playing; setPlayIcon(); });
+$('scrub').addEventListener('input', (e) => { tl.head = +e.target.value / 100; playing = false; setPlayIcon(); paintPreview(); });
+
+function setPlayIcon() {
+  const glyph = playing
+    ? '<rect x="4" y="2.5" width="3" height="11" rx="1"/><rect x="9" y="2.5" width="3" height="11" rx="1"/>'
+    : '<path d="M4 2.5v11l9-5.5-9-5.5Z"/>';
+  $('play-icon').innerHTML = glyph;
+  const tlIcon = $('tl-play-icon');
+  if (tlIcon) tlIcon.innerHTML = glyph;
+}
+
+function frame(now) {
+  const dt = Math.min(.05, (now - last) / 1000);
+  last = now;
+  if (playing) { tl.head += dt; if (tl.head > DOC.duration) tl.head = 0; }
+  paintPreview();
+  // Only the playhead moves every frame; rebuilding the whole timeline 60
+  // times a second would be wasteful and would fight any open input.
+  movePlayhead();
+  requestAnimationFrame(frame);
+}
+
+function movePlayhead() {
+  const head = document.querySelector('.tl-head');
+  if (head) head.style.left = (GUTTER + tl.head * ZOOMS[tl.zoom]) + 'px';
+  const tc = $('tl-tc');
+  if (tc) tc.textContent = `${tcode(tl.head)} / ${tcode(DOC.duration)}`;
+}
+
+
+/* ═══════════════════════════════════════════════ the timeline ═══
+   A working model of the real editor. Every gesture is an operation on the
+   document; segment edits re-time everything downstream by reading each cue's
+   anchor back into source time and forward again — the same thing
+   src/lib/edl/operations.ts does, because getting it any other way means
+   captions drift after a trim.
+   ══════════════════════════════════════════════════════════════════ */
+
+const ZOOMS = [26, 42, 68, 110, 175];
+const GUTTER = 84;
+const SNAP_PX = 7;
+
+const tl = { ops: [], redo: [], sel: null, zoom: 2, head: 0, drag: null, preview: null, warn: null, snapAt: null };
+
+/** The untouched document, rebuilt whenever the style changes caption grouping. */
+function baseDoc() {
+  const words = STYLES[state.style].cap.words;
+  const caps = [];
+  for (let i = 0; i < WORDS.length; i += words) {
+    const grp = WORDS.slice(i, i + words);
+    caps.push({
+      id: `cue-${caps.length}`, a: grp[0][1], b: grp[grp.length - 1][2],
+      words: grp.map(([t, x, y, em]) => ({ t, a: x, b: y, em: !!em })),
+    });
+  }
+  const p = STYLES[state.style].short;
+  const every = (n) => Math.max(0, Math.floor(DURATION / n));
+
+  return {
+    duration: DURATION,
+    segments: SEGMENTS.map((g, i) => ({ id: `seg-${i}`, s0: g.s[0], s1: g.s[1], o0: g.o[0], o1: g.o[1], why: g.why, say: g.say })),
+    captions: caps,
+    broll: every(p.broll) > 0 ? [{ id: 'broll-0', a: BROLL.in, b: BROLL.out, q: BROLL.q, why: BROLL.why }] : [],
+    graphics: every(p.gfx) > 0 ? [{ id: 'gfx-0', a: GFX.in, b: GFX.out, text: '3×', sub: 'what we raised prices' }] : [],
+    punches: PUNCHES.slice(0, Math.max(0, every(p.punch))).map(([a, b, z], i) => ({ id: `punch-${i}`, a, b, z })),
+    sfx: SFX.slice(0, Math.max(1, Math.round(SFX.length * p.sfx))).map((f, i) => ({ id: `sfx-${i}`, at: f.t, k: f.k })),
+    transitions: CUTS.slice(0, Math.max(0, Math.round(CUTS.length * p.trans))).map((at, i) => ({ id: `tr-${i}`, at })),
+  };
+}
+
+/** Maps between the two clocks for a given cut. */
+function clocks(segs) {
+  return {
+    toSource(o) {
+      for (const s of segs) if (o >= s.o0 && o <= s.o1) return s.s0 + (o - s.o0);
+      const last = segs[segs.length - 1];
+      return last ? last.s1 : 0;
+    },
+    toOut(src) {
+      for (const s of segs) if (src >= s.s0 && src <= s.s1) return s.o0 + (src - s.s0);
+      return null;
+    },
+  };
+}
+
+/** Re-lays the cut and drags every cue along with it. */
+function relayout(doc, nextSegs) {
+  const before = clocks(doc.segments);
+  let cursor = 0;
+  const laid = nextSegs.map((s) => {
+    const out = { ...s, o0: cursor, o1: cursor + (s.s1 - s.s0) };
+    cursor += s.s1 - s.s0;
+    return out;
+  });
+  if (!laid.length) throw new Error('That would leave nothing in the video.');
+
+  const after = clocks(laid);
+  const move = (o) => after.toOut(before.toSource(o));
+  const span = (a, b) => {
+    const x = move(a), y = move(b);
+    if (x === null && y === null) return null;
+    const lo = x ?? 0, hi = y ?? lo + 0.2;
+    return hi - lo < 0.05 ? null : { a: lo, b: hi };
+  };
+  const remap = (list) => list.flatMap((c) => { const sp = span(c.a, c.b); return sp ? [{ ...c, a: sp.a, b: sp.b }] : []; });
+
+  return {
+    duration: cursor,
+    segments: laid,
+    // Words are re-timed individually: a trim that removes half a sentence
+    // takes exactly those words with it.
+    captions: doc.captions.flatMap((c) => {
+      const words = c.words.flatMap((w) => { const sp = span(w.a, w.b); return sp ? [{ ...w, a: sp.a, b: sp.b }] : []; });
+      return words.length ? [{ ...c, words, a: words[0].a, b: words[words.length - 1].b }] : [];
+    }),
+    broll: remap(doc.broll),
+    graphics: remap(doc.graphics),
+    punches: remap(doc.punches),
+    sfx: doc.sfx.flatMap((f) => { const at = move(f.at); return at === null ? [] : [{ ...f, at }]; }),
+    // Transitions are regenerated: a seam that no longer exists must not keep
+    // its whoosh, and a new contiguous join is not a visible cut at all.
+    transitions: laid.slice(1).flatMap((seg, i) => {
+      const prev = laid[i];
+      const gap = seg.s0 - prev.s1;
+      return (gap < 0 || gap > 0.04) ? [{ id: `tr-${i}`, at: seg.o0 }] : [];
+    }),
+  };
+}
+
+function applyOp(doc, op) {
+  const T = { broll: 'broll', graphics: 'graphics', punches: 'punches' };
+
+  if (op.op === 'seg.trim') {
+    return relayout(doc, doc.segments.map((s) => {
+      if (s.id !== op.id) return s;
+      const s0 = op.s0 ?? s.s0, s1 = op.s1 ?? s.s1;
+      if (s1 - s0 < 0.25) throw new Error('A clip has to be at least a quarter-second long.');
+      return { ...s, s0, s1 };
+    }));
+  }
+  if (op.op === 'seg.split') {
+    const t = doc.segments.find((s) => s.id === op.id);
+    if (!t) throw new Error('Clip not found.');
+    const at = t.s0 + (op.at - t.o0);
+    if (at - t.s0 < 0.25 || t.s1 - at < 0.25) throw new Error('Too close to the edge of the clip to split.');
+    return relayout(doc, doc.segments.flatMap((s) =>
+      s.id === op.id ? [{ ...s, s1: at }, { ...s, id: s.id + 'b', s0: at, why: 'keep' }] : [s]));
+  }
+  if (op.op === 'seg.del') {
+    if (doc.segments.length <= 1) throw new Error('The last clip cannot be deleted.');
+    return relayout(doc, doc.segments.filter((s) => s.id !== op.id));
+  }
+  if (op.op === 'clip.move' || op.op === 'clip.trim') {
+    const key = T[op.track];
+    const list = doc[key];
+    const item = list.find((c) => c.id === op.id);
+    if (!item) throw new Error('Not found.');
+
+    let a, b;
+    if (op.op === 'clip.move') {
+      const len = item.b - item.a;
+      a = Math.max(0, Math.min(doc.duration - len, op.a));
+      b = a + len;
+      // Same-track collision: push clear, toward whichever side it was heading.
+      for (let pass = 0; pass < 4; pass++) {
+        const hit = list.find((o) => o.id !== op.id && a < o.b - 1e-3 && b > o.a + 1e-3);
+        if (!hit) break;
+        a = (a + len / 2) < (hit.a + hit.b) / 2 ? hit.a - len : hit.b;
+        a = Math.max(0, Math.min(doc.duration - len, a));
+        b = a + len;
+      }
+    } else {
+      a = Math.max(0, op.a ?? item.a);
+      b = Math.min(doc.duration, op.b ?? item.b);
+      if (b - a < 0.2) throw new Error('Too short to be visible.');
+      // Trimming clamps only the dragged edge.
+      for (const o of list) {
+        if (o.id === op.id || o.b <= a + 1e-3 || o.a >= b - 1e-3) continue;
+        if (o.a <= a) a = Math.max(a, o.b); else b = Math.min(b, o.a);
+      }
+    }
+    return { ...doc, [key]: list.map((c) => (c.id === op.id ? { ...c, a, b } : c)) };
+  }
+  if (op.op === 'clip.del') {
+    const key = T[op.track];
+    return { ...doc, [key]: doc[key].filter((c) => c.id !== op.id) };
+  }
+  if (op.op === 'sfx.move') {
+    return { ...doc, sfx: doc.sfx.map((f) => (f.id === op.id ? { ...f, at: Math.max(0, Math.min(doc.duration, op.at)) } : f)) };
+  }
+  if (op.op === 'sfx.del') return { ...doc, sfx: doc.sfx.filter((f) => f.id !== op.id) };
+  if (op.op === 'add') {
+    const id = op.track + '-' + Math.random().toString(36).slice(2, 7);
+    const a = Math.max(0, Math.min(doc.duration - 0.2, op.at));
+    const b = Math.min(doc.duration, a + (op.len ?? 2));
+    if (op.track === 'sfx') return { ...doc, sfx: [...doc.sfx, { id, at: a, k: op.value }] };
+    if (op.track === 'broll') return { ...doc, broll: [...doc.broll, { id, a, b, q: op.value || 'new insert', why: 'Added by hand' }] };
+    if (op.track === 'graphics') return { ...doc, graphics: [...doc.graphics, { id, a, b, text: op.value, sub: '' }] };
+    if (op.track === 'punches') return { ...doc, punches: [...doc.punches, { id, a, b, z: 1.15 }] };
+  }
+  if (op.op === 'seg.reorder') {
+    const from = doc.segments.findIndex((x) => x.id === op.id);
+    if (from < 0) throw new Error('Clip not found.');
+    const next = [...doc.segments];
+    const [moved] = next.splice(from, 1);
+    next.splice(Math.max(0, Math.min(op.to, next.length)), 0, moved);
+    return relayout(doc, next);
+  }
+  if (op.op === 'sfx.set') {
+    return { ...doc, sfx: doc.sfx.map((f) => (f.id === op.id ? { ...f, k: op.k } : f)) };
+  }
+  if (op.op === 'cap.text') {
+    return { ...doc, captions: doc.captions.map((c) => {
+      if (c.id !== op.id) return c;
+      const parts = op.text.trim().split(/\s+/).filter(Boolean);
+      if (!parts.length) return c;
+      // Time is shared out by word length — "extraordinarily" really does take
+      // longer to say than "a", and an even split reads as out of sync.
+      const total = parts.reduce((n, w) => n + w.length, 0) || 1;
+      let cur = c.a;
+      return { ...c, words: parts.map((t, i) => {
+        const a = cur; cur += (t.length / total) * (c.b - c.a);
+        return { t, a, b: i === parts.length - 1 ? c.b : cur, em: c.words[i]?.em ?? false };
+      }) };
+    }) };
+  }
+  if (op.op === 'cap.move' || op.op === 'cap.trim') {
+    return { ...doc, captions: doc.captions.map((c) => {
+      if (c.id !== op.id) return c;
+      const a = Math.max(0, op.a), b = Math.max(a + 0.2, Math.min(doc.duration, op.b));
+      const scale = (b - a) / ((c.b - c.a) || 1);
+      return { ...c, a, b, words: c.words.map((w) => ({ ...w, a: a + (w.a - c.a) * scale, b: a + (w.b - c.a) * scale })) };
+    }) };
+  }
+  if (op.op === 'cap.em') {
+    return { ...doc, captions: doc.captions.map((c) =>
+      c.id === op.id ? { ...c, words: c.words.map((w, i) => (i === op.i ? { ...w, em: !w.em } : w)) } : c) };
+  }
+  if (op.op === 'cap.del') return { ...doc, captions: doc.captions.filter((c) => c.id !== op.id) };
+  if (op.op === 'gfx.text') {
+    return { ...doc, graphics: doc.graphics.map((g) => (g.id === op.id ? { ...g, ...op.patch } : g)) };
+  }
+  if (op.op === 'broll.q') {
+    return { ...doc, broll: doc.broll.map((b) => (b.id === op.id ? { ...b, q: op.q } : b)) };
+  }
+  return doc;
+}
+
+function buildDoc() {
+  let doc = baseDoc();
+  for (const op of tl.ops) { try { doc = applyOp(doc, op); } catch { /* reported at push time */ } }
+  return doc;
+}
+
+/** The live document the preview and the editor both read. */
+let DOC = baseDoc();
+function refreshDoc() { DOC = buildDoc(); }
+
+const OP_LABEL = {
+  'seg.trim': 'Trimmed a clip', 'seg.split': 'Split a clip', 'seg.del': 'Deleted a clip',
+  'clip.move': 'Moved a clip', 'clip.trim': 'Trimmed a clip', 'clip.del': 'Deleted a clip',
+  'sfx.move': 'Moved a sound effect', 'sfx.del': 'Deleted a sound effect', 'sfx.set': 'Changed a sound effect',
+  'cap.text': 'Edited a caption', 'cap.move': 'Moved a caption', 'cap.trim': 'Retimed a caption',
+  'cap.em': 'Toggled emphasis', 'cap.del': 'Deleted a caption',
+  'gfx.text': 'Edited a graphic', 'broll.q': 'Changed a B-roll search',
+  'add': 'Added a clip', 'seg.reorder': 'Reordered clips',
+};
+
+function pushOp(op) {
+  try {
+    applyOp(buildDoc(), op);
+  } catch (e) {
+    tl.warn = e.message;
+    drawTimeline();
+    return;
+  }
+  tl.warn = null;
+  tl.ops.push(op);
+  tl.redo = [];
+  refreshDoc(); drawTimeline(); render();
+}
+
+function tlUndo() { if (tl.ops.length) { tl.redo.push(tl.ops.pop()); tl.warn = null; refreshDoc(); drawTimeline(); render(); } }
+function tlRedo() { if (tl.redo.length) { tl.ops.push(tl.redo.pop()); refreshDoc(); drawTimeline(); render(); } }
+
+/* ─────────────────────────────────────────────────── drawing ─── */
+
+function snapSec(sec, skip) {
+  const tol = SNAP_PX / ZOOMS[tl.zoom];
+  const pts = [0, DOC.duration, tl.head];
+  for (const s of DOC.segments) pts.push(s.o0, s.o1);
+  for (const c of DOC.captions) pts.push(c.a, c.b);
+  for (const b of DOC.broll) pts.push(b.a, b.b);
+  let best = sec, gap = tol, snapped = null;
+  for (const p of pts) {
+    if (skip !== undefined && Math.abs(p - skip) < 1e-6) continue;
+    if (Math.abs(p - sec) < gap) { gap = Math.abs(p - sec); best = p; snapped = p; }
+  }
+  // Showing WHERE it snapped is the difference between "it jumped" and "it
+  // landed on the cut" — without the line, snapping reads as a bug.
+  tl.snapAt = snapped;
+  return Math.max(0, Math.min(DOC.duration, best));
+}
+
+function geom(id, a, b) {
+  return tl.preview && tl.preview.id === id ? [tl.preview.a, tl.preview.b] : [a, b];
+}
+
+/** Speech drawn from the word timings we already have — no audio decode needed. */
+function waveform(widthPx) {
+  const n = Math.min(900, Math.max(40, Math.round(widthPx / 2.5)));
+  const words = DOC.captions.flatMap((c) => c.words);
+  let bars = '';
+  for (let i = 0; i < n; i++) {
+    const at = (i / n) * DOC.duration;
+    const w = words.find((x) => at >= x.a - .02 && at <= x.b + .02);
+    let h = 8;
+    if (w) {
+      const through = (at - w.a) / Math.max(.05, w.b - w.a);
+      h = 30 + Math.sin(through * Math.PI) * 55 + (w.em ? 10 : 0);
+    }
+    bars += `<i style="height:${h}%"></i>`;
+  }
+  return bars;
+}
+
+function drawTimeline() {
+  if (state.mode !== 'timeline') return;
+  const pps = ZOOMS[tl.zoom];
+  const w = Math.max(280, DOC.duration * pps);
+
+  const clip = (cls, id, a, b, label, kind, wave) => {
+    const [x, y] = geom(id, a, b);
+    const selected = tl.sel && tl.sel.id === id ? ' sel' : '';
+    // The waveform is drawn in GLOBAL time and offset back into the clip, so a
+    // trimmed clip shows exactly the speech it still contains.
+    const inner = wave ? `<div class="clipwave" style="left:${-x * pps}px;width:${w}px">${wave}</div>` : '';
+    return `<div class="tl-clip ${cls}${selected}" data-clip="${id}" data-kind="${kind}"
+      style="left:${x * pps}px;width:${Math.max(7, (y - x) * pps)}px">${inner}<span>${label}</span>
+      <i class="h l" data-edge="l"></i><i class="h r" data-edge="r"></i></div>`;
+  };
+
+  const wave = waveform(w);
+
+  const track = (name, hint, height, body) => `
+    <div class="tl-track" style="height:${height}px">
+      <div class="tl-label" style="width:${GUTTER}px"><b>${name}</b><i>${hint}</i></div>
+      <div class="tl-lane" style="width:${w}px">${body}</div>
+    </div>`;
+
+  const step = [0.5, 1, 2, 5, 10].find((c) => c * pps > 58) ?? 15;
+  let ticks = '';
+  for (let t = 0; t <= DOC.duration; t += step) ticks += `<span class="tl-tick" style="left:${t * pps}px">${tcode(t)}</span>`;
+
+  $('tl-inner').innerHTML = `
+    <div class="tl-ruler" id="tl-ruler">
+      <div class="tl-gutter" style="width:${GUTTER}px"></div>
+      <div class="tl-tickarea" style="width:${w}px">${ticks}</div>
+    </div>
+    ${track('Video', `${DOC.segments.length} clips`, 42,
+      DOC.segments.map((s) => clip(s.why === 'hook' ? 'c-hook' : 'c-video', s.id, s.o0, s.o1,
+        (s.why === 'hook' ? 'HOOK · ' : '') + s.say, 'seg', wave)).join(''))}
+    ${track('Captions', `${DOC.captions.length}`, 32,
+      DOC.captions.map((c) => clip('c-cap', c.id, c.a, c.b, c.words.map((x) => x.t).join(' '), 'cap')).join(''))}
+    ${track('B-roll', `${DOC.broll.length}`, 32,
+      DOC.broll.map((b) => clip('c-broll', b.id, b.a, b.b, b.q, 'broll')).join(''))}
+    ${track('Graphics', `${DOC.graphics.length}`, 32,
+      DOC.graphics.map((g) => clip('c-gfx', g.id, g.a, g.b, g.text, 'graphics')).join(''))}
+    ${track('Punch-ins', `${DOC.punches.length}`, 32,
+      DOC.punches.map((p) => clip('c-punch', p.id, p.a, p.b, p.z.toFixed(2) + '×', 'punches')).join(''))}
+    ${track('Sound', `${DOC.sfx.length} cues`, 28,
+      DOC.sfx.map((f) => `<div class="tl-sfx${tl.sel && tl.sel.id === f.id ? ' sel' : ''}" data-sfx="${f.id}"
+        title="${f.k}" style="left:${(tl.preview && tl.preview.id === f.id ? tl.preview.a : f.at) * pps}px"></div>`).join('') +
+      DOC.transitions.map((t) => `<div class="tl-trans" title="transition" style="left:${t.at * pps}px"></div>`).join(''))}
+    <div class="tl-head" style="left:${GUTTER + tl.head * pps}px"></div>
+    ${tl.snapAt !== null && tl.snapAt !== undefined
+      ? `<div class="snapline" style="left:${GUTTER + tl.snapAt * pps}px"></div>` : ''}`;
+
+  $('tl-tc').textContent = `${tcode(tl.head)} / ${tcode(DOC.duration)}`;
+  $('tl-undo').disabled = !tl.ops.length;
+  $('tl-redo').disabled = !tl.redo.length;
+  $('tl-del').disabled = !tl.sel;
+  $('tl-split').disabled = !DOC.segments.some((s) => tl.head > s.o0 + 0.25 && tl.head < s.o1 - 0.25);
+  $('tl-apply').disabled = !tl.ops.length;
+  $('tl-apply').textContent = tl.ops.length ? `Apply ${tl.ops.length} change${tl.ops.length === 1 ? '' : 's'}` : 'No changes';
+  $('tl-zin').disabled = tl.zoom === ZOOMS.length - 1;
+  $('tl-zout').disabled = tl.zoom === 0;
+
+  $('tl-warn').hidden = !tl.warn;
+  if (tl.warn) $('tl-warn').textContent = tl.warn;
+
+  $('tl-ops-h').textContent = tl.ops.length ? `Pending changes (${tl.ops.length})` : 'Pending changes';
+  $('tl-ops-body').innerHTML = tl.ops.length
+    ? `<ol class="tl-ops">${tl.ops.map((o, i) => `<li><b>${String(i + 1).padStart(2, '0')}</b>${OP_LABEL[o.op] ?? o.op}</li>`).join('')}</ol>`
+    : `<p>Drag a clip to move it, drag its edges to trim. <kbd>S</kbd> splits at the playhead,
+       <kbd>Del</kbd> removes what&rsquo;s selected, <kbd>&#8984;Z</kbd> undoes.
+       Nothing re-renders until you apply.</p>`;
+
+  drawInspector();
+}
+
+function drawInspector() {
+  const box = $('tl-insp');
+  const sel = tl.sel;
+  if (!sel) { box.innerHTML = '<p style="font-size:12px;color:var(--muted);margin:0">Click a clip to edit what&rsquo;s in it.</p>'; return; }
+
+  if (sel.kind === 'cap') {
+    const c = DOC.captions.find((x) => x.id === sel.id);
+    if (!c) return;
+    box.innerHTML = `<input id="i-cap" value="${c.words.map((w) => w.t).join(' ')}">
+      <div class="words">${c.words.map((w, i) =>
+        `<button data-em="${i}" aria-pressed="${w.em}">${w.t}</button>`).join('')}</div>
+      <p style="font-size:11px;color:var(--faint);margin:0">Click a word to emphasise it.</p>`;
+    $('i-cap').addEventListener('change', (e) => pushOp({ op: 'cap.text', id: c.id, text: e.target.value }));
+    box.querySelectorAll('[data-em]').forEach((b) =>
+      b.addEventListener('click', () => pushOp({ op: 'cap.em', id: c.id, i: +b.dataset.em })));
+    return;
+  }
+  if (sel.kind === 'broll') {
+    const b = DOC.broll.find((x) => x.id === sel.id);
+    if (!b) return;
+    box.innerHTML = `<input id="i-broll" value="${b.q}" placeholder="What should this show?">
+      <p style="font-size:11px;color:var(--faint);margin:0">${b.why} &mdash; concrete nouns work best.</p>`;
+    $('i-broll').addEventListener('change', (e) => pushOp({ op: 'broll.q', id: b.id, q: e.target.value }));
+    return;
+  }
+  if (sel.kind === 'graphics') {
+    const g = DOC.graphics.find((x) => x.id === sel.id);
+    if (!g) return;
+    box.innerHTML = `<input id="i-g1" value="${g.text}"><input id="i-g2" value="${g.sub}" placeholder="Caption underneath">`;
+    $('i-g1').addEventListener('change', (e) => pushOp({ op: 'gfx.text', id: g.id, patch: { text: e.target.value } }));
+    $('i-g2').addEventListener('change', (e) => pushOp({ op: 'gfx.text', id: g.id, patch: { sub: e.target.value } }));
+    return;
+  }
+  if (sel.kind === 'seg') {
+    const s = DOC.segments.find((x) => x.id === sel.id);
+    if (!s) return;
+    box.innerHTML = `<p class="meta" style="margin:0">source ${s.s0.toFixed(2)}–${s.s1.toFixed(2)} &rarr;
+      out ${s.o0.toFixed(2)}–${s.o1.toFixed(2)}</p>
+      <p style="font-size:12px;color:var(--muted);margin:0">${s.say}</p>`;
+    return;
+  }
+  if (sel.kind === 'sfx') {
+    const f = DOC.sfx.find((x) => x.id === sel.id);
+    if (!f) return;
+    box.innerHTML = `<div class="words">${['whoosh', 'pop', 'riser', 'impact', 'click', 'swipe', 'ding', 'sub-drop']
+      .map((k) => `<button data-sfx-set="${k}" aria-pressed="${f.k === k}">${k}</button>`).join('')}</div>`;
+    box.querySelectorAll('[data-sfx-set]').forEach((b) =>
+      b.addEventListener('click', () => pushOp({ op: 'sfx.set', id: f.id, k: b.dataset.sfxSet })));
+  }
+}
+
+const tcode = (s) => `${Math.floor(s / 60)}:${(s % 60).toFixed(2).padStart(5, '0')}`;
+
+/* ─────────────────────────────────────────────────── dragging ─── */
+
+function secAtX(clientX) {
+  const el = $('tl-scroll');
+  const r = el.getBoundingClientRect();
+  return Math.max(0, Math.min(DOC.duration, (clientX - r.left + el.scrollLeft - GUTTER) / ZOOMS[tl.zoom]));
+}
+
+$('tl-inner').addEventListener('pointerdown', (e) => {
+  if (e.target.closest('#tl-ruler')) {
+    tl.drag = { kind: 'head' };
+    playing = false; setPlayIcon();
+    tl.head = secAtX(e.clientX);
+    paintPreview(); movePlayhead();
+    return;
+  }
+  const sfx = e.target.closest('[data-sfx]');
+  if (sfx) {
+    const f = DOC.sfx.find((x) => x.id === sfx.dataset.sfx);
+    tl.sel = { kind: 'sfx', id: f.id };
+    tl.drag = { kind: 'move', id: f.id, track: 'sfx', a: f.at, b: f.at, x: e.clientX, moved: false };
+    drawTimeline();
+    return;
+  }
+  const el = e.target.closest('[data-clip]');
+  if (!el) return;
+  const id = el.dataset.clip, kind = el.dataset.kind;
+  const edge = e.target.dataset?.edge;
+  const item = kind === 'seg' ? DOC.segments.find((x) => x.id === id)
+    : kind === 'cap' ? DOC.captions.find((x) => x.id === id)
+    : DOC[kind].find((x) => x.id === id);
+  if (!item) return;
+
+  const a = kind === 'seg' ? item.o0 : item.a;
+  const b = kind === 'seg' ? item.o1 : item.b;
+  tl.sel = { kind, id };
+  tl.drag = { kind: edge === 'l' ? 'trim-l' : edge === 'r' ? 'trim-r' : 'move', id, track: kind, a, b, x: e.clientX, moved: false };
+  drawTimeline();
+});
+
+window.addEventListener('pointermove', (e) => {
+  const d = tl.drag;
+  if (!d) return;
+  if (d.kind === 'head') { tl.head = secAtX(e.clientX); paintPreview(); movePlayhead(); return; }
+
+  const delta = (e.clientX - d.x) / ZOOMS[tl.zoom];
+  if (Math.abs(e.clientX - d.x) > 2) d.moved = true;
+  tl.preview = {
+    id: d.id,
+    a: d.kind === 'trim-r' ? d.a : snapSec(d.a + delta, d.a),
+    b: d.kind === 'trim-l' ? d.b : snapSec(d.b + delta, d.b),
+  };
+  drawTimeline();
+});
+
+window.addEventListener('pointerup', () => {
+  const d = tl.drag, pv = tl.preview;
+  tl.drag = null; tl.preview = null; tl.snapAt = null;
+  if (!d || !d.moved || d.kind === 'head' || !pv) { drawTimeline(); return; }
+
+  if (d.track === 'sfx') { pushOp({ op: 'sfx.move', id: d.id, at: pv.a }); return; }
+
+  if (d.track === 'seg') {
+    const seg = DOC.segments.find((s) => s.id === d.id);
+    // Segment edges are source-side: dragging an edge trims into the footage
+    // rather than sliding the clip, because output order IS the cut.
+    if (d.kind === 'trim-l') pushOp({ op: 'seg.trim', id: d.id, s0: seg.s0 + (pv.a - d.a) });
+    else if (d.kind === 'trim-r') pushOp({ op: 'seg.trim', id: d.id, s1: seg.s1 + (pv.b - d.b) });
+    else {
+      // Dragged sideways: drop it wherever its new midpoint lands in the order.
+      const mid = (pv.a + pv.b) / 2;
+      let to = 0;
+      DOC.segments.forEach((x, i) => { if (mid > (x.o0 + x.o1) / 2) to = i; });
+      const from = DOC.segments.findIndex((x) => x.id === d.id);
+      if (to !== from) pushOp({ op: 'seg.reorder', id: d.id, to });
+      else drawTimeline();
+    }
+    return;
+  }
+  if (d.track === 'cap') {
+    pushOp({ op: d.kind === 'move' ? 'cap.move' : 'cap.trim', id: d.id, a: pv.a, b: pv.b });
+    return;
+  }
+  pushOp(d.kind === 'move'
+    ? { op: 'clip.move', track: d.track, id: d.id, a: pv.a }
+    : { op: 'clip.trim', track: d.track, id: d.id, a: pv.a, b: pv.b });
+});
+
+window.addEventListener('keydown', (e) => {
+  if (state.step !== 2) return;
+  const t = e.target;
+  if (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA') return;
+
+  if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'z') {
+    e.preventDefault(); e.shiftKey ? tlRedo() : tlUndo(); return;
+  }
+  if (e.key === 'Delete' || e.key === 'Backspace') {
+    if (!tl.sel) return;
+    e.preventDefault(); deleteSelection(); return;
+  }
+  if (e.code === 'Space' || e.key.toLowerCase() === 'k') {
+    e.preventDefault(); playing = !playing; setPlayIcon(); return;
+  }
+  if (e.key.toLowerCase() === 's') { e.preventDefault(); splitAtHead(); return; }
+  if (e.key.toLowerCase() === 'j') { e.preventDefault(); tl.head = Math.max(0, tl.head - 1); paintPreview(); movePlayhead(); return; }
+  if (e.key.toLowerCase() === 'l') { e.preventDefault(); tl.head = Math.min(DOC.duration, tl.head + 1); paintPreview(); movePlayhead(); return; }
+  if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+    e.preventDefault();
+    tl.head = Math.max(0, Math.min(DOC.duration, tl.head + (e.key === 'ArrowRight' ? 1 : -1) * (e.shiftKey ? 1 : 1 / 30)));
+    paintPreview(); movePlayhead();
+  }
+});
+
+function splitAtHead() {
+  const s = DOC.segments.find((x) => tl.head > x.o0 + 0.25 && tl.head < x.o1 - 0.25);
+  if (s) pushOp({ op: 'seg.split', id: s.id, at: tl.head });
+}
+
+function deleteSelection() {
+  const s = tl.sel;
+  if (!s) return;
+  const op = s.kind === 'seg' ? { op: 'seg.del', id: s.id }
+    : s.kind === 'cap' ? { op: 'cap.del', id: s.id }
+    : s.kind === 'sfx' ? { op: 'sfx.del', id: s.id }
+    : { op: 'clip.del', track: s.kind, id: s.id };
+  tl.sel = null;
+  pushOp(op);
+}
+
+$('tl-play').addEventListener('click', () => { playing = !playing; setPlayIcon(); });
+
+/* ── insert at the playhead ── */
+const SFX_KINDS = ['whoosh', 'pop', 'impact', 'swipe', 'riser', 'ding', 'click', 'sub-drop'];
+$('tl-addmenu').querySelector('.addsfx').innerHTML =
+  SFX_KINDS.map((k) => `<button data-addsfx="${k}">${k}</button>`).join('');
+
+$('tl-add').addEventListener('click', (e) => {
+  e.stopPropagation();
+  $('tl-addmenu').hidden = !$('tl-addmenu').hidden;
+});
+window.addEventListener('mousedown', (e) => {
+  if (!e.target.closest('.addwrap')) $('tl-addmenu').hidden = true;
+});
+
+$('tl-addmenu').addEventListener('click', (e) => {
+  const b = e.target.closest('[data-add],[data-addsfx]');
+  if (!b) return;
+  $('tl-addmenu').hidden = true;
+  const at = tl.head;
+  if (b.dataset.addsfx) return pushOp({ op: 'add', track: 'sfx', at, value: b.dataset.addsfx });
+  switch (b.dataset.add) {
+    case 'broll': return pushOp({ op: 'add', track: 'broll', at, len: 2, value: '' });
+    case 'icon': return pushOp({ op: 'add', track: 'graphics', at, len: 2.5, value: 'Label' });
+    case 'stat': return pushOp({ op: 'add', track: 'graphics', at, len: 2.5, value: '100' });
+    case 'punch': return pushOp({ op: 'add', track: 'punches', at, len: 2, value: '' });
+  }
+});
+
+/* ── export ── */
+$('tl-export').addEventListener('click', () => {
+  const b = $('tl-export');
+  const pending = tl.ops.length;
+  if (pending) { BASE_OVERRIDE = DOC; tl.ops = []; tl.redo = []; state.edited = true; refreshDoc(); }
+  b.textContent = pending ? `Applied ${pending} · rendering…` : 'Rendering…';
+  setTimeout(() => {
+    b.textContent = 'Exported 1080×1920';
+    setTimeout(() => { b.textContent = 'Export'; drawTimeline(); }, 1800);
+  }, 1100);
+  render();
+});
+$('tl-split').addEventListener('click', splitAtHead);
+$('tl-del').addEventListener('click', deleteSelection);
+$('tl-undo').addEventListener('click', tlUndo);
+$('tl-redo').addEventListener('click', tlRedo);
+$('tl-zin').addEventListener('click', () => { tl.zoom = Math.min(ZOOMS.length - 1, tl.zoom + 1); drawTimeline(); });
+$('tl-zout').addEventListener('click', () => { tl.zoom = Math.max(0, tl.zoom - 1); drawTimeline(); });
+
+$('tl-apply').addEventListener('click', () => {
+  const n = tl.ops.length;
+  tl.ops = []; tl.redo = [];
+  // In the app this is one PATCH carrying the whole stack, one new EDL version
+  // and one render — which is why a fine-tuning session costs one render, not forty.
+  BASE_OVERRIDE = DOC;
+  state.edited = true;
+  $('tl-apply').textContent = `Applied ${n}`;
+  setTimeout(() => drawTimeline(), 1200);
+  refreshDoc(); render();
+});
+
+/** After an apply, the edited document becomes the new starting point. */
+let BASE_OVERRIDE = null;
+const _baseDoc = baseDoc;
+baseDoc = function () { return BASE_OVERRIDE ? JSON.parse(JSON.stringify(BASE_OVERRIDE)) : _baseDoc(); };
+
+$('modeswitch').addEventListener('click', (e) => {
+  const b = e.target.closest('[data-mode]');
+  if (!b) return;
+  state.mode = b.dataset.mode;
+  $('modeswitch').querySelectorAll('button').forEach((x) => x.setAttribute('aria-pressed', String(x.dataset.mode === state.mode)));
+  $('tl-wrap').hidden = state.mode !== 'timeline';
+  document.querySelectorAll('#p2 > .card').forEach((c, i) => { if (i > 0) c.hidden = state.mode === 'timeline'; });
+  applyTimelineLayout();
+  drawTimeline();
+});
+
+
+
+/* ═══════════════════════════════════════════════ the app shell ═══
+   The homepage is marketing and stands alone. Everything after sign-in lives
+   inside a sidebar shell, because once you have more than one video the thing
+   you need is a place that lists them — not a wizard that starts over.
+   ══════════════════════════════════════════════════════════════════ */
+
+const ICONS = {
+  home: '<path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/>',
+  plus: '<path d="M12 5v14M5 12h14"/>',
+  film: '<rect x="2.5" y="4.5" width="19" height="15" rx="2.5"/><path d="M7 4.5v15M17 4.5v15M2.5 12h19"/>',
+  media: '<rect x="3" y="3" width="18" height="18" rx="2.5"/><path d="M3 15l5-5 4 4 3-3 6 6"/>',
+  timeline: '<path d="M3 6h18M3 12h12M3 18h7"/><circle cx="18" cy="12" r="2"/>',
+  settings: '<circle cx="12" cy="12" r="3.2"/><path d="M12 2.5v2.2M12 19.3v2.2M21.5 12h-2.2M4.7 12H2.5M18.7 5.3l-1.6 1.6M6.9 17.1l-1.6 1.6M18.7 18.7l-1.6-1.6M6.9 6.9 5.3 5.3"/>',
+  chat: '<path d="M21 11.5a8.4 8.4 0 0 1-9 8.4 8.4 8.4 0 0 1-3.8-.9L3 20.5l1.5-4.4A8.4 8.4 0 0 1 3.6 12a8.4 8.4 0 0 1 8.4-8.4 8.4 8.4 0 0 1 9 7.9Z"/>',
+  book: '<path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2Z"/>',
+};
+
+const icon = (k) =>
+  `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+     stroke-linecap="round" stroke-linejoin="round">${ICONS[k]}</svg>`;
+
+const NAV = [
+  { route: 'dashboard', label: 'Home', icon: 'home' },
+  { route: 'new', label: 'New video', icon: 'plus' },
+  { route: 'myvideos', label: 'My videos', icon: 'film' },
+  { route: 'media', label: 'Media library', icon: 'media' },
+  { route: 'timeline', label: 'Timeline editor', icon: 'timeline' },
+  { route: 'settings', label: 'Settings', icon: 'settings' },
+];
+
+const NAV_FOOT = [
+  { route: 'feedback', label: 'Feedback', icon: 'chat' },
+  { route: 'guides', label: 'Guides', icon: 'book' },
+];
+
+/* The library the dashboard lists. The first row is the video this prototype
+   actually edits; the rest are there so the screen shows what it looks like in
+   use rather than an empty state nobody ever sees twice. */
+const LIBRARY = [
+  { id: 'p1', title: 'Most people get pricing backwards', mode: 'short', style: 'punchy', len: '0:14', status: 'ready', when: 'just now', cost: 0.1234, live: true },
+  { id: 'p2', title: 'The onboarding mistake that costs you churn', mode: 'short', style: 'clean', len: '0:47', status: 'ready', when: '2h ago', cost: 0.1189 },
+  { id: 'p3', title: 'How we rebuilt our pricing page', mode: 'long', style: 'explainer', len: '8:12', status: 'ready', when: 'yesterday', cost: 0.7021 },
+  { id: 'p4', title: 'Why nobody reads your landing page', mode: 'short', style: 'vlog', len: '1:02', status: 'processing', when: 'now', cost: 0 },
+  { id: 'p5', title: 'Founder Q&A — episode 4', mode: 'long', style: 'podcast', len: '22:40', status: 'ready', when: '3 days ago', cost: 1.4402 },
+];
+
+function buildNav() {
+  const render = (list) => list.map((n) => `
+    <a data-route="${n.route}" aria-current="${state.route === n.route}">${icon(n.icon)}${n.label}</a>`).join('');
+  $('nav').innerHTML = render(NAV);
+  $('navfoot').innerHTML = render(NAV_FOOT);
+
+  $('recents').innerHTML = LIBRARY.slice(0, 4).map((v) => `
+    <div class="rec" data-open="${v.id}">
+      <span class="thumb${v.mode === 'long' ? ' wide' : ''}"><b>${v.mode === 'long' ? '16:9' : '9:16'}</b></span>
+      <span class="meta"><span>${v.title}</span><i>${v.when}</i></span>
+      <span class="dot" style="background:${v.status === 'ready' ? 'var(--ok)' : 'var(--warn)'}"></span>
+    </div>`).join('');
+}
+
+function buildDashboard() {
+  const ready = LIBRARY.filter((v) => v.status === 'ready');
+  const spend = LIBRARY.reduce((n, v) => n + v.cost, 0);
+  const minutes = LIBRARY.reduce((n, v) => {
+    const [m, sec] = v.len.split(':').map(Number);
+    return n + m + sec / 60;
+  }, 0);
+
+  $('kpis').innerHTML = [
+    ['Videos', LIBRARY.length, `${ready.length} ready`],
+    ['Minutes made', minutes.toFixed(1), 'of finished video'],
+    ['Spent', '$' + spend.toFixed(2), 'all time'],
+    ['Average', '$' + (spend / Math.max(1, ready.length)).toFixed(2), 'per video'],
+  ].map(([k, v, sub]) => `<div class="kpi"><dt>${k}</dt><dd>${v} <small>${sub}</small></dd></div>`).join('');
+
+  $('vidgrid').innerHTML =
+    `<button class="newcard" data-route="new">
+       <span><b>+ New video</b><span>Drop in footage, pick a look</span></span>
+     </button>` +
+    LIBRARY.map((v) => {
+      const st = STYLES[v.style];
+      return `<div class="vid" data-open="${v.id}">
+        <div class="shot" style="aspect-ratio:${v.mode === 'long' ? '16/9' : '9/12'}">
+          <span class="badge">${v.mode === 'long' ? '16:9' : '9:16'}</span>
+          <span class="ratio">${v.status === 'processing' ? 'editing…' : st.name}</span>
+          <span class="len">${v.len}</span>
+        </div>
+        <div class="body">
+          <b>${v.title}</b>
+          <div class="row">
+            <span class="st">
+              <span class="dot" style="width:6px;height:6px;border-radius:99px;background:${v.status === 'ready' ? 'var(--ok)' : 'var(--warn)'}"></span>
+              ${v.status === 'ready' ? 'Ready' : 'Editing'}
+            </span>
+            <span>${v.cost ? '$' + v.cost.toFixed(2) : '—'}</span>
+          </div>
+        </div>
+      </div>`;
+    }).join('');
+
+  $('dash-sub').textContent =
+    `${LIBRARY.length} videos · $${spend.toFixed(2)} spent · about $${(spend / LIBRARY.length).toFixed(2)} each`;
+  $('dash-title').textContent = state.route === 'myvideos' ? 'My videos' : 'Your videos';
+}
+
+function buildSettings() {
+  $('set-styles').innerHTML = Object.entries(STYLES).map(([k, st]) => `
+    <button class="pill" data-tstyle="${k}" aria-pressed="${state.style === k}">${st.name}</button>`).join('');
+
+  $('set-caps').innerHTML = [
+    ['Transcription', 'Deepgram Nova-3', true],
+    ['AI director', 'Claude Opus 5', true],
+    ['B-roll', 'Pexels + Pixabay', true],
+    ['Image generation', 'Flux Schnell', true],
+    ['Rendering', 'Remotion Lambda', true],
+    ['Music library', 'empty — add tracks', false],
+  ].map(([k, v, on]) => `
+    <div style="display:flex;align-items:center;gap:10px;padding:7px 0;border-top:1px solid var(--line-soft);font-size:12.5px">
+      <span style="width:7px;height:7px;border-radius:99px;background:${on ? 'var(--ok)' : 'var(--warn)'}"></span>
+      <b style="font-weight:600;min-width:130px">${k}</b>
+      <span style="color:var(--muted);font-family:var(--mono);font-size:11px">${v}</span>
+    </div>`).join('');
+}
+
+/* ───────────────────────────────────────────────── routing ─── */
+
+const APP_PANELS = ['p-dash', 'p-media', 'p-settings', 'p0', 'p1', 'p2'];
+
+function go(route) {
+  state.route = route;
+
+  if (route === 'home') return showHome();
+
+  state.view = 'app';
+  $('home').classList.remove('on');
+  $('shell').classList.add('on');
+  $('footwrap').hidden = true;
+  moveStage('rail');
+
+  // Only the upload → processing → editor flow gets the stepper and the
+  // preview rail; the library and settings are full-width pages.
+  const inFlow = ['new', 'processing', 'editor', 'timeline'].includes(route);
+  // The wizard carries its own progress rail — two steppers stacked on one
+  // screen is exactly the noise this pass is removing.
+  document.querySelector('.steps').style.display = inFlow && route !== 'new' ? 'flex' : 'none';
+  document.querySelector('.grid').style.display = inFlow ? 'grid' : 'none';
+  applyTimelineLayout();
+
+  const panel = { dashboard: 'p-dash', myvideos: 'p-dash', media: 'p-media', settings: 'p-settings',
+                  new: 'p0', processing: 'p1', editor: 'p2', timeline: 'p2' }[route];
+
+  APP_PANELS.forEach((id) => $(id).classList.toggle('on', id === panel));
+
+  if (route === 'dashboard' || route === 'myvideos') buildDashboard();
+  if (route === 'settings') buildSettings();
+  if (route === 'new') { state.step = 0; state.wiz = 0; buildWizard(); }
+  if (route === 'processing') state.step = 1;
+  if (route === 'editor' || route === 'timeline') { state.step = 2; render(); }
+  if (route === 'timeline') openTimeline();
+
+  document.querySelectorAll('.step').forEach((el, i) => {
+    el.setAttribute('aria-current', String(i === state.step));
+    el.classList.toggle('done', i < state.step);
+  });
+
+  buildNav();
+  window.scrollTo({ top: 0, behavior: reduced ? 'auto' : 'smooth' });
+}
+
+document.addEventListener('click', (e) => {
+  const nav = e.target.closest('[data-route]');
+  if (nav) {
+    const r = nav.dataset.route;
+    if (r === 'feedback' || r === 'guides') return;
+    // A style card carries both a style and a destination — the earlier handler
+    // has already recorded the style by the time this runs.
+    return go(r);
+  }
+  // Opening a video from the library or the recents list.
+  const open = e.target.closest('[data-open]');
+  if (open) return go('editor');
+});
+
+/* ═══════════════════════════════════════════════════ routing ═══ */
+
+/* The preview is one element that lives in two places: the hero on the
+   homepage, the rail inside the app. Moving the node rather than duplicating it
+   keeps a single animation loop and a single source of truth. */
+function moveStage(to) {
+  const unit = $('stage-unit');
+  if (to === 'hero') $('hero-preview').appendChild(unit);
+  else document.querySelector('.rail').prepend(unit);
+}
+
+/** Jump straight to the finished edit with the timeline open. */
+function applyTimelineLayout() {
+  const on = state.mode === 'timeline' && state.step === 2;
+  document.querySelector('.grid').classList.toggle('tlmode', on);
+  // The tweak lane and the mini overview both duplicate what the timeline
+  // already shows, so they stand down while it is open.
+  document.querySelectorAll('.rail > .lane').forEach((el) => { el.hidden = on; });
+}
+
+function openTimeline() {
+  goto(2);
+  state.mode = 'timeline';
+  $('modeswitch').querySelectorAll('button').forEach((x) =>
+    x.setAttribute('aria-pressed', String(x.dataset.mode === 'timeline')));
+  $('tl-wrap').hidden = false;
+  document.querySelectorAll('#p2 > .card').forEach((c, i) => { if (i > 0) c.hidden = true; });
+  applyTimelineLayout();
+  refreshDoc();
+  drawTimeline();
+}
+
+function showHome() {
+  state.view = 'home';
+  state.route = 'home';
+  $('home').classList.add('on');
+  $('shell').classList.remove('on');
+  $('footwrap').hidden = false;
+  moveStage('hero');
+  window.scrollTo({ top: 0, behavior: reduced ? 'auto' : 'smooth' });
+}
+
+function goto(n) {
+  if (state.view === 'home') {
+    state.view = 'app';
+    $('home').classList.remove('on');
+    $('shell').classList.add('on');
+    $('footwrap').hidden = true;
+    moveStage('rail');
+  }
+  state.route = ['new', 'processing', 'editor'][n];
+  document.querySelector('.steps').style.display = n === 0 ? 'none' : 'flex';
+  document.querySelector('.grid').style.display = 'grid';
+  buildNav();
+  state.step = n;
+  const flow = ['p0', 'p1', 'p2'];
+  APP_PANELS.forEach((id) => $(id).classList.toggle('on', id === flow[n]));
+  document.querySelectorAll('.step').forEach((s, i) => {
+    s.setAttribute('aria-current', String(i === n));
+    s.classList.toggle('done', i < n);
+  });
+  window.scrollTo({ top: 0, behavior: reduced ? 'auto' : 'smooth' });
+  if (n === 2) { render(); drawTimeline(); }
+}
+
+/* ═══════════════════════════════════════════════════ boot ═══ */
+buildHomeLooks();
+buildWizard();
+buildNav();
+buildDashboard();
+syncTweaks();
+refreshDoc();
+buildLanes();
+render();
+setPlayIcon();
+showHome();
+paintPreview();
+requestAnimationFrame(frame);
+</script>
