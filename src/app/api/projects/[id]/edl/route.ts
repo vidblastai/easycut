@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { db, parseJson, stringifyJson } from '@/lib/db';
 import { ASPECTS, EdlSchema, type Edl } from '@/lib/edl/types';
+import { applyOperations, EdlOperationsSchema } from '@/lib/edl/operations';
 import { rebuildEdl } from '@/lib/pipeline/rebuild';
 import { queue } from '@/lib/queue';
 import { selectMusic } from '@/lib/assets/music';
@@ -74,6 +75,15 @@ const PatchSchema = z.object({
   captionEdits: z.array(z.object({ cueId: z.string(), text: z.string().max(200) })).optional(),
 
   music: z.object({ shuffle: z.boolean().optional(), gainDb: z.number().optional() }).optional(),
+
+  /**
+   * Manual timeline edits, applied in order after everything above.
+   *
+   * The timeline editor previews locally and sends the whole accumulated stack
+   * on commit, so one round trip covers a whole fine-tuning session and the
+   * user's undo history stays theirs rather than becoming version churn.
+   */
+  operations: EdlOperationsSchema.optional(),
 
   /** Queue a render of the resulting version. */
   render: z.boolean().default(true),
@@ -228,6 +238,15 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     edl = { ...edl, music: { ...edl.music, gainDb: patch.music.gainDb } };
   }
 
+  /* --------------------------- manual timeline edits ----------------------- */
+
+  let rejected: Array<{ reason: string }> = [];
+  if (patch.operations?.length) {
+    const result = applyOperations(edl, patch.operations);
+    edl = result.edl;
+    rejected = result.rejected.map((r) => ({ reason: r.reason }));
+  }
+
   /* ------------------------------ persist + render ------------------------- */
 
   const validated = EdlSchema.parse(edl);
@@ -256,6 +275,9 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     ok: true,
     edl: { id: row.id, version: row.version, document: validated },
     rendering: patch.render,
+    // Edits the server declined (a trim past the end of the footage, a clip
+    // that no longer exists). The rest still applied.
+    rejected,
   });
 }
 

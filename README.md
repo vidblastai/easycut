@@ -158,6 +158,25 @@ of the pipeline and costs one render:
 
 Every change writes a new EDL version, so the history is a free undo stack.
 
+### And when you want the controls, they're there
+
+"You never have to open a timeline" is a promise about the default, not a
+refusal. Switch the editor to **Fine-tune** and you get a real multi-track
+timeline over the AI's cut:
+
+- drag clips to move them, drag their edges to trim, **S** splits at the playhead
+- tracks for video, captions, B-roll, graphics, punch-ins and sound
+- retype any caption, click a word to emphasise it, re-word a B-roll search,
+  change a sound effect, set a clip's speed
+- snapping to cuts, caption boundaries and the playhead
+- undo/redo, and nothing re-renders until you hit Apply
+
+Every gesture is an operation on the EDL, which is what makes the hard part
+correct: trim four seconds out of clip one and every caption, insert, graphic
+and sound cue after it moves by exactly four seconds, because each is
+re-anchored through its source timestamp rather than nudged. Cues belonging to
+footage you deleted are dropped rather than left pointing at words nobody said.
+
 ---
 
 ## Stack

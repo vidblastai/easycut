@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { clsx } from 'clsx';
+import { TimelineEditor } from '@/components/TimelineEditor';
+import type { EdlOperation } from '@/lib/edl/operations';
 import type { Edl } from '@/lib/edl/types';
 
 /**
@@ -57,6 +59,16 @@ export function ProjectWorkspace({ projectId, styles }: { projectId: string; sty
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  /**
+   * Simple by default, timeline on request.
+   *
+   * Most people never need the timeline and showing it unprompted would
+   * contradict the entire product. But "you never have to open a timeline" is a
+   * promise about the default, not a refusal — when the AI puts an insert half a
+   * second early, you fix it yourself rather than re-rolling the whole edit.
+   */
+  const [mode, setMode] = useState<'simple' | 'timeline'>('simple');
+
   const load = useCallback(async () => {
     const response = await fetch(`/api/projects/${projectId}`, { cache: 'no-store' });
     if (!response.ok) return;
@@ -92,6 +104,32 @@ export function ProjectWorkspace({ projectId, styles }: { projectId: string; sty
         await load();
       } catch (e) {
         setError((e as Error).message);
+      } finally {
+        setBusy(false);
+      }
+    },
+    [projectId, load],
+  );
+
+  const applyOperations = useCallback(
+    async (operations: EdlOperation[]) => {
+      setBusy(true);
+      setError(null);
+      try {
+        const response = await fetch(`/api/projects/${projectId}/edl`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ operations, render: true }),
+        });
+        const body = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(body.error ?? 'Those edits could not be applied.');
+        if (body.rejected?.length) {
+          setError(`${body.rejected.length} edit(s) were declined: ${body.rejected[0].reason}`);
+        }
+        await load();
+      } catch (e) {
+        setError((e as Error).message);
+        throw e;
       } finally {
         setBusy(false);
       }
@@ -140,6 +178,24 @@ export function ProjectWorkspace({ projectId, styles }: { projectId: string; sty
             {project.costUsd > 0 ? ` · $${project.costUsd.toFixed(3)} to make` : ''}
           </p>
         </div>
+
+        {doc ? (
+          <div className="flex rounded-xl border border-line p-1">
+            {(['simple', 'timeline'] as const).map((m) => (
+              <button
+                key={m}
+                type="button"
+                onClick={() => setMode(m)}
+                className={clsx(
+                  'rounded-lg px-3.5 py-1.5 text-xs font-semibold capitalize transition-colors',
+                  mode === m ? 'bg-violet text-ink' : 'text-muted hover:text-chalk',
+                )}
+              >
+                {m === 'simple' ? 'Simple' : 'Fine-tune'}
+              </button>
+            ))}
+          </div>
+        ) : null}
       </div>
 
       {project.status === 'failed' ? (
@@ -193,7 +249,13 @@ export function ProjectWorkspace({ projectId, styles }: { projectId: string; sty
             </div>
           ) : null}
 
-          {doc ? <WhatWeDid edl={doc} /> : null}
+          {doc && mode === 'timeline' ? (
+            <div className="mt-4">
+              <TimelineEditor edl={doc} onCommit={applyOperations} busy={busy} />
+            </div>
+          ) : null}
+
+          {doc && mode === 'simple' ? <WhatWeDid edl={doc} /> : null}
         </div>
 
         {/* ------------------------------------------------------ the tweaks */}

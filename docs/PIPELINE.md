@@ -223,3 +223,42 @@ a different style, a different aspect ratio, a short cut out of a long-form
 video — replay the deterministic half of the pipeline and cost only a render.
 
 Nothing is ever destroyed, so the version list is a free undo history.
+
+### Manual fine-tuning
+
+The editor has a second mode with a real multi-track timeline
+([`TimelineEditor.tsx`](../src/components/TimelineEditor.tsx)), for the cases
+where the AI got something nearly right and re-rolling the whole edit is the
+wrong tool.
+
+Every gesture is an **operation** on the EDL
+([`operations.ts`](../src/lib/edl/operations.ts)) rather than a direct mutation,
+which buys three things:
+
+- **Undo is truncating a list**, not snapshotting documents per keystroke.
+- **What you previewed is what the server recomputes** — the client applies the
+  same `applyOperations` the API does, so there is no second implementation to
+  drift.
+- **Edits are local until you commit**, so a fine-tuning session is one version
+  and one render rather than forty.
+
+The hard part is re-timing. Trimming 400 ms off a clip moves everything after
+it, and a caption three cuts later is anchored to words spoken at a fixed moment
+in the *source*. So `relayout` reads every cue's anchor back into source time
+through the OLD segment layout and forward through the NEW one — the same
+`TimeMapper` the rest of the pipeline uses. Anything anchored to footage that no
+longer exists is **dropped rather than clamped**, because a caption for deleted
+words is a lie.
+
+Two collision rules, because they should feel different:
+
+- **Dragging** a clip onto a neighbour on the same track pushes it clear, to
+  whichever side it was heading (decided by comparing centres, which is the only
+  thing that stays right when the drop overlaps almost entirely).
+- **Trimming** clamps only the dragged edge — moving the whole clip because its
+  edge met something would feel like the timeline fighting you.
+
+Cross-track stacking (a label over a B-roll shot) is allowed. The director
+avoids it unattended because two focal points usually fight, but a person doing
+it deliberately is ordinary editing, and manual mode does not overrule the
+person editing.
