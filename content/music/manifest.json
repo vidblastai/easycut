@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "_readme": [
+    "Drop royalty-free audio files into public/audio/music/ and describe them here.",
+    "Every field matters: `moods` is matched against the AI director's requested mood,",
+    "`energy` (0..1) steers short-form (energetic) vs long-form (restrained), and",
+    "`licence` is what makes a shipped video auditable. Keep it honest — if a track's",
+    "licence does not permit commercial social use, it does not belong in this file.",
+    "",
+    "Good free sources: Pixabay Music (Content License), Free Music Archive (CC),",
+    "Uppbeat and Epidemic Sound (paid, but their licences cover client work).",
+    "",
+    "An empty `tracks` array is fine: videos render without music and the job",
+    "reports `music` as a skipped layer."
+  ],
+  "tracks": []
+}

@@ -1,0 +1,37 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root { color-scheme: dark; }
+
+html, body {
+  background: #0D0D10;
+  color: #F5F5F7;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Headings carry the brand's tight tracking. */
+h1, h2, h3 { letter-spacing: -0.03em; }
+
+::selection { background: rgba(155,123,255,0.35); }
+
+/* Scrollbars, dark and unobtrusive. */
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #2C2C36; border-radius: 99px; border: 3px solid #0D0D10; }
+::-webkit-scrollbar-thumb:hover { background: #3a3a47; }
+
+@layer components {
+  .card {
+    @apply rounded-2xl border border-line bg-charcoal shadow-card;
+  }
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5
+           text-sm font-semibold transition-colors disabled:opacity-40
+           disabled:pointer-events-none;
+  }
+  .btn-primary { @apply btn bg-violet text-ink hover:bg-violet-hover; }
+  .btn-ghost   { @apply btn border border-line text-chalk hover:bg-charcoal2; }
+  .label       { @apply text-sm font-medium text-muted; }
+  .hairline    { @apply border-t border-line; }
+}

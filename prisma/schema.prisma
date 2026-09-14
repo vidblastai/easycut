@@ -1,0 +1,179 @@
+// EasyCut AI — data model.
+//
+// The shape is driven by one decision: the EDL is versioned, and everything
+// else points at it. Undo, A/B variants, "regenerate just the B-roll" and
+// re-rendering a different aspect ratio are then all the same operation —
+// write a new Edl row against the same source asset.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  // SQLite for a zero-setup clone; switch to postgresql for production.
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String    @id @default(uuid())
+  email     String    @unique
+  name      String?
+  createdAt DateTime  @default(now())
+  projects  Project[]
+}
+
+model Project {
+  id     String @id @default(uuid())
+  userId String?
+  user   User?  @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  title String @default("Untitled")
+
+  // What the user chose on upload — the only three decisions they make.
+  mode      String // "short" | "long"
+  styleId   String @default("clean")
+  inputMode String @default("raw") // "raw" | "roughcut"
+
+  // Optional free-text steer, e.g. "focus on the pricing section".
+  userNote String?
+
+  status       String   @default("draft") // draft | processing | ready | failed
+  errorMessage String?
+
+  // Denormalised so the dashboard never has to join to render a card.
+  durationSec     Float?
+  thumbnailUrl    String?
+  previewUrl      String?
+  socialCaption   String?
+  hashtags        String   @default("[]") // JSON array
+
+  // Accumulated real spend, so unit economics are observable per project.
+  costUsd    Float  @default(0)
+  costReport String @default("{}") // JSON: CostLedger
+
+  // The expensive analysis, cached.
+  //
+  // Transcription and the AI director are the only two stages that cost money
+  // per run. Keeping their outputs means restyling, re-cutting, changing aspect
+  // ratio, or spinning a short out of a long-form video are all FREE — they
+  // replay the cheap deterministic half of the pipeline and re-render. This is
+  // the single most valuable thing in the schema.
+  transcriptJson   String @default("{}") // JSON: Transcript
+  directorPlanJson String @default("{}") // JSON: DirectorPlan
+  mediaJson        String @default("{}") // JSON: MediaInfo from ffprobe
+  cutsJson         String @default("[]") // JSON: Interval[] — mechanical removals
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  assets  Asset[]
+  jobs    Job[]
+  edls    Edl[]
+  renders Render[]
+
+  @@index([userId, createdAt])
+  @@index([status])
+}
+
+model Asset {
+  id        String @id @default(uuid())
+  projectId String
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  // source | proxy | audio | render | thumbnail | broll | graphic | music
+  kind        String
+  storageKey  String
+  url         String
+  contentType String
+  sizeBytes   Int    @default(0)
+
+  // Probe results, for source and render assets.
+  width       Int?
+  height      Int?
+  fps         Float?
+  durationSec Float?
+
+  // Provider attribution for anything third-party (stock clips, music).
+  attribution String?
+
+  createdAt DateTime @default(now())
+
+  @@index([projectId, kind])
+}
+
+model Job {
+  id        String @id @default(uuid())
+  projectId String
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  type   String @default("pipeline") // pipeline | rerender | patch
+  status String @default("queued")   // queued | running | succeeded | failed | cancelled
+
+  // The pipeline is resumable: this is the last stage that completed.
+  stage         String  @default("ingest")
+  progress      Float   @default(0) // 0..1
+  progressLabel String  @default("")
+
+  // Per-stage timings and messages, appended as the job runs.
+  log String @default("[]") // JSON: Array<{stage, status, ms, message}>
+
+  errorMessage String?
+  attempts     Int      @default(0)
+
+  queuedAt   DateTime  @default(now())
+  startedAt  DateTime?
+  finishedAt DateTime?
+
+  @@index([projectId, queuedAt])
+  @@index([status])
+}
+
+model Edl {
+  id        String @id @default(uuid())
+  projectId String
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  version Int    @default(1)
+  // The full EDL document. Kept as JSON rather than normalised: it is read and
+  // written whole, always, and normalising it would buy nothing but joins.
+  document String
+
+  // Where this version came from, so the editor can show a history.
+  origin String @default("pipeline") // pipeline | user-edit | regenerate
+
+  createdAt DateTime @default(now())
+
+  renders Render[]
+
+  @@unique([projectId, version])
+  @@index([projectId, createdAt])
+}
+
+model Render {
+  id        String @id @default(uuid())
+  projectId String
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  edlId     String
+  edl       Edl     @relation(fields: [edlId], references: [id], onDelete: Cascade)
+
+  aspect String // "9:16" | "1:1" | "16:9" | "4:5"
+  width  Int
+  height Int
+  fps    Float  @default(30)
+
+  status   String @default("queued") // queued | running | succeeded | failed
+  progress Float  @default(0)
+
+  url          String?
+  sizeBytes    Int     @default(0)
+  durationSec  Float?
+  costUsd      Float   @default(0)
+  renderMs     Int?
+  errorMessage String?
+
+  createdAt  DateTime  @default(now())
+  finishedAt DateTime?
+
+  @@index([projectId, createdAt])
+}

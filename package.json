@@ -1,0 +1,63 @@
+{
+  "name": "easycut",
+  "version": "0.1.0",
+  "private": true,
+  "description": "EasyCut AI \u2014 upload your footage, get a finished video.",
+  "scripts": {
+    "dev": "next dev",
+    "build": "prisma generate && next build",
+    "start": "next start",
+    "lint": "next lint",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "worker": "tsx src/worker/main.ts",
+    "db:push": "prisma db push",
+    "db:generate": "prisma generate",
+    "db:seed": "tsx prisma/seed.ts",
+    "remotion:studio": "remotion studio remotion/index.ts",
+    "remotion:render": "tsx scripts/render-local.ts",
+    "setup": "tsx scripts/setup.ts",
+    "doctor": "tsx scripts/doctor.ts"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.125.0",
+    "@aws-sdk/client-s3": "^3.700.0",
+    "@aws-sdk/s3-request-presigner": "^3.700.0",
+    "@prisma/client": "^6.1.0",
+    "@remotion/bundler": "^4.0.240",
+    "@remotion/google-fonts": "^4.0.240",
+    "@remotion/lambda": "^4.0.240",
+    "@remotion/media-utils": "^4.0.240",
+    "@remotion/player": "^4.0.240",
+    "@remotion/renderer": "^4.0.240",
+    "@remotion/transitions": "^4.0.240",
+    "clsx": "^2.1.1",
+    "ffmpeg-static": "^5.2.0",
+    "ffprobe-static": "^3.1.0",
+    "next": "^15.1.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "remotion": "^4.0.240",
+    "tailwind-merge": "^2.6.0",
+    "zod": "^3.25.76"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "autoprefixer": "^10.4.20",
+    "postcss": "^8.4.49",
+    "prisma": "^6.1.0",
+    "tailwindcss": "^3.4.17",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2",
+    "vitest": "^2.1.8"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "optionalDependencies": {
+    "redis": "^4.7.0"
+  }
+}
