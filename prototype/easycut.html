@@ -32,11 +32,40 @@
   --mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
 
   --r-sm: 8px; --r: 12px; --r-lg: 18px; --r-xl: 24px;
+
+  /* One measure for every screen in the app. Without it the content hugged the
+     sidebar and trailed off into empty space on a wide monitor — the page read
+     as falling off its own left edge. */
+  --measure: 1180px;
+  /* One curve, everywhere. Scattered easings are why an interface feels
+     assembled rather than designed. */
+  --ease: cubic-bezier(.22, .68, .28, 1);
+  --fast: .16s var(--ease);
+  --slow: .32s var(--ease);
   --topbar: 63px;   /* measured from the real header on load */
   color-scheme: dark;
 }
 
 *, *::before, *::after { box-sizing: border-box; }
+
+/* Somebody has told their operating system that motion makes them unwell. That
+   is not a preference to style around. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Keyboard focus has to be visible on every surface in the app, so it is set
+   once here rather than remembered per component. */
+:focus-visible {
+  outline: 2px solid var(--violet);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
 
 body {
   margin: 0;
@@ -92,9 +121,15 @@ button { font: inherit; color: inherit; background: none; border: none; cursor: 
 /* ───────────────────────────────────────────────────────────── stepper ─── */
 /* The stepper sits above the workspace rather than inside the page, so it is
    still there in step 4 — where the page is replaced by the studio. */
-.steps { display: flex; gap: 4px; padding: 18px 26px 0; flex-wrap: wrap; flex: none; }
+.steps {
+  display: flex; gap: 4px; flex-wrap: wrap; flex: none;
+  width: 100%; max-width: var(--measure); margin-inline: auto;
+  padding: 22px 32px 0;
+}
 body.instudio .steps {
-  padding: 9px 14px; background: var(--ink); border-bottom: 1px solid var(--line-soft);
+  padding: 9px 16px; background: var(--ink);
+  border-bottom: 1px solid var(--line-soft);
+  max-width: none;   /* the studio is full-bleed; the measure is for pages */
 }
 body.instudio .step { padding: 6px 13px 6px 8px; font-size: 12.5px; }
 body.instudio .step .num { width: 18px; height: 18px; font-size: 10px; }
@@ -103,7 +138,7 @@ body.instudio .step .num { width: 18px; height: 18px; font-size: 10px; }
   padding: 9px 15px 9px 11px; border-radius: 99px;
   border: 1px solid transparent; color: var(--faint);
   font-size: 13px; font-weight: 600;
-  transition: color .18s, background .18s, border-color .18s;
+  transition: color var(--fast), background var(--fast), border-color var(--fast);
 }
 .step:hover { color: var(--muted); }
 .step .num {
@@ -157,7 +192,7 @@ body.instudio .step .num { width: 18px; height: 18px; font-size: 10px; }
   border: 1px dashed var(--line); border-radius: var(--r-lg);
   background: var(--charcoal);
   padding: 22px; display: flex; align-items: center; gap: 16px;
-  transition: border-color .18s, background .18s;
+  transition: border-color var(--fast), background var(--fast);
 }
 .drop:hover { border-color: rgba(155,123,255,.45); }
 .film {
@@ -513,10 +548,12 @@ input[type=range] { width: 100%; accent-color: var(--violet); }
 .work { flex: 1; min-width: 0; display: flex; flex-direction: column; }
 /* Only the studio claims the viewport; every other route scrolls normally. */
 body.instudio .work { height: calc(100vh - var(--topbar)); }
-.mainarea { flex: 1; min-width: 0; padding: 0 26px 70px; }
+.mainarea { flex: 1; min-width: 0; padding: 0 32px 80px; }
+/* Every panel sits in the same column, centred in the space beside the sidebar. */
+.mainarea > .panel { width: 100%; max-width: var(--measure); margin-inline: auto; }
 @media (max-width: 880px) {
-  .mainarea { padding: 0 16px 60px; }
-  .steps { padding: 14px 16px 0; }
+  .mainarea { padding: 0 16px 64px; }
+  .steps { padding: 16px 16px 0; }
 }
 
 /* ─────────────────────────────────────────────── the upload wizard ─── */
@@ -534,7 +571,7 @@ body.instudio .work { height: calc(100vh - var(--topbar)); }
 .wizdots span b {
   width: 19px; height: 19px; border-radius: 99px; display: grid; place-items: center;
   font-family: var(--mono); font-size: 10px; font-weight: 700;
-  background: var(--charcoal); color: var(--faint); transition: background .2s, color .2s;
+  background: var(--charcoal); color: var(--faint); transition: background var(--fast), color var(--fast);
 }
 .wizdots span.now { color: var(--chalk); }
 .wizdots span.now b { background: var(--violet); color: var(--ink); }
@@ -544,7 +581,7 @@ body.instudio .work { height: calc(100vh - var(--topbar)); }
 .wizbar { height: 3px; border-radius: 99px; background: var(--charcoal); overflow: hidden; }
 .wizbar i { display: block; height: 100%; background: var(--violet); border-radius: 99px; transition: width .35s cubic-bezier(.4,0,.2,1); }
 
-.wiz h1 { font-size: 30px; font-weight: 800; }
+.wiz h1 { font-size: 30px; font-weight: 800; letter-spacing: -.035em; text-wrap: balance; }
 .wizsub { margin-top: 7px; font-size: 15px; color: var(--muted); }
 #wiz-body { margin-top: 26px; }
 
@@ -558,7 +595,7 @@ body.instudio .work { height: calc(100vh - var(--topbar)); }
 .bigdrop {
   border: 1px dashed var(--line); border-radius: var(--r-xl); background: var(--charcoal);
   padding: 44px 28px; text-align: center; cursor: pointer;
-  transition: border-color .18s, background .18s;
+  transition: border-color var(--fast), background var(--fast);
 }
 .bigdrop:hover { border-color: rgba(155,123,255,.5); background: var(--raised); }
 .bigdrop .ic {
@@ -585,7 +622,7 @@ body.instudio .work { height: calc(100vh - var(--topbar)); }
 @media (max-width: 620px) { .pair { grid-template-columns: 1fr; } }
 .choice {
   border: 1px solid var(--line); background: var(--charcoal); border-radius: var(--r-xl);
-  padding: 22px 20px; text-align: left; transition: border-color .16s, background .16s;
+  padding: 22px 20px; text-align: left; transition: border-color var(--fast), background var(--fast);
   display: flex; flex-direction: column; align-items: stretch; justify-content: flex-start;
 }
 .choice:hover { background: var(--raised); }
@@ -602,7 +639,7 @@ body.instudio .work { height: calc(100vh - var(--topbar)); }
 @media (max-width: 620px) { .looks { grid-template-columns: repeat(2, 1fr); } }
 .lookcard {
   border: 1px solid var(--line); background: var(--charcoal); border-radius: var(--r-lg);
-  padding: 14px; text-align: left; transition: border-color .16s, background .16s;
+  padding: 14px; text-align: left; transition: border-color var(--fast), background var(--fast);
   display: flex; flex-direction: column; align-items: stretch; justify-content: flex-start;
 }
 .lookcard:hover { background: var(--raised); }
@@ -614,26 +651,65 @@ body.instudio .work { height: calc(100vh - var(--topbar)); }
 .noteline label { display: block; font-size: 12.5px; font-weight: 600; color: var(--muted); margin-bottom: 7px; }
 
 /* ──────────────────────────────────────────────────── dashboard ─── */
-.dash-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin-bottom: 22px; }
-.dash-head h1 { font-size: 27px; font-weight: 800; }
-.dash-head p { margin-top: 5px; font-size: 13.5px; color: var(--muted); }
+.dash-head {
+  display: flex; align-items: flex-end; justify-content: space-between;
+  gap: 16px; flex-wrap: wrap;
+  padding-block: 30px 24px;
+}
+.dash-head h1 { font-size: 30px; font-weight: 800; letter-spacing: -.035em; text-wrap: balance; }
+.dash-head p { margin-top: 6px; font-size: 13.5px; color: var(--muted); }
 
-.kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 24px; }
+/* One surface split by hairlines, not four bordered cards. Border, radius and
+   fill each say "separate object"; spending all three on a readout flattens the
+   page, because then the videos below — which you actually click — look no more
+   substantial than a number. */
+.kpis {
+  display: grid; grid-template-columns: repeat(4, 1fr); gap: 1px;
+  background: var(--line-soft); border: 1px solid var(--line);
+  border-radius: var(--r-lg); overflow: hidden; margin-bottom: 28px;
+}
 @media (max-width: 760px) { .kpis { grid-template-columns: repeat(2, 1fr); } }
-.kpi { border: 1px solid var(--line); border-radius: var(--r-lg); background: var(--charcoal); padding: 14px 16px; }
+.kpi { background: var(--charcoal); padding: 15px 17px; }
 .kpi dt { font-size: 10px; letter-spacing: .07em; text-transform: uppercase; color: var(--faint); font-weight: 700; }
-.kpi dd { margin: 5px 0 0; font-size: 22px; font-weight: 800; letter-spacing: -.03em; font-variant-numeric: tabular-nums; }
-.kpi dd small { font-size: 11.5px; font-weight: 500; color: var(--muted); letter-spacing: 0; }
+.kpi dd { margin: 6px 0 0; font-size: 23px; font-weight: 800; letter-spacing: -.035em; font-variant-numeric: tabular-nums; }
+.kpi p { margin: 3px 0 0; font-size: 11.5px; color: var(--muted); }
 
-.vidgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(212px, 1fr)); gap: 14px; }
+/* Slightly larger minimum so a card never squeezes its title to an ellipsis at
+   the width the grid actually lands on. */
+.vidgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(226px, 1fr)); gap: 16px; }
 .vid {
   border: 1px solid var(--line); border-radius: var(--r-lg); background: var(--charcoal);
   overflow: hidden; cursor: pointer; align-self: start;
-  transition: border-color .16s, transform .16s;
+  transition: border-color var(--fast), transform var(--fast), box-shadow var(--fast);
 }
-.vid:hover { border-color: rgba(155,123,255,.5); transform: translateY(-2px); }
-.vid .shot { position: relative; background: linear-gradient(160deg, #232334, #101018); display: grid; place-items: center; }
-.vid .shot .ratio { font-family: var(--mono); font-size: 10px; color: rgba(255,255,255,.3); }
+.vid:hover {
+  border-color: rgba(155,123,255,.55);
+  transform: translateY(-3px);
+  box-shadow: 0 14px 34px -18px rgba(0,0,0,.9);
+}
+.vid:active { transform: translateY(-1px); }
+/* Every tile is 16:9, whatever shape the video is.
+   A grid that mixes 9:16 and 16:9 thumbnails tears its own rows apart — the
+   tall cards push their neighbours' titles out of line and the whole page
+   reads as broken rather than varied. So the tile is constant and the format
+   shows *inside* it, as a portrait frame within the landscape one, which
+   communicates the shape better than a ragged grid did anyway. */
+.vid .shot {
+  position: relative; aspect-ratio: 16 / 9;
+  background: radial-gradient(120% 140% at 50% 0%, #26263a, #0E0E15 70%);
+  display: grid; place-items: center; overflow: hidden;
+}
+.vid .shot .frame {
+  height: 76%; border-radius: 6px;
+  background: linear-gradient(165deg, #3A3550, #22202E 60%, #2E2A40);
+  box-shadow: 0 6px 20px -8px rgba(0,0,0,.9), inset 0 0 0 1px rgba(255,255,255,.055);
+  display: grid; place-items: center;
+}
+.vid .shot .frame.wide { height: 72%; }
+.vid .shot .ratio {
+  font-size: 10.5px; font-weight: 600; letter-spacing: .02em;
+  color: rgba(255,255,255,.42); padding-inline: 8px; text-align: center;
+}
 .vid .shot .badge {
   position: absolute; left: 8px; top: 8px; font-family: var(--mono); font-size: 9.5px;
   background: rgba(7,7,10,.8); border: 1px solid rgba(255,255,255,.1);
@@ -646,12 +722,21 @@ body.instudio .work { height: calc(100vh - var(--topbar)); }
 .vid .body { padding: 11px 13px 13px; }
 .vid .body b { display: block; font-size: 13px; font-weight: 700; letter-spacing: -.01em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .vid .body .row { display: flex; align-items: center; justify-content: space-between; margin-top: 6px; font-size: 11.5px; color: var(--muted); }
-.vid .body .row .st { display: flex; align-items: center; gap: 5px; }
+.vid .body .row .st { display: flex; align-items: center; gap: 6px; font-weight: 600; }
+/* A dot is the smallest thing that encodes state without reading. Colour does
+   the work; the word is confirmation. */
+.vid .body .row .st i {
+  width: 6px; height: 6px; border-radius: 99px; background: currentColor; flex: none;
+  box-shadow: 0 0 0 3px color-mix(in srgb, currentColor 18%, transparent);
+}
+.vid.is-ready  .st { color: var(--ok); }
+.vid.is-working .st { color: var(--warn); }
+.vid.is-failed  .st { color: var(--bad); }
 
 .newcard {
   border: 1px dashed var(--line); border-radius: var(--r-lg); background: transparent;
   display: grid; place-items: center; cursor: pointer; align-self: start;
-  aspect-ratio: 3 / 4; transition: border-color .16s, background .16s;
+  aspect-ratio: 16 / 10; transition: border-color var(--fast), background var(--fast);
   text-align: center; padding: 20px;
 }
 .newcard:hover { border-color: var(--violet); background: var(--violet-dim); }
@@ -700,7 +785,7 @@ body.instudio .work { height: calc(100vh - var(--topbar)); }
 }
 .addmenu > button {
   display: block; width: 100%; text-align: left; padding: 8px 12px;
-  font-size: 12px; font-weight: 600; color: var(--chalk); transition: background .12s;
+  font-size: 12px; font-weight: 600; color: var(--chalk); transition: background var(--fast);
 }
 .addmenu > button:hover { background: var(--raised); }
 .addmenu > button i { display: block; font-style: normal; font-size: 10px; font-weight: 400; color: var(--faint); }
@@ -755,7 +840,7 @@ body.instudio { overflow: hidden; }
 .st-tools { display: flex; align-items: center; gap: 2px; }
 .st-tool {
   width: 34px; height: 34px; border-radius: 9px; display: grid; place-items: center;
-  color: var(--muted); transition: background .15s, color .15s;
+  color: var(--muted); transition: background var(--fast), color var(--fast);
 }
 .st-tool:hover { background: var(--raised); color: var(--chalk); }
 .st-tool[aria-pressed="true"] { background: var(--violet-dim); color: var(--violet); }
@@ -1058,7 +1143,7 @@ body.instudio { overflow: hidden; }
 .look {
   border: 1px solid var(--line); border-radius: var(--r-lg);
   background: var(--charcoal); padding: 17px 18px; text-align: left;
-  transition: border-color .18s, background .18s;
+  transition: border-color var(--fast), background var(--fast);
 }
 .look:hover { background: var(--raised); border-color: #3a3a47; }
 .look .t { font-weight: 700; font-size: 14.5px; display: flex; align-items: center; gap: 8px; }
@@ -3033,7 +3118,7 @@ function buildDashboard() {
     ['Minutes made', minutes.toFixed(1), 'of finished video'],
     ['Spent', '$' + spend.toFixed(2), 'all time'],
     ['Average', '$' + (spend / Math.max(1, ready.length)).toFixed(2), 'per video'],
-  ].map(([k, v, sub]) => `<div class="kpi"><dt>${k}</dt><dd>${v} <small>${sub}</small></dd></div>`).join('');
+  ].map(([k, v, sub]) => `<div class="kpi"><dt>${k}</dt><dd>${v}</dd><p>${sub}</p></div>`).join('');
 
   $('vidgrid').innerHTML =
     `<button class="newcard" data-route="new">
@@ -3041,19 +3126,24 @@ function buildDashboard() {
      </button>` +
     LIBRARY.map((v) => {
       const st = STYLES[v.style];
-      return `<div class="vid" data-open="${v.id}">
-        <div class="shot" style="aspect-ratio:${v.mode === 'long' ? '16/9' : '9/12'}">
+      // State drives a class, so the colour lives in CSS where the palette is,
+      // not in a ternary halfway down a template string.
+      const state = v.status === 'ready' ? 'ready' : v.status === 'failed' ? 'failed' : 'working';
+      return `<div class="vid is-${state}" data-open="${v.id}">
+        <div class="shot">
           <span class="badge">${v.mode === 'long' ? '16:9' : '9:16'}</span>
-          <span class="ratio">${v.status === 'processing' ? 'editing…' : st.name}</span>
+          <span class="frame ${v.mode === 'long' ? 'wide' : ''}"
+                style="aspect-ratio:${v.mode === 'long' ? '16/9' : '9/16'}">
+            <span class="ratio">${v.status === 'processing' ? 'editing…' : st.name}</span>
+          </span>
           <span class="len">${v.len}</span>
         </div>
         <div class="body">
           <b>${v.title}</b>
           <div class="row">
-            <span class="st">
-              <span class="dot" style="width:6px;height:6px;border-radius:99px;background:${v.status === 'ready' ? 'var(--ok)' : 'var(--warn)'}"></span>
-              ${v.status === 'ready' ? 'Ready' : 'Editing'}
-            </span>
+            <span class="st"><i></i>${
+              { ready: 'Ready', failed: 'Failed', working: 'Editing' }[state]
+            }</span>
             <span>${v.cost ? '$' + v.cost.toFixed(2) : '—'}</span>
           </div>
         </div>
