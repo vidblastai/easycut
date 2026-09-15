@@ -4,7 +4,7 @@
   "private": true,
   "description": "EasyCut AI \u2014 upload your footage, get a finished video.",
   "scripts": {
-    "dev": "next dev",
+    "dev": "tsx scripts/dev-all.ts",
     "build": "prisma generate && next build",
     "start": "next start",
     "lint": "next lint",
@@ -21,7 +21,8 @@
     "doctor": "tsx scripts/doctor.ts",
     "db:postgres": "tsx scripts/use-postgres.ts",
     "start:all": "tsx scripts/prestart.ts && tsx scripts/start-all.ts",
-    "prestart:db": "tsx scripts/prestart.ts"
+    "prestart:db": "tsx scripts/prestart.ts",
+    "dev:web": "next dev"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.125.0",
