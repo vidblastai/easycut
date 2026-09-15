@@ -147,9 +147,11 @@ const CaptionCard: React.FC<{ cue: CaptionCue; style: CaptionStyle; fontStack: s
           // Row gap carries the line height; column gap is the word space.
           gap: `${fontSize * (style.lineHeight - 1) * 0.9}px ${fontSize * 0.26}px`,
           maxWidth: width * style.widthRatio,
-          // The hard stop on how much of the frame captions may ever eat.
-          maxHeight: fontSize * style.lineHeight * style.maxLines * 1.35,
-          overflow: 'hidden',
+          // No maxHeight. Capping the pixels cropped the last line through the
+          // middle of its letters, which looks broken in a way an extra line
+          // never does. maxLines is enforced where it belongs — in how many
+          // words go into a cue — so by the time a cue reaches here it already
+          // fits.
           textAlign: style.align,
           ...(style.background
             ? {

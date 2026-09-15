@@ -18,3 +18,4 @@ out/
 
 # Synthesised at setup (npm run setup) — regenerable, not source
 public/audio/sfx/
+out/caption-sheet/
