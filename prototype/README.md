@@ -16,7 +16,12 @@ Two things it is deliberately strict about:
   look). The earlier version stacked all five sections on one page, which is a
   form, not a flow — and the promise of the product is that there is almost
   nothing to decide.
-- The last step is a **studio**, not a panel: the sidebar stays, and everything
+- Fine-tuning is **step four of the pipeline**, not a toggle hidden on step
+  three. Upload → Editing → Your video → Fine-tune, with the stepper sitting
+  above the workspace so it is still there once the page is replaced by the
+  editor. That placement is the promise: the AI finishes at step three, and
+  step four is there if you disagree with it.
+- Step four is a **studio**, not a panel: the sidebar stays, and everything
   to its right becomes an ordinary editor — tools across the top, the picture in
   the middle, a docked timeline underneath. Nothing about that layout is novel,
   which is the point. Someone who has opened any editor before already knows

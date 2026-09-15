@@ -32,6 +32,7 @@
   --mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
 
   --r-sm: 8px; --r: 12px; --r-lg: 18px; --r-xl: 24px;
+  --topbar: 63px;   /* measured from the real header on load */
   color-scheme: dark;
 }
 
@@ -89,7 +90,14 @@ button { font: inherit; color: inherit; background: none; border: none; cursor: 
 .ghost.tl-open:hover { background: var(--violet-dim); border-color: var(--violet); }
 
 /* ───────────────────────────────────────────────────────────── stepper ─── */
-.steps { display: flex; gap: 4px; padding-block: 18px 0; flex-wrap: wrap; }
+/* The stepper sits above the workspace rather than inside the page, so it is
+   still there in step 4 — where the page is replaced by the studio. */
+.steps { display: flex; gap: 4px; padding: 18px 26px 0; flex-wrap: wrap; flex: none; }
+body.instudio .steps {
+  padding: 9px 14px; background: var(--ink); border-bottom: 1px solid var(--line-soft);
+}
+body.instudio .step { padding: 6px 13px 6px 8px; font-size: 12.5px; }
+body.instudio .step .num { width: 18px; height: 18px; font-size: 10px; }
 .step {
   display: flex; align-items: center; gap: 9px;
   padding: 9px 15px 9px 11px; border-radius: 99px;
@@ -433,12 +441,12 @@ input[type=range] { width: 100%; accent-color: var(--violet); }
 
 /* ────────────────────────────────────────────────────── app shell ─── */
 .shell { display: none; }
-.shell.on { display: flex; align-items: stretch; min-height: calc(100vh - 57px); }
+.shell.on { display: flex; align-items: stretch; min-height: calc(100vh - var(--topbar)); }
 
 .side {
   width: 232px; flex: none; border-right: 1px solid var(--line-soft);
   display: flex; flex-direction: column; padding: 14px 0 10px;
-  position: sticky; top: 57px; height: calc(100vh - 57px);
+  position: sticky; top: var(--topbar); height: calc(100vh - var(--topbar));
   background: #0B0B0E;
 }
 @media (max-width: 880px) {
@@ -502,8 +510,14 @@ input[type=range] { width: 100%; accent-color: var(--violet); }
 .acct .meta b { display: block; font-size: 12.5px; font-weight: 600; }
 .acct .meta i { font-style: normal; display: block; font-size: 10.5px; color: var(--faint); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
-.mainarea { flex: 1; min-width: 0; padding: 26px 26px 70px; }
-@media (max-width: 880px) { .mainarea { padding: 20px 16px 60px; } }
+.work { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+/* Only the studio claims the viewport; every other route scrolls normally. */
+body.instudio .work { height: calc(100vh - var(--topbar)); }
+.mainarea { flex: 1; min-width: 0; padding: 0 26px 70px; }
+@media (max-width: 880px) {
+  .mainarea { padding: 0 16px 60px; }
+  .steps { padding: 14px 16px 0; }
+}
 
 /* ─────────────────────────────────────────────── the upload wizard ─── */
 /* One question per screen. The old version stacked five sections at once,
@@ -649,13 +663,6 @@ input[type=range] { width: 100%; accent-color: var(--violet); }
 .emptyish p { margin-top: 6px; font-size: 13px; color: var(--muted); max-width: 54ch; line-height: 1.6; }
 
 /* ─────────────────────────────────────────────────── timeline editor ─── */
-.modeswitch { display: flex; gap: 2px; border: 1px solid var(--line); border-radius: var(--r); padding: 3px; }
-.modeswitch button {
-  border-radius: 8px; padding: 6px 13px; font-size: 12.5px; font-weight: 600; color: var(--muted);
-  transition: background .15s, color .15s;
-}
-.modeswitch button:hover { color: var(--chalk); }
-.modeswitch button[aria-pressed="true"] { background: var(--violet); color: var(--ink); }
 
 .tl { border: 1px solid var(--line); border-radius: var(--r-lg); background: var(--charcoal); overflow: hidden; }
 .tl-bar {
@@ -730,7 +737,7 @@ input[type=range] { width: 100%; accent-color: var(--violet); }
 .studio { display: none; }
 .studio.on {
   display: flex; flex-direction: column;
-  flex: 1; min-width: 0; height: calc(100vh - 57px);
+  flex: 1; min-height: 0;
   background: var(--ink);
 }
 /* The studio owns the viewport; a page scrollbar underneath it would scroll the
@@ -802,7 +809,7 @@ body.instudio { overflow: hidden; }
   flex: none; display: flex; flex-direction: column; min-height: 0;
   /* Tall enough that all six lanes are visible at once — a timeline you have to
      scroll to see is a timeline you cannot judge. Drag the grip for more. */
-  height: 348px; min-height: 210px; border-top: 1px solid var(--line);
+  height: clamp(300px, 40vh, 348px); min-height: 210px; border-top: 1px solid var(--line);
   background: var(--charcoal);
 }
 .st-grip { flex: none; height: 11px; display: grid; place-items: center; cursor: ns-resize; }
@@ -1210,6 +1217,15 @@ body.instudio { overflow: hidden; }
       </div>
     </aside>
 
+    <div class="work">
+
+    <nav class="steps" aria-label="Stages">
+      <button class="step" data-go="0"><span class="num">1</span> Upload</button>
+      <button class="step" data-go="1"><span class="num">2</span> Editing</button>
+      <button class="step" data-go="2"><span class="num">3</span> Your video</button>
+      <button class="step" data-go="3"><span class="num">4</span> Fine-tune</button>
+    </nav>
+
     <div class="mainarea">
 
       <!-- ═══════════════════════════════════ dashboard ═══ -->
@@ -1253,12 +1269,6 @@ body.instudio { overflow: hidden; }
           <div id="set-caps" style="margin-top:12px"></div>
         </div>
       </section>
-
-  <nav class="steps" aria-label="Stages">
-    <button class="step" data-go="0" aria-current="true"><span class="num">1</span> Upload</button>
-    <button class="step" data-go="1"><span class="num">2</span> Editing</button>
-    <button class="step" data-go="2"><span class="num">3</span> Your video</button>
-  </nav>
 
   <div class="grid">
     <!-- ═══════════════════════════════════════════════════ left column ═══ -->
@@ -1305,10 +1315,8 @@ body.instudio { overflow: hidden; }
             <p style="color:var(--muted);font-size:14px" id="hdr-sub"></p>
           </div>
           <div style="display:flex;align-items:center;gap:10px">
-            <div class="modeswitch" id="modeswitch">
-              <button data-mode="simple" aria-pressed="true">Simple</button>
-              <button data-mode="timeline" aria-pressed="false">Fine-tune</button>
-            </div>
+            <button class="ghost tl-open" data-go="3" style="padding:9px 15px">
+              Fine-tune in the editor &rarr;</button>
             <button class="ghost" id="dl" style="padding:9px 15px">Download</button>
           </div>
         </div>
@@ -1541,6 +1549,8 @@ body.instudio { overflow: hidden; }
       </div>
     </div>
   </section>
+
+    </div><!-- /.work -->
 </div>
 
 <div class="wrap" id="footwrap">
@@ -1789,7 +1799,7 @@ document.addEventListener('click', (e) => {
     // therefore discards manual timeline edits, exactly as the app does.
     BASE_OVERRIDE = null; tl.ops = []; tl.redo = []; tl.sel = null;
     refreshDoc();
-    if (state.step === 2) { state.edited = true; }
+    if (state.step >= 2) { state.edited = true; }
   }
   if (b.dataset.layer) {
     state.layers[b.dataset.layer] = !state.layers[b.dataset.layer];
@@ -2721,7 +2731,7 @@ window.addEventListener('pointerup', () => {
 });
 
 window.addEventListener('keydown', (e) => {
-  if (state.step !== 2) return;
+  if (state.step !== 3) return;
   const t = e.target;
   if (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA') return;
 
@@ -2890,13 +2900,7 @@ $('tl-reset').addEventListener('click', () => {
               : 'Back to the AI&rsquo;s cut.');
 });
 
-$('st-back').addEventListener('click', () => {
-  state.mode = 'simple';
-  $('modeswitch').querySelectorAll('button').forEach((x) =>
-    x.setAttribute('aria-pressed', String(x.dataset.mode === 'simple')));
-  applyTimelineLayout();
-  render();
-});
+$('st-back').addEventListener('click', () => goto(2));
 
 $('st-expand').addEventListener('click', () => {
   const c = document.querySelector('.st-canvas');
@@ -2952,14 +2956,7 @@ $('tl-apply').addEventListener('click', () => {
 const _baseDoc = baseDoc;
 baseDoc = function () { return BASE_OVERRIDE ? JSON.parse(JSON.stringify(BASE_OVERRIDE)) : _baseDoc(); };
 
-$('modeswitch').addEventListener('click', (e) => {
-  const b = e.target.closest('[data-mode]');
-  if (!b) return;
-  state.mode = b.dataset.mode;
-  $('modeswitch').querySelectorAll('button').forEach((x) => x.setAttribute('aria-pressed', String(x.dataset.mode === state.mode)));
-  applyTimelineLayout();
-  drawTimeline();
-});
+
 
 
 
@@ -3120,13 +3117,10 @@ function go(route) {
   if (route === 'settings') buildSettings();
   if (route === 'new') { state.step = 0; state.wiz = 0; buildWizard(); }
   if (route === 'processing') state.step = 1;
-  if (route === 'editor' || route === 'timeline') { state.step = 2; render(); }
+  if (route === 'editor' || route === 'timeline') { state.step = state.mode === 'timeline' ? 3 : 2; render(); }
   if (route === 'timeline') openTimeline();
 
-  document.querySelectorAll('.step').forEach((el, i) => {
-    el.setAttribute('aria-current', String(i === state.step));
-    el.classList.toggle('done', i < state.step);
-  });
+  paintSteps();
 
   buildNav();
   window.scrollTo({ top: 0, behavior: reduced ? 'auto' : 'smooth' });
@@ -3172,11 +3166,7 @@ function applyTimelineLayout() {
 }
 
 function openTimeline() {
-  goto(2);
-  state.mode = 'timeline';
-  $('modeswitch').querySelectorAll('button').forEach((x) =>
-    x.setAttribute('aria-pressed', String(x.dataset.mode === 'timeline')));
-  applyTimelineLayout();
+  goto(3);
   refreshDoc();
   drawTimeline();
 }
@@ -3204,21 +3194,36 @@ function goto(n) {
     $('footwrap').hidden = true;
     moveStage('rail');
   }
-  state.route = ['new', 'processing', 'editor'][n];
+  // Step 4 is step 3 with the studio open: same document, same panel, a
+  // different way of looking at it. Making it a step rather than a toggle is
+  // what says it is optional and that you are still inside the same job.
+  state.route = ['new', 'processing', 'editor', 'editor'][n];
+  if (n >= 2) setMode(n === 3 ? 'timeline' : 'simple');
   document.querySelector('.steps').style.display = n === 0 ? 'none' : 'flex';
   document.querySelector('.grid').style.display = 'grid';
   buildNav();
   state.step = n;
-  const flow = ['p0', 'p1', 'p2'];
-  APP_PANELS.forEach((id) => $(id).classList.toggle('on', id === flow[n]));
-  document.querySelectorAll('.step').forEach((s, i) => {
-    s.setAttribute('aria-current', String(i === n));
-    s.classList.toggle('done', i < n);
-  });
+  APP_PANELS.forEach((id) => $(id).classList.toggle('on', id === ['p0', 'p1', 'p2', 'p2'][n]));
+  paintSteps();
   applyTimelineLayout();
   window.scrollTo({ top: 0, behavior: reduced ? 'auto' : 'smooth' });
-  if (n === 2) { render(); drawTimeline(); }
+  if (n >= 2) { render(); drawTimeline(); }
 }
+
+function paintSteps() {
+  document.querySelectorAll('.step').forEach((el, i) => {
+    el.setAttribute('aria-current', String(i === state.step));
+    el.classList.toggle('done', i < state.step);
+  });
+}
+
+/** The toggle in the header and step 4 in the stepper are the same switch. */
+function setMode(mode) { state.mode = mode; }
+
+const measureTopbar = () => document.documentElement.style.setProperty(
+  '--topbar', document.querySelector('.top').offsetHeight + 'px');
+measureTopbar();
+window.addEventListener('resize', measureTopbar);
 
 /* ═══════════════════════════════════════════════════ boot ═══ */
 buildHomeLooks();
