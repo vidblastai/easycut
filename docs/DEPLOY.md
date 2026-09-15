@@ -86,6 +86,15 @@ The full four-service setup is below for when you get there.
 
 You will need a GitHub account and a card. About fifteen minutes.
 
+**There is a script**: `bash scripts/deploy-railway.sh` does steps 1–7 below.
+It has to run somewhere with a browser, because `railway login` opens one — your
+laptop, not a remote container. It prints every command before running it, so a
+wrong flag is visible rather than half-applied.
+
+Written against Railway's documented commands but not executed end to end, so
+if a step fails, the manual path below is the ground truth. Volumes are a
+dashboard click either way.
+
 **1. Point the database at Postgres.** Run this once, locally, and commit it —
 Prisma reads the database type from a file, not an environment variable:
 
