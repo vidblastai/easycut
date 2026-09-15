@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { db } from '@/lib/db';
 import { queue } from '@/lib/queue';
 import { storage } from '@/lib/storage';
+import { guardProject } from '@/lib/auth';
 
 export const runtime = 'nodejs';
 
@@ -22,6 +23,9 @@ const StartSchema = z.object({
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const body = StartSchema.parse((await request.json().catch(() => ({}))) ?? {});
+
+  const denied = await guardProject(id);
+  if (denied) return denied;
 
   const project = await db.project.findUnique({
     where: { id },

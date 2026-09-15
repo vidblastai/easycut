@@ -4,6 +4,7 @@ import { db, parseJson } from '@/lib/db';
 import { env } from '@/lib/config/env';
 import { assetKey, storage } from '@/lib/storage';
 import { FORMAT_PRESETS, getStyle } from '@/lib/styles/presets';
+import { currentUserId, ensureUser, isAuthEnabled } from '@/lib/auth';
 
 export const runtime = 'nodejs';
 
@@ -41,8 +42,13 @@ export async function POST(request: Request) {
     );
   }
 
+  // Stamped at creation. A project with no owner is one nobody can ever open
+  // again once auth is on, so this is not a field to backfill later.
+  const userId = await ensureUser();
+
   const project = await db.project.create({
     data: {
+      userId,
       title: input.title?.trim() || stripExtension(input.filename),
       mode: input.mode,
       styleId: getStyle(input.styleId).id,
@@ -66,7 +72,10 @@ export async function POST(request: Request) {
 
 /** Project list for the dashboard. */
 export async function GET() {
+  const userId = await currentUserId();
   const projects = await db.project.findMany({
+    // With auth off this is every project, which is the point of that mode.
+    where: isAuthEnabled() ? { userId: userId ?? '__signed-out__' } : undefined,
     orderBy: { createdAt: 'desc' },
     take: 60,
     include: {

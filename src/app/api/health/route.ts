@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { env } from '@/lib/config/env';
 import { selectedProvider } from '@/lib/director';
+import { isAuthEnabled } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
 
@@ -31,6 +32,7 @@ export async function GET() {
   checks.queue = env.queue.driver;
   checks.renderer = env.render.driver;
   checks.director = selectedProvider();
+  checks.auth = isAuthEnabled() ? 'clerk' : 'OPEN — anyone can see any project';
   checks.transcription = env.transcription.deepgramKey || env.transcription.groqKey || env.transcription.assemblyaiKey
     ? 'configured'
     : 'none — silence-only edits, no captions';
@@ -39,6 +41,9 @@ export async function GET() {
   // than one container. Worth surfacing on the endpoint an operator actually
   // looks at rather than only in a doc they read once.
   const warnings: string[] = [];
+  if (!isAuthEnabled()) {
+    warnings.push('No CLERK_SECRET_KEY — every project is reachable by anyone who guesses its id.');
+  }
   if (env.storage.driver === 'local') {
     warnings.push('STORAGE_DRIVER=local — uploads and renders live on this container and vanish when it restarts.');
   }

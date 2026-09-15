@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { env } from '@/lib/config/env';
 import { assetKey, storage } from '@/lib/storage';
+import { guardProject } from '@/lib/auth';
 
 export const runtime = 'nodejs';
 // Uploads are large and slow; Next's default body limit does not apply to the
@@ -15,6 +16,9 @@ export const maxDuration = 300;
  */
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
+
+  const denied = await guardProject(id);
+  if (denied) return denied;
 
   const project = await db.project.findUnique({ where: { id } });
   if (!project) return NextResponse.json({ error: 'Project not found' }, { status: 404 });

@@ -1,6 +1,9 @@
 import type { Metadata, Viewport } from 'next';
 import { Plus_Jakarta_Sans } from 'next/font/google';
 import './globals.css';
+import { ClerkProvider } from '@clerk/nextjs';
+
+const authEnabled = Boolean(process.env.CLERK_SECRET_KEY);
 
 const jakarta = Plus_Jakarta_Sans({
   subsets: ['latin'],
@@ -29,7 +32,11 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" className={jakarta.variable}>
-      <body className="min-h-screen bg-ink font-sans text-chalk antialiased">{children}</body>
+      <body className="min-h-screen bg-ink font-sans text-chalk antialiased">
+        {/* Only wraps when Clerk is configured — an unconfigured ClerkProvider
+            throws at render, which would break `git clone && npm run dev`. */}
+        {authEnabled ? <ClerkProvider>{children}</ClerkProvider> : children}
+      </body>
     </html>
   );
 }

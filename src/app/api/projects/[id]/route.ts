@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { db, parseJson } from '@/lib/db';
 import { readStageLog } from '@/worker/process-project';
 import { STAGE_LABELS, type Stage } from '@/lib/pipeline/types';
+import { guardProject } from '@/lib/auth';
 
 export const runtime = 'nodejs';
 
@@ -12,6 +13,9 @@ export const runtime = 'nodejs';
  */
 export async function GET(_request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
+
+  const denied = await guardProject(id);
+  if (denied) return denied;
 
   const project = await db.project.findUnique({
     where: { id },

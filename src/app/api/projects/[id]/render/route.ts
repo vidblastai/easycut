@@ -8,6 +8,7 @@ import type { DirectorPlan } from '@/lib/director/schema';
 import type { MediaInfo } from '@/lib/media/ffmpeg';
 import type { Transcript } from '@/lib/transcribe/types';
 import type { Interval } from '@/lib/timeline/silence';
+import { guardProject } from '@/lib/auth';
 
 export const runtime = 'nodejs';
 
@@ -27,6 +28,9 @@ const RenderSchema = z.object({
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const input = RenderSchema.parse((await request.json().catch(() => ({}))) ?? {});
+
+  const denied = await guardProject(id);
+  if (denied) return denied;
 
   const project = await db.project.findUnique({
     where: { id },

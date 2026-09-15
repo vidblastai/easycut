@@ -10,6 +10,7 @@ import type { DirectorPlan } from '@/lib/director/schema';
 import type { MediaInfo } from '@/lib/media/ffmpeg';
 import type { Transcript } from '@/lib/transcribe/types';
 import type { Interval } from '@/lib/timeline/silence';
+import { guardProject } from '@/lib/auth';
 
 export const runtime = 'nodejs';
 
@@ -110,6 +111,9 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     return NextResponse.json({ error: 'Invalid patch', details: body.error.flatten() }, { status: 400 });
   }
   const patch = body.data;
+
+  const denied = await guardProject(id);
+  if (denied) return denied;
 
   const project = await db.project.findUnique({
     where: { id },

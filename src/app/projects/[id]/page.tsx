@@ -4,11 +4,13 @@ import { Logo } from '@/components/Logo';
 import { ProjectWorkspace } from '@/components/ProjectWorkspace';
 import { db } from '@/lib/db';
 import { STYLE_LIST } from '@/lib/styles/presets';
+import { canAccessProject } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
 
 export default async function ProjectPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
+  if (!(await canAccessProject(id))) notFound();
   const project = await db.project.findUnique({ where: { id } }).catch(() => null);
   if (!project) notFound();
 
