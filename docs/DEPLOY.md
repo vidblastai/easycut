@@ -18,7 +18,7 @@ that are fine locally stop being fine:
 |---|---|---|---|
 | `DATABASE_URL` | SQLite file | Postgres | A container filesystem is wiped on every restart and deploy. |
 | `STORAGE_DRIVER` | `local` | `s3` | Uploads written by the web container are invisible to the worker container. |
-| `QUEUE_DRIVER` | `memory` | `redis` | An in-process queue cannot hand a job to a different container. |
+| `QUEUE_DRIVER` | `memory` | `db` | An in-process queue cannot hand a job to another process. `db` needs nothing new; `redis` is for later. |
 | Prisma `provider` | `sqlite` | `postgresql` | Prisma reads this from the schema file, not an env var. `npm run db:postgres` rewrites it. |
 
 Miss any of those and it deploys, boots, looks healthy, and then loses every
@@ -27,25 +27,58 @@ exactly this reason.
 
 ---
 
-## The stack
+## The simplest thing that works: one account
 
-Four services. Everything except the container host has a free tier that covers
-early usage comfortably.
+You do not need four services to put this online. Start here:
+
+**Railway, and nothing else.** One project, one service, ~$5–20/month.
+
+| Piece | How | Extra signup |
+|---|---|---|
+| Web + worker | One container, `npm run start:all` | — |
+| Database | Railway's Postgres add-on, same project | — |
+| Video files | A Railway volume mounted at `/data` | — |
+| Queue | The database — no Redis | — |
+
+```
+DATABASE_URL=${{Postgres.DATABASE_URL}}   # Railway fills this in
+QUEUE_DRIVER=db
+STORAGE_DRIVER=local
+STORAGE_LOCAL_DIR=/data
+```
+
+Set the start command to `npm run start:all`. It runs the web server and the
+worker as two processes in the one container; they share work through the
+database rather than memory, which is what removes Redis from the picture.
+
+That is the whole deployment. It runs one video at a time, and a restart
+mid-render loses that job — fine while you are the only user, and the reason to
+move on is queueing, not correctness.
+
+## When to add the rest
+
+Each of these solves a problem you will actually have, and none of them before
+then:
+
+| Add | When | Why |
+|---|---|---|
+| **Cloudflare R2** | Storage bill or a second container | A volume attaches to one service, so the moment there are two, they cannot see each other's files. R2 is free to 10 GB with no egress charge — which matters because every finished video gets downloaded. |
+| **Separate worker service** | Renders queue behind each other | Scale video CPU without scaling the web app, and a web deploy stops killing an in-flight render. |
+| **Upstash Redis** | Several workers, or the database queue's polling shows up in your bill | The database queue handles a handful of workers fine. Redis earns its place when there are many, or when a 400ms poll per idle worker stops being free. |
+| **Neon Postgres** | Only if you leave Railway | Railway's own Postgres is fine. Neon is here because its free tier is generous and it is not tied to your host. |
+
+The full four-service setup is below for when you get there.
+
+## The full stack, later
 
 | Piece | Service | Cost |
 |---|---|---|
-| Web + worker containers | **Railway** | ~$5–20/mo depending on worker CPU |
+| Web + worker containers | **Railway** | ~$5–20/mo |
 | Postgres | **Neon** | Free to 0.5 GB |
 | Object storage | **Cloudflare R2** | Free to 10 GB, **zero egress** |
 | Redis queue | **Upstash** | Free to 10k commands/day |
 
-R2 over S3 is the one choice worth defending: every finished video gets
-downloaded at least once, and S3 charges for egress while R2 does not. On a
-video product that difference compounds.
-
-Railway is the recommendation because it runs a Dockerfile, gives you two
-services off one repo, and has a private network between them. **Render** and
-**Fly.io** work identically — same image, same env vars.
+**Render** and **Fly.io** work identically — same image, same env vars.
 
 ---
 

@@ -42,7 +42,7 @@ export const env = {
   },
 
   queue: {
-    driver: (str('QUEUE_DRIVER') ?? 'memory') as 'memory' | 'redis',
+    driver: (str('QUEUE_DRIVER') ?? 'memory') as 'memory' | 'db' | 'redis',
     redisUrl: str('REDIS_URL'),
     concurrency: num('QUEUE_CONCURRENCY', 2),
   },

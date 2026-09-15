@@ -180,3 +180,23 @@ model Render {
 
   @@index([projectId, createdAt])
 }
+
+/// The queue, when Redis is not worth a second service.
+///
+/// Postgres is already there, and a table is a perfectly good queue at the
+/// volume one machine can render. Reserving is an optimistic claim — update the
+/// row only if it is still queued — so two workers racing for the same job
+/// means one of them gets zero rows back and moves on.
+model QueueMessage {
+  id          String   @id @default(uuid())
+  type        String
+  payload     String   @default("{}")
+  status      String   @default("queued") // queued | running | dead
+  attempts    Int      @default(0)
+  maxAttempts Int      @default(3)
+  enqueuedAt  DateTime @default(now())
+  reservedAt  DateTime?
+  lastError   String?
+
+  @@index([status, enqueuedAt])
+}

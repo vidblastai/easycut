@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { env } from '@/lib/config/env';
+import { db } from '@/lib/db';
 
 /**
  * A minimal job queue with two drivers.
@@ -160,6 +161,86 @@ class RedisQueueDriver implements QueueDriver {
   }
 }
 
+/* ---------------------------------------------------------------------- db */
+
+/**
+ * The database as the queue.
+ *
+ * Redis is the right answer at scale and the wrong first dependency: splitting
+ * the worker into its own container is what forces a broker, and that is a
+ * second service and a third account before the product has a single user.
+ * Postgres is already here, and a table is a perfectly good queue at the volume
+ * one machine can render.
+ *
+ * Reserving is an optimistic claim rather than a lock: read the oldest queued
+ * row, then update it only if it is still queued. Two workers racing for the
+ * same job means one of them updates zero rows and loops. No SKIP LOCKED, no
+ * advisory locks, and it behaves the same on SQLite.
+ */
+class DbQueueDriver implements QueueDriver {
+  readonly name = 'db';
+
+  async enqueue<T>(type: string, payload: T, options: { maxAttempts?: number } = {}): Promise<string> {
+    const row = await db.queueMessage.create({
+      data: { type, payload: JSON.stringify(payload), maxAttempts: options.maxAttempts ?? 3 },
+    });
+    return row.id;
+  }
+
+  async reserve(timeoutMs: number): Promise<QueuedJob | null> {
+    const deadline = Date.now() + timeoutMs;
+
+    while (Date.now() < deadline) {
+      const candidate = await db.queueMessage.findFirst({
+        where: { status: 'queued' },
+        orderBy: { enqueuedAt: 'asc' },
+      });
+
+      if (candidate) {
+        const claimed = await db.queueMessage.updateMany({
+          where: { id: candidate.id, status: 'queued' },
+          data: { status: 'running', reservedAt: new Date() },
+        });
+        // Zero rows means another worker won the race. Try again immediately.
+        if (claimed.count === 1) {
+          return {
+            id: candidate.id,
+            type: candidate.type,
+            payload: JSON.parse(candidate.payload),
+            attempts: candidate.attempts,
+            maxAttempts: candidate.maxAttempts,
+            enqueuedAt: candidate.enqueuedAt.getTime(),
+          };
+        }
+        continue;
+      }
+
+      // Polling, not listening. At one job every few minutes the difference
+      // between a 400ms poll and a push is not worth LISTEN/NOTIFY plumbing.
+      await new Promise((resolve) => setTimeout(resolve, 400));
+    }
+    return null;
+  }
+
+  async complete(job: QueuedJob): Promise<void> {
+    await db.queueMessage.delete({ where: { id: job.id } }).catch(() => undefined);
+  }
+
+  async fail(job: QueuedJob, error: Error): Promise<void> {
+    const attempts = job.attempts + 1;
+    await db.queueMessage.update({
+      where: { id: job.id },
+      data: attempts < job.maxAttempts
+        ? { status: 'queued', attempts, lastError: error.message, reservedAt: null }
+        : { status: 'dead', attempts, lastError: error.message },
+    }).catch(() => undefined);
+  }
+
+  async size(): Promise<number> {
+    return db.queueMessage.count({ where: { status: 'queued' } });
+  }
+}
+
 /* ---------------------------------------------------------------- factory */
 
 let instance: QueueDriver | null = null;
@@ -167,6 +248,8 @@ let instance: QueueDriver | null = null;
 export function queue(): QueueDriver {
   if (instance) return instance;
   instance =
-    env.queue.driver === 'redis' && env.queue.redisUrl ? new RedisQueueDriver() : new MemoryQueueDriver();
+    env.queue.driver === 'redis' && env.queue.redisUrl ? new RedisQueueDriver()
+    : env.queue.driver === 'db' ? new DbQueueDriver()
+    : new MemoryQueueDriver();
   return instance;
 }

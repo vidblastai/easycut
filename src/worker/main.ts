@@ -51,7 +51,7 @@ async function loop(workerId: number): Promise<void> {
   }
 }
 
-async function main(): Promise<void> {
+export async function main(): Promise<void> {
   console.log(`EasyCut worker starting`);
   console.log(`  queue    : ${queue().name}`);
   console.log(`  storage  : ${env.storage.driver}`);
@@ -86,7 +86,25 @@ async function main(): Promise<void> {
   );
 }
 
-main().catch((error) => {
-  console.error('Worker crashed:', error);
-  process.exit(1);
-});
+/**
+ * The same loop, started from inside another process.
+ *
+ * A crash here must not take the web server down with it, so unlike the
+ * standalone entry point below it logs and returns rather than exiting.
+ */
+export async function startWorker(): Promise<void> {
+  try {
+    await main();
+  } catch (error) {
+    console.error('[easycut] in-process worker stopped:', error);
+  }
+}
+
+// Only self-start when run directly (`npm run worker`), not when imported by
+// the web server's instrumentation hook.
+if (process.env.RUN_WORKER_IN_WEB !== 'true') {
+  main().catch((error) => {
+    console.error('Worker crashed:', error);
+    process.exit(1);
+  });
+}

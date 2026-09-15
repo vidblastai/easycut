@@ -2,7 +2,7 @@
   "name": "easycut",
   "version": "0.1.0",
   "private": true,
-  "description": "EasyCut AI — upload your footage, get a finished video.",
+  "description": "EasyCut AI \u2014 upload your footage, get a finished video.",
   "scripts": {
     "dev": "next dev",
     "build": "prisma generate && next build",
@@ -19,7 +19,8 @@
     "remotion:render": "tsx scripts/render-local.ts",
     "setup": "tsx scripts/setup.ts",
     "doctor": "tsx scripts/doctor.ts",
-    "db:postgres": "tsx scripts/use-postgres.ts"
+    "db:postgres": "tsx scripts/use-postgres.ts",
+    "start:all": "tsx scripts/start-all.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.125.0",
