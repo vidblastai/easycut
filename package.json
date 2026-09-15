@@ -20,7 +20,8 @@
     "setup": "tsx scripts/setup.ts",
     "doctor": "tsx scripts/doctor.ts",
     "db:postgres": "tsx scripts/use-postgres.ts",
-    "start:all": "tsx scripts/start-all.ts"
+    "start:all": "tsx scripts/prestart.ts && tsx scripts/start-all.ts",
+    "prestart:db": "tsx scripts/prestart.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.125.0",

@@ -84,81 +84,53 @@ The full four-service setup is below for when you get there.
 
 ## Steps
 
-### 1. Postgres
+You will need a GitHub account and a card. About fifteen minutes.
 
-Create a project at [neon.tech](https://neon.tech), copy the connection string,
-then point the schema at it:
+**1. Point the database at Postgres.** Run this once, locally, and commit it —
+Prisma reads the database type from a file, not an environment variable:
 
 ```bash
 npm run db:postgres
-DATABASE_URL='postgres://...' npx prisma db push
+git commit -am "Use Postgres"
+git push
 ```
 
-Commit the schema change — the Docker build needs it.
+**2. Make a Railway project.** [railway.app](https://railway.app) → sign in with
+GitHub → **New Project** → **Deploy from GitHub repo** → pick `easycut`.
 
-### 2. Storage
+It finds `railway.json`, builds the Dockerfile, and sets the start command and
+health check itself.
 
-In the Cloudflare dashboard, R2 → Create bucket (`easycut-media`), then create
-an API token with **Object Read & Write**. You need:
+**3. Add the database.** In the same project: **New** → **Database** →
+**PostgreSQL**. Railway wires `DATABASE_URL` in automatically.
 
-```
-STORAGE_DRIVER=s3
-S3_BUCKET=easycut-media
-S3_REGION=auto
-S3_ENDPOINT=https://<account-id>.r2.cloudflarestorage.com
-S3_ACCESS_KEY_ID=...
-S3_SECRET_ACCESS_KEY=...
-S3_PUBLIC_BASE_URL=https://media.yourdomain.com     # or the r2.dev dev URL
-```
+**4. Add a disk for the videos.** On the app service: **Settings** → **Volumes**
+→ mount at `/data`.
 
-Uploads go **browser → R2 directly** via a presigned PUT, so a 4 GB file never
-passes through your containers. That is already how `POST /api/projects` works;
-it only needs the bucket configured.
-
-### 3. Queue
-
-Create a Redis database at [upstash.com](https://upstash.com), copy the
-connection URL:
+**5. Set the variables.** On the app service, **Variables**:
 
 ```
-QUEUE_DRIVER=redis
-REDIS_URL=rediss://...
+QUEUE_DRIVER=db
+STORAGE_DRIVER=local
+STORAGE_LOCAL_DIR=/data
+DEEPGRAM_API_KEY=...
+GEMINI_API_KEY=...
+PEXELS_API_KEY=...
+LLM_PROVIDER=gemini
+APP_URL=https://<your-app>.up.railway.app
 ```
 
-The redis driver loads its client at runtime, so also add `redis` to
-dependencies: `npm install redis`.
+**6. Generate a domain.** **Settings** → **Networking** → **Generate Domain**.
+Put that URL in `APP_URL` and redeploy.
 
-### 4. The two containers
+**7. Check it.**
 
-Point Railway at the repo. It finds the `Dockerfile` and builds one image.
-Create **two services from it**:
-
-| Service | Start command | Sizing |
-|---|---|---|
-| `web` | *(default)* `npm run start` | 0.5 vCPU is plenty |
-| `worker` | `npm run worker` | **2+ vCPU** — this is where the time goes |
-
-Both get the same environment variables. Set `APP_URL` to your public web URL.
-
-Give the worker the CPU. The web app serves JSON; the worker encodes video, and
-`RENDER_CONCURRENCY` should roughly match its core count.
-
-### 5. Check it
-
-```bash
-curl https://your-app.up.railway.app/api/health
+```
+https://<your-app>.up.railway.app/api/health
 ```
 
-Want:
-
-```json
-{ "status": "ok",
-  "checks": { "database": "ok", "storage": "s3", "queue": "redis",
-              "director": "gemini", "transcription": "configured" } }
-```
-
-A `warnings` array means one of the four switches above is still on its local
-default, and you will lose videos.
+Want `"status": "ok"` with `"queue": "db"` and `"transcription": "configured"`.
+The `warnings` array tells you what is still on a local default.
 
 ---
 
