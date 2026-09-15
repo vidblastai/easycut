@@ -1,4 +1,5 @@
 import type { Edl } from '../src/lib/edl/types';
+import { findCaptionPreset } from '../src/lib/captions/presets';
 
 /**
  * A hand-written EDL so `npm run remotion:studio` opens something real without
@@ -68,20 +69,7 @@ export const SAMPLE_EDL: Edl = {
       ],
     },
   ],
-  captionStyle: {
-    animation: 'bounce',
-    fontFamily: 'Plus Jakarta Sans',
-    fontWeight: 800,
-    fontSizeRatio: 0.068,
-    maxWordsPerCue: 3,
-    color: '#FFFFFF',
-    emphasisColor: '#9B7BFF',
-    positionY: 0.7,
-    uppercase: true,
-    stroke: { width: 14, color: '#000000' },
-    shadow: true,
-    background: null,
-  },
+  captionStyle: { ...findCaptionPreset('impact')!.style },
   broll: [],
   graphics: [
     {

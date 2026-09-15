@@ -103,27 +103,83 @@ export const CAPTION_ANIMATIONS = [
   'karaoke',     // whole line visible, active word highlighted
   'word-pop',    // words appear one at a time with a spring
   'line-fade',   // whole line fades in
-  'typewriter',
+  'typewriter',  // words appear with no animation at all
   'bounce',      // word-pop with an overshoot, very "punchy" preset
+  'word-box',    // whole line visible, active word sits on a filled plate
+  'slide-up',    // the line rises into place from below
+  'scale-in',    // the line scales up into place
+  'shake',       // emphasis words jitter as they land
 ] as const;
 export type CaptionAnimation = (typeof CAPTION_ANIMATIONS)[number];
 
+/**
+ * Shadow, as four numbers rather than a boolean.
+ *
+ * `shadow: true` could only ever mean one shadow. A hard offset drop shadow and
+ * a soft ambient one are different looks, and the difference between a caption
+ * that survives a bright background and one that does not is usually this.
+ */
+export const CaptionShadowSchema = z.object({
+  offsetX: z.number().default(0),
+  offsetY: z.number().default(4),
+  blur: z.number().default(24),
+  color: z.string().default('rgba(0,0,0,0.55)'),
+});
+export type CaptionShadow = z.infer<typeof CaptionShadowSchema>;
+
 export const CaptionStyleSchema = z.object({
+  /** Which preset this came from — provenance, so the editor can show it. */
+  preset: z.string().default('bold-pop'),
   animation: z.enum(CAPTION_ANIMATIONS).default('word-pop'),
+
+  /* ---- type ---- */
+  /** Must be a family id in CAPTION_FONTS; anything else falls back. */
   fontFamily: z.string().default('Plus Jakarta Sans'),
   fontWeight: z.number().default(800),
+  italic: z.boolean().default(false),
   /** Fraction of output HEIGHT, so it scales across aspects. */
   fontSizeRatio: z.number().default(0.058),
+  /** In em, so it tracks the size. Negative tightens. */
+  letterSpacing: z.number().default(-0.02),
+  lineHeight: z.number().default(1.12),
+  uppercase: z.boolean().default(false),
+
+  /* ---- layout ---- */
   maxWordsPerCue: z.number().int().default(4),
-  color: z.string().default('#FFFFFF'),
-  emphasisColor: z.string().default('#9B7BFF'),
+  /** Hard cap on how much of the frame the captions may ever eat. */
+  maxLines: z.number().int().default(2),
+  align: z.enum(['left', 'center', 'right']).default('center'),
   /** Vertical anchor, 0 = top, 1 = bottom. */
   positionY: z.number().default(0.74),
-  uppercase: z.boolean().default(false),
+  /** Text column width as a fraction of frame width. */
+  widthRatio: z.number().default(0.86),
+
+  /* ---- colour ---- */
+  color: z.string().default('#FFFFFF'),
+  emphasisColor: z.string().default('#9B7BFF'),
+  /** The word being spoken right now, for karaoke and word-box. Null = emphasisColor. */
+  activeColor: z.string().nullable().default(null),
+  /** Fills the glyphs with a gradient instead of a flat colour. */
+  gradient: z.object({ from: z.string(), to: z.string(), angle: z.number().default(180) })
+    .nullable().default(null),
+
+  /* ---- decoration ---- */
   stroke: z.object({ width: z.number(), color: z.string() }).nullable().default(null),
-  shadow: z.boolean().default(true),
-  /** Rounded plate behind the text. */
-  background: z.object({ color: z.string(), padding: z.number(), radius: z.number() }).nullable().default(null),
+  shadow: CaptionShadowSchema.nullable().default({ offsetX: 0, offsetY: 4, blur: 24, color: 'rgba(0,0,0,0.55)' }),
+  /** A coloured bloom around the glyphs. Stacks with shadow. */
+  glow: z.object({ color: z.string(), blur: z.number() }).nullable().default(null),
+  /** Rounded plate behind the whole line. */
+  background: z.object({
+    color: z.string(),
+    padding: z.number(),
+    radius: z.number(),
+  }).nullable().default(null),
+  /** Rounded plate behind just the word being spoken. */
+  wordBox: z.object({
+    color: z.string(),
+    padding: z.number().default(6),
+    radius: z.number().default(8),
+  }).nullable().default(null),
 });
 export type CaptionStyle = z.infer<typeof CaptionStyleSchema>;
 

@@ -331,7 +331,7 @@ describe('adding clips', () => {
   });
 
   it('inserts a sound effect as an instant, not a span', () => {
-    const { edl } = run(makeEdl(), { op: 'clip.add', track: 'sfx', atSec: 6.25, value: 'impact' });
+    const { edl } = run(makeEdl(), { op: 'clip.add', track: 'sfx', atSec: 6.25, durationSec: 0, value: 'impact' });
     const added = edl.sfx.find((s) => s.sound === 'impact')!;
     expect(added.atSec).toBeCloseTo(6.25, 5);
     expect(added.url).toBe('/audio/sfx/impact.wav');

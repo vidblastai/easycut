@@ -1,4 +1,5 @@
 import type { Aspect, CaptionStyle, TransitionType } from '@/lib/edl/types';
+import { findCaptionPreset } from '@/lib/captions/presets';
 
 /**
  * A style preset is the entire creative brief expressed as data. The pipeline
@@ -32,6 +33,13 @@ export interface StylePreset {
   /** Who this is for, in the user's language — shown on the picker card. */
   bestFor: string;
   accent: string;
+  /**
+   * The caption look this style opens with. Pacing and typography are separate
+   * decisions — people have opinions about the second long before the first —
+   * so a style only names a starting point the user is free to replace.
+   */
+  captionPreset: string;
+  /** Resolved from captionPreset below; the pipeline reads this. */
   captionStyle: CaptionStyle;
   transitions: TransitionType[];
   musicMood: string;
@@ -46,38 +54,14 @@ export interface StylePreset {
   directorNotes: string;
 }
 
-const baseCaption: CaptionStyle = {
-  animation: 'word-pop',
-  fontFamily: 'Plus Jakarta Sans',
-  fontWeight: 800,
-  fontSizeRatio: 0.055,
-  maxWordsPerCue: 4,
-  color: '#FFFFFF',
-  emphasisColor: '#9B7BFF',
-  positionY: 0.74,
-  uppercase: false,
-  stroke: { width: 10, color: '#000000' },
-  shadow: true,
-  background: null,
-};
-
-export const STYLE_PRESETS: Record<StyleId, StylePreset> = {
+const RAW_PRESETS: Record<StyleId, Omit<StylePreset, 'captionStyle'>> = {
   clean: {
     id: 'clean',
     name: 'Clean',
     tagline: 'Let the message carry it.',
     bestFor: 'Founders, coaches, anyone who wants to look credible rather than loud.',
     accent: '#9B7BFF',
-    captionStyle: {
-      ...baseCaption,
-      animation: 'karaoke',
-      fontWeight: 700,
-      fontSizeRatio: 0.046,
-      maxWordsPerCue: 5,
-      stroke: null,
-      background: { color: 'rgba(13,13,16,0.72)', padding: 18, radius: 14 },
-      positionY: 0.78,
-    },
+    captionPreset: 'clean-plate',
     transitions: ['cut', 'dissolve'],
     musicMood: 'minimal ambient',
     musicGainDb: -22,
@@ -114,16 +98,7 @@ export const STYLE_PRESETS: Record<StyleId, StylePreset> = {
     tagline: 'Built to stop the scroll.',
     bestFor: 'Short-form creators who need retention in the first two seconds.',
     accent: '#9B7BFF',
-    captionStyle: {
-      ...baseCaption,
-      animation: 'bounce',
-      fontWeight: 800,
-      fontSizeRatio: 0.068,
-      maxWordsPerCue: 3,
-      uppercase: true,
-      stroke: { width: 14, color: '#000000' },
-      positionY: 0.7,
-    },
+    captionPreset: 'impact',
     transitions: ['cut', 'whip-pan', 'zoom-punch', 'flash', 'glitch'],
     musicMood: 'upbeat energetic',
     musicGainDb: -16,
@@ -161,17 +136,7 @@ export const STYLE_PRESETS: Record<StyleId, StylePreset> = {
     tagline: 'Cinematic, patient, considered.',
     bestFor: 'Storytelling, interviews, brand films.',
     accent: '#E8C89A',
-    captionStyle: {
-      ...baseCaption,
-      animation: 'line-fade',
-      fontWeight: 600,
-      fontSizeRatio: 0.038,
-      maxWordsPerCue: 7,
-      stroke: null,
-      shadow: true,
-      positionY: 0.86,
-      emphasisColor: '#E8C89A',
-    },
+    captionPreset: 'editorial',
     transitions: ['cut', 'dissolve', 'film-burn'],
     musicMood: 'cinematic emotional',
     musicGainDb: -20,
@@ -208,16 +173,7 @@ export const STYLE_PRESETS: Record<StyleId, StylePreset> = {
     tagline: 'Every idea gets a picture.',
     bestFor: 'Teaching, how-tos, product walkthroughs.',
     accent: '#5BD6A0',
-    captionStyle: {
-      ...baseCaption,
-      animation: 'word-pop',
-      fontWeight: 700,
-      fontSizeRatio: 0.05,
-      maxWordsPerCue: 4,
-      emphasisColor: '#5BD6A0',
-      background: { color: 'rgba(13,13,16,0.6)', padding: 14, radius: 12 },
-      positionY: 0.8,
-    },
+    captionPreset: 'highlight-box',
     transitions: ['cut', 'slide', 'zoom-punch'],
     musicMood: 'light curious',
     musicGainDb: -24,
@@ -254,16 +210,7 @@ export const STYLE_PRESETS: Record<StyleId, StylePreset> = {
     tagline: 'Long conversations, watchable.',
     bestFor: 'Interviews and long-form talking head.',
     accent: '#9B7BFF',
-    captionStyle: {
-      ...baseCaption,
-      animation: 'karaoke',
-      fontWeight: 600,
-      fontSizeRatio: 0.036,
-      maxWordsPerCue: 8,
-      stroke: null,
-      background: { color: 'rgba(13,13,16,0.68)', padding: 16, radius: 12 },
-      positionY: 0.88,
-    },
+    captionPreset: 'podcast',
     transitions: ['cut', 'dissolve'],
     musicMood: 'low-key groove',
     musicGainDb: -26,
@@ -300,16 +247,7 @@ export const STYLE_PRESETS: Record<StyleId, StylePreset> = {
     tagline: 'Loose, warm, personal.',
     bestFor: 'Day-in-the-life, updates, casual pieces to camera.',
     accent: '#F5C453',
-    captionStyle: {
-      ...baseCaption,
-      animation: 'word-pop',
-      fontWeight: 800,
-      fontSizeRatio: 0.052,
-      maxWordsPerCue: 4,
-      emphasisColor: '#F5C453',
-      stroke: { width: 10, color: '#000000' },
-      positionY: 0.76,
-    },
+    captionPreset: 'bold-pop',
     transitions: ['cut', 'whip-pan', 'dissolve', 'slide'],
     musicMood: 'warm lo-fi',
     musicGainDb: -19,
@@ -340,6 +278,20 @@ export const STYLE_PRESETS: Record<StyleId, StylePreset> = {
       'B-roll should feel like the creator shot it, so prefer handheld-looking stock.',
   },
 };
+
+/**
+ * Resolve each style's caption preset once, at module load, so an unknown id is
+ * a crash on boot rather than a video that silently renders in the wrong face.
+ */
+export const STYLE_PRESETS: Record<StyleId, StylePreset> = Object.fromEntries(
+  Object.entries(RAW_PRESETS).map(([id, preset]) => {
+    const caption = findCaptionPreset(preset.captionPreset);
+    if (!caption) {
+      throw new Error(`Style "${id}" names caption preset "${preset.captionPreset}", which does not exist.`);
+    }
+    return [id, { ...preset, captionStyle: { ...caption.style } }];
+  }),
+) as Record<StyleId, StylePreset>;
 
 export const STYLE_LIST = Object.values(STYLE_PRESETS);
 
