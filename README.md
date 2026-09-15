@@ -2,6 +2,20 @@
 
 # EasyCut AI
 
+## Run it
+
+```bash
+bash start.sh
+```
+
+Installs what is missing, asks for three free API keys the first time, and opens
+http://localhost:3000. Safe to run again.
+
+Needs Node 20 or newer. ffmpeg comes from npm — nothing to install by hand.
+
+To put it online instead, see [docs/DEPLOY.md](docs/DEPLOY.md).
+
+
 **Upload your footage. Get a finished video.**
 
 Talking-head footage goes in. A postable video comes out — cut, captioned,

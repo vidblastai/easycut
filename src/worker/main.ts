@@ -3,6 +3,7 @@ import { env } from '@/lib/config/env';
 import { db } from '@/lib/db';
 import { queue } from '@/lib/queue';
 import { processProject, rerenderProject, type ProcessJobPayload } from './process-project';
+import { selectedProvider } from '@/lib/director';
 
 /**
  * The worker loop.
@@ -56,7 +57,13 @@ export async function main(): Promise<void> {
   console.log(`  queue    : ${queue().name}`);
   console.log(`  storage  : ${env.storage.driver}`);
   console.log(`  renderer : ${env.render.driver}`);
-  console.log(`  director : ${env.llm.anthropicKey ? env.llm.model : 'rule-based (no ANTHROPIC_API_KEY)'}`);
+  // Named the provider that is actually selected. The old line said
+  // "no ANTHROPIC_API_KEY" even with a Gemini key set, which reads as broken.
+  const director = selectedProvider();
+  console.log(`  director : ${
+    director === 'anthropic' ? env.llm.model
+    : director === 'gemini' ? env.llm.geminiModel
+    : 'rule-based (no DEEPGRAM/GEMINI/ANTHROPIC key)'}`);
   console.log(`  workers  : ${env.queue.concurrency}`);
 
   // Jobs left "running" by a crashed worker are re-queued once on boot.
