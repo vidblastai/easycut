@@ -18,7 +18,8 @@
     "remotion:studio": "remotion studio remotion/index.ts",
     "remotion:render": "tsx scripts/render-local.ts",
     "setup": "tsx scripts/setup.ts",
-    "doctor": "tsx scripts/doctor.ts"
+    "doctor": "tsx scripts/doctor.ts",
+    "db:postgres": "tsx scripts/use-postgres.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.125.0",

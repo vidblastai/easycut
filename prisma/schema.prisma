@@ -10,7 +10,10 @@ generator client {
 }
 
 datasource db {
-  // SQLite for a zero-setup clone; switch to postgresql for production.
+  // SQLite for a zero-setup clone, Postgres in production. Prisma will not read
+  // this from an env var, so `npm run db:postgres` rewrites the line — see
+  // scripts/use-postgres.ts. Deploying with sqlite left in place gives you a
+  // database on a container filesystem that is wiped on every restart.
   provider = "sqlite"
   url      = env("DATABASE_URL")
 }
