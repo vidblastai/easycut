@@ -30,10 +30,26 @@ export interface StockSearchOptions {
 
 const REQUEST_TIMEOUT_MS = 6000;
 
+/**
+ * A provider failing must never fail the job — the other one may still have a
+ * clip, and a video with fewer inserts beats no video. But it must not be
+ * SILENT either: a bad key, a blocked host and "nothing matches this query" all
+ * used to come back as an empty array, so the only symptom was a finished video
+ * with no B-roll in it and nothing anywhere saying why.
+ */
 export async function searchStock(query: string, options: StockSearchOptions): Promise<StockClip[]> {
+  const attempt = async (provider: string, run: () => Promise<StockClip[]>) => {
+    try {
+      return await run();
+    } catch (error) {
+      console.warn(`[easycut] ${provider} search failed for "${query}": ${(error as Error).message}`);
+      return [];
+    }
+  };
+
   const results = await Promise.all([
-    env.stock.pexelsKey ? searchPexels(query, options).catch(() => []) : Promise.resolve([]),
-    env.stock.pixabayKey ? searchPixabay(query, options).catch(() => []) : Promise.resolve([]),
+    env.stock.pexelsKey ? attempt('pexels', () => searchPexels(query, options)) : Promise.resolve([]),
+    env.stock.pixabayKey ? attempt('pixabay', () => searchPixabay(query, options)) : Promise.resolve([]),
   ]);
 
   return rank(results.flat(), query, options).slice(0, options.limit);
@@ -51,7 +67,9 @@ async function searchPexels(query: string, options: StockSearchOptions): Promise
   const response = await fetchWithTimeout(`https://api.pexels.com/videos/search?${params}`, {
     headers: { Authorization: env.stock.pexelsKey! },
   });
-  if (!response.ok) throw new Error(`Pexels ${response.status}`);
+  if (response.status === 401) throw new Error('Pexels rejected the key — check PEXELS_API_KEY');
+  if (response.status === 429) throw new Error('Pexels rate limit reached (200/hour, 20,000/month)');
+  if (!response.ok) throw new Error(`Pexels ${response.status} ${response.statusText}`);
 
   const json = (await response.json()) as any;
   return (json.videos ?? []).flatMap((video: any): StockClip[] => {
@@ -91,7 +109,9 @@ async function searchPixabay(query: string, options: StockSearchOptions): Promis
   });
 
   const response = await fetchWithTimeout(`https://pixabay.com/api/videos/?${params}`);
-  if (!response.ok) throw new Error(`Pixabay ${response.status}`);
+  if (response.status === 400) throw new Error('Pixabay rejected the request — check PIXABAY_API_KEY');
+  if (response.status === 429) throw new Error('Pixabay rate limit reached');
+  if (!response.ok) throw new Error(`Pixabay ${response.status} ${response.statusText}`);
 
   const json = (await response.json()) as any;
   return (json.hits ?? []).flatMap((hit: any): StockClip[] => {
