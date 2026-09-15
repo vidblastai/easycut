@@ -686,7 +686,7 @@ input[type=range] { width: 100%; accent-color: var(--violet); }
 
 .addwrap { position: relative; }
 .addmenu {
-  position: absolute; left: 0; top: calc(100% + 5px); z-index: 60; width: 210px;
+  position: absolute; left: 0; bottom: calc(100% + 7px); z-index: 60; width: 210px;
   background: var(--charcoal); border: 1px solid var(--line); border-radius: var(--r);
   box-shadow: var(--r) 0 40px -14px rgba(0,0,0,.9), 0 20px 50px -20px rgba(0,0,0,.9);
   overflow: hidden; padding-bottom: 6px;
@@ -705,80 +705,6 @@ input[type=range] { width: 100%; accent-color: var(--violet); }
 }
 .addsfx button:hover { border-color: var(--violet); color: var(--violet); }
 
-/* Speech, drawn inside each clip — you trim against sound, not against labels. */
-.clipwave {
-  position: absolute; top: 0; bottom: 0; display: flex; align-items: center;
-  gap: 1px; opacity: .3; pointer-events: none;
-}
-.clipwave i { flex: 1; min-width: 1px; background: #fff; border-radius: 1px; }
-.tl-clip span { position: relative; z-index: 1; }
-
-.snapline { position: absolute; top: 0; bottom: 0; width: 1px; background: var(--warn); opacity: .8; pointer-events: none; z-index: 4; }
-
-.tl-scroll { overflow-x: auto; position: relative; }
-.tl-inner { position: relative; }
-.tl-ruler {
-  height: 26px; display: flex; border-bottom: 1px solid var(--line-soft);
-  cursor: ew-resize; user-select: none; position: sticky; top: 0; z-index: 6;
-  background: var(--charcoal);
-}
-.tl-gutter { flex: none; border-right: 1px solid var(--line); background: var(--charcoal);
-  position: sticky; left: 0; z-index: 4; }
-.tl-tickarea { position: relative; }
-.tl-tick {
-  position: absolute; top: 0; border-left: 1px solid var(--line);
-  padding-left: 4px; font-family: var(--mono); font-size: 9.5px; line-height: 26px; color: var(--faint);
-}
-
-.tl-track { display: flex; border-bottom: 1px solid var(--line-soft); }
-/* Sticky, so the track names stay readable once the timeline is scrolled. */
-.tl-label {
-  flex: none; border-right: 1px solid var(--line); background: var(--charcoal);
-  padding: 0 11px; display: flex; flex-direction: column; justify-content: center;
-  position: sticky; left: 0; z-index: 3;
-}
-.tl-label b { font-size: 11px; font-weight: 600; line-height: 1.2; }
-.tl-label i { font-style: normal; font-family: var(--mono); font-size: 9px; color: var(--faint); }
-.tl-lane { position: relative; flex: 1; }
-
-.tl-clip {
-  position: absolute; top: 4px; bottom: 4px; border-radius: 6px; border: 1px solid;
-  padding: 0 7px; font-size: 10.5px; line-height: 1; display: flex; align-items: center;
-  overflow: hidden; cursor: grab; white-space: nowrap;
-}
-.tl-clip:active { cursor: grabbing; }
-.tl-clip span { overflow: hidden; text-overflow: ellipsis; pointer-events: none; }
-.tl-clip.sel { outline: 2px solid var(--chalk); outline-offset: 1px; }
-.tl-clip .h { position: absolute; top: 0; bottom: 0; width: 6px; cursor: ew-resize; }
-.tl-clip .h.l { left: 0; } .tl-clip .h.r { right: 0; }
-.tl-clip:hover .h { background: rgba(245,245,247,.35); }
-
-.c-video { background: rgba(155,123,255,.22); border-color: rgba(155,123,255,.4); color: var(--chalk); }
-.c-hook  { background: rgba(155,123,255,.55); border-color: var(--violet); color: var(--ink); font-weight: 700; }
-.c-cap   { background: var(--raised); border-color: var(--line); color: var(--muted); }
-.c-broll { background: rgba(91,214,160,.2); border-color: rgba(91,214,160,.42); color: var(--chalk); }
-.c-gfx   { background: rgba(245,196,83,.2); border-color: rgba(245,196,83,.42); color: var(--chalk); }
-.c-punch { background: rgba(255,123,123,.16); border-color: rgba(255,123,123,.36); color: var(--chalk); }
-
-.tl-sfx { position: absolute; top: 5px; width: 3px; height: 16px; border-radius: 2px; background: var(--warn); transform: translateX(-50%); cursor: grab; }
-.tl-sfx.sel { background: var(--chalk); }
-.tl-trans { position: absolute; bottom: 4px; width: 7px; height: 7px; background: var(--violet); transform: translateX(-50%) rotate(45deg); border-radius: 1px; }
-
-.tl-head { position: absolute; top: 0; bottom: 0; width: 1px; background: var(--chalk); box-shadow: 0 0 7px rgba(245,245,247,.55); pointer-events: none; z-index: 5; }
-
-.tl-foot { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; padding: 13px; border-top: 1px solid var(--line-soft); }
-@media (max-width: 620px) { .tl-foot { grid-template-columns: 1fr; } }
-.tl-foot h5 { margin: 0 0 7px; font-size: 10px; letter-spacing: .07em; text-transform: uppercase; color: var(--faint); font-weight: 700; }
-.tl-foot p { font-size: 12px; color: var(--muted); line-height: 1.55; }
-.tl-foot kbd {
-  font-family: var(--mono); font-size: 10.5px; background: var(--ink);
-  border: 1px solid var(--line); border-radius: 4px; padding: 1px 5px; color: var(--chalk);
-}
-.tl-ops { list-style: none; margin: 0; padding: 0; max-height: 96px; overflow-y: auto; }
-.tl-ops li { display: flex; gap: 8px; font-size: 12px; color: var(--muted); padding: 1px 0; }
-.tl-ops li b { font-family: var(--mono); font-size: 10px; color: var(--faint); font-weight: 400; }
-.tl-warn { padding: 8px 13px; border-bottom: 1px solid var(--line-soft); background: rgba(245,196,83,.08); font-size: 12px; color: var(--warn); }
-
 .insp { display: grid; gap: 8px; }
 .insp input {
   width: 100%; background: var(--ink); border: 1px solid var(--line); border-radius: 8px;
@@ -792,6 +718,264 @@ input[type=range] { width: 100%; accent-color: var(--violet); }
 }
 .insp .words button[aria-pressed="true"] { border-color: var(--violet); color: var(--violet); background: var(--violet-dim); }
 .insp .meta { font-family: var(--mono); font-size: 11px; color: var(--faint); }
+
+/* ═══════════════════════════════════════════════════════ the studio ═══
+   Fine-tuning is not a panel inside a page — it is the whole screen. The
+   sidebar stays, because it is how you get back out; everything to the right
+   of it becomes an ordinary editor. Tools across the top, the picture in the
+   middle, the timeline docked underneath. Nothing here is novel, and that is
+   the point: someone who has opened any editor before already knows where
+   things are.
+   ═══════════════════════════════════════════════════════════════════════ */
+.studio { display: none; }
+.studio.on {
+  display: flex; flex-direction: column;
+  flex: 1; min-width: 0; height: calc(100vh - 57px);
+  background: var(--ink);
+}
+/* The studio owns the viewport; a page scrollbar underneath it would scroll the
+   editor away from the timeline it belongs to. */
+body.instudio { overflow: hidden; }
+.st-back { width: 34px; height: 34px; border-radius: 9px; display: grid; place-items: center; color: var(--muted); flex: none; }
+.st-back:hover { background: var(--raised); color: var(--chalk); }
+
+/* ── top strip ─────────────────────────────────────────────────────── */
+.st-top {
+  flex: none; display: flex; align-items: center; gap: 10px;
+  height: 54px; padding: 0 14px;
+  border-bottom: 1px solid var(--line-soft); background: var(--charcoal);
+}
+.st-tools { display: flex; align-items: center; gap: 2px; }
+.st-tool {
+  width: 34px; height: 34px; border-radius: 9px; display: grid; place-items: center;
+  color: var(--muted); transition: background .15s, color .15s;
+}
+.st-tool:hover { background: var(--raised); color: var(--chalk); }
+.st-tool[aria-pressed="true"] { background: var(--violet-dim); color: var(--violet); }
+.st-div { width: 1px; height: 22px; background: var(--line); margin: 0 5px; flex: none; }
+
+.st-crumb {
+  margin: 0 auto; display: flex; align-items: center; gap: 9px;
+  font-size: 13.5px; font-weight: 600; min-width: 0;
+}
+.st-crumb .up { display: flex; align-items: center; gap: 6px; color: var(--muted); flex: none; }
+.st-crumb .up:hover { color: var(--chalk); }
+.st-crumb .slash { color: var(--faint); flex: none; }
+.st-crumb .name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.st-crumb .dim { color: var(--faint); flex: none; display: grid; place-items: center; }
+
+.st-right { display: flex; align-items: center; gap: 8px; flex: none; }
+.st-icon { width: 32px; height: 32px; border-radius: 8px; display: grid; place-items: center; color: var(--muted); }
+.st-icon:hover { background: var(--raised); color: var(--chalk); }
+.st-render {
+  background: var(--violet); color: var(--ink); border-radius: 10px;
+  padding: 9px 16px; font-size: 13.5px; font-weight: 700; white-space: nowrap;
+}
+.st-render:hover { background: var(--violet-hi); }
+.st-render:disabled { opacity: .45; }
+
+/* ── canvas ────────────────────────────────────────────────────────── */
+.st-canvas {
+  flex: 1; min-height: 0; position: relative; padding: 20px;
+  display: flex; align-items: center; justify-content: center;
+  background:
+    radial-gradient(90% 70% at 50% 0%, rgba(155,123,255,.05), transparent 68%),
+    repeating-linear-gradient(0deg, rgba(255,255,255,.016) 0 1px, transparent 1px 34px),
+    repeating-linear-gradient(90deg, rgba(255,255,255,.016) 0 1px, transparent 1px 34px),
+    #0A0A0D;
+}
+/* Height-bound, so a 9:16 short and a 16:9 long-form land in the same box
+   without the rest of the screen reflowing around them. */
+.st-stage { height: 100%; max-width: 100%; display: flex; align-items: center; justify-content: center; }
+.st-stage > #stage-unit { height: 100%; display: flex; align-items: center; justify-content: center; }
+.st-stage .phone { height: 100%; width: auto; max-width: 100%; }
+.st-stage .transport, .st-stage .lane, .st-stage .tweaks, .st-stage .minitl { display: none !important; }
+.st-expand {
+  position: absolute; top: 16px; right: 16px; width: 34px; height: 34px;
+  border-radius: 9px; display: grid; place-items: center;
+  background: rgba(34,34,42,.82); color: var(--chalk); backdrop-filter: blur(8px);
+}
+.st-expand:hover { background: var(--raised); }
+
+/* ── the dock ──────────────────────────────────────────────────────── */
+.st-dock {
+  flex: none; display: flex; flex-direction: column; min-height: 0;
+  /* Tall enough that all six lanes are visible at once — a timeline you have to
+     scroll to see is a timeline you cannot judge. Drag the grip for more. */
+  height: 348px; min-height: 210px; border-top: 1px solid var(--line);
+  background: var(--charcoal);
+}
+.st-grip { flex: none; height: 11px; display: grid; place-items: center; cursor: ns-resize; }
+.st-grip i { width: 48px; height: 3px; border-radius: 99px; background: var(--line); }
+.st-grip:hover i { background: var(--faint); }
+
+.st-bar {
+  flex: none; display: flex; align-items: center; gap: 4px;
+  padding: 0 14px 11px;
+}
+.st-bar .gap { width: 10px; flex: none; }
+.st-bar .spacer { margin-left: auto; }
+.st-play {
+  width: 34px; height: 34px; border-radius: 99px; display: grid; place-items: center;
+  color: var(--chalk); margin-left: 4px;
+}
+.st-play:hover { background: var(--raised); }
+.st-tc { font-family: var(--mono); font-size: 13px; color: var(--chalk); margin-left: 10px; white-space: nowrap; }
+.st-tc b { font-weight: 400; }
+.st-tc i { font-style: normal; color: var(--faint); }
+.st-rate {
+  border: 1px solid var(--line); border-radius: 8px; padding: 4px 11px;
+  font-size: 12px; font-weight: 600; color: var(--muted); margin-left: 12px;
+}
+.st-rate:hover { color: var(--chalk); border-color: var(--faint); }
+
+.st-zoom { display: flex; align-items: center; gap: 9px; }
+.st-zoom button { width: 26px; height: 26px; border-radius: 7px; display: grid; place-items: center; color: var(--muted); }
+.st-zoom button:hover { background: var(--raised); color: var(--chalk); }
+.st-zoom input { width: 148px; }
+.st-zoom input[type=range] { -webkit-appearance: none; appearance: none; background: transparent; height: 18px; }
+.st-zoom input[type=range]::-webkit-slider-runnable-track { height: 3px; border-radius: 99px; background: var(--line); }
+.st-zoom input[type=range]::-moz-range-track { height: 3px; border-radius: 99px; background: var(--line); }
+.st-zoom input[type=range]::-webkit-slider-thumb {
+  -webkit-appearance: none; width: 13px; height: 13px; border-radius: 99px;
+  background: var(--violet); margin-top: -5px;
+}
+.st-zoom input[type=range]::-moz-range-thumb { width: 13px; height: 13px; border: 0; border-radius: 99px; background: var(--violet); }
+
+.st-pending {
+  font-size: 11.5px; font-weight: 600; color: var(--warn);
+  background: rgba(245,196,83,.1); border: 1px solid rgba(245,196,83,.28);
+  border-radius: 99px; padding: 4px 11px; white-space: nowrap;
+}
+.st-pending:hover:not(:disabled) { background: rgba(245,196,83,.18); }
+.st-pending:disabled { color: var(--faint); background: transparent; border-color: var(--line); }
+
+/* ── tracks ────────────────────────────────────────────────────────── */
+.st-scroll { flex: 1; min-height: 0; overflow: auto; position: relative; }
+
+.tl-ruler {
+  height: 26px; display: flex; cursor: ew-resize; user-select: none;
+  position: sticky; top: 0; z-index: 6; background: var(--charcoal);
+}
+.tl-gutter { flex: none; background: var(--charcoal); position: sticky; left: 0; z-index: 4; }
+.tl-tickarea { position: relative; }
+.tl-tick {
+  position: absolute; top: 12px; border-left: 1px solid var(--line);
+  height: 14px; padding-left: 5px;
+  font-family: var(--mono); font-size: 9.5px; line-height: 1; color: var(--faint);
+}
+.tl-tick.minor { border-color: var(--line-soft); height: 5px; top: 21px; }
+
+.tl-track { display: flex; }
+.tl-track + .tl-track { margin-top: 6px; }
+.tl-ruler + .tl-track { margin-top: 8px; }
+/* The handle column replaces the old text labels: at this density the row is
+   identified by what is in it, and a name for every lane is just more to read. */
+.tl-label {
+  flex: none; width: 30px; position: sticky; left: 0; z-index: 3;
+  background: var(--charcoal); display: grid; place-items: center;
+  color: var(--faint); cursor: grab;
+}
+.tl-label:hover { color: var(--muted); }
+.tl-lane { position: relative; flex: 1; }
+
+.tl-clip {
+  position: absolute; top: 0; bottom: 0; border-radius: 7px;
+  padding: 0 8px; font-size: 11px; line-height: 1; display: flex; align-items: center; gap: 6px;
+  overflow: hidden; cursor: grab; white-space: nowrap;
+  border: 1px solid transparent;
+}
+.tl-clip:active { cursor: grabbing; }
+.tl-clip > span { overflow: hidden; text-overflow: ellipsis; pointer-events: none; position: relative; z-index: 1; }
+.tl-clip .g { flex: none; position: relative; z-index: 1; opacity: .8; display: grid; place-items: center; }
+.tl-clip.sel { outline: 2px solid var(--chalk); outline-offset: -1px; }
+.tl-clip .h { position: absolute; top: 0; bottom: 0; width: 7px; cursor: ew-resize; z-index: 2; }
+.tl-clip .h.l { left: 0; } .tl-clip .h.r { right: 0; }
+.tl-clip:hover .h { background: rgba(245,245,247,.3); }
+
+/* A cut of the speaker: film frames, not a coloured block. */
+.c-video, .c-hook {
+  background:
+    repeating-linear-gradient(90deg, rgba(0,0,0,.45) 0 2px, transparent 2px 54px),
+    radial-gradient(60% 120% at 30% 40%, rgba(255,255,255,.07), transparent 70%),
+    linear-gradient(150deg, #3C3550, #272232 55%, #35314D);
+  color: var(--chalk); border-color: rgba(155,123,255,.26);
+}
+.c-hook { border-color: var(--violet); }
+.c-hook .g { color: var(--violet); opacity: 1; }
+.c-cap   { background: var(--raised); border-color: var(--line); color: var(--muted); }
+.c-cap .g { color: var(--faint); }
+/* B-roll reads as pictures because that is what it is. */
+.c-broll {
+  background: linear-gradient(135deg, #2E4238, #46583F 40%, #2B3A44 75%, #3E4A5C);
+  color: var(--chalk); border-color: rgba(91,214,160,.3);
+}
+.c-gfx, .c-punch {
+  background: linear-gradient(180deg, rgba(155,123,255,.5), rgba(155,123,255,.33));
+  border-color: rgba(155,123,255,.62); color: var(--chalk); font-weight: 600;
+}
+.c-punch {
+  background: linear-gradient(180deg, rgba(155,123,255,.34), rgba(155,123,255,.22));
+  border-color: rgba(155,123,255,.5); font-weight: 600;
+}
+.c-audio {
+  background: linear-gradient(180deg, #E0A93F, #D19A31); border-color: #F0C158;
+  color: #241B06; font-weight: 600; cursor: default;
+}
+
+
+/* The speech shape, drawn from word timings we already have. */
+.clipwave { position: absolute; top: 0; bottom: 0; display: flex; align-items: center; gap: 1px; opacity: .28; pointer-events: none; }
+.clipwave i { flex: 1; min-width: 1px; background: #fff; border-radius: 1px; }
+.c-audio .clipwave { opacity: .5; }
+.c-audio .clipwave i { background: #4A360A; }
+/* The name rides in its own chip; printed straight onto the waveform neither
+   the name nor the shape underneath could be read. */
+.c-audio .g, .c-audio > span {
+  background: rgba(18,12,2,.8); color: #FFE7AE; border-radius: 5px;
+}
+.c-audio .g { padding: 3px 4px; }
+.c-audio > span { padding: 3px 8px; font-weight: 600; }
+
+.tl-sfx {
+  position: absolute; top: 50%; width: 4px; height: 17px; border-radius: 2px;
+  background: var(--warn); transform: translate(-50%,-50%); cursor: grab; z-index: 2;
+}
+.tl-sfx.sel { background: var(--chalk); }
+.tl-trans {
+  position: absolute; top: 50%; width: 22px; height: 22px; border-radius: 6px;
+  background: var(--raised); border: 1px solid var(--line); color: var(--muted);
+  transform: translate(-50%,-50%); display: grid; place-items: center; z-index: 2;
+}
+
+.tl-head { position: absolute; top: 0; bottom: 0; width: 2px; background: #FF5A5A; pointer-events: none; z-index: 7; }
+.tl-head::before {
+  content: ''; position: absolute; top: 0; left: -4px;
+  border-left: 5px solid transparent; border-right: 5px solid transparent; border-top: 7px solid #FF5A5A;
+}
+.snapline { position: absolute; top: 0; bottom: 0; width: 1px; background: var(--warn); opacity: .85; pointer-events: none; z-index: 6; }
+
+/* ── inspector, docked to the right of the tracks ──────────────────── */
+.st-insp {
+  flex: none; width: 250px; border-left: 1px solid var(--line-soft);
+  padding: 12px 14px; overflow-y: auto; background: var(--charcoal);
+}
+.st-insp h5 { margin: 0 0 9px; font-size: 10px; letter-spacing: .07em; text-transform: uppercase; color: var(--faint); font-weight: 700; }
+.st-insp p { font-size: 12px; color: var(--muted); line-height: 1.55; margin: 0; }
+.tl-ops { list-style: none; margin: 0; padding: 0; }
+.tl-ops li { display: flex; gap: 8px; font-size: 12px; color: var(--muted); padding: 1.5px 0; }
+.tl-ops li b { font-family: var(--mono); font-size: 10px; color: var(--faint); font-weight: 400; }
+.st-insp kbd { font-family: var(--mono); font-size: 10.5px; background: var(--ink); border: 1px solid var(--line); border-radius: 4px; padding: 1px 5px; color: var(--chalk); }
+.st-body { flex: 1; min-height: 0; display: flex; }
+.st-lanes { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.st-warn { flex: none; padding: 7px 14px; background: rgba(245,196,83,.08); font-size: 12px; color: var(--warn); }
+.tl-inner { position: relative; padding: 0 0 14px; }
+
+@media (max-width: 880px) {
+  .st-insp { display: none; }
+  .st-crumb { display: none; }
+  .st-dock { height: 300px; }
+}
 
 /* ───────────────────────────────────────────────────────── homepage ─── */
 .home { display: none; padding-block: 44px 0; }
@@ -1129,61 +1313,6 @@ input[type=range] { width: 100%; accent-color: var(--violet); }
           </div>
         </div>
 
-        <!-- The timeline editor, for when the AI got something nearly right. -->
-        <div id="tl-wrap" hidden style="margin-bottom:14px">
-          <div class="tl">
-            <div class="tl-bar">
-              <button class="tl-playbtn" id="tl-play" title="Play or pause (Space)">
-                <svg id="tl-play-icon" width="11" height="11" viewBox="0 0 16 16" fill="currentColor"><path d="M4 2.5v11l9-5.5-9-5.5Z"/></svg>
-              </button>
-              <span class="tc" id="tl-tc">0:00.00 / 0:13.90</span>
-              <span class="tl-sep"></span>
-              <div class="addwrap">
-                <button class="tbtn" id="tl-add">+ Add</button>
-                <div class="addmenu" id="tl-addmenu" hidden>
-                  <button data-add="broll">B-roll insert<i>2s &mdash; type what it shows</i></button>
-                  <button data-add="icon">Icon + label</button>
-                  <button data-add="stat">Stat card</button>
-                  <button data-add="punch">Punch-in</button>
-                  <div class="addhead">Sound</div>
-                  <div class="addsfx">
-                    ${''}
-                  </div>
-                </div>
-              </div>
-              <button class="tbtn" id="tl-split">Split</button>
-              <button class="tbtn" id="tl-del">Delete</button>
-              <span class="tl-sep"></span>
-              <button class="tbtn" id="tl-undo">Undo</button>
-              <button class="tbtn" id="tl-redo">Redo</button>
-              <span style="margin-left:auto;display:flex;gap:7px;align-items:center">
-                <button class="tbtn" id="tl-zout">&minus;</button>
-                <button class="tbtn" id="tl-zin">+</button>
-                <button class="tbtn" id="tl-apply">No changes</button>
-                <button class="tbtn export" id="tl-export">Export</button>
-              </span>
-            </div>
-            <div class="tl-warn" id="tl-warn" hidden></div>
-            <div class="tl-scroll" id="tl-scroll">
-              <div class="tl-inner" id="tl-inner"></div>
-            </div>
-            <div class="tl-foot">
-              <div>
-                <h5>Selected</h5>
-                <div class="insp" id="tl-insp"><p style="font-size:12px;color:var(--muted);margin:0">Click a clip to edit what&rsquo;s in it.</p></div>
-              </div>
-              <div>
-                <h5 id="tl-ops-h">Pending changes</h5>
-                <div id="tl-ops-body">
-                  <p>Drag a clip to move it, drag its edges to trim. <kbd>S</kbd> splits at the
-                  playhead, <kbd>Del</kbd> removes what&rsquo;s selected, <kbd>&#8984;Z</kbd> undoes.
-                  Nothing re-renders until you apply.</p>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
         <div class="card" style="margin-bottom:14px">
           <div class="hd"><h3>What we did</h3><span class="chip" id="from-tag"></span></div>
           <dl class="stats" id="stats"></dl>
@@ -1270,6 +1399,148 @@ input[type=range] { width: 100%; accent-color: var(--violet); }
     </aside>
   </div>
     </div>
+
+  <!-- ═══════════════════════════════════════════════════ the studio ═══
+       The last step. The AI has already made the cut; this is where you
+       disagree with it. Deliberately an ordinary editor — tools on top, the
+       picture in the middle, the timeline underneath — because the one thing
+       a person arriving here already knows is how one of these is laid out.
+       ══════════════════════════════════════════════════════════════════ -->
+  <section class="studio" id="studio">
+
+    <div class="st-top">
+      <button class="st-back" id="st-back" title="Back to the summary">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+          stroke-linecap="round" stroke-linejoin="round"><path d="m14 6-6 6 6 6"/></svg>
+      </button>
+      <span class="st-div"></span>
+      <div class="st-tools" id="st-tools"></div>
+
+      <div class="st-crumb">
+        <a class="up" data-route="myvideos">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+            stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M10 8.5v7l6-3.5-6-3.5Z" fill="currentColor" stroke="none"/></svg>
+          All projects
+        </a>
+        <span class="slash">/</span>
+        <span class="name" id="st-name">Most people get pricing backwards</span>
+        <span class="dim">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+        </span>
+        <span class="dim" id="st-info" title="Short form · 1080×1920">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+            stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 7.6v.1"/></svg>
+        </span>
+      </div>
+
+      <div class="st-right">
+        <button class="st-icon" id="st-help" title="What the keys do">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+            stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.8-.9 1.5M12 16.6v.1"/></svg>
+        </button>
+        <button class="st-icon" id="st-save" title="Every change is saved as you make it">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"
+            stroke-linecap="round" stroke-linejoin="round"><path d="M5 4h10.5L20 8.5V20H5z"/><path d="M8.5 4v5h7"/><rect x="8.5" y="13" width="7" height="7"/></svg>
+        </button>
+        <span class="st-div"></span>
+        <button class="st-render" id="tl-export">Render video</button>
+      </div>
+    </div>
+
+    <div class="st-canvas">
+      <div class="st-stage" id="st-stage"></div>
+      <button class="st-expand" id="st-expand" title="Fill the screen">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+          stroke-linecap="round" stroke-linejoin="round"><path d="M14 4h6v6M10 20H4v-6M20 4l-7 7M4 20l7-7"/></svg>
+      </button>
+    </div>
+
+    <div class="st-dock" id="st-dock">
+      <div class="st-grip" id="st-grip"><i></i></div>
+
+      <div class="st-bar">
+        <button class="st-icon" id="tl-undo" title="Undo (⌘Z)">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"
+            stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h10a5.5 5.5 0 0 1 0 11h-4"/><path d="m8 4-4 4 4 4"/></svg>
+        </button>
+        <button class="st-icon" id="tl-redo" title="Redo (⇧⌘Z)">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"
+            stroke-linecap="round" stroke-linejoin="round"><path d="M20 8H10a5.5 5.5 0 0 0 0 11h4"/><path d="m16 4 4 4-4 4"/></svg>
+        </button>
+        <button class="st-icon" id="tl-reset" title="Throw away my edits and go back to the AI's cut">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"
+            stroke-linecap="round" stroke-linejoin="round"><path d="M4 5v5h5"/><path d="M4.6 14a7.6 7.6 0 1 0 1.2-5.6"/></svg>
+        </button>
+
+        <button class="st-play" id="tl-play" title="Play or pause (Space)">
+          <svg id="tl-play-icon" width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M4 2.5v11l9-5.5-9-5.5Z"/></svg>
+        </button>
+        <span class="st-tc" id="tl-tc"><b>0:00.00</b> <i>/</i> <i>0:13.90</i></span>
+        <button class="st-rate" id="tl-rate" title="Playback speed">1&times;</button>
+
+        <span class="spacer"></span>
+
+        <div class="addwrap">
+          <button class="st-icon" id="tl-add" title="Add something at the playhead">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+              stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+          </button>
+          <div class="addmenu" id="tl-addmenu" hidden>
+            <button data-add="broll">B-roll insert<i>2s &mdash; type what it shows</i></button>
+            <button data-add="icon">Icon + label</button>
+            <button data-add="stat">Stat card</button>
+            <button data-add="punch">Punch-in</button>
+            <button data-add="transition">Transition</button>
+            <div class="addhead">Sound</div>
+            <div class="addsfx"></div>
+          </div>
+        </div>
+        <button class="st-icon" id="tl-split" title="Split at the playhead (S)">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+            stroke-linecap="round"><path d="M12 3v18"/><path d="M7.5 7.5 5 12l2.5 4.5M16.5 7.5 19 12l-2.5 4.5"/></svg>
+        </button>
+        <button class="st-icon" id="tl-del" title="Delete what's selected (Del)">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+            stroke-linecap="round" stroke-linejoin="round"><path d="M4 6.5h16M9.5 6.5V4h5v2.5M6.5 6.5 7.5 20h9l1-13.5"/></svg>
+        </button>
+
+        <span class="st-div"></span>
+
+        <div class="st-zoom">
+          <button id="tl-zout" title="Zoom out">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 12h14"/></svg>
+          </button>
+          <input type="range" id="tl-zoomr" min="0" max="4" step="1" value="2" aria-label="Timeline zoom">
+          <button id="tl-zin" title="Zoom in">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+          </button>
+          <button id="tl-fit" title="Fit the whole video">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+              stroke-linecap="round"><circle cx="12" cy="12" r="7.5"/><circle cx="12" cy="12" r="2"/><path d="M12 1.5v3M12 19.5v3M1.5 12h3M19.5 12h3"/></svg>
+          </button>
+        </div>
+
+        <span class="st-div"></span>
+        <button class="st-pending" id="tl-apply">No changes</button>
+      </div>
+
+      <div class="st-warn" id="tl-warn" hidden></div>
+
+      <div class="st-body">
+        <div class="st-lanes">
+          <div class="st-scroll" id="tl-scroll">
+            <div class="tl-inner" id="tl-inner"></div>
+          </div>
+        </div>
+        <aside class="st-insp">
+          <h5 id="tl-ops-h">Selected</h5>
+          <div class="insp" id="tl-insp"></div>
+          <div id="tl-ops-body" style="margin-top:14px"></div>
+        </aside>
+      </div>
+    </div>
+  </section>
 </div>
 
 <div class="wrap" id="footwrap">
@@ -1863,7 +2134,7 @@ function setPlayIcon() {
 function frame(now) {
   const dt = Math.min(.05, (now - last) / 1000);
   last = now;
-  if (playing) { tl.head += dt; if (tl.head > DOC.duration) tl.head = 0; }
+  if (playing) { tl.head += dt * (tl.rate ?? 1); if (tl.head > DOC.duration) tl.head = 0; }
   paintPreview();
   // Only the playhead moves every frame; rebuilding the whole timeline 60
   // times a second would be wasteful and would fight any open input.
@@ -1888,10 +2159,14 @@ function movePlayhead() {
    ══════════════════════════════════════════════════════════════════ */
 
 const ZOOMS = [26, 42, 68, 110, 175];
-const GUTTER = 84;
+// Just wide enough for the drag handle. The old 84px label column spelled out a
+// name for every lane, which at this density is more reading than reading of.
+const GUTTER = 30;
 const SNAP_PX = 7;
 
-const tl = { ops: [], redo: [], sel: null, zoom: 2, head: 0, drag: null, preview: null, warn: null, snapAt: null };
+const tl = { ops: [], redo: [], sel: null, zoom: 2, head: 0, drag: null, preview: null, warn: null, snapAt: null, rate: 1 };
+/** After an apply, the edited document becomes the new starting point. */
+let BASE_OVERRIDE = null;
 
 /** The untouched document, rebuilt whenever the style changes caption grouping. */
 function baseDoc() {
@@ -2048,6 +2323,7 @@ function applyOp(doc, op) {
     if (op.track === 'broll') return { ...doc, broll: [...doc.broll, { id, a, b, q: op.value || 'new insert', why: 'Added by hand' }] };
     if (op.track === 'graphics') return { ...doc, graphics: [...doc.graphics, { id, a, b, text: op.value, sub: '' }] };
     if (op.track === 'punches') return { ...doc, punches: [...doc.punches, { id, a, b, z: 1.15 }] };
+    if (op.track === 'transitions') return { ...doc, transitions: [...doc.transitions, { id, at: a }] };
   }
   if (op.op === 'seg.reorder') {
     const from = doc.segments.findIndex((x) => x.id === op.id);
@@ -2175,85 +2451,138 @@ function waveform(widthPx) {
   return bars;
 }
 
+/* ── glyphs that live inside clips ── */
+const G = {
+  cap:   '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="5" width="18" height="14" rx="2.5"/><path d="M7 14h4M14 14h3"/></svg>',
+  pic:   '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="4" width="18" height="16" rx="2.5"/><circle cx="8.6" cy="9.4" r="1.6"/><path d="m4 17 5-4.6 4.5 4 3-2.5L20 18"/></svg>',
+  spark: '<svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.5 13.9 9l6.6 1.9-6.6 1.9L12 19.5 10.1 12.8 3.5 10.9 10.1 9 12 2.5Z"/></svg>',
+  zoom:  '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="6.5"/><path d="M15.8 15.8 21 21M8.6 11h4.8M11 8.6v4.8"/></svg>',
+  play:  '<svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><path d="M7 4.5v15l12-7.5-12-7.5Z"/></svg>',
+  wave:  '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 11v2M8 7.5v9M12 4.5v15M16 8.5v7M20 11v2"/></svg>',
+  swap:  '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 7h5l8 10h4M17.5 4l3 3-3 3M3.5 17h5l2.2-2.8M14.4 9.6 16.5 7M17.5 14l3 3-3 3"/></svg>',
+  grip:  '<svg width="11" height="15" viewBox="0 0 11 15" fill="currentColor"><circle cx="3" cy="3" r="1.2"/><circle cx="8" cy="3" r="1.2"/><circle cx="3" cy="7.5" r="1.2"/><circle cx="8" cy="7.5" r="1.2"/><circle cx="3" cy="12" r="1.2"/><circle cx="8" cy="12" r="1.2"/></svg>',
+};
+
 function drawTimeline() {
   if (state.mode !== 'timeline') return;
   const pps = ZOOMS[tl.zoom];
   const w = Math.max(280, DOC.duration * pps);
 
-  const clip = (cls, id, a, b, label, kind, wave) => {
+  const clip = (cls, id, a, b, label, kind, glyph, wave) => {
     const [x, y] = geom(id, a, b);
     const selected = tl.sel && tl.sel.id === id ? ' sel' : '';
     // The waveform is drawn in GLOBAL time and offset back into the clip, so a
     // trimmed clip shows exactly the speech it still contains.
     const inner = wave ? `<div class="clipwave" style="left:${-x * pps}px;width:${w}px">${wave}</div>` : '';
     return `<div class="tl-clip ${cls}${selected}" data-clip="${id}" data-kind="${kind}"
-      style="left:${x * pps}px;width:${Math.max(7, (y - x) * pps)}px">${inner}<span>${label}</span>
+      style="left:${x * pps}px;width:${Math.max(9, (y - x) * pps)}px">${inner}${glyph ? `<span class="g">${glyph}</span>` : ''}<span>${label}</span>
       <i class="h l" data-edge="l"></i><i class="h r" data-edge="r"></i></div>`;
   };
 
   const wave = waveform(w);
 
-  const track = (name, hint, height, body) => `
+  const track = (height, body) => `
     <div class="tl-track" style="height:${height}px">
-      <div class="tl-label" style="width:${GUTTER}px"><b>${name}</b><i>${hint}</i></div>
+      <div class="tl-label" style="width:${GUTTER}px" title="Drag to reorder tracks">${G.grip}</div>
       <div class="tl-lane" style="width:${w}px">${body}</div>
     </div>`;
 
-  const step = [0.5, 1, 2, 5, 10].find((c) => c * pps > 58) ?? 15;
+  // A labelled tick every so often, with unlabelled ones between — the reading
+  // is "roughly where am I", and a number on every gradation defeats that.
+  const step = [0.5, 1, 2, 5, 10, 15, 30].find((c) => c * pps > 90) ?? 60;
   let ticks = '';
-  for (let t = 0; t <= DOC.duration; t += step) ticks += `<span class="tl-tick" style="left:${t * pps}px">${tcode(t)}</span>`;
+  for (let t = 0; t <= DOC.duration + 0.001; t += step / 5) {
+    const major = Math.abs(t / step - Math.round(t / step)) < 1e-6;
+    ticks += `<span class="tl-tick${major ? '' : ' minor'}" style="left:${t * pps}px">${major ? rulerLabel(t) : ''}</span>`;
+  }
+
+  const musicOn = !!STYLES[state.style].music;
 
   $('tl-inner').innerHTML = `
     <div class="tl-ruler" id="tl-ruler">
       <div class="tl-gutter" style="width:${GUTTER}px"></div>
       <div class="tl-tickarea" style="width:${w}px">${ticks}</div>
     </div>
-    ${track('Video', `${DOC.segments.length} clips`, 42,
-      DOC.segments.map((s) => clip(s.why === 'hook' ? 'c-hook' : 'c-video', s.id, s.o0, s.o1,
-        (s.why === 'hook' ? 'HOOK · ' : '') + s.say, 'seg', wave)).join(''))}
-    ${track('Captions', `${DOC.captions.length}`, 32,
-      DOC.captions.map((c) => clip('c-cap', c.id, c.a, c.b, c.words.map((x) => x.t).join(' '), 'cap')).join(''))}
-    ${track('B-roll', `${DOC.broll.length}`, 32,
-      DOC.broll.map((b) => clip('c-broll', b.id, b.a, b.b, b.q, 'broll')).join(''))}
-    ${track('Graphics', `${DOC.graphics.length}`, 32,
-      DOC.graphics.map((g) => clip('c-gfx', g.id, g.a, g.b, g.text, 'graphics')).join(''))}
-    ${track('Punch-ins', `${DOC.punches.length}`, 32,
-      DOC.punches.map((p) => clip('c-punch', p.id, p.a, p.b, p.z.toFixed(2) + '×', 'punches')).join(''))}
-    ${track('Sound', `${DOC.sfx.length} cues`, 28,
+
+    ${track(46, DOC.segments.map((s) => clip(s.why === 'hook' ? 'c-hook' : 'c-video', s.id, s.o0, s.o1,
+        (s.why === 'hook' ? 'HOOK · ' : '') + s.say, 'seg', s.why === 'hook' ? G.spark : G.play)).join(''))}
+
+    ${track(24, DOC.captions.map((c) => clip('c-cap', c.id, c.a, c.b,
+        c.words.map((x) => x.t).join(' '), 'cap', G.cap)).join(''))}
+
+    ${track(46, DOC.broll.map((b) => clip('c-broll', b.id, b.a, b.b, b.q, 'broll', G.pic)).join(''))}
+
+    ${track(28,
+      DOC.graphics.map((g) => clip('c-gfx', g.id, g.a, g.b, g.text + (g.sub ? ' · ' + g.sub : ''), 'graphics', G.spark)).join('') +
+      DOC.punches.map((p) => clip('c-punch', p.id, p.a, p.b, p.z.toFixed(2) + '×', 'punches', G.zoom)).join('') +
+      DOC.transitions.map((t) => `<div class="tl-trans" title="transition" style="left:${t.at * pps}px">${G.swap}</div>`).join('') +
       DOC.sfx.map((f) => `<div class="tl-sfx${tl.sel && tl.sel.id === f.id ? ' sel' : ''}" data-sfx="${f.id}"
-        title="${f.k}" style="left:${(tl.preview && tl.preview.id === f.id ? tl.preview.a : f.at) * pps}px"></div>`).join('') +
-      DOC.transitions.map((t) => `<div class="tl-trans" title="transition" style="left:${t.at * pps}px"></div>`).join(''))}
+        title="${f.k}" style="left:${(tl.preview && tl.preview.id === f.id ? tl.preview.a : f.at) * pps}px"></div>`).join(''))}
+
+    ${track(32, `<div class="tl-clip c-audio" style="left:0;width:${w}px">
+      <div class="clipwave" style="left:0;width:${w}px">${wave}</div>
+      <span class="g">${G.wave}</span><span>your-voice.mov &mdash; narration</span></div>`)}
+
+    ${musicOn ? track(32, `<div class="tl-clip c-audio" style="left:0;width:${w}px">
+      <div class="clipwave" style="left:0;width:${w}px">${bedform(w)}</div>
+      <span class="g">${G.wave}</span><span>${STYLES[state.style].music}</span></div>`) : ''}
+
     <div class="tl-head" style="left:${GUTTER + tl.head * pps}px"></div>
     ${tl.snapAt !== null && tl.snapAt !== undefined
       ? `<div class="snapline" style="left:${GUTTER + tl.snapAt * pps}px"></div>` : ''}`;
 
-  $('tl-tc').textContent = `${tcode(tl.head)} / ${tcode(DOC.duration)}`;
+  $('tl-tc').innerHTML = `<b>${tcode(tl.head)}</b> <i>/ ${tcode(DOC.duration)}</i>`;
   $('tl-undo').disabled = !tl.ops.length;
   $('tl-redo').disabled = !tl.redo.length;
+  $('tl-reset').disabled = !tl.ops.length && !BASE_OVERRIDE;
   $('tl-del').disabled = !tl.sel;
   $('tl-split').disabled = !DOC.segments.some((s) => tl.head > s.o0 + 0.25 && tl.head < s.o1 - 0.25);
   $('tl-apply').disabled = !tl.ops.length;
   $('tl-apply').textContent = tl.ops.length ? `Apply ${tl.ops.length} change${tl.ops.length === 1 ? '' : 's'}` : 'No changes';
   $('tl-zin').disabled = tl.zoom === ZOOMS.length - 1;
   $('tl-zout').disabled = tl.zoom === 0;
+  $('tl-zoomr').value = String(tl.zoom);
 
   $('tl-warn').hidden = !tl.warn;
   if (tl.warn) $('tl-warn').textContent = tl.warn;
 
-  $('tl-ops-h').textContent = tl.ops.length ? `Pending changes (${tl.ops.length})` : 'Pending changes';
   $('tl-ops-body').innerHTML = tl.ops.length
-    ? `<ol class="tl-ops">${tl.ops.map((o, i) => `<li><b>${String(i + 1).padStart(2, '0')}</b>${OP_LABEL[o.op] ?? o.op}</li>`).join('')}</ol>`
-    : `<p>Drag a clip to move it, drag its edges to trim. <kbd>S</kbd> splits at the playhead,
+    ? `<h5>Pending (${tl.ops.length})</h5>
+       <ol class="tl-ops">${tl.ops.map((o, i) => `<li><b>${String(i + 1).padStart(2, '0')}</b>${OP_LABEL[o.op] ?? o.op}</li>`).join('')}</ol>`
+    : `<h5>How this works</h5>
+       <p>Drag a clip to move it, drag its edges to trim. <kbd>S</kbd> splits at the playhead,
        <kbd>Del</kbd> removes what&rsquo;s selected, <kbd>&#8984;Z</kbd> undoes.
        Nothing re-renders until you apply.</p>`;
 
   drawInspector();
 }
 
+/** The ruler is read as "roughly where am I", so it counts in whatever unit the
+    video is actually long in rather than always printing m:ss.hh. */
+function rulerLabel(t) {
+  if (DOC.duration < 60) return t === 0 ? '0s' : `${+t.toFixed(1)}s`;
+  const m = Math.floor(t / 60);
+  return `${m}:${String(Math.round(t - m * 60)).padStart(2, '0')}`;
+}
+
+/* A music bed is steady where speech is spiky, so it gets its own shape rather
+   than the speech waveform tinted a different colour. */
+function bedform(widthPx) {
+  const n = Math.min(900, Math.max(40, Math.round(widthPx / 2.5)));
+  let bars = '';
+  for (let i = 0; i < n; i++) {
+    const t = i / n;
+    const h = 26 + Math.sin(t * 34) * 7 + Math.sin(t * 5.5) * 11 + Math.sin(t * 91) * 4;
+    bars += `<i style="height:${Math.max(8, h)}%"></i>`;
+  }
+  return bars;
+}
+
 function drawInspector() {
   const box = $('tl-insp');
   const sel = tl.sel;
-  if (!sel) { box.innerHTML = '<p style="font-size:12px;color:var(--muted);margin:0">Click a clip to edit what&rsquo;s in it.</p>'; return; }
+  $('tl-ops-h').textContent = sel ? 'Selected' : 'Nothing selected';
+  if (!sel) { box.innerHTML = '<p style="font-size:12px;color:var(--muted);margin:0">Click any clip to change what is in it &mdash; the words on a caption, what a B-roll insert should show, which sound a cue plays.</p>'; return; }
 
   if (sel.kind === 'cap') {
     const c = DOC.captions.find((x) => x.id === sel.id);
@@ -2407,6 +2736,11 @@ window.addEventListener('keydown', (e) => {
     e.preventDefault(); playing = !playing; setPlayIcon(); return;
   }
   if (e.key.toLowerCase() === 's') { e.preventDefault(); splitAtHead(); return; }
+  if (e.key === 'Home' || e.key === 'End') {
+    e.preventDefault();
+    tl.head = e.key === 'Home' ? 0 : DOC.duration;
+    playing = false; setPlayIcon(); paintPreview(); movePlayhead(); drawTimeline(); return;
+  }
   if (e.key.toLowerCase() === 'j') { e.preventDefault(); tl.head = Math.max(0, tl.head - 1); paintPreview(); movePlayhead(); return; }
   if (e.key.toLowerCase() === 'l') { e.preventDefault(); tl.head = Math.min(DOC.duration, tl.head + 1); paintPreview(); movePlayhead(); return; }
   if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
@@ -2458,6 +2792,7 @@ $('tl-addmenu').addEventListener('click', (e) => {
     case 'icon': return pushOp({ op: 'add', track: 'graphics', at, len: 2.5, value: 'Label' });
     case 'stat': return pushOp({ op: 'add', track: 'graphics', at, len: 2.5, value: '100' });
     case 'punch': return pushOp({ op: 'add', track: 'punches', at, len: 2, value: '' });
+    case 'transition': return pushOp({ op: 'add', track: 'transitions', at, len: 0, value: '' });
   }
 });
 
@@ -2467,9 +2802,10 @@ $('tl-export').addEventListener('click', () => {
   const pending = tl.ops.length;
   if (pending) { BASE_OVERRIDE = DOC; tl.ops = []; tl.redo = []; state.edited = true; refreshDoc(); }
   b.textContent = pending ? `Applied ${pending} · rendering…` : 'Rendering…';
+  b.disabled = true;
   setTimeout(() => {
-    b.textContent = 'Exported 1080×1920';
-    setTimeout(() => { b.textContent = 'Export'; drawTimeline(); }, 1800);
+    b.textContent = `Rendered ${state.fmt === 'short' ? '1080×1920' : '1920×1080'}`;
+    setTimeout(() => { b.textContent = 'Render video'; b.disabled = false; drawTimeline(); }, 1900);
   }, 1100);
   render();
 });
@@ -2480,6 +2816,125 @@ $('tl-redo').addEventListener('click', tlRedo);
 $('tl-zin').addEventListener('click', () => { tl.zoom = Math.min(ZOOMS.length - 1, tl.zoom + 1); drawTimeline(); });
 $('tl-zout').addEventListener('click', () => { tl.zoom = Math.max(0, tl.zoom - 1); drawTimeline(); });
 
+/* ══════════════════════════════════════════════ the studio chrome ═══
+   Every one of these drives the same document the AI wrote. The top strip is
+   the add menu spread out — a person looking for "text" should not have to
+   guess that it is behind a plus.
+   ════════════════════════════════════════════════════════════════════ */
+const ST_TOOLS = [
+  { k: 'stat',  t: 'Text &amp; titles',  i: '<path d="M5 6.5V5h14v1.5M12 5v14M9 19h6"/>' },
+  { k: 'icon',  t: 'Icons &amp; elements', i: '<circle cx="7" cy="7" r="3"/><circle cx="17" cy="17" r="3"/><rect x="3.6" y="13.6" width="6.8" height="6.8" rx="1.4"/><rect x="13.6" y="3.6" width="6.8" height="6.8" rx="1.4"/>' },
+  { k: 'transition', t: 'Transitions', i: '<path d="M3.5 7h5l8 10h4M17.5 4l3 3-3 3M3.5 17h5l2.2-2.8M14.4 9.6 16.5 7M17.5 14l3 3-3 3"/>' },
+  { k: 'music', t: 'Music &amp; sound',  i: '<path d="M9 18V6l10-2v12"/><circle cx="6.5" cy="18" r="2.5"/><circle cx="16.5" cy="16" r="2.5"/>' },
+  { k: 'punch', t: 'Effects',        i: '<path d="M12 3.2 13.7 9l5.8 1.7-5.8 1.7L12 18.2l-1.7-5.8L4.5 10.7 10.3 9 12 3.2ZM18.5 16.5l.7 2.1 2.1.7-2.1.7-.7 2.1-.7-2.1-2.1-.7 2.1-.7.7-2.1Z"/>' },
+  { k: 'broll', t: 'B-roll &amp; media', i: '<path d="M3.5 6.5a2 2 0 0 1 2-2H10l1.6 2h7a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-13a2 2 0 0 1-2-2Z"/>' },
+  { k: 'ops',   t: 'What you changed', i: '<path d="M4 5v5h5"/><path d="M4.6 14a7.6 7.6 0 1 0 1.2-5.6"/><path d="M12 8.5V12l2.5 1.6"/>' },
+];
+
+$('st-tools').innerHTML = ST_TOOLS.map((t) => `
+  <button class="st-tool" data-tool="${t.k}" title="${t.t}" aria-label="${t.t.replace(/&amp;/g, 'and')}">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"
+      stroke-linecap="round" stroke-linejoin="round">${t.i}</svg>
+  </button>`).join('');
+
+$('st-tools').addEventListener('click', (e) => {
+  const b = e.target.closest('[data-tool]');
+  if (!b) return;
+  const at = tl.head;
+  switch (b.dataset.tool) {
+    case 'stat':  return pushOp({ op: 'add', track: 'graphics', at, len: 2.5, value: 'Your line here' });
+    case 'icon':  return pushOp({ op: 'add', track: 'graphics', at, len: 2.5, value: 'Label' });
+    case 'transition': return pushOp({ op: 'add', track: 'transitions', at, len: 0, value: '' });
+    case 'punch': return pushOp({ op: 'add', track: 'punches', at, len: 2, value: '' });
+    case 'broll': return pushOp({ op: 'add', track: 'broll', at, len: 2, value: '' });
+    // Music is chosen by the style, not placed by hand — saying so beats a
+    // menu that opens onto one disabled item.
+    case 'music': return flashInsp(`Music comes with the look you picked &mdash;
+      <b>${STYLES[state.style].music}</b>. Switch looks in Simple mode and the bed changes with it.
+      Sound effects go in from the <b>+</b> in the timeline.`);
+    case 'ops':   return flashInsp(tl.ops.length
+      ? `<ol class="tl-ops">${tl.ops.map((o, i) => `<li><b>${String(i + 1).padStart(2, '0')}</b>${OP_LABEL[o.op] ?? o.op}</li>`).join('')}</ol>`
+      : 'Nothing changed yet. This is exactly the cut the AI made.');
+  }
+});
+
+function flashInsp(html) {
+  tl.sel = null;
+  $('tl-insp').innerHTML = `<p style="font-size:12px;color:var(--muted);line-height:1.6;margin:0">${html}</p>`;
+  $('tl-ops-h').textContent = 'Note';
+}
+
+/* ── transport extras ── */
+$('tl-zoomr').addEventListener('input', (e) => { tl.zoom = +e.target.value; drawTimeline(); });
+$('tl-fit').addEventListener('click', () => {
+  const avail = $('tl-scroll').clientWidth - GUTTER - 24;
+  let best = 0;
+  ZOOMS.forEach((z, i) => { if (DOC.duration * z <= avail) best = i; });
+  tl.zoom = best;
+  drawTimeline();
+});
+
+const RATES = [0.5, 1, 1.5, 2];
+$('tl-rate').addEventListener('click', () => {
+  tl.rate = RATES[(RATES.indexOf(tl.rate ?? 1) + 1) % RATES.length];
+  $('tl-rate').innerHTML = (tl.rate % 1 ? tl.rate : tl.rate.toFixed(0)) + '&times;';
+});
+
+$('tl-reset').addEventListener('click', () => {
+  if (!tl.ops.length && !BASE_OVERRIDE) return;
+  const n = tl.ops.length;
+  tl.ops = []; tl.redo = []; tl.sel = null; tl.warn = null;
+  BASE_OVERRIDE = null;
+  refreshDoc(); drawTimeline(); render();
+  flashInsp(n ? `Dropped ${n} change${n === 1 ? '' : 's'}. This is the AI&rsquo;s cut again.`
+              : 'Back to the AI&rsquo;s cut.');
+});
+
+$('st-back').addEventListener('click', () => {
+  state.mode = 'simple';
+  $('modeswitch').querySelectorAll('button').forEach((x) =>
+    x.setAttribute('aria-pressed', String(x.dataset.mode === 'simple')));
+  applyTimelineLayout();
+  render();
+});
+
+$('st-expand').addEventListener('click', () => {
+  const c = document.querySelector('.st-canvas');
+  if (!document.fullscreenElement) c.requestFullscreen?.();
+  else document.exitFullscreen?.();
+});
+
+$('st-help').addEventListener('click', () => flashInsp(
+  `<kbd>Space</kbd> play &middot; <kbd>J</kbd>&nbsp;<kbd>L</kbd> nudge &middot;
+   <kbd>S</kbd> split &middot; <kbd>Del</kbd> remove &middot; <kbd>&#8984;Z</kbd> undo &middot;
+   <kbd>Home</kbd>&nbsp;<kbd>End</kbd> jump to either end.`));
+$('st-save').addEventListener('click', () => flashInsp(
+  'Saved as you go. The AI&rsquo;s cut is kept underneath, so <b>Reset</b> always has something to go back to.'));
+
+/* ── the dock is draggable, because how much timeline you want depends on what
+      you are doing to it ── */
+(() => {
+  const dock = $('st-dock'), grip = $('st-grip');
+  let from = 0, start = 0;
+  const move = (e) => {
+    const h = Math.max(150, Math.min(window.innerHeight - 220, start + (from - e.clientY)));
+    dock.style.height = h + 'px';
+  };
+  const up = () => {
+    window.removeEventListener('mousemove', move);
+    window.removeEventListener('mouseup', up);
+    document.body.style.userSelect = '';
+  };
+  grip.addEventListener('mousedown', (e) => {
+    e.preventDefault();
+    from = e.clientY; start = dock.getBoundingClientRect().height;
+    document.body.style.userSelect = 'none';
+    window.addEventListener('mousemove', move);
+    window.addEventListener('mouseup', up);
+  });
+})();
+
+
 $('tl-apply').addEventListener('click', () => {
   const n = tl.ops.length;
   tl.ops = []; tl.redo = [];
@@ -2487,13 +2942,13 @@ $('tl-apply').addEventListener('click', () => {
   // and one render — which is why a fine-tuning session costs one render, not forty.
   BASE_OVERRIDE = DOC;
   state.edited = true;
+  refreshDoc(); render(); drawTimeline();
+  // drawTimeline has already reset the pill to "No changes"; the count is worth
+  // a moment on screen, so it goes back on afterwards.
   $('tl-apply').textContent = `Applied ${n}`;
-  setTimeout(() => drawTimeline(), 1200);
-  refreshDoc(); render();
+  setTimeout(() => drawTimeline(), 1400);
 });
 
-/** After an apply, the edited document becomes the new starting point. */
-let BASE_OVERRIDE = null;
 const _baseDoc = baseDoc;
 baseDoc = function () { return BASE_OVERRIDE ? JSON.parse(JSON.stringify(BASE_OVERRIDE)) : _baseDoc(); };
 
@@ -2502,8 +2957,6 @@ $('modeswitch').addEventListener('click', (e) => {
   if (!b) return;
   state.mode = b.dataset.mode;
   $('modeswitch').querySelectorAll('button').forEach((x) => x.setAttribute('aria-pressed', String(x.dataset.mode === state.mode)));
-  $('tl-wrap').hidden = state.mode !== 'timeline';
-  document.querySelectorAll('#p2 > .card').forEach((c, i) => { if (i > 0) c.hidden = state.mode === 'timeline'; });
   applyTimelineLayout();
   drawTimeline();
 });
@@ -2701,16 +3154,21 @@ document.addEventListener('click', (e) => {
 function moveStage(to) {
   const unit = $('stage-unit');
   if (to === 'hero') $('hero-preview').appendChild(unit);
+  else if (to === 'studio') $('st-stage').appendChild(unit);
   else document.querySelector('.rail').prepend(unit);
 }
 
-/** Jump straight to the finished edit with the timeline open. */
+/* ═══════════════════════════════════════════════════ studio mode ═══
+   Fine-tuning takes the whole screen. Rather than duplicate the preview or the
+   timeline, the nodes move — one animation loop, one playhead, one document,
+   whichever layout they happen to be sitting in.
+   ═════════════════════════════════════════════════════════════════════ */
 function applyTimelineLayout() {
-  const on = state.mode === 'timeline' && state.step === 2;
-  document.querySelector('.grid').classList.toggle('tlmode', on);
-  // The tweak lane and the mini overview both duplicate what the timeline
-  // already shows, so they stand down while it is open.
-  document.querySelectorAll('.rail > .lane').forEach((el) => { el.hidden = on; });
+  const on = state.mode === 'timeline' && ['editor', 'timeline'].includes(state.route);
+  $('studio').classList.toggle('on', on);
+  document.body.classList.toggle('instudio', on);
+  document.querySelector('.mainarea').hidden = on;
+  if (state.view === 'app') moveStage(on ? 'studio' : 'rail');
 }
 
 function openTimeline() {
@@ -2718,8 +3176,6 @@ function openTimeline() {
   state.mode = 'timeline';
   $('modeswitch').querySelectorAll('button').forEach((x) =>
     x.setAttribute('aria-pressed', String(x.dataset.mode === 'timeline')));
-  $('tl-wrap').hidden = false;
-  document.querySelectorAll('#p2 > .card').forEach((c, i) => { if (i > 0) c.hidden = true; });
   applyTimelineLayout();
   refreshDoc();
   drawTimeline();
@@ -2728,6 +3184,11 @@ function openTimeline() {
 function showHome() {
   state.view = 'home';
   state.route = 'home';
+  // The studio locks page scrolling while it owns the viewport; leaving for the
+  // marketing page has to hand that back.
+  $('studio').classList.remove('on');
+  document.body.classList.remove('instudio');
+  document.querySelector('.mainarea').hidden = false;
   $('home').classList.add('on');
   $('shell').classList.remove('on');
   $('footwrap').hidden = false;
@@ -2754,6 +3215,7 @@ function goto(n) {
     s.setAttribute('aria-current', String(i === n));
     s.classList.toggle('done', i < n);
   });
+  applyTimelineLayout();
   window.scrollTo({ top: 0, behavior: reduced ? 'auto' : 'smooth' });
   if (n === 2) { render(); drawTimeline(); }
 }

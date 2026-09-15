@@ -16,6 +16,14 @@ Two things it is deliberately strict about:
   look). The earlier version stacked all five sections on one page, which is a
   form, not a flow — and the promise of the product is that there is almost
   nothing to decide.
+- The last step is a **studio**, not a panel: the sidebar stays, and everything
+  to its right becomes an ordinary editor — tools across the top, the picture in
+  the middle, a docked timeline underneath. Nothing about that layout is novel,
+  which is the point. Someone who has opened any editor before already knows
+  where things are, and the one thing they should have to learn here is that
+  they mostly do not need it.
 - The timeline is the real interaction model, not a picture of one: one clock
   shared by the preview and the tracks, clips that drag, trim, snap and collide,
-  and an export that reads back the edited document.
+  and an export that reads back the edited document. The preview and the tracks
+  are single DOM nodes that move between layouts rather than being duplicated —
+  one animation loop, one playhead, one document, wherever they are mounted.
