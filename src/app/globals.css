@@ -2,18 +2,91 @@
 @tailwind components;
 @tailwind utilities;
 
-:root { color-scheme: dark; }
+/* ───────────────────────────────────────────────────────────────────────────
+   EasyCut — the design system, in one place.
+
+   One committed dark world. The brand kit's instruction is "soft black for the
+   canvas", so there is no light theme to design and every colour is painted
+   explicitly rather than inherited from the platform.
+
+   Tokens live here rather than only in tailwind.config because half of this
+   interface is measured geometry — a sticky topbar's real height, the one
+   content measure, the one easing curve — and those have to be readable by
+   plain CSS and by a runtime resize handler, not just by class names.
+   ─────────────────────────────────────────────────────────────────────────── */
+:root {
+  --ink:        #0D0D10;
+  --charcoal:   #19191F;
+  --raised:     #22222A;
+  --line:       #2C2C36;
+  --line-soft:  #232330;
+  --violet:     #9B7BFF;
+  --violet-hi:  #B39AFF;
+  --violet-dim: rgba(155, 123, 255, 0.13);
+  --chalk:      #F5F5F7;
+  --muted:      #A5A5B3;
+  --faint:      #6E6E7C;
+  --ok:         #5BD6A0;
+  --warn:       #F5C453;
+  --bad:        #FF7B7B;
+
+  /* One measure for every screen. Without it the content hugs the sidebar and
+     trails off into empty space on a wide monitor — the page reads as falling
+     off its own left edge. */
+  --measure: 1180px;
+
+  /* One curve, everywhere. Scattered easings are why an interface feels
+     assembled rather than designed. */
+  --ease: cubic-bezier(0.22, 0.68, 0.28, 1);
+  --fast: 0.16s var(--ease);
+  --slow: 0.32s var(--ease);
+
+  /* The sticky topbar's real height. Set here as the design value and
+     overwritten at runtime from the measured element, because three layout
+     rules depend on it being exact and a guess leaves the timeline dock
+     hanging below the fold. */
+  --topbar: 60px;
+
+  color-scheme: dark;
+}
 
 html, body {
-  background: #0D0D10;
-  color: #F5F5F7;
+  background: var(--ink);
+  color: var(--chalk);
   -webkit-font-smoothing: antialiased;
 }
 
-/* Headings carry the brand's tight tracking. */
-h1, h2, h3 { letter-spacing: -0.03em; }
+/* Somebody has told their operating system that motion makes them unwell.
+   That is not a preference to style around. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
 
-::selection { background: rgba(155,123,255,0.35); }
+/* Keyboard focus has to be visible on every surface, so it is set once here
+   rather than remembered per component. */
+:focus-visible {
+  outline: 2px solid var(--violet);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+h1, h2, h3 { letter-spacing: -0.03em; text-wrap: balance; }
+
+/* The sidebar is a real column only once there is room for one. Below that it
+   is a scrolling row of links and must take its height from its content —
+   pinning it to the viewport there leaves a full-height empty rail above the
+   page. Expressed in CSS rather than an inline style because it depends on a
+   breakpoint and on the measured --topbar at the same time. */
+@media (min-width: 768px) {
+  [data-app-nav] { height: calc(100vh - var(--topbar)); }
+}
+
+::selection { background: rgba(155, 123, 255, 0.35); }
 
 /* Scrollbars, dark and unobtrusive. */
 ::-webkit-scrollbar { width: 10px; height: 10px; }
@@ -22,9 +95,12 @@ h1, h2, h3 { letter-spacing: -0.03em; }
 ::-webkit-scrollbar-thumb:hover { background: #3a3a47; }
 
 @layer components {
-  .card {
-    @apply rounded-2xl border border-line bg-charcoal shadow-card;
-  }
+  /* Border, fill, radius and shadow each say "separate object". They are spent
+     by role here — `.card` lifts something that genuinely is one, and the flat
+     `.surface` is for the rows and strips that are not. */
+  .card    { @apply rounded-2xl border border-line bg-charcoal shadow-card; }
+  .surface { @apply rounded-2xl bg-charcoal; }
+
   .btn {
     @apply inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5
            text-sm font-semibold transition-colors disabled:opacity-40
@@ -32,6 +108,17 @@ h1, h2, h3 { letter-spacing: -0.03em; }
   }
   .btn-primary { @apply btn bg-violet text-ink hover:bg-violet-hover; }
   .btn-ghost   { @apply btn border border-line text-chalk hover:bg-charcoal2; }
-  .label       { @apply text-sm font-medium text-muted; }
-  .hairline    { @apply border-t border-line; }
+  .btn-quiet   { @apply btn px-3 py-2 text-muted hover:bg-charcoal2 hover:text-chalk; }
+
+  .label    { @apply text-sm font-medium text-muted; }
+  .hairline { @apply border-t border-line; }
+
+  /* An uppercase micro-label. Letter-spacing is not optional at this size —
+     without it the caps close up and read as a smear. */
+  .eyebrow {
+    @apply text-[10px] font-bold uppercase tracking-[0.08em] text-faint;
+  }
+
+  /* The one content column, centred in the space beside the sidebar. */
+  .measure { width: 100%; max-width: var(--measure); margin-inline: auto; }
 }

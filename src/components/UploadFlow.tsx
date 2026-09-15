@@ -1,16 +1,24 @@
 'use client';
 
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { clsx } from 'clsx';
+import { IconArrowRight, IconCheck } from '@/components/shell/Icons';
+import { readDefaultCaptionPreset } from '@/lib/captions/default-preset';
 
 /**
- * The entire user-facing product surface, in one component.
+ * The upload wizard: one question per screen.
  *
- * The design constraint was that someone who has never edited a video should
- * finish this screen without reading anything twice. So: one file, one format
- * choice, one look, one optional note. Everything else — resolution, fps,
- * codec, caption font, how hard to cut — is inferred.
+ * The previous version stacked five sections on one page. Everything was
+ * visible, which sounds like a virtue and is not — a person who has never
+ * edited a video opened it and saw five decisions they did not know how to
+ * make, all at once, with the submit button greyed out at the bottom for a
+ * reason that was three screens up. One question at a time turns the same
+ * five decisions into a conversation, and each screen can afford to explain
+ * itself because it is the only thing on the page.
+ *
+ * Every question has a working default, so the only one that can actually
+ * block the wizard is the file.
  */
 
 interface StyleOption {
@@ -32,10 +40,14 @@ interface FormatOption {
 
 type Phase = 'choose' | 'uploading' | 'starting';
 
+const QUESTIONS = ['footage', 'format', 'state', 'look'] as const;
+type Question = (typeof QUESTIONS)[number];
+
 export function UploadFlow({ styles, formats }: { styles: StyleOption[]; formats: FormatOption[] }) {
   const router = useRouter();
   const inputRef = useRef<HTMLInputElement>(null);
 
+  const [at, setAt] = useState(0);
   const [file, setFile] = useState<File | null>(null);
   const [mode, setMode] = useState<'short' | 'long'>('short');
   const [styleId, setStyleId] = useState(styles[0]?.id ?? 'clean');
@@ -47,17 +59,41 @@ export function UploadFlow({ styles, formats }: { styles: StyleOption[]; formats
   const [error, setError] = useState<string | null>(null);
   const [dragging, setDragging] = useState(false);
 
+  const question: Question = QUESTIONS[at];
+  const busy = phase !== 'choose';
+  const style = useMemo(() => styles.find((s) => s.id === styleId), [styles, styleId]);
+  const format = useMemo(() => formats.find((f) => f.mode === mode), [formats, mode]);
+
   const pickFile = useCallback((next: File | null) => {
     setError(null);
     if (!next) return;
     if (!next.type.startsWith('video/') && !/\.(mp4|mov|m4v|webm|mkv|avi)$/i.test(next.name)) {
-      setError('That does not look like a video file.');
+      setError('That does not look like a video file. MP4, MOV and WebM all work.');
       return;
     }
     setFile(next);
-    // A long file is almost certainly meant for long-form; nudge, don't force.
+    // A very large file is almost certainly meant for long-form; nudge, don't force.
     if (next.size > 400 * 1024 * 1024) setMode('long');
+    // Choosing a file is an answer, so move on rather than making them
+    // confirm the thing they just did.
+    setAt(1);
   }, []);
+
+  // Enter advances, which is what every form on the web has taught people to
+  // expect — except in the note field, where it would submit mid-sentence.
+  useEffect(() => {
+    if (busy) return;
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key !== 'Enter') return;
+      const target = event.target as HTMLElement | null;
+      if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA')) return;
+      if (at < QUESTIONS.length - 1) setAt((n) => n + 1);
+      else if (file) void submit();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [at, busy, file]);
 
   async function submit() {
     if (!file) return;
@@ -73,6 +109,9 @@ export function UploadFlow({ styles, formats }: { styles: StyleOption[]; formats
         body: JSON.stringify({
           mode,
           styleId,
+          // Whatever this browser last chose in the caption gallery. Absent is
+          // fine — the edit style names its own caption look.
+          captionPreset: readDefaultCaptionPreset() ?? undefined,
           inputMode,
           userNote: note.trim() || undefined,
           filename: file.name,
@@ -112,220 +151,328 @@ export function UploadFlow({ styles, formats }: { styles: StyleOption[]; formats
     }
   }
 
-  const busy = phase !== 'choose';
+  if (busy) {
+    return (
+      <Uploading
+        phase={phase}
+        progress={progress}
+        filename={file?.name ?? ''}
+      />
+    );
+  }
 
   return (
-    <div className="mt-8 space-y-8">
-      {/* ------------------------------------------------------- 1. the file */}
-      <section>
-        <SectionLabel step="1" title="Your footage" />
-        <div
-          onDragOver={(e) => {
-            e.preventDefault();
-            setDragging(true);
-          }}
-          onDragLeave={() => setDragging(false)}
-          onDrop={(e) => {
-            e.preventDefault();
-            setDragging(false);
-            pickFile(e.dataTransfer.files?.[0] ?? null);
-          }}
-          onClick={() => !busy && inputRef.current?.click()}
-          className={clsx(
-            'mt-3 cursor-pointer rounded-2xl border border-dashed p-10 text-center transition-colors',
-            dragging ? 'border-violet bg-violet-dim' : 'border-line bg-charcoal hover:border-violet/50',
-            busy && 'pointer-events-none opacity-60',
-          )}
-        >
-          <input
-            ref={inputRef}
-            type="file"
-            accept="video/*"
-            className="hidden"
-            onChange={(e) => pickFile(e.target.files?.[0] ?? null)}
-          />
-          {file ? (
-            <div>
-              <p className="text-base font-semibold">{file.name}</p>
-              <p className="mt-1 text-sm text-muted">{formatBytes(file.size)} — click to choose a different file</p>
-            </div>
-          ) : (
-            <div>
-              <p className="text-base font-semibold">Drop your video here</p>
-              <p className="mt-1 text-sm text-muted">MP4, MOV, WebM — or click to browse</p>
-            </div>
-          )}
-        </div>
-      </section>
+    <div className="pb-4">
+      <Rail at={at} answered={{ footage: Boolean(file), format: true, state: true, look: true }} onGo={setAt} />
 
-      {/* ----------------------------------------------------- 2. the format */}
-      <section>
-        <SectionLabel step="2" title="Where is it going?" />
-        <div className="mt-3 grid gap-3 sm:grid-cols-2">
-          {formats.map((format) => (
-            <button
-              key={format.mode}
-              type="button"
-              disabled={busy}
-              onClick={() => setMode(format.mode)}
+      <div key={question} className="mt-7 animate-rise">
+        {question === 'footage' ? (
+          <Ask
+            title="Start with your footage"
+            sub="One file. We'll work out the rest — length, shape, where the cuts go."
+          >
+            <div
+              onDragOver={(e) => {
+                e.preventDefault();
+                setDragging(true);
+              }}
+              onDragLeave={() => setDragging(false)}
+              onDrop={(e) => {
+                e.preventDefault();
+                setDragging(false);
+                pickFile(e.dataTransfer.files?.[0] ?? null);
+              }}
+              onClick={() => inputRef.current?.click()}
+              onKeyDown={(e) => {
+                if (e.key === ' ' || e.key === 'Enter') {
+                  e.preventDefault();
+                  inputRef.current?.click();
+                }
+              }}
+              role="button"
+              tabIndex={0}
               className={clsx(
-                'rounded-2xl border p-5 text-left transition-colors',
-                mode === format.mode
-                  ? 'border-violet bg-violet-dim'
-                  : 'border-line bg-charcoal hover:border-line/80 hover:bg-charcoal2',
+                'grid cursor-pointer place-items-center rounded-[18px] border border-dashed px-6 py-16 text-center transition-colors',
+                dragging ? 'border-violet bg-violet-dim' : 'border-line bg-charcoal hover:border-violet/50',
               )}
             >
-              <div className="flex items-center justify-between">
-                <span className="font-bold">{format.label}</span>
-                <span className="rounded-md bg-ink/60 px-2 py-0.5 text-xs font-semibold text-muted">
-                  {format.aspect}
-                </span>
-              </div>
-              <p className="mt-1.5 text-sm text-muted">{format.description}</p>
-              <div className="mt-3 flex flex-wrap gap-1.5">
-                {format.platforms.map((p) => (
-                  <span key={p} className="rounded-md border border-line px-2 py-0.5 text-[11px] font-medium text-muted">
-                    {p}
-                  </span>
-                ))}
-              </div>
-            </button>
-          ))}
-        </div>
-      </section>
-
-      {/* ------------------------------------------------- 3. state of edit */}
-      <section>
-        <SectionLabel step="3" title="How finished is it?" />
-        <div className="mt-3 grid gap-3 sm:grid-cols-2">
-          <ChoiceCard
-            selected={inputMode === 'raw'}
-            disabled={busy}
-            onClick={() => setInputMode('raw')}
-            title="Completely raw"
-            body="Straight off the camera. We'll cut the pauses, the ums, the false starts and the takes you redid."
-          />
-          <ChoiceCard
-            selected={inputMode === 'roughcut'}
-            disabled={busy}
-            onClick={() => setInputMode('roughcut')}
-            title="Already trimmed"
-            body="You cut your own mistakes. We'll respect your edit and only add the layers on top."
-          />
-        </div>
-      </section>
-
-      {/* ------------------------------------------------------- 4. the look */}
-      <section>
-        <SectionLabel step="4" title="Pick a look" />
-        <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {styles.map((style) => (
-            <button
-              key={style.id}
-              type="button"
-              disabled={busy}
-              onClick={() => setStyleId(style.id)}
-              className={clsx(
-                'rounded-2xl border p-4 text-left transition-colors',
-                styleId === style.id
-                  ? 'border-violet bg-violet-dim'
-                  : 'border-line bg-charcoal hover:border-line/80 hover:bg-charcoal2',
+              <input
+                ref={inputRef}
+                id="upload-file"
+                type="file"
+                accept="video/*"
+                className="hidden"
+                onChange={(e) => pickFile(e.target.files?.[0] ?? null)}
+              />
+              {file ? (
+                <div>
+                  <p className="text-[15px] font-semibold">{file.name}</p>
+                  <p className="mt-1 text-[13px] text-muted">
+                    {formatBytes(file.size)} — click to choose a different file
+                  </p>
+                </div>
+              ) : (
+                <div>
+                  <p className="text-[17px] font-bold">Drop your video here</p>
+                  <p className="mt-1.5 text-[13px] text-muted">MP4, MOV, WebM — or click to browse</p>
+                </div>
               )}
-            >
-              <div className="flex items-center gap-2">
-                <span className="h-2.5 w-2.5 rounded-full" style={{ background: style.accent }} />
-                <span className="font-bold">{style.name}</span>
-              </div>
-              <p className="mt-1.5 text-sm font-medium text-chalk/80">{style.tagline}</p>
-              <p className="mt-1 text-xs leading-relaxed text-muted">{style.bestFor}</p>
-            </button>
-          ))}
-        </div>
-      </section>
+            </div>
+          </Ask>
+        ) : null}
 
-      {/* -------------------------------------------------- 5. optional note */}
-      <section>
-        <SectionLabel step="5" title="Anything we should know?" optional />
-        <input
-          type="text"
-          value={note}
-          disabled={busy}
-          maxLength={200}
-          onChange={(e) => setNote(e.target.value)}
-          placeholder="e.g. keep the bit about pricing, skip the intro small talk"
-          className="mt-3 w-full rounded-xl border border-line bg-charcoal px-4 py-3 text-sm outline-none placeholder:text-muted/60 focus:border-violet"
-        />
-      </section>
+        {question === 'format' ? (
+          <Ask title="Where is it going?" sub="This sets the shape, the pace and how hard we cut.">
+            <div className="grid gap-3 sm:grid-cols-2">
+              {formats.map((f) => (
+                <Choice
+                  key={f.mode}
+                  selected={mode === f.mode}
+                  onClick={() => {
+                    setMode(f.mode);
+                    setAt(2);
+                  }}
+                  title={f.label}
+                  badge={f.aspect}
+                  body={f.description}
+                  tags={f.platforms}
+                />
+              ))}
+            </div>
+          </Ask>
+        ) : null}
 
-      {/* ----------------------------------------------------------- submit */}
+        {question === 'state' ? (
+          <Ask
+            title="How finished is it?"
+            sub="The only thing we need to know before touching your cut."
+          >
+            <div className="grid gap-3 sm:grid-cols-2">
+              <Choice
+                selected={inputMode === 'raw'}
+                onClick={() => {
+                  setInputMode('raw');
+                  setAt(3);
+                }}
+                title="Completely raw"
+                body="Straight off the camera. We'll cut the pauses, the ums, the false starts and the takes you redid."
+              />
+              <Choice
+                selected={inputMode === 'roughcut'}
+                onClick={() => {
+                  setInputMode('roughcut');
+                  setAt(3);
+                }}
+                title="Already trimmed"
+                body="You cut your own mistakes. We'll respect your edit and only add the layers on top."
+              />
+            </div>
+          </Ask>
+        ) : null}
+
+        {question === 'look' ? (
+          <Ask title="Pick a look" sub="Captions, B-roll, pacing and sound all follow from this. You can change it later.">
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {styles.map((s) => (
+                <Choice
+                  key={s.id}
+                  selected={styleId === s.id}
+                  onClick={() => setStyleId(s.id)}
+                  dot={s.accent}
+                  title={s.name}
+                  body={s.tagline}
+                  foot={s.bestFor}
+                />
+              ))}
+            </div>
+
+            <div className="mt-6">
+              <label htmlFor="upload-note" className="label">
+                Anything we should know? <span className="text-faint">Optional</span>
+              </label>
+              <input
+                id="upload-note"
+                type="text"
+                value={note}
+                maxLength={200}
+                onChange={(e) => setNote(e.target.value)}
+                placeholder="e.g. keep the bit about pricing, skip the intro small talk"
+                className="mt-2 w-full rounded-xl border border-line bg-charcoal px-4 py-3 text-sm outline-none transition-colors placeholder:text-muted/60 focus:border-violet"
+              />
+            </div>
+          </Ask>
+        ) : null}
+      </div>
+
       {error ? (
-        <div className="rounded-xl border border-bad/40 bg-bad/[0.08] px-4 py-3 text-sm text-bad">{error}</div>
+        <p className="mt-5 rounded-xl border border-bad/40 bg-bad/[0.08] px-4 py-3 text-[13px] text-bad">{error}</p>
       ) : null}
 
-      {busy ? (
-        <div className="card p-5">
-          <div className="flex items-center justify-between text-sm">
-            <span className="font-semibold">
-              {phase === 'uploading' ? 'Uploading your footage' : 'Starting the edit'}
-            </span>
-            <span className="text-muted">{Math.round(progress * 100)}%</span>
-          </div>
-          <div className="mt-3 h-2 overflow-hidden rounded-full bg-ink">
-            <div
-              className="h-full rounded-full bg-violet transition-[width] duration-200"
-              style={{ width: `${Math.max(3, progress * 100)}%` }}
-            />
-          </div>
-        </div>
-      ) : (
-        <button type="button" onClick={submit} disabled={!file} className="btn-primary w-full py-4 text-[15px]">
-          {file ? 'Make my video' : 'Choose a file first'}
-        </button>
-      )}
+      <div className="mt-8 flex items-center gap-3">
+        {at > 0 ? (
+          <button type="button" onClick={() => setAt(at - 1)} className="btn-ghost">
+            Back
+          </button>
+        ) : null}
+
+        {at < QUESTIONS.length - 1 ? (
+          <button
+            type="button"
+            onClick={() => setAt(at + 1)}
+            disabled={at === 0 && !file}
+            className="btn-primary ml-auto"
+          >
+            {at === 0 && !file ? 'Choose a file first' : 'Continue'}
+            <IconArrowRight className="h-4 w-4" />
+          </button>
+        ) : (
+          <button type="button" onClick={submit} disabled={!file} className="btn-primary ml-auto px-6 py-3">
+            Make my video
+            <IconArrowRight className="h-4 w-4" />
+          </button>
+        )}
+      </div>
+
+      {at === QUESTIONS.length - 1 && file ? (
+        <p className="mt-4 text-[12.5px] text-faint">
+          {file.name} · {format?.label} · {inputMode === 'raw' ? 'Completely raw' : 'Already trimmed'} ·{' '}
+          {style?.name}
+        </p>
+      ) : null}
     </div>
   );
 }
 
-/* --------------------------------------------------------------- helpers */
+/* --------------------------------------------------------------- pieces */
 
-function SectionLabel({ step, title, optional }: { step: string; title: string; optional?: boolean }) {
+function Ask({ title, sub, children }: { title: string; sub: string; children: React.ReactNode }) {
   return (
-    <div className="flex items-center gap-2.5">
-      <span className="flex h-6 w-6 items-center justify-center rounded-md bg-charcoal2 text-xs font-bold text-violet">
-        {step}
-      </span>
-      <h2 className="text-base font-bold tracking-[-0.02em]">{title}</h2>
-      {optional ? <span className="text-xs text-muted">optional</span> : null}
-    </div>
+    <section>
+      <h2 className="text-[22px] font-extrabold">{title}</h2>
+      <p className="mt-1.5 text-[13.5px] text-muted">{sub}</p>
+      <div className="mt-5">{children}</div>
+    </section>
   );
 }
 
-function ChoiceCard({
+/** The wizard's own position — distinct from the four-step pipeline above it. */
+function Rail({
+  at,
+  answered,
+  onGo,
+}: {
+  at: number;
+  answered: Record<Question, boolean>;
+  onGo: (n: number) => void;
+}) {
+  return (
+    <ol className="flex gap-2">
+      {QUESTIONS.map((q, i) => {
+        const past = i < at;
+        return (
+          <li key={q} className="flex-1">
+            <button
+              type="button"
+              onClick={() => (past || answered[QUESTIONS[i]]) && onGo(i)}
+              disabled={!past && i !== at && !answered[q]}
+              aria-label={`Question ${i + 1} of ${QUESTIONS.length}`}
+              aria-current={i === at ? 'step' : undefined}
+              className={clsx(
+                'h-1 w-full rounded-full transition-colors',
+                i <= at ? 'bg-violet' : 'bg-line',
+                past && 'cursor-pointer hover:bg-violet-hover',
+              )}
+              style={{ transitionDuration: '0.32s' }}
+            />
+          </li>
+        );
+      })}
+    </ol>
+  );
+}
+
+function Choice({
   selected,
-  disabled,
   onClick,
   title,
   body,
+  foot,
+  badge,
+  dot,
+  tags,
 }: {
   selected: boolean;
-  disabled: boolean;
   onClick: () => void;
   title: string;
   body: string;
+  foot?: string;
+  badge?: string;
+  dot?: string;
+  tags?: string[];
 }) {
   return (
     <button
       type="button"
-      disabled={disabled}
       onClick={onClick}
+      aria-pressed={selected}
       className={clsx(
-        'rounded-2xl border p-5 text-left transition-colors',
-        selected ? 'border-violet bg-violet-dim' : 'border-line bg-charcoal hover:border-line/80 hover:bg-charcoal2',
+        // A <button> centres its content vertically, which floats the shorter
+        // card's title off its neighbour's baseline in a stretched row. Column
+        // flex from the top is what keeps paired titles aligned.
+        'flex flex-col items-start justify-start rounded-[18px] border p-5 text-left transition-colors',
+        selected
+          ? 'border-violet bg-violet-dim'
+          : 'border-line bg-charcoal hover:border-line/80 hover:bg-charcoal2',
       )}
     >
-      <span className="font-bold">{title}</span>
-      <p className="mt-1.5 text-sm leading-relaxed text-muted">{body}</p>
+      <span className="flex w-full items-center gap-2">
+        {dot ? <span className="h-2.5 w-2.5 flex-none rounded-full" style={{ background: dot }} aria-hidden /> : null}
+        <span className="font-bold">{title}</span>
+        {badge ? (
+          <span className="ml-auto rounded-md bg-ink/60 px-2 py-0.5 text-[11px] font-semibold text-muted">
+            {badge}
+          </span>
+        ) : null}
+        {selected && !badge ? <IconCheck className="ml-auto h-4 w-4 text-violet" /> : null}
+      </span>
+      <span className="mt-1.5 text-[13px] leading-relaxed text-chalk/80">{body}</span>
+      {foot ? <span className="mt-1 text-[11.5px] leading-relaxed text-muted">{foot}</span> : null}
+      {tags?.length ? (
+        <span className="mt-3 flex flex-wrap gap-1.5">
+          {tags.map((t) => (
+            <span key={t} className="rounded-md border border-line px-2 py-0.5 text-[11px] font-medium text-muted">
+              {t}
+            </span>
+          ))}
+        </span>
+      ) : null}
     </button>
+  );
+}
+
+function Uploading({ phase, progress, filename }: { phase: Phase; progress: number; filename: string }) {
+  const pct = Math.round(progress * 100);
+  return (
+    <div className="card mt-7 p-6">
+      <div className="flex items-center justify-between text-[14px]">
+        <span className="font-semibold">
+          {phase === 'uploading' ? 'Uploading your footage' : 'Starting the edit'}
+        </span>
+        <span className="tabular-nums text-muted">{phase === 'uploading' ? `${pct}%` : ''}</span>
+      </div>
+      <div className="mt-3 h-2 overflow-hidden rounded-full bg-ink">
+        <div
+          className={clsx(
+            'h-full rounded-full bg-violet',
+            phase === 'uploading' ? 'transition-[width] duration-200' : 'animate-pulseDot',
+          )}
+          style={{ width: phase === 'uploading' ? `${Math.max(3, pct)}%` : '100%' }}
+        />
+      </div>
+      <p className="mt-3 text-[12.5px] text-faint">
+        {filename} — keep this tab open until the upload finishes.
+      </p>
+    </div>
   );
 }
 

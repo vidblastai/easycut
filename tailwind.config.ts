@@ -20,6 +20,8 @@ export default {
         },
         chalk: '#F5F5F7',      // headings and body
         muted: '#A5A5B3',      // secondary text
+        faint: '#6E6E7C',      // micro-labels, inactive icons
+        'line-soft': '#232330',// the quieter hairline, for structure not edges
         ok: '#5BD6A0',
         warn: '#F5C453',
         bad: '#FF7B7B',

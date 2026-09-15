@@ -38,6 +38,11 @@ model Project {
   styleId   String @default("clean")
   inputMode String @default("raw") // "raw" | "roughcut"
 
+  // The caption look, when the user picked one rather than taking the style's.
+  // Null means "whatever this edit style defaults to", which is what makes the
+  // two lists independent — see src/lib/captions/presets.ts.
+  captionPreset String?
+
   // Optional free-text steer, e.g. "focus on the pricing section".
   userNote String?
 

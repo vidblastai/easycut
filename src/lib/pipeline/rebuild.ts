@@ -4,7 +4,7 @@ import type { DirectorPlan } from '@/lib/director/schema';
 import type { MediaInfo } from '@/lib/media/ffmpeg';
 import { resolveAssets } from './assets';
 import { CostLedger } from '@/lib/pricing/cost';
-import { FORMAT_PRESETS, getStyle, type FormatMode } from '@/lib/styles/presets';
+import { FORMAT_PRESETS, styleFor, type FormatMode } from '@/lib/styles/presets';
 import { invertIntervals, mergeIntervals, subtractIntervals, type Interval } from '@/lib/timeline/silence';
 import { layoutSegments } from '@/lib/timeline/time-mapper';
 import type { Transcript } from '@/lib/transcribe/types';
@@ -33,6 +33,8 @@ export interface RebuildInput {
   reframe: Edl['reframe'];
 
   styleId: string;
+  /** The caption look, when the user chose one. Null takes the edit style's. */
+  captionPreset?: string | null;
   mode: FormatMode;
   /** Override the format's default aspect, e.g. exporting 1:1 from a short. */
   aspect?: Aspect;
@@ -44,7 +46,7 @@ export interface RebuildInput {
 }
 
 export async function rebuildEdl(input: RebuildInput): Promise<Edl> {
-  const style = getStyle(input.styleId);
+  const style = styleFor(input.styleId, input.captionPreset);
   const aspect = input.aspect ?? FORMAT_PRESETS[input.mode].aspect;
   const ceiling = input.maxDurationSec ?? FORMAT_PRESETS[input.mode].maxDurationSec;
 

@@ -15,7 +15,7 @@ import {
 import { CostLedger, planDegradation } from '@/lib/pricing/cost';
 import { computeReframeTrack, retimeTrack } from '@/lib/reframe';
 import { storage } from '@/lib/storage';
-import { FORMAT_PRESETS, getStyle } from '@/lib/styles/presets';
+import { FORMAT_PRESETS, styleFor } from '@/lib/styles/presets';
 import {
   applicableFindings,
   CLEANUP_PRESETS,
@@ -64,7 +64,7 @@ export async function runPipeline(
 
   const context: PipelineContext = {
     request,
-    style: getStyle(request.styleId),
+    style: styleFor(request.styleId, request.captionPreset),
     ledger: new CostLedger(),
     workDir,
     degraded: [],

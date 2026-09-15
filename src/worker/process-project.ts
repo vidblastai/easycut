@@ -48,6 +48,7 @@ export async function processProject(payload: ProcessJobPayload): Promise<void> 
         projectId,
         mode: project.mode as 'short' | 'long',
         styleId: project.styleId,
+        captionPreset: project.captionPreset,
         inputMode: project.inputMode as 'raw' | 'roughcut',
         userNote: project.userNote ?? undefined,
         sourceKey: source.storageKey,

@@ -1,11 +1,12 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { db, parseJson, stringifyJson } from '@/lib/db';
-import { ASPECTS, EdlSchema, type Edl } from '@/lib/edl/types';
+import { ASPECTS, CaptionStyleSchema, EdlSchema, type Edl } from '@/lib/edl/types';
 import { applyOperations, EdlOperationsSchema } from '@/lib/edl/operations';
 import { rebuildEdl } from '@/lib/pipeline/rebuild';
 import { queue } from '@/lib/queue';
 import { selectMusic } from '@/lib/assets/music';
+import { findCaptionPreset } from '@/lib/captions/presets';
 import type { DirectorPlan } from '@/lib/director/schema';
 import type { MediaInfo } from '@/lib/media/ffmpeg';
 import type { Transcript } from '@/lib/transcribe/types';
@@ -60,17 +61,21 @@ const PatchSchema = z.object({
     .partial()
     .optional(),
 
-  captionStyle: z
-    .object({
-      fontSizeRatio: z.number().min(0.02).max(0.12),
-      positionY: z.number().min(0.1).max(0.95),
-      uppercase: z.boolean(),
-      emphasisColor: z.string(),
-      animation: z.enum(['karaoke', 'word-pop', 'line-fade', 'typewriter', 'bounce']),
-      maxWordsPerCue: z.number().int().min(1).max(12),
-    })
-    .partial()
-    .optional(),
+  /**
+   * A whole caption look, by id. The picker sends this for the sixteen
+   * presets; `captionStyle` below carries the hand-tuned deltas on top.
+   */
+  captionPreset: z.string().optional(),
+
+  /**
+   * Any field of the caption style.
+   *
+   * This used to be a hand-written whitelist of six fields, which meant the
+   * schema grew a font, a stroke, a gradient and a word plate that the API
+   * silently refused to save. A partial of the real schema cannot drift from
+   * it, and zod still rejects anything malformed.
+   */
+  captionStyle: CaptionStyleSchema.partial().optional(),
 
   /** Retype the words on one caption card — ASR is good, not perfect. */
   captionEdits: z.array(z.object({ cueId: z.string(), text: z.string().max(200) })).optional(),
@@ -129,6 +134,11 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
 
   let edl = EdlSchema.parse(parseJson<Edl>(currentRow.document, {} as Edl));
 
+  // Edits the server declined, collected as they happen. Declared up here
+  // because both the caption branch and the timeline operations report into it
+  // and they sit either side of the rebuild.
+  const rejected: Array<{ reason: string }> = [];
+
   /* ------------------------ structural: full rebuild ----------------------- */
 
   const structural =
@@ -161,6 +171,9 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
       sourceKey: source.storageKey,
       reframe: edl.reframe,
       styleId: patch.styleId ?? project.styleId,
+      // Without this, changing the edit style would silently revert a caption
+      // look the user picked — the two lists are independent by design.
+      captionPreset: patch.captionPreset ?? project.captionPreset,
       mode: (patch.mode ?? project.mode) as 'short' | 'long',
       aspect: patch.aspect,
       maxDurationSec: patch.maxDurationSec,
@@ -196,15 +209,20 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     };
   }
 
+  // A preset is the base; hand-tuned fields land on top of it, so sending both
+  // in one request means "this look, with these changes".
+  if (patch.captionPreset) {
+    const preset = findCaptionPreset(patch.captionPreset);
+    if (preset) edl = { ...edl, captionStyle: { ...preset.style } };
+    else rejected.push({ reason: `Unknown caption look "${patch.captionPreset}".` });
+  }
+
   if (patch.captionStyle) {
+    // Deliberately NOT rewriting the stored word text when `uppercase` flips.
+    // The renderer applies the flag at paint time, so uppercasing the words
+    // here would be a destructive duplicate — and switching the flag back off
+    // could never restore the original case.
     edl = { ...edl, captionStyle: { ...edl.captionStyle, ...patch.captionStyle } };
-    if (patch.captionStyle.uppercase !== undefined) {
-      const upper = patch.captionStyle.uppercase;
-      edl.captions = edl.captions.map((cue) => ({
-        ...cue,
-        words: cue.words.map((w) => ({ ...w, text: upper ? w.text.toUpperCase() : w.text })),
-      }));
-    }
   }
 
   if (patch.captionEdits?.length) {
@@ -244,11 +262,10 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
 
   /* --------------------------- manual timeline edits ----------------------- */
 
-  let rejected: Array<{ reason: string }> = [];
   if (patch.operations?.length) {
     const result = applyOperations(edl, patch.operations);
     edl = result.edl;
-    rejected = result.rejected.map((r) => ({ reason: r.reason }));
+    rejected.push(...result.rejected.map((r) => ({ reason: r.reason })));
   }
 
   /* ------------------------------ persist + render ------------------------- */
@@ -265,6 +282,9 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
 
   if (patch.styleId) {
     await db.project.update({ where: { id }, data: { styleId: patch.styleId } });
+  }
+  if (patch.captionPreset) {
+    await db.project.update({ where: { id }, data: { captionPreset: patch.captionPreset } });
   }
   if (patch.mode) {
     await db.project.update({ where: { id }, data: { mode: patch.mode } });

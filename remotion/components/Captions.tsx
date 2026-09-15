@@ -3,6 +3,12 @@ import { AbsoluteFill, interpolate, useCurrentFrame, useVideoConfig } from 'remo
 import type { CaptionCue, CaptionStyle, CaptionWord, Edl } from '../../src/lib/edl/types';
 import { ensureCaptionFont } from '../lib/fonts';
 import { pop } from '../lib/timing';
+import {
+  blockStyle,
+  justifyFor,
+  wordColor,
+  wordStyle,
+} from '../../src/lib/captions/paint';
 
 /**
  * Captions.
@@ -32,56 +38,9 @@ export const Captions: React.FC<{ edl: Edl }> = ({ edl }) => {
 
 /* ------------------------------------------------------------------ paint */
 
-/** text-shadow does the work of shadow, glow and stroke-softening together. */
-function buildTextShadow(style: CaptionStyle, fontSize: number): string | undefined {
-  const layers: string[] = [];
-
-  if (style.glow) {
-    // Two passes: a tight core and a wide bloom. One pass reads as a blur.
-    layers.push(`0 0 ${style.glow.blur * 0.4}px ${style.glow.color}`);
-    layers.push(`0 0 ${style.glow.blur}px ${style.glow.color}`);
-  }
-  if (style.shadow) {
-    const { offsetX, offsetY, blur, color } = style.shadow;
-    // Offsets are authored against a 1080-tall frame, so they scale with type
-    // rather than vanishing on a 4K render.
-    const k = fontSize / 62;
-    layers.push(`${offsetX * k}px ${offsetY * k}px ${blur * k}px ${color}`);
-  }
-
-  return layers.length ? layers.join(', ') : undefined;
-}
-
-/**
- * Stroke.
- *
- * `-webkit-text-stroke` centres the stroke on the outline, so half of it eats
- * into the glyph — a 10px stroke on a bold face closes the counters and the
- * word turns into a blob. `paint-order: stroke fill` draws the stroke first and
- * the fill on top, which puts the whole width outside the letterform. Widths in
- * the presets assume that, and the width scales with the type for the same
- * reason the shadow does.
- */
-function strokeStyle(style: CaptionStyle, fontSize: number): React.CSSProperties {
-  if (!style.stroke) return {};
-  return {
-    WebkitTextStroke: `${style.stroke.width * (fontSize / 62)}px ${style.stroke.color}`,
-    paintOrder: 'stroke fill',
-  };
-}
-
-/** A gradient fill has to be clipped to the glyphs, which means no flat colour. */
-function fillStyle(style: CaptionStyle, color: string): React.CSSProperties {
-  if (!style.gradient) return { color };
-  return {
-    backgroundImage: `linear-gradient(${style.gradient.angle}deg, ${style.gradient.from}, ${style.gradient.to})`,
-    WebkitBackgroundClip: 'text',
-    backgroundClip: 'text',
-    // The stroke still needs a colour to draw against; transparent text plus a
-    // clipped background is what makes the gradient visible through it.
-    color: 'transparent',
-  };
-}
+/* How a caption is painted lives in src/lib/captions/paint.ts, because the
+   style picker draws the same thing and two copies of "what a stroke means"
+   drift silently. What stays here is the half that depends on the clock. */
 
 /* ----------------------------------------------------------------- render */
 
@@ -97,8 +56,6 @@ const CaptionCard: React.FC<{ cue: CaptionCue; style: CaptionStyle; fontStack: s
   const sinceCue = frame - cueStartFrame;
 
   const fontSize = height * style.fontSizeRatio;
-  const textShadow = buildTextShadow(style, fontSize);
-  const stroke = strokeStyle(style, fontSize);
 
   /* ---- how the whole block arrives ---- */
   let cardOpacity = 1;
@@ -127,8 +84,7 @@ const CaptionCard: React.FC<{ cue: CaptionCue; style: CaptionStyle; fontStack: s
       break;
   }
 
-  const justify =
-    style.align === 'left' ? 'flex-start' : style.align === 'right' ? 'flex-end' : 'center';
+  const justify = justifyFor(style);
 
   return (
     <AbsoluteFill style={{ justifyContent: 'flex-start', alignItems: justify }}>
@@ -140,26 +96,7 @@ const CaptionCard: React.FC<{ cue: CaptionCue; style: CaptionStyle; fontStack: s
           right: style.align === 'right' ? width * 0.06 : undefined,
           transform: `translateY(-50%) translateY(${cardTranslateY}px) scale(${cardScale})`,
           opacity: cardOpacity,
-          display: 'flex',
-          flexWrap: 'wrap',
-          justifyContent: justify,
-          alignItems: 'baseline',
-          // Row gap carries the line height; column gap is the word space.
-          gap: `${fontSize * (style.lineHeight - 1) * 0.9}px ${fontSize * 0.26}px`,
-          maxWidth: width * style.widthRatio,
-          // No maxHeight. Capping the pixels cropped the last line through the
-          // middle of its letters, which looks broken in a way an extra line
-          // never does. maxLines is enforced where it belongs — in how many
-          // words go into a cue — so by the time a cue reaches here it already
-          // fits.
-          textAlign: style.align,
-          ...(style.background
-            ? {
-                backgroundColor: style.background.color,
-                padding: `${style.background.padding}px ${style.background.padding * 1.6}px`,
-                borderRadius: style.background.radius,
-              }
-            : {}),
+          ...blockStyle(style, { width, height }, fontSize),
         }}
       >
         {cue.words.map((word, index) => (
@@ -174,8 +111,6 @@ const CaptionCard: React.FC<{ cue: CaptionCue; style: CaptionStyle; fontStack: s
             frame={frame}
             fps={fps}
             sinceCue={sinceCue}
-            textShadow={textShadow}
-            strokeCss={stroke}
           />
         ))}
       </div>
@@ -193,24 +128,20 @@ const Word: React.FC<{
   frame: number;
   fps: number;
   sinceCue: number;
-  textShadow: string | undefined;
-  strokeCss: React.CSSProperties;
-}> = ({ word, index, style, fontStack, fontSize, outSec, frame, fps, sinceCue, textShadow, strokeCss }) => {
+}> = ({ word, index, style, fontStack, fontSize, outSec, frame, fps, sinceCue }) => {
   const isActive = outSec >= word.startSec && outSec < word.endSec;
   const hasArrived = outSec >= word.startSec;
-  const activeColor = style.activeColor ?? style.emphasisColor;
 
   let opacity = 1;
   let scale = 1;
   let translateY = 0;
   let rotate = 0;
-  let color = word.emphasis ? style.emphasisColor : style.color;
+  const color = wordColor(style, { active: isActive, emphasis: word.emphasis });
   let boxed = false;
 
   switch (style.animation) {
     case 'karaoke':
       // Whole line visible; the active word lights up.
-      color = isActive || word.emphasis ? activeColor : style.color;
       opacity = hasArrived ? 1 : 0.45;
       scale = isActive ? 1.04 : 1;
       break;
@@ -219,7 +150,6 @@ const Word: React.FC<{
       // Whole line visible; the active word gets a plate under it. The plate is
       // what makes this readable over busy footage, not the colour change.
       boxed = isActive && !!style.wordBox;
-      color = boxed ? activeColor : word.emphasis ? style.emphasisColor : style.color;
       opacity = hasArrived ? 1 : 0.5;
       break;
 
@@ -266,29 +196,10 @@ const Word: React.FC<{
   return (
     <span
       style={{
-        fontFamily: fontStack,
-        fontWeight: word.emphasis ? Math.min(900, style.fontWeight + 100) : style.fontWeight,
-        fontStyle: style.italic ? 'italic' : 'normal',
-        fontSize,
-        lineHeight: style.lineHeight,
-        letterSpacing: `${style.letterSpacing}em`,
+        ...wordStyle(style, { fontStack, fontSize, color, emphasis: word.emphasis, boxed }),
         opacity,
         transform: `scale(${scale}) translateY(${translateY}px) rotate(${rotate}deg)`,
         transformOrigin: 'center bottom',
-        textShadow,
-        whiteSpace: 'pre',
-        ...(boxed && style.wordBox
-          ? {
-              backgroundColor: style.wordBox.color,
-              borderRadius: style.wordBox.radius,
-              padding: `${style.wordBox.padding * 0.55}px ${style.wordBox.padding}px`,
-              margin: `${-style.wordBox.padding * 0.55}px ${-style.wordBox.padding * 0.35}px`,
-              // A plate under the word does the job a stroke was doing; both at
-              // once reads as a mistake.
-              WebkitTextStroke: undefined,
-            }
-          : strokeCss),
-        ...fillStyle(style, color),
       }}
     >
       {text}

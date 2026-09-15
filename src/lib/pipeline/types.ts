@@ -60,6 +60,8 @@ export interface PipelineRequest {
   projectId: string;
   mode: FormatMode;
   styleId: string;
+  /** The caption look, when the user chose one. Null takes the edit style's. */
+  captionPreset?: string | null;
   inputMode: 'raw' | 'roughcut';
   userNote?: string;
   /** Storage key of the uploaded source file. */

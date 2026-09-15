@@ -299,6 +299,24 @@ export function getStyle(id: string): StylePreset {
   return STYLE_PRESETS[id as StyleId] ?? STYLE_PRESETS.clean;
 }
 
+/**
+ * The style to build with, once the user's own caption choice is applied.
+ *
+ * Pacing and typography are separate decisions — "that energy, quieter type" is
+ * a thing people want and a thing the old welded-together version could not
+ * express. An unknown or absent preset id falls back to the edit style's own,
+ * so a stale id in the database is a default rather than a crash.
+ */
+export function styleFor(styleId: string, captionPreset?: string | null): StylePreset {
+  const style = getStyle(styleId);
+  if (!captionPreset) return style;
+
+  const caption = findCaptionPreset(captionPreset);
+  if (!caption) return style;
+
+  return { ...style, captionStyle: { ...caption.style } };
+}
+
 /* --------------------------------------------------------------- formats */
 
 export type FormatMode = 'short' | 'long';

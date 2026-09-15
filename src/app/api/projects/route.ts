@@ -4,6 +4,7 @@ import { db, parseJson } from '@/lib/db';
 import { env } from '@/lib/config/env';
 import { assetKey, storage } from '@/lib/storage';
 import { FORMAT_PRESETS, getStyle } from '@/lib/styles/presets';
+import { findCaptionPreset } from '@/lib/captions/presets';
 import { currentUserId, ensureUser, isAuthEnabled } from '@/lib/auth';
 
 export const runtime = 'nodejs';
@@ -12,6 +13,8 @@ const CreateProjectSchema = z.object({
   title: z.string().max(200).optional(),
   mode: z.enum(['short', 'long']),
   styleId: z.string().default('clean'),
+  /** The caption look, when the picker set a default. Omitted takes the style's. */
+  captionPreset: z.string().optional(),
   inputMode: z.enum(['raw', 'roughcut']).default('raw'),
   userNote: z.string().max(500).optional(),
   filename: z.string().min(1).max(300),
@@ -52,6 +55,11 @@ export async function POST(request: Request) {
       title: input.title?.trim() || stripExtension(input.filename),
       mode: input.mode,
       styleId: getStyle(input.styleId).id,
+      // Validated rather than trusted: an id that no longer exists would make
+      // every render of this project silently fall back, forever.
+      captionPreset: input.captionPreset && findCaptionPreset(input.captionPreset)
+        ? input.captionPreset
+        : null,
       inputMode: input.inputMode,
       userNote: input.userNote,
       status: 'draft',
