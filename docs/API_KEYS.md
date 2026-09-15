@@ -38,12 +38,19 @@ where the `um` was. [AssemblyAI](https://www.assemblyai.com/dashboard/signup)
 ($0.12/hour) is the most accurate on accented English and noisy rooms, and the
 slowest. Set any or all — the pipeline fails over between them automatically.
 
-### 2. Anthropic — the AI director
+### 2. The AI director — Anthropic, or Gemini
 
 This is the part that makes it feel like an editor rather than a script. It
 picks the hook, decides what to cut for content reasons, chooses what each
 B-roll insert should show, turns numbers into stat cards and lists into builds,
 and marks the words worth emphasising.
+
+Two providers are supported. They share the prompt, the plan schema and the
+validation, so the only difference between them is the model — run the same
+footage through both and judge it yourself. `LLM_PROVIDER=auto` (the default)
+uses whichever key is set and prefers Anthropic when both are.
+
+**Anthropic**
 
 - Sign up: **https://console.anthropic.com/**
 - Cost: **~$0.10 per short, ~$0.50 per 10-minute video** on Claude Opus 5
@@ -52,6 +59,28 @@ and marks the words worth emphasising.
 *Cost lever:* `LLM_MODEL=claude-sonnet-5` cuts that by roughly 60 % and is
 perfectly good for most footage. `LLM_EFFORT` (`low`/`medium`/`high`) trades
 depth for speed; the default is `medium` because this path is latency-sensitive.
+
+**Gemini** — free, with two real costs that are not money
+
+- Sign up: **https://aistudio.google.com/apikey**
+- Cost: **$0** on the free tier
+- Set: `GEMINI_API_KEY`, optionally `GEMINI_MODEL` (default `gemini-3-flash`)
+
+The first cost is your script. On Google's free tier prompts and responses may
+be used to improve Google's products, and the prompt here is your entire
+transcript — footage you have not published yet. `GEMINI_PAID_TIER=true` with a
+linked billing account opts out of that; `npm run doctor` keeps printing the
+warning until you do.
+
+The second is throughput. The free tier allows a handful of requests a minute,
+so long-form runs its 3-minute analysis windows one at a time instead of
+concurrently — a 10-minute video takes minutes rather than seconds. For a 45-
+second short it makes no practical difference.
+
+Model ids move faster than this document. `npm run doctor` asks your key which
+models it can actually reach and says whether `GEMINI_MODEL` is one of them —
+a wrong id otherwise shows up as a director that silently falls back to the
+rule-based editor.
 
 ---
 
@@ -65,8 +94,14 @@ Free stock video, commercial use, no attribution required. This is what fills
 the "illustrate what they just said" cues.
 
 - Sign up: **https://www.pexels.com/api/** — instant, no card
-- Cost: **free**, 200 requests/hour
+- Cost: **free — there is no paid tier.** 200 requests/hour and 20,000/month by
+  default, and Pexels will lift those free of charge if you ask and attribute
+  properly. Photos and videos draw on the same quota.
 - Set: `PEXELS_API_KEY`
+
+One short spends two or three requests, so the hourly limit is the one you could
+plausibly hit — by running ~70 videos in an hour, or by re-running a job in a
+loop while debugging. The monthly one is not reachable at any sane volume.
 
 Add [Pixabay](https://pixabay.com/api/docs/) too (`PIXABAY_API_KEY`, also free)
 — the pipeline searches both and picks the better match, which meaningfully
@@ -163,7 +198,7 @@ reports it as a skipped layer.
 | | Service | Cost | What you lose without it |
 | --- | --- | --- | --- |
 | **1** | [Deepgram](https://console.deepgram.com/signup) | $200 free, then $0.0043/min | Captions and filler removal |
-| **2** | [Anthropic](https://console.anthropic.com/) | ~$0.10/short | The hook, and every creative decision |
+| **2** | [Anthropic](https://console.anthropic.com/) *or* [Gemini](https://aistudio.google.com/apikey) | ~$0.10/short, or free | The hook, and every creative decision |
 | **3** | [Pexels](https://www.pexels.com/api/) | Free | B-roll |
 | **4** | [Replicate](https://replicate.com/account/api-tokens) | ~$0.003/image | Bespoke illustrations (icons still work) |
 | **5** | [Cloudflare R2](https://dash.cloudflare.com/) | $0.015/GB-mo | Multi-worker deployment |

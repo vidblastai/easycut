@@ -3,6 +3,8 @@ import { capabilities, env } from '../src/lib/config/env';
 import { isMusicAvailable } from '../src/lib/assets/music';
 import { FFMPEG, FFPROBE, run } from '../src/lib/media/ffmpeg';
 import { estimateCost } from '../src/lib/pricing/cost';
+import { selectedProvider } from '../src/lib/director';
+import { isGeminiFreeTier, listGeminiModels } from '../src/lib/director/gemini';
 
 /**
  * `npm run doctor` — one place that answers "why is my output missing X?" and
@@ -14,6 +16,7 @@ const YELLOW = '\x1b[33m';
 const DIM = '\x1b[2m';
 const BOLD = '\x1b[1m';
 const RESET = '\x1b[0m';
+const dim = (text: string) => `${DIM}${text}${RESET}`;
 
 async function main() {
   console.log(`${BOLD}EasyCut — system check${RESET}\n`);
@@ -86,7 +89,33 @@ async function main() {
   console.log(`  storage  ${env.storage.driver}`);
   console.log(`  queue    ${env.queue.driver}`);
   console.log(`  renderer ${env.render.driver}`);
-  console.log(`  director ${env.llm.anthropicKey ? env.llm.model : 'rule-based (no key)'}`);
+  const provider = selectedProvider();
+  const directorLine =
+    provider === 'anthropic' ? `anthropic · ${env.llm.model}`
+    : provider === 'gemini' ? `gemini · ${env.llm.geminiModel}${isGeminiFreeTier() ? ' (free tier)' : ''}`
+    : 'rule-based (no key)';
+  console.log(`  director ${directorLine}`);
+
+  if (provider === 'gemini' && isGeminiFreeTier()) {
+    // Worth saying out loud rather than burying in a doc: the transcript is the
+    // user's unpublished script, and on the free tier it is training data.
+    console.log(dim('           free tier — Google may use your prompts to improve its products.'));
+    console.log(dim('           Link a billing account and set GEMINI_PAID_TIER=true to opt out.'));
+  }
+
+  // Model ids move faster than any table in this repo, so ask rather than assert.
+  if (env.llm.geminiKey) {
+    try {
+      const models = await listGeminiModels();
+      const reachable = models.includes(env.llm.geminiModel);
+      console.log(dim(`           GEMINI_MODEL=${env.llm.geminiModel} ${reachable ? 'is available' : 'NOT in this key\'s model list'}`));
+      if (!reachable && models.length) {
+        console.log(dim(`           available: ${models.filter((m) => m.startsWith('gemini')).slice(0, 6).join(', ')}`));
+      }
+    } catch (error) {
+      console.log(dim(`           could not list Gemini models: ${(error as Error).message}`));
+    }
+  }
   console.log('');
 }
 

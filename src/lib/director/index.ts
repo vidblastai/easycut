@@ -2,6 +2,7 @@ import { env } from '@/lib/config/env';
 import type { FormatMode, StylePreset } from '@/lib/styles/presets';
 import type { Transcript } from '@/lib/transcribe/types';
 import { estimateDirectorCostUsd, isAnthropicConfigured, runAnthropicDirector } from './anthropic';
+import { estimateGeminiCostUsd, isGeminiConfigured, runGeminiDirector } from './gemini';
 import { runHeuristicDirector } from './heuristic';
 import type { DirectorBrief } from './prompt';
 import { mergePlans, type DirectorPlan } from './schema';
@@ -32,12 +33,31 @@ export interface DirectorRequest {
   userNote?: string;
 }
 
+export type DirectorProvider = 'anthropic' | 'gemini' | 'heuristic';
+
 export interface DirectorResult {
   plan: DirectorPlan;
   costUsd: number;
-  provider: 'anthropic' | 'heuristic';
+  provider: DirectorProvider;
   /** Populated when the LLM failed and we fell back. */
   error?: string;
+}
+
+/**
+ * Which director is going to run.
+ *
+ * `auto` prefers Anthropic when both keys are present — not as a verdict on the
+ * models, but because a paid key is a deliberate act and a free one is often
+ * just left over from something else. Naming a provider explicitly always wins.
+ */
+export function selectedProvider(): DirectorProvider {
+  const { provider } = env.llm;
+  if (provider === 'stub') return 'heuristic';
+  if (provider === 'anthropic') return isAnthropicConfigured() ? 'anthropic' : 'heuristic';
+  if (provider === 'gemini') return isGeminiConfigured() ? 'gemini' : 'heuristic';
+  if (isAnthropicConfigured()) return 'anthropic';
+  if (isGeminiConfigured()) return 'gemini';
+  return 'heuristic';
 }
 
 export function planWindows(durationSec: number): Array<{ startSec: number; endSec: number }> {
@@ -67,21 +87,29 @@ export async function direct(request: DirectorRequest): Promise<DirectorResult> 
     };
   }
 
-  if (env.llm.provider === 'stub' || !isAnthropicConfigured()) {
+  const provider = selectedProvider();
+  if (provider === 'heuristic') {
     return { plan: heuristicAcrossWindows(request), costUsd: 0, provider: 'heuristic' };
   }
 
   const windows = planWindows(transcript.durationSec);
+  const run = provider === 'gemini' ? runGeminiDirector : runAnthropicDirector;
 
   try {
-    const results = await Promise.all(
-      windows.map((w) => runAnthropicDirector(briefFor(request, w.startSec, w.endSec))),
-    );
+    // Gemini's free tier allows only a handful of requests a minute, so a
+    // long-form video's windows go one at a time there. Anthropic's run
+    // concurrently, which is most of why long-form is fast.
+    const briefs = windows.map((w) => briefFor(request, w.startSec, w.endSec));
+    const results =
+      provider === 'gemini' && env.llm.geminiPaid !== true
+        ? await runSequentially(briefs, run)
+        : await Promise.all(briefs.map(run));
+
     const plan = dedupeOverlaps(mergePlans(results.map((r) => r.plan)));
     return {
       plan,
       costUsd: results.reduce((sum, r) => sum + r.costUsd, 0),
-      provider: 'anthropic',
+      provider,
     };
   } catch (error) {
     // A failed director must never fail the job — the user still gets a video.
@@ -94,10 +122,23 @@ export async function direct(request: DirectorRequest): Promise<DirectorResult> 
   }
 }
 
+async function runSequentially<T>(
+  briefs: DirectorBrief[],
+  run: (brief: DirectorBrief) => Promise<T>,
+): Promise<T[]> {
+  const out: T[] = [];
+  for (const brief of briefs) out.push(await run(brief));
+  return out;
+}
+
 export function estimateCostUsd(request: DirectorRequest): number {
-  if (!isAnthropicConfigured()) return 0;
+  const provider = selectedProvider();
+  if (provider === 'heuristic') return 0;
   const windows = planWindows(request.transcript.durationSec);
-  return estimateDirectorCostUsd(request.transcript.text.length, windows.length);
+  const chars = request.transcript.text.length;
+  return provider === 'gemini'
+    ? estimateGeminiCostUsd(chars, windows.length)
+    : estimateDirectorCostUsd(chars, windows.length);
 }
 
 function briefFor(request: DirectorRequest, startSec: number, endSec: number): DirectorBrief {

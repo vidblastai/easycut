@@ -56,9 +56,19 @@ export const env = {
   },
 
   llm: {
-    provider: (str('LLM_PROVIDER') ?? 'anthropic') as 'anthropic' | 'stub',
+    // `auto` picks whichever key is present, preferring Anthropic when both are.
+    provider: (str('LLM_PROVIDER') ?? 'auto') as 'auto' | 'anthropic' | 'gemini' | 'stub',
     anthropicKey: str('ANTHROPIC_API_KEY'),
     model: str('LLM_MODEL') ?? 'claude-opus-5',
+    geminiKey: str('GEMINI_API_KEY'),
+    geminiModel: str('GEMINI_MODEL') ?? 'gemini-3-flash',
+    /**
+     * Set once you've linked a billing account. It changes two things: cost
+     * stops being reported as zero, and Google stops using your prompts to
+     * improve its products — which on this product means your unpublished
+     * script.
+     */
+    geminiPaid: bool('GEMINI_PAID_TIER', false),
     maxOutputTokens: num('LLM_MAX_OUTPUT_TOKENS', 8000),
   },
 
@@ -138,9 +148,9 @@ export function capabilities(): Capability[] {
     {
       key: 'llm',
       label: 'AI director',
-      configured: Boolean(env.llm.anthropicKey),
+      configured: Boolean(env.llm.anthropicKey || env.llm.geminiKey),
       fallback: 'Rule-based director: hook = first strong sentence, B-roll on noun-dense spans. Usable, less clever.',
-      envVars: ['ANTHROPIC_API_KEY'],
+      envVars: ['ANTHROPIC_API_KEY', 'GEMINI_API_KEY'],
       signupUrl: 'https://console.anthropic.com/',
     },
     {
