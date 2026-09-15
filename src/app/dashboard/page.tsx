@@ -3,7 +3,7 @@ import { clsx } from 'clsx';
 import { AppShell, ShellMain } from '@/components/shell/AppShell';
 import { IconPlus } from '@/components/shell/Icons';
 import { db, parseJson } from '@/lib/db';
-import { formatUsd } from '@/lib/pricing/cost';
+import { formatUsd, formatUsdCoarse } from '@/lib/pricing/cost';
 import { getStyle } from '@/lib/styles/presets';
 import { recentsFor } from '@/lib/ui/recents';
 
@@ -140,10 +140,10 @@ function Kpis({
   const cells = [
     { label: 'Videos', value: String(videos), note: `${finished} finished` },
     { label: 'Minutes made', value: minutes >= 10 ? minutes.toFixed(0) : minutes.toFixed(1), note: 'Total runtime' },
-    { label: 'Spent', value: formatUsd(spend), note: 'Across every render' },
+    { label: 'Spent', value: formatUsdCoarse(spend), note: 'Across every render' },
     {
       label: 'Average',
-      value: videos ? formatUsd(spend / videos) : '—',
+      value: videos ? formatUsdCoarse(spend / videos) : '—',
       note: 'Per video',
     },
   ];

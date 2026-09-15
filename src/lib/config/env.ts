@@ -49,10 +49,18 @@ export const env = {
 
   transcription: {
     // Order matters: first configured provider wins.
-    preferred: (str('ASR_PROVIDER') ?? 'auto') as 'auto' | 'deepgram' | 'groq' | 'assemblyai' | 'stub',
+    preferred: (str('ASR_PROVIDER') ?? 'auto') as
+      | 'auto' | 'deepgram' | 'groq' | 'assemblyai' | 'stub' | 'fixture',
     deepgramKey: str('DEEPGRAM_API_KEY'),
     groqKey: str('GROQ_API_KEY'),
     assemblyaiKey: str('ASSEMBLYAI_API_KEY'),
+    /**
+     * A transcript on disk, for the demo seed and for tests. Reachable only by
+     * naming `ASR_PROVIDER=fixture` as well — never through `auto`, because a
+     * provider that can substitute prepared words for someone's real speech
+     * must not be something you can fall into.
+     */
+    fixturePath: str('ASR_FIXTURE'),
   },
 
   llm: {

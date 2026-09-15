@@ -7,7 +7,7 @@ import { CAPTION_ANIMATIONS } from '@/lib/edl/types';
 import { CAPTION_PRESETS, captionPresetFor, type CaptionPreset } from '@/lib/captions/presets';
 import { CAPTION_FONTS, findCaptionFont } from '@/lib/captions/fonts';
 import { loadAllCaptionFonts, preloadCaptionFonts } from '@/lib/captions/web-fonts';
-import { CaptionPreview } from './CaptionPreview';
+import { CaptionBand, CaptionPreview } from './CaptionPreview';
 import { IconCheck } from '@/components/shell/Icons';
 
 /**
@@ -84,28 +84,49 @@ export function CaptionStudio({
     if (tuning) loadAllCaptionFonts();
   }, [tuning]);
 
+  // The real output size, so the preview is the frame rather than a
+  // reinterpretation of it. CaptionPreview scales it to whatever room it has.
   const wide = mode === 'long';
-  const previewW = wide ? 520 : 292;
-  const previewH = wide ? 292 : 520;
+  const frameW = wide ? 1920 : 1080;
+  const frameH = wide ? 1080 : 1920;
 
   const set = (patch: Partial<CaptionStyle>) => onChange({ ...style, ...patch });
 
   return (
     <div className={clsx('grid gap-6', compact ? '' : 'lg:grid-cols-[auto_minmax(0,1fr)]')}>
       {/* ------------------------------------------------------- the preview */}
-      <div className="lg:sticky lg:top-[calc(var(--topbar)+20px)] lg:self-start">
-        <div className="overflow-hidden rounded-[18px] border border-line bg-ink">
-          <CaptionPreview
+      <div className={compact ? '' : 'lg:sticky lg:top-[calc(var(--topbar)+20px)] lg:self-start'}>
+        {compact ? (
+          // In a 340px inspector the full frame would be the whole panel and
+          // the sixteen looks would be below the fold, which inverts what the
+          // panel is for. The band shows the same pixels at the same scale in
+          // a fifth of the height.
+          <CaptionBand
+            className="rounded-[14px] border border-line bg-ink"
             style={style}
             text={sampleText}
-            width={previewW}
-            height={previewH}
-            activeWord={1}
-            emphasisWord={style.animation === 'shake' ? 2 : -1}
+            frameWidth={frameW}
+            frameHeight={frameH}
+            aspect="16 / 7"
+            backdrop={<Backdrop posterUrl={posterUrl} />}
+          />
+        ) : (
+          <div
+            className="overflow-hidden rounded-[18px] border border-line bg-ink"
+            style={{ width: wide ? 520 : 300 }}
           >
-            <Backdrop posterUrl={posterUrl} />
-          </CaptionPreview>
-        </div>
+            <CaptionPreview
+              style={style}
+              text={sampleText}
+              frameWidth={frameW}
+              frameHeight={frameH}
+              activeWord={1}
+              emphasisWord={style.animation === 'shake' ? 2 : -1}
+            >
+              <Backdrop posterUrl={posterUrl} />
+            </CaptionPreview>
+          </div>
+        )}
         <p className="mt-2.5 text-center text-[11.5px] text-faint">
           {current ? current.name : 'Custom'} · {style.fontFamily} {style.fontWeight}
           {' · '}
@@ -135,14 +156,15 @@ export function CaptionStudio({
           </div>
         </div>
 
-        <ul className="mt-3.5 grid grid-cols-2 gap-2.5 sm:grid-cols-3">
+        <ul className={clsx('mt-3.5 grid gap-2.5', compact ? 'grid-cols-2' : 'grid-cols-2 sm:grid-cols-3')}>
           {shown.map((preset) => (
             <li key={preset.id}>
               <PresetTile
                 preset={preset}
                 selected={current?.id === preset.id}
                 onSelect={() => onChange(preset.style)}
-                wide={wide}
+                frameWidth={frameW}
+                frameHeight={frameH}
               />
             </li>
           ))}
@@ -161,7 +183,7 @@ export function CaptionStudio({
         {tuning ? (
           <div className="mt-4 space-y-5 rounded-[18px] border border-line bg-charcoal p-5">
             <Field label="Font">
-              <div className="grid gap-1.5 sm:grid-cols-2">
+              <div className={clsx('grid gap-1.5', compact ? '' : 'sm:grid-cols-2')}>
                 {CAPTION_FONTS.map((font) => (
                   <button
                     key={font.id}
@@ -278,7 +300,7 @@ export function CaptionStudio({
             </Field>
 
             <Field label="Motion">
-              <div className="grid gap-1.5 sm:grid-cols-2">
+              <div className={clsx('grid gap-1.5', compact ? '' : 'sm:grid-cols-2')}>
                 {CAPTION_ANIMATIONS.map((a) => (
                   <button
                     key={a}
@@ -353,12 +375,14 @@ function PresetTile({
   preset,
   selected,
   onSelect,
-  wide,
+  frameWidth,
+  frameHeight,
 }: {
   preset: CaptionPreset;
   selected: boolean;
   onSelect: () => void;
-  wide: boolean;
+  frameWidth: number;
+  frameHeight: number;
 }) {
   return (
     <button
@@ -371,18 +395,23 @@ function PresetTile({
         selected ? 'border-violet' : 'border-line hover:border-line/60',
       )}
     >
-      <span className="relative block bg-[#101015]">
-        <CaptionPreview
-          style={preset.style}
-          text="Captions that actually look good"
-          width={240}
-          height={wide ? 135 : 168}
-          activeWord={1}
-          className="w-full"
-        >
-          <Backdrop posterUrl={null} />
-        </CaptionPreview>
-      </span>
+      {/* A full 9:16 frame would make every tile 400px tall and the grid
+          unscannable, so the tile is a window onto the band where this style's
+          captions actually sit. The percentage translate is relative to the
+          frame's own height, so `-78%` puts positionY 0.78 on the tile's
+          centre line — the crop follows the style rather than assuming the
+          middle. */}
+      {/* The backdrop belongs to the window rather than the cropped frame: a
+          band cut out of one gradient is a flat grey, and the whole reason to
+          show a backdrop is to judge whether the type survives a busy one. */}
+      <CaptionBand
+        className="block bg-[#101015]"
+        style={preset.style}
+        text="Captions that look good"
+        frameWidth={frameWidth}
+        frameHeight={frameHeight}
+        backdrop={<Backdrop posterUrl={null} />}
+      />
       <span
         className={clsx(
           'flex items-center gap-1.5 px-3 py-2 text-[12px] font-semibold',

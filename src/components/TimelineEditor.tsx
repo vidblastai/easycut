@@ -662,8 +662,16 @@ function SpeechTrack({ edl, pps }: { edl: Edl; pps: number }) {
 
   if (!bars.length) return null;
 
+  // The width has to be the video's duration in timeline pixels, not the lane's.
+  // `inset-0` stretched the bars across whatever width the lane happened to
+  // have, so on any window wider than the edit the speech carried on for
+  // seconds after the last clip ended — a waveform that disagrees with the
+  // clips above it is worse than no waveform, because people trim against it.
   return (
-    <div className="pointer-events-none absolute inset-0 flex items-center gap-px overflow-hidden px-px opacity-40">
+    <div
+      className="pointer-events-none absolute inset-y-0 left-0 flex items-center gap-px overflow-hidden px-px opacity-40"
+      style={{ width: edl.format.durationSec * pps }}
+    >
       {bars.map((h, i) => (
         <span
           key={i}

@@ -1,6 +1,7 @@
 import { env } from '@/lib/config/env';
 import { AssemblyAiProvider } from './assemblyai';
 import { DeepgramProvider } from './deepgram';
+import { FixtureTranscriptionProvider } from './fixture';
 import { GroqWhisperProvider } from './groq';
 import { StubTranscriptionProvider } from './stub';
 import type { Transcript, TranscribeOptions, TranscriptionProvider } from './types';
@@ -11,6 +12,7 @@ const REGISTRY: Record<string, () => TranscriptionProvider> = {
   deepgram: () => new DeepgramProvider(),
   groq: () => new GroqWhisperProvider(),
   assemblyai: () => new AssemblyAiProvider(),
+  fixture: () => new FixtureTranscriptionProvider(),
   stub: () => new StubTranscriptionProvider(),
 };
 

@@ -1,0 +1,38 @@
+{
+  "language": "en",
+  "_note": "Words for the synthetic fixture in scripts/make-fixture.ts. The speech bursts in that file sit at 2-4s, 6-9s and 12-17s, so these timings land on real audio and the silence detector has genuine gaps to find between them.",
+  "words": [
+    { "text": "So", "startSec": 2.05, "endSec": 2.28 },
+    { "text": "um,", "startSec": 2.30, "endSec": 2.52, "isFiller": true },
+    { "text": "everybody", "startSec": 2.56, "endSec": 3.04 },
+    { "text": "thinks", "startSec": 3.08, "endSec": 3.38 },
+    { "text": "editing", "startSec": 3.42, "endSec": 3.86 },
+    { "text": "is", "startSec": 3.90, "endSec": 4.00 },
+
+    { "text": "the", "startSec": 6.05, "endSec": 6.18 },
+    { "text": "hard", "startSec": 6.22, "endSec": 6.54 },
+    { "text": "part.", "startSec": 6.58, "endSec": 6.96 },
+    { "text": "It", "startSec": 7.20, "endSec": 7.34 },
+    { "text": "isn't.", "startSec": 7.38, "endSec": 7.80 },
+    { "text": "The", "startSec": 8.00, "endSec": 8.14 },
+    { "text": "hard", "startSec": 8.18, "endSec": 8.48 },
+    { "text": "part", "startSec": 8.52, "endSec": 8.80 },
+    { "text": "is", "startSec": 8.84, "endSec": 9.00 },
+
+    { "text": "sitting", "startSec": 12.05, "endSec": 12.48 },
+    { "text": "down", "startSec": 12.52, "endSec": 12.80 },
+    { "text": "and", "startSec": 12.84, "endSec": 12.98 },
+    { "text": "recording", "startSec": 13.02, "endSec": 13.60 },
+    { "text": "anything", "startSec": 13.64, "endSec": 14.10 },
+    { "text": "at", "startSec": 14.14, "endSec": 14.26 },
+    { "text": "all.", "startSec": 14.30, "endSec": 14.64 },
+    { "text": "So", "startSec": 14.90, "endSec": 15.10 },
+    { "text": "record", "startSec": 15.14, "endSec": 15.54 },
+    { "text": "the", "startSec": 15.58, "endSec": 15.70 },
+    { "text": "thing,", "startSec": 15.74, "endSec": 16.08 },
+    { "text": "and", "startSec": 16.28, "endSec": 16.44 },
+    { "text": "let", "startSec": 16.48, "endSec": 16.64 },
+    { "text": "us", "startSec": 16.68, "endSec": 16.82 },
+    { "text": "cut", "startSec": 16.86, "endSec": 17.00 }
+  ]
+}

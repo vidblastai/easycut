@@ -5,8 +5,16 @@ import { clsx } from 'clsx';
 import dynamic from 'next/dynamic';
 import type { PlayerRef } from '@remotion/player';
 import { TimelineEditor } from '@/components/TimelineEditor';
+import { AppShell } from '@/components/shell/AppShell';
+import type { RecentProject } from '@/components/shell/Sidebar';
+import { Stepper, type StepKey } from '@/components/shell/Stepper';
+import { CaptionStudio } from '@/components/captions/CaptionStudio';
+import { CaptionBand } from '@/components/captions/CaptionPreview';
+import { captionPresetFor } from '@/lib/captions/presets';
+import { IconDownload, IconPlus } from '@/components/shell/Icons';
 import type { EdlOperation } from '@/lib/edl/operations';
-import type { Edl } from '@/lib/edl/types';
+import type { CaptionStyle, Edl } from '@/lib/edl/types';
+import Link from 'next/link';
 
 /**
  * The editor.
@@ -56,7 +64,15 @@ interface ProjectState {
 
 const POLL_MS = 1800;
 
-export function ProjectWorkspace({ projectId, styles }: { projectId: string; styles: StyleOption[] }) {
+export function ProjectWorkspace({
+  projectId,
+  styles,
+  recents,
+}: {
+  projectId: string;
+  styles: StyleOption[];
+  recents: RecentProject[];
+}) {
   const [state, setState] = useState<ProjectState | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -69,7 +85,16 @@ export function ProjectWorkspace({ projectId, styles }: { projectId: string; sty
    * promise about the default, not a refusal — when the AI puts an insert half a
    * second early, you fix it yourself rather than re-rolling the whole edit.
    */
-  const [mode, setMode] = useState<'simple' | 'timeline'>('simple');
+  const [mode, setMode] = useState<'simple' | 'studio'>('simple');
+
+  /**
+   * The caption style being edited, before it is committed.
+   *
+   * Held locally so the picker's preview updates on every click while a render
+   * only happens when the user says so — a re-render per colour nudge would be
+   * unusable even at zero cost, because each one takes a minute.
+   */
+  const [draftCaption, setDraftCaption] = useState<CaptionStyle | null>(null);
 
   /**
    * The live preview, driven by the timeline.
@@ -170,148 +195,301 @@ export function ProjectWorkspace({ projectId, styles }: { projectId: string; sty
 
   if (!state) {
     return (
-      <div className="mx-auto max-w-6xl px-6 pb-24">
-        <div className="card h-64 animate-pulse" />
-      </div>
+      <AppShell recents={recents}>
+        <div className="px-4 py-7 sm:px-8">
+          <div className="measure">
+            <div className="card h-64 animate-pulse" />
+          </div>
+        </div>
+      </AppShell>
     );
   }
 
   const { project, job, edl } = state;
   const doc = edl?.document ?? null;
+  const captionStyle = draftCaption ?? doc?.captionStyle ?? null;
+  const captionDirty = Boolean(draftCaption && doc && !sameStyle(draftCaption, doc.captionStyle));
 
-  return (
-    <div className="mx-auto max-w-6xl px-6 pb-24">
-      <div className="flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-extrabold tracking-[-0.03em] sm:text-3xl">{project.title}</h1>
-          <p className="mt-2 text-sm text-muted">
-            {project.mode === 'short' ? 'Short form' : 'Long form'} ·{' '}
-            {styles.find((s) => s.id === project.styleId)?.name ?? project.styleId}
-            {project.durationSec ? ` · ${formatDuration(project.durationSec)}` : ''}
-            {project.costUsd > 0 ? ` · $${project.costUsd.toFixed(3)} to make` : ''}
-          </p>
+  /**
+   * Where this video is in the four steps.
+   *
+   * Derived from state rather than tracked: the step is a fact about the
+   * project, and a second copy of it would be a second thing to keep in sync
+   * with a job that is progressing in another process.
+   */
+  const step: StepKey =
+    project.status === 'processing' || project.status === 'draft'
+      ? 'editing'
+      : mode === 'studio'
+        ? 'tune'
+        : 'done';
+
+  const commitCaption = async () => {
+    if (!captionStyle) return;
+    await patch({ captionStyle, captionPreset: captionStyle.preset });
+    setDraftCaption(null);
+  };
+
+  /* ------------------------------------------------------------ studio --- */
+  /* Preview centred, inspector on the right, timeline docked to the bottom —
+     the arrangement every editor uses, because the transport belongs under the
+     picture and the picture belongs in the middle. It claims the viewport, so
+     the dock is always reachable without scrolling. */
+  if (mode === 'studio' && doc) {
+    const live = workingEdl ?? doc;
+    return (
+      <AppShell
+        recents={recents}
+        full
+        action={
+          <>
+            <button type="button" onClick={() => setMode('simple')} className="btn-ghost">
+              Done
+            </button>
+            {captionDirty ? (
+              <button type="button" disabled={busy} onClick={() => void commitCaption()} className="btn-primary">
+                Apply captions
+              </button>
+            ) : null}
+          </>
+        }
+      >
+        <div className="px-4 pt-3 sm:px-8">
+          <div className="measure">
+            <Stepper current={step} onStepClick={(k) => k !== 'tune' && setMode('simple')} />
+          </div>
         </div>
 
-        {doc ? (
-          <div className="flex rounded-xl border border-line p-1">
-            {(['simple', 'timeline'] as const).map((m) => (
-              <button
-                key={m}
-                type="button"
-                onClick={() => setMode(m)}
-                className={clsx(
-                  'rounded-lg px-3.5 py-1.5 text-xs font-semibold capitalize transition-colors',
-                  mode === m ? 'bg-violet text-ink' : 'text-muted hover:text-chalk',
-                )}
+        <div className="flex min-h-0 flex-1 flex-col">
+          <div className="flex min-h-0 flex-1">
+            {/* The picture, centred in whatever room the inspector leaves. */}
+            <div className="flex min-h-[220px] min-w-0 flex-1 items-center justify-center p-5">
+              <div
+                className="overflow-hidden rounded-[14px] bg-black shadow-card"
+                style={{
+                  aspectRatio: project.mode === 'short' ? '9 / 16' : '16 / 9',
+                  height: '100%',
+                  maxWidth: '100%',
+                }}
               >
-                {m === 'simple' ? 'Simple' : 'Fine-tune'}
-              </button>
-            ))}
-          </div>
-        ) : null}
-      </div>
-
-      {project.status === 'failed' ? (
-        <FailureCard message={project.errorMessage ?? job?.errorMessage ?? 'Unknown error'} />
-      ) : null}
-
-      <div className="mt-8 grid gap-6 lg:grid-cols-[1.35fr_1fr]">
-        {/* ------------------------------------------------------- the video */}
-        <div>
-          {mode === 'timeline' && (workingEdl ?? doc) ? (
-            <div className="card overflow-hidden">
-              <LivePreview edl={(workingEdl ?? doc)!} playerRef={playerRef} mode={project.mode} />
-              <p className="border-t border-line px-4 py-2.5 text-xs text-muted">
-                Live preview of your edit &mdash; including changes you haven&rsquo;t applied yet.
-              </p>
-            </div>
-          ) : project.status === 'processing' || !project.previewUrl ? (
-            <ProgressPanel job={job} mode={project.mode} />
-          ) : (
-            <div className="card overflow-hidden">
-              <video
-                key={project.previewUrl}
-                src={project.previewUrl}
-                poster={project.thumbnailUrl ?? undefined}
-                controls
-                playsInline
-                className="w-full bg-black"
-                style={{ aspectRatio: project.mode === 'short' ? '9 / 16' : '16 / 9', maxHeight: '70vh' }}
-              />
-              <div className="flex flex-wrap items-center gap-2 border-t border-line p-4">
-                <a href={project.previewUrl} download className="btn-primary">
-                  Download
-                </a>
-                {(['9:16', '1:1', '16:9'] as const)
-                  .filter((a) => a !== doc?.format.aspect)
-                  .map((aspect) => (
-                    <button
-                      key={aspect}
-                      type="button"
-                      disabled={busy}
-                      onClick={() => void exportAspect(aspect)}
-                      className="btn-ghost"
-                    >
-                      Export {aspect}
-                    </button>
-                  ))}
+                <LivePreview edl={live} playerRef={playerRef} />
               </div>
             </div>
-          )}
 
-          {project.socialCaption ? (
-            <div className="card mt-4 p-5">
-              <h3 className="text-sm font-bold">Caption for your post</h3>
-              <p className="mt-2 text-sm leading-relaxed text-muted">{project.socialCaption}</p>
-              {project.hashtags.length ? (
-                <p className="mt-2 text-sm text-violet">{project.hashtags.join(' ')}</p>
+            <aside className="hidden w-[340px] flex-none overflow-y-auto border-l border-line-soft p-4 lg:block">
+              {error ? (
+                <p className="mb-3 rounded-xl border border-bad/40 bg-bad/[0.08] px-3 py-2 text-[12.5px] text-bad">
+                  {error}
+                </p>
               ) : null}
-            </div>
-          ) : null}
 
-          {doc && mode === 'timeline' ? (
-            <div className="mt-4">
-              <TimelineEditor
-                edl={doc}
-                onCommit={applyOperations}
-                busy={busy}
-                playerRef={playerRef}
-                onWorkingEdlChange={setWorkingEdl}
-              />
-            </div>
-          ) : null}
+              {captionStyle ? (
+                <>
+                  <h3 className="mb-3 text-[14px] font-bold">Captions</h3>
+                  <CaptionStudio
+                    style={captionStyle}
+                    onChange={setDraftCaption}
+                    mode={project.mode}
+                    posterUrl={project.thumbnailUrl}
+                    compact
+                  />
+                  {captionDirty ? (
+                    <div className="sticky bottom-0 mt-4 flex gap-2 bg-ink/90 py-3 backdrop-blur">
+                      <button
+                        type="button"
+                        onClick={() => setDraftCaption(null)}
+                        className="btn-ghost flex-1"
+                      >
+                        Revert
+                      </button>
+                      <button
+                        type="button"
+                        disabled={busy}
+                        onClick={() => void commitCaption()}
+                        className="btn-primary flex-1"
+                      >
+                        Apply
+                      </button>
+                    </div>
+                  ) : null}
+                </>
+              ) : null}
+            </aside>
+          </div>
 
-          {doc && mode === 'simple' ? <WhatWeDid edl={doc} /> : null}
+          {/* The dock. */}
+          {/* The dock is capped so the picture always wins the argument over
+              space — a timeline that grows a lane per layer will happily take
+              the whole window otherwise. */}
+          <div className="max-h-[38vh] flex-none overflow-y-auto border-t border-line-soft bg-[#0B0B0E] p-3">
+            <TimelineEditor
+              edl={doc}
+              onCommit={applyOperations}
+              busy={busy}
+              playerRef={playerRef}
+              onWorkingEdlChange={setWorkingEdl}
+            />
+          </div>
         </div>
+      </AppShell>
+    );
+  }
 
-        {/* ------------------------------------------------------ the tweaks */}
-        <aside className="space-y-4">
-          {error ? (
-            <div className="rounded-xl border border-bad/40 bg-bad/[0.08] px-4 py-3 text-sm text-bad">{error}</div>
+  /* ------------------------------------------------------------ simple --- */
+  return (
+    <AppShell
+      recents={recents}
+      action={
+        <>
+          {doc ? (
+            <button type="button" onClick={() => setMode('studio')} className="btn-ghost">
+              Fine-tune
+            </button>
           ) : null}
-
-          {doc?.degraded.length ? (
-            <div className="card p-4">
-              <h3 className="text-sm font-bold text-warn">Skipped layers</h3>
-              <ul className="mt-2 space-y-1 text-xs text-muted">
-                {doc.degraded.map((item, i) => (
-                  <li key={i}>• {item}</li>
-                ))}
-              </ul>
-            </div>
-          ) : null}
-
-          <TweakPanel
-            disabled={busy || project.status === 'processing'}
-            edl={doc}
-            styles={styles}
-            currentStyle={project.styleId}
-            onPatch={patch}
-          />
-        </aside>
+          {project.previewUrl ? (
+            <a href={project.previewUrl} download className="btn-primary">
+              <IconDownload className="h-4 w-4" />
+              Download
+            </a>
+          ) : (
+            <Link href="/new" className="btn-ghost">
+              <IconPlus className="h-4 w-4" />
+              New video
+            </Link>
+          )}
+        </>
+      }
+    >
+      <div className="px-4 pt-5 sm:px-8">
+        <div className="measure">
+          <Stepper current={step} onStepClick={(k) => k === 'tune' && doc && setMode('studio')} />
+        </div>
       </div>
-    </div>
+
+      <main className="min-w-0 flex-1 px-4 pb-20 sm:px-8">
+        <div className="measure">
+          <div className="pt-6">
+            <h1 className="text-[26px] font-extrabold">{project.title}</h1>
+            <p className="mt-1.5 text-[13px] text-muted">
+              {project.mode === 'short' ? 'Short form' : 'Long form'} ·{' '}
+              {styles.find((s) => s.id === project.styleId)?.name ?? project.styleId}
+              {project.durationSec ? ` · ${formatDuration(project.durationSec)}` : ''}
+              {project.costUsd > 0 ? ` · ${project.costUsd < 0.01 ? '<$0.01' : `$${project.costUsd.toFixed(2)}`} to make` : ''}
+            </p>
+          </div>
+
+          {project.status === 'failed' ? (
+            <FailureCard message={project.errorMessage ?? job?.errorMessage ?? 'Unknown error'} />
+          ) : null}
+
+          <div className="mt-6 grid gap-6 lg:grid-cols-[1.35fr_1fr]">
+            {/* ----------------------------------------------------- the video */}
+            <div>
+              {project.status === 'processing' || !project.previewUrl ? (
+                <ProgressPanel job={job} mode={project.mode} />
+              ) : (
+                <div className="card overflow-hidden">
+                  {/* The shape has to live on a box that is only ever that
+                      shape. `width: 100%` plus `max-height` describes a
+                      DIFFERENT rectangle the moment the height clamps, and the
+                      video then letterboxes itself inside it — black bars on a
+                      correctly rendered 9:16 file, which reads as a broken
+                      render rather than a broken stylesheet. */}
+                  {/* Black belongs to the picture, not to the room it sits in
+                      — a black gutter beside a correctly sized 9:16 video is
+                      indistinguishable from a letterboxed render. */}
+                  <div className="flex justify-center">
+                    <div
+                      className="bg-black"
+                      style={{
+                        aspectRatio: project.mode === 'short' ? '9 / 16' : '16 / 9',
+                        height: '70vh',
+                        maxWidth: '100%',
+                      }}
+                    >
+                      <video
+                        key={project.previewUrl}
+                        src={project.previewUrl}
+                        poster={project.thumbnailUrl ?? undefined}
+                        controls
+                        playsInline
+                        className="h-full w-full"
+                      />
+                    </div>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2 border-t border-line p-4">
+                    <a href={project.previewUrl} download className="btn-primary">
+                      <IconDownload className="h-4 w-4" />
+                      Download
+                    </a>
+                    {(['9:16', '1:1', '16:9'] as const)
+                      .filter((a) => a !== doc?.format.aspect)
+                      .map((aspect) => (
+                        <button
+                          key={aspect}
+                          type="button"
+                          disabled={busy}
+                          onClick={() => void exportAspect(aspect)}
+                          className="btn-ghost"
+                        >
+                          Export {aspect}
+                        </button>
+                      ))}
+                  </div>
+                </div>
+              )}
+
+              {project.socialCaption ? (
+                <div className="card mt-4 p-5">
+                  <h3 className="text-sm font-bold">Caption for your post</h3>
+                  <p className="mt-2 text-sm leading-relaxed text-muted">{project.socialCaption}</p>
+                  {project.hashtags.length ? (
+                    <p className="mt-2 text-sm text-violet">{project.hashtags.join(' ')}</p>
+                  ) : null}
+                </div>
+              ) : null}
+
+              {doc ? <WhatWeDid edl={doc} /> : null}
+            </div>
+
+            {/* ---------------------------------------------------- the tweaks */}
+            <aside className="space-y-4">
+              {error ? (
+                <div className="rounded-xl border border-bad/40 bg-bad/[0.08] px-4 py-3 text-sm text-bad">
+                  {error}
+                </div>
+              ) : null}
+
+              {doc?.degraded.length ? (
+                <div className="card p-4">
+                  <h3 className="text-sm font-bold text-warn">Skipped layers</h3>
+                  <ul className="mt-2 space-y-1 text-xs text-muted">
+                    {doc.degraded.map((item, i) => (
+                      <li key={i}>&bull; {item}</li>
+                    ))}
+                  </ul>
+                </div>
+              ) : null}
+
+              <TweakPanel
+                disabled={busy || project.status === 'processing'}
+                edl={doc}
+                styles={styles}
+                currentStyle={project.styleId}
+                onPatch={patch}
+                onOpenCaptions={doc ? () => setMode('studio') : undefined}
+              />
+            </aside>
+          </div>
+        </div>
+      </main>
+    </AppShell>
   );
+}
+
+/** Two caption styles are the same look when every field matches. */
+function sameStyle(a: CaptionStyle, b: CaptionStyle): boolean {
+  return JSON.stringify(a) === JSON.stringify(b);
 }
 
 /**
@@ -329,15 +507,15 @@ const EasyCutVideo = dynamic(
 function LivePreview({
   edl,
   playerRef,
-  mode,
 }: {
   edl: Edl;
   playerRef: React.RefObject<PlayerRef | null>;
-  mode: 'short' | 'long';
 }) {
   const fps = edl.format.fps || 30;
+  // The shape belongs to the box this is placed in — two elements both claiming
+  // the aspect is how the picture ends up letterboxed inside its own frame.
   return (
-    <div className="bg-black" style={{ aspectRatio: mode === 'short' ? '9 / 16' : '16 / 9', maxHeight: '62vh' }}>
+    <div className="h-full w-full bg-black">
       <Player
         ref={playerRef}
         component={EasyCutVideo as never}
@@ -471,12 +649,14 @@ function TweakPanel({
   styles,
   currentStyle,
   onPatch,
+  onOpenCaptions,
 }: {
   disabled: boolean;
   edl: Edl | null;
   styles: StyleOption[];
   currentStyle: string;
   onPatch: (body: Record<string, unknown>) => Promise<void>;
+  onOpenCaptions?: () => void;
 }) {
   if (!edl) {
     return (
@@ -550,54 +730,33 @@ function TweakPanel({
         </div>
       </div>
 
-      <div className="card p-5">
-        <h3 className="text-sm font-bold">Captions</h3>
-        <div className="mt-3 space-y-3">
-          <Slider
-            label="Size"
-            disabled={disabled}
-            value={edl.captionStyle.fontSizeRatio}
-            min={0.03}
-            max={0.09}
-            step={0.004}
-            format={(v) => `${Math.round((v / 0.055) * 100)}%`}
-            onCommit={(v) => void onPatch({ captionStyle: { fontSizeRatio: v } })}
-          />
-          <Slider
-            label="Height on screen"
-            disabled={disabled}
-            value={edl.captionStyle.positionY}
-            min={0.25}
-            max={0.9}
-            step={0.02}
-            format={(v) => `${Math.round(v * 100)}%`}
-            onCommit={(v) => void onPatch({ captionStyle: { positionY: v } })}
-          />
-          <div className="flex flex-wrap gap-2">
-            <button
-              type="button"
-              disabled={disabled}
-              onClick={() => void onPatch({ captionStyle: { uppercase: !edl.captionStyle.uppercase } })}
-              className="btn-ghost px-3 py-1.5 text-xs"
-            >
-              {edl.captionStyle.uppercase ? 'Sentence case' : 'ALL CAPS'}
-            </button>
-            {(['word-pop', 'karaoke', 'bounce', 'line-fade'] as const)
-              .filter((a) => a !== edl.captionStyle.animation)
-              .map((animation) => (
-                <button
-                  key={animation}
-                  type="button"
-                  disabled={disabled}
-                  onClick={() => void onPatch({ captionStyle: { animation } })}
-                  className="btn-ghost px-3 py-1.5 text-xs"
-                >
-                  {animation.replace('-', ' ')}
-                </button>
-              ))}
-          </div>
-        </div>
-      </div>
+      {/* Four sliders used to live here, which was the whole caption feature:
+          size, height, caps and four of the nine animations. The real picker —
+          sixteen looks, sixteen faces, colour, motion — is a panel, not a
+          sidebar card, so this is the door to it and shows what is behind it. */}
+      <button
+        type="button"
+        disabled={disabled || !onOpenCaptions}
+        onClick={onOpenCaptions}
+        className="card block w-full p-5 text-left transition-colors hover:border-violet/40 disabled:opacity-50"
+      >
+        <h3 className="flex items-center gap-2 text-sm font-bold">
+          Captions
+          <span className="ml-auto text-[12px] font-semibold text-violet">Change</span>
+        </h3>
+        <CaptionBand
+          className="mt-3 rounded-[10px] border border-line bg-[#101015]"
+          style={edl.captionStyle}
+          text="Your captions"
+          frameWidth={edl.format.width}
+          frameHeight={edl.format.height}
+          aspect="16 / 5"
+        />
+        <p className="mt-2.5 text-[11.5px] text-muted">
+          {captionPresetFor(edl.captionStyle)?.name ?? 'Custom'} &middot; {edl.captionStyle.fontFamily}
+          {' '}&middot; {edl.captions.length} cards
+        </p>
+      </button>
 
       <div className="card p-5">
         <h3 className="text-sm font-bold">Music</h3>

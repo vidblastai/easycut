@@ -16,9 +16,14 @@ export default async function NewProjectPage() {
 
   return (
     <AppShell recents={recentsFor(projects)}>
+      {/* The stepper shares the wizard's column rather than the full measure —
+          a rail that starts 200px left of the question it labels reads as two
+          unrelated pages stacked. */}
       <div className="px-4 pt-5 sm:px-8">
         <div className="measure">
-          <Stepper current="upload" />
+          <div className="mx-auto max-w-[760px]">
+            <Stepper current="upload" />
+          </div>
         </div>
       </div>
 
