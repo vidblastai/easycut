@@ -1,4 +1,8 @@
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { execFileSync } from 'node:child_process';
+import { mkdtempSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { afterAll, afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { PrismaClient } from '@prisma/client';
 
 /**
@@ -7,9 +11,29 @@ import { PrismaClient } from '@prisma/client';
  * Worth real tests rather than a smoke run, because every failure mode here is
  * silent: a job claimed twice renders the same video twice, a job claimed by
  * nobody never renders at all, and neither raises anything.
+ *
+ * It runs against a throwaway database of its own, created here. Pointing it at
+ * dev.db meant that with `npm run dev` running, the development worker polling
+ * that same table would reserve the test's jobs out from under it — a real
+ * failure, of the test rather than the code, and one that only appears on the
+ * machine of whoever happens to have the app open.
  */
+const dir = mkdtempSync(join(tmpdir(), 'easycut-queue-'));
+const url = `file:${join(dir, 'queue-test.db')}`;
+process.env.DATABASE_URL = url;
 process.env.QUEUE_DRIVER = 'db';
-const db = new PrismaClient();
+
+execFileSync('npx', ['prisma', 'db', 'push', '--skip-generate', '--accept-data-loss'], {
+  env: { ...process.env, DATABASE_URL: url },
+  stdio: 'ignore',
+});
+
+const db = new PrismaClient({ datasources: { db: { url } } });
+
+afterAll(async () => {
+  await db.$disconnect();
+  rmSync(dir, { recursive: true, force: true });
+});
 
 async function freshQueue() {
   await db.queueMessage.deleteMany({});
