@@ -47,7 +47,14 @@ export function AppShell({
         </div>
       </header>
 
-      <div className="flex items-stretch" style={{ minHeight: 'calc(100vh - var(--topbar))' }}>
+      {/* Column on a phone, row once there is room for a sidebar. This was a
+          row at every width: the nav has no `width` below the breakpoint, so it
+          sat BESIDE the content and took 408px of a 500px screen, leaving the
+          page a 50px-wide column and 208px of sideways scroll. */}
+      <div
+        className="flex flex-col items-stretch md:flex-row"
+        style={{ minHeight: 'calc(100vh - var(--topbar))' }}
+      >
         <Sidebar recents={recents} />
         <div
           className="flex min-w-0 flex-1 flex-col"
