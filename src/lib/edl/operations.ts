@@ -74,6 +74,22 @@ export const EdlOperationSchema = z.discriminatedUnion('op', [
     /** Seed content: a B-roll query, a graphic's text, a sound effect name. */
     value: z.string().default(''),
     graphicType: z.enum(GRAPHIC_TYPES).optional(),
+    /**
+     * The id the new clip will have. Carried in the operation, NOT invented
+     * when it is applied.
+     *
+     * This used to be `Math.random()` inside the reducer, which is wrong the
+     * moment an operation is applied more than once — and the editor applies
+     * the whole stack on every render, to show you the pending edit. So a clip
+     * you added got a different identity thirty times a second: its React key
+     * changed, its DOM node was destroyed and rebuilt, and any attempt to move,
+     * trim or delete it failed with "Not found on this track" because the id
+     * you grabbed no longer existed by the time you let go.
+     *
+     * Optional so a payload written before this field existed still applies —
+     * once, on the server, where instability does not show.
+     */
+    id: z.string().optional(),
   }),
   z.object({
     op: z.literal('clip.update'),
@@ -262,6 +278,7 @@ function applyOne(edl: Edl, op: EdlOperation): Edl {
             const start = clamp(op.outStartSec, 0, Math.max(0, edl.format.durationSec - length));
             return { start, end: start + length };
           })();
+      if (!placed) throw new Error('No room on that track — shorten it or move something else first');
 
       return writeTime(edl, op.track, op.id, placed.start, placed.end);
     }
@@ -285,9 +302,20 @@ function applyOne(edl: Edl, op: EdlOperation): Edl {
     }
 
     case 'clip.add': {
-      const id = `${op.track}-${Math.random().toString(36).slice(2, 8)}`;
-      const start = clamp(op.atSec, 0, Math.max(0, edl.format.durationSec - 0.2));
-      const end = Math.min(edl.format.durationSec, start + op.durationSec);
+      const id = op.id ?? `${op.track}-${Math.random().toString(36).slice(2, 8)}`;
+      const wantStart = clamp(op.atSec, 0, Math.max(0, edl.format.durationSec - 0.2));
+      const wantEnd = Math.min(edl.format.durationSec, wantStart + op.durationSec);
+
+      // Added clips obey the same one-at-a-time rule as moved ones. Dropping a
+      // second B-roll insert on top of the first used to leave them overlapping,
+      // which the renderer resolves by drawing one over the other — so the
+      // timeline showed a state the video could not be in.
+      const placed = EXCLUSIVE_TRACKS.includes(op.track)
+        ? resolveMove(readTrack(edl, op.track), id, wantStart, wantEnd - wantStart, edl.format.durationSec)
+        : { start: wantStart, end: wantEnd };
+      if (!placed) throw new Error('No room on that track at this point');
+      const start = placed.start;
+      const end = placed.end;
 
       if (op.track === 'sfx') {
         return { ...edl, sfx: [...edl.sfx, {
@@ -595,12 +623,19 @@ function retimeCue(cue: CaptionCue, startSec: number, endSec: number): CaptionCu
 }
 
 /**
- * Standard NLE collision, for a clip being DRAGGED.
+ * Where a clip being MOVED actually lands on a track that allows only one thing
+ * at a time.
  *
- * The whole clip keeps its length and is pushed clear of whatever it landed on,
- * to whichever side it was heading — decided by comparing centres, which is the
- * only thing that stays right when the drop overlaps a neighbour almost
- * entirely. A few passes, because clearing one neighbour can land you on the next.
+ * The old version pushed the clip clear of whatever it hit, up to four times,
+ * and then gave up. Giving up meant returning a position that still overlapped
+ * — which happens whenever the push direction runs out of room, most obviously
+ * when you drop something near the end of the video. The timeline then showed
+ * two B-roll inserts on top of each other, a state the renderer resolves by
+ * drawing one over the other, so what you saw was not what you would get.
+ *
+ * Now the gaps are enumerated and the clip goes to the nearest one that can
+ * actually hold it. If none can, the move is refused with a reason, which is
+ * the honest answer and the one a person can act on.
  */
 function resolveMove(
   items: TimedItem[],
@@ -608,22 +643,48 @@ function resolveMove(
   start: number,
   length: number,
   durationSec: number,
-): { start: number; end: number } {
-  const others = items.filter((i) => i.id !== id).sort((a, b) => a.start - b.start);
+): { start: number; end: number } | null {
+  const others = items.filter((i) => i.id !== id);
   const latest = Math.max(0, durationSec - length);
-  let lo = clamp(start, 0, latest);
+  const wanted = clamp(start, 0, latest);
 
-  for (let pass = 0; pass < 4; pass++) {
-    const hi = lo + length;
-    const hit = others.find((o) => lo < o.end - 1e-3 && hi > o.start + 1e-3);
-    if (!hit) break;
+  const clashes = (at: number) =>
+    others.some((o) => at < o.end - 1e-3 && at + length > o.start + 1e-3);
 
-    const mine = lo + length / 2;
-    const theirs = (hit.start + hit.end) / 2;
-    lo = clamp(mine < theirs ? hit.start - length : hit.end, 0, latest);
+  if (!clashes(wanted)) return { start: wanted, end: wanted + length };
+
+  let best: number | null = null;
+  let bestGap = Infinity;
+  for (const [lo, hi] of freeSlots(others, length, durationSec)) {
+    const landed = clamp(wanted, lo, hi);
+    const gap = Math.abs(landed - wanted);
+    if (gap < bestGap) { bestGap = gap; best = landed; }
   }
 
-  return { start: lo, end: lo + length };
+  return best === null ? null : { start: best, end: best + length };
+}
+
+/**
+ * Every range of start times where a clip of a given length fits between the
+ * others, as [earliest, latest] pairs. Includes the space before the first clip
+ * and after the last.
+ */
+function freeSlots(
+  others: TimedItem[],
+  length: number,
+  durationSec: number,
+): Array<[number, number]> {
+  const sorted = [...others].sort((a, b) => a.start - b.start);
+  const slots: Array<[number, number]> = [];
+  let cursor = 0;
+
+  for (const other of sorted) {
+    if (other.start - cursor >= length - 1e-6) slots.push([cursor, other.start - length]);
+    cursor = Math.max(cursor, other.end);
+  }
+  if (durationSec - cursor >= length - 1e-6) slots.push([cursor, durationSec - length]);
+
+  return slots;
 }
 
 /**

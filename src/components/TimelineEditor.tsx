@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { clsx } from 'clsx';
 import type { PlayerRef } from '@remotion/player';
 import { applyOperations, describeOperation, type ClipTrack, type EdlOperation } from '@/lib/edl/operations';
+import { reorderIndexFor, resolveDrag, snapPointsFor, type DragKind } from '@/lib/timeline/drag';
 import type { Edl } from '@/lib/edl/types';
 
 /**
@@ -51,18 +52,32 @@ interface TimelineEditorProps {
 type Selection = { kind: 'segment' | ClipTrack | 'caption'; id: string } | null;
 
 interface DragState {
-  kind: 'move' | 'trim-start' | 'trim-end' | 'playhead';
+  kind: DragKind | 'playhead';
   target: Selection;
   startX: number;
   originStart: number;
   originEnd: number;
   moved: boolean;
+  /** Where the pointer last was, so an auto-scroll can keep resolving without it. */
+  lastClientX: number;
+  /** Alt held at any point during the gesture turns snapping off. */
+  freeform: boolean;
 }
 
 /** Zoom steps in pixels per second. */
 const ZOOMS = [12, 20, 32, 50, 80, 130, 210];
+/**
+ * How close, in SCREEN pixels, counts as a snap.
+ *
+ * Pixels rather than seconds because it has to feel the same at every zoom: a
+ * fixed number of seconds is an invisible hair at 210px/s and half the screen
+ * at 12px/s.
+ */
 const SNAP_PX = 7;
 const TRACK_LABEL_W = 92;
+/** How close to the edge starts an auto-scroll, and how fast it goes. */
+const AUTOSCROLL_EDGE_PX = 48;
+const AUTOSCROLL_MAX_PX_PER_FRAME = 18;
 
 export function TimelineEditor({
   edl: committedEdl,
@@ -87,7 +102,7 @@ export function TimelineEditor({
    * cancelled costs nothing and the undo stack stays one entry per gesture.
    */
   const [dragPreview, setDragPreview] = useState<
-    { id: string; start: number; end: number; kind: DragState['kind'] } | null
+    { id: string; start: number; end: number; kind: DragState['kind']; snappedTo: number | null } | null
   >(null);
   const dragPreviewRef = useRef(dragPreview);
   dragPreviewRef.current = dragPreview;
@@ -191,41 +206,21 @@ export function TimelineEditor({
 
   /* ───────────────────────────────────────────────── snapping ─── */
 
-  /** Times worth landing on exactly: cuts, cue edges, the playhead, the ends. */
-  const snapPoints = useMemo(() => {
-    // Deliberately NOT keyed on the playhead. It used to be one of the points
-    // in here, which meant this whole set was rebuilt and re-sorted on every
-    // `frameupdate` — thirty times a second during playback. On a ten-minute
-    // video that is 301 captions and 75 segments, so ~760 insertions and a
-    // sort of the same, per frame, for a value that only matters while
-    // something is being dragged. The playhead is considered in `snap` below
-    // instead, where it costs one comparison.
-    const points = new Set<number>([0, duration]);
-    for (const s of edl.segments) { points.add(s.outStartSec); points.add(s.outEndSec); }
-    for (const c of edl.captions) { points.add(c.startSec); points.add(c.endSec); }
-    for (const b of edl.broll) { points.add(b.outStartSec); points.add(b.outEndSec); }
-    for (const g of edl.graphics) { points.add(g.outStartSec); points.add(g.outEndSec); }
-    return [...points].sort((a, b) => a - b);
-  }, [edl, duration]);
-
-  const snap = useCallback((sec: number, exclude: number[] = []): number => {
-    const tolerance = SNAP_PX / pps;
-    let best = sec;
-    let bestGap = tolerance;
-
-    const consider = (point: number) => {
-      if (exclude.some((e) => Math.abs(e - point) < 1e-6)) return;
-      const gap = Math.abs(point - sec);
-      if (gap < bestGap) { bestGap = gap; best = point; }
-    };
-
-    for (const point of snapPoints) consider(point);
-    // Still a snap target — just not one the memo above has to be invalidated
-    // for on every frame of playback.
-    consider(playhead);
-
-    return Math.max(0, Math.min(duration, best));
-  }, [snapPoints, playhead, pps, duration]);
+  /**
+   * Times worth landing on exactly: cuts, cue edges, the two ends.
+   *
+   * Deliberately NOT keyed on the playhead. It used to be one of the points in
+   * here, which meant the whole list was rebuilt on every `frameupdate` —
+   * thirty times a second during playback. On a ten-minute video that is 301
+   * captions and 75 segments, for a value that only matters while something is
+   * being dragged. The playhead is appended at drag time instead.
+   *
+   * Each point remembers whose edge it is, so the clip being dragged can be
+   * excluded by identity. Excluding by value — which is what this did before —
+   * silently drops a neighbour that happens to start at the same instant, and
+   * on a cut-to-cut timeline that is most of them.
+   */
+  const snapPoints = useMemo(() => snapPointsFor(edl), [edl]);
 
   /* ────────────────────────────────────────────────── dragging ─── */
 
@@ -237,6 +232,27 @@ export function TimelineEditor({
     return Math.max(0, Math.min(duration, x / pps));
   }, [pps, duration]);
 
+  /**
+   * Everything the pointer handlers need, in a ref.
+   *
+   * The handlers are registered once, on mount. They used to be re-registered
+   * on every render, which during a drag is every pointermove — add and remove
+   * a listener per frame, and a stale closure any time the re-subscribe lost a
+   * race. A ref is the boring fix: the listeners never change, and they always
+   * read current values.
+   */
+  const live = useRef({ pps, duration, snapPoints, playhead, edl, snapPx: SNAP_PX });
+  live.current = { pps, duration, snapPoints, playhead, edl, snapPx: SNAP_PX };
+
+  // Same reason: the listeners are registered once, so the functions they call
+  // have to be reachable through something that does not go stale.
+  const seekRef = useRef(seek);
+  seekRef.current = seek;
+  const pushRef = useRef(push);
+  pushRef.current = push;
+  const secAtClientXRef = useRef(secAtClientX);
+  secAtClientXRef.current = secAtClientX;
+
   const beginDrag = (
     event: React.PointerEvent,
     kind: DragState['kind'],
@@ -246,74 +262,154 @@ export function TimelineEditor({
   ) => {
     event.preventDefault();
     event.stopPropagation();
-    (event.target as HTMLElement).setPointerCapture?.(event.pointerId);
-    dragRef.current = { kind, target, startX: event.clientX, originStart, originEnd, moved: false };
+    // Captured on currentTarget, not target. `target` is whatever child the
+    // cursor happened to be over — a trim handle, a label — and a capture on a
+    // node React may swap out mid-gesture is a drag that dies halfway.
+    event.currentTarget.setPointerCapture?.(event.pointerId);
+    dragRef.current = {
+      kind, target, startX: event.clientX, originStart, originEnd,
+      moved: false, lastClientX: event.clientX, freeform: event.altKey,
+    };
     if (target) setSelection(target);
   };
 
+  /* Auto-scroll while dragging near an edge. Without it you can only move a
+     clip as far as the visible window, which on a ten-minute edit is a few
+     seconds. */
+  const autoScroll = useRef<number | null>(null);
+  const stopAutoScroll = () => {
+    if (autoScroll.current !== null) cancelAnimationFrame(autoScroll.current);
+    autoScroll.current = null;
+  };
+
   useEffect(() => {
+    /** Resolve the geometry from the pointer position and hand it to the view. */
+    const resolveFrom = (clientX: number) => {
+      const drag = dragRef.current;
+      if (!drag || !drag.target) return;
+      const { pps: scale, duration: dur, snapPoints: points, playhead: head } = live.current;
+
+      const geometry = resolveDrag({
+        kind: drag.kind as DragKind,
+        originStart: drag.originStart,
+        originEnd: drag.originEnd,
+        deltaSec: (clientX - drag.startX) / scale,
+        // The playhead is a snap target, appended here so the memo above does
+        // not have to be invalidated thirty times a second.
+        snapPoints: [...points, { at: head, ownerId: null }],
+        draggingId: drag.target.id,
+        toleranceSec: SNAP_PX / scale,
+        durationSec: dur,
+        disableSnap: drag.freeform,
+      });
+
+      setDragPreview({ id: drag.target.id, ...geometry, kind: drag.kind });
+    };
+
+    const tickAutoScroll = () => {
+      autoScroll.current = null;
+      const drag = dragRef.current;
+      const el = scrollRef.current;
+      if (!drag || !el || drag.kind === 'playhead') return;
+
+      const rect = el.getBoundingClientRect();
+      const fromLeft = drag.lastClientX - (rect.left + TRACK_LABEL_W);
+      const fromRight = rect.right - drag.lastClientX;
+
+      let by = 0;
+      if (fromLeft < AUTOSCROLL_EDGE_PX) {
+        by = -ramp(AUTOSCROLL_EDGE_PX - fromLeft);
+      } else if (fromRight < AUTOSCROLL_EDGE_PX) {
+        by = ramp(AUTOSCROLL_EDGE_PX - fromRight);
+      }
+      if (by === 0) return;
+
+      const before = el.scrollLeft;
+      el.scrollLeft = before + by;
+      // The pointer has not moved, but the timeline under it has — so the drag
+      // has to be re-resolved against the new scroll offset, or the clip stops
+      // dead at the edge while the view slides past it.
+      if (el.scrollLeft !== before) {
+        drag.startX -= el.scrollLeft - before;
+        resolveFrom(drag.lastClientX);
+      }
+      autoScroll.current = requestAnimationFrame(tickAutoScroll);
+    };
+
     const onMove = (event: PointerEvent) => {
       const drag = dragRef.current;
       if (!drag) return;
 
-      const deltaSec = (event.clientX - drag.startX) / pps;
+      drag.lastClientX = event.clientX;
+      if (event.altKey) drag.freeform = true;
       if (Math.abs(event.clientX - drag.startX) > 2) drag.moved = true;
 
       if (drag.kind === 'playhead') {
-        seek(secAtClientX(event.clientX));
+        seekRef.current(secAtClientXRef.current(event.clientX));
         return;
       }
-      setDragPreview({
-        id: drag.target?.id ?? '',
-        start: drag.kind === 'trim-end' ? drag.originStart : snap(drag.originStart + deltaSec, [drag.originStart]),
-        end: drag.kind === 'trim-start' ? drag.originEnd : snap(drag.originEnd + deltaSec, [drag.originEnd]),
-        kind: drag.kind,
-      });
+
+      resolveFrom(event.clientX);
+      if (autoScroll.current === null) autoScroll.current = requestAnimationFrame(tickAutoScroll);
     };
 
-    const onUp = () => {
+    const finish = (commitIt: boolean) => {
       const drag = dragRef.current;
       dragRef.current = null;
+      stopAutoScroll();
       const preview = dragPreviewRef.current;
       setDragPreview(null);
-      if (!drag || !drag.moved || !drag.target || !preview) return;
+      if (!commitIt || !drag || !drag.moved || !drag.target || !preview) return;
 
       const { kind, id } = drag.target;
+      const { edl: doc } = live.current;
 
       if (kind === 'segment') {
         // Segment edges are source-side: dragging the left edge trims into the
         // footage rather than moving the clip, because output order is the cut.
-        const segment = edl.segments.find((s) => s.id === id);
+        const segment = doc.segments.find((s) => s.id === id);
         if (!segment) return;
         if (drag.kind === 'trim-start') {
           const delta = preview.start - drag.originStart;
-          push({ op: 'segment.trim', id, sourceStartSec: segment.sourceStartSec + delta * segment.speed });
+          pushRef.current({ op: 'segment.trim', id, sourceStartSec: segment.sourceStartSec + delta * segment.speed });
         } else if (drag.kind === 'trim-end') {
           const delta = preview.end - drag.originEnd;
-          push({ op: 'segment.trim', id, sourceEndSec: segment.sourceEndSec + delta * segment.speed });
+          pushRef.current({ op: 'segment.trim', id, sourceEndSec: segment.sourceEndSec + delta * segment.speed });
         } else {
-          const index = nearestIndex(edl.segments.map((s) => s.outStartSec), preview.start);
-          push({ op: 'segment.reorder', id, toIndex: index });
+          const toIndex = reorderIndexFor(doc.segments, id, (preview.start + preview.end) / 2);
+          const from = doc.segments.findIndex((s) => s.id === id);
+          // Dropping a clip back where it started is not an edit, and logging
+          // it as "Reordered clips" made the pending list lie.
+          if (toIndex !== from) pushRef.current({ op: 'segment.reorder', id, toIndex });
         }
         return;
       }
 
       if (kind === 'caption') {
-        push({ op: 'caption.time', id, startSec: preview.start, endSec: preview.end });
+        pushRef.current({ op: 'caption.time', id, startSec: preview.start, endSec: preview.end });
         return;
       }
 
-      if (drag.kind === 'move') push({ op: 'clip.move', track: kind, id, outStartSec: preview.start });
-      else push({ op: 'clip.trim', track: kind, id, outStartSec: preview.start, outEndSec: preview.end });
+      if (drag.kind === 'move') pushRef.current({ op: 'clip.move', track: kind, id, outStartSec: preview.start });
+      else pushRef.current({ op: 'clip.trim', track: kind, id, outStartSec: preview.start, outEndSec: preview.end });
     };
+
+    const onUp = () => finish(true);
+    // A cancelled pointer — the browser took the gesture for a scroll, the
+    // window lost focus, a touch was interrupted — used to leave dragRef set,
+    // so the next pointermove carried on dragging with no button held.
+    const onCancel = () => finish(false);
 
     window.addEventListener('pointermove', onMove);
     window.addEventListener('pointerup', onUp);
+    window.addEventListener('pointercancel', onCancel);
     return () => {
       window.removeEventListener('pointermove', onMove);
       window.removeEventListener('pointerup', onUp);
+      window.removeEventListener('pointercancel', onCancel);
+      stopAutoScroll();
     };
-  }, [pps, secAtClientX, snap, push, edl.segments, seek]);
+  }, []);
 
   /* ──────────────────────────────────────────────── keyboard ─── */
 
@@ -449,7 +545,7 @@ export function TimelineEditor({
       </div>
 
       {warning ? (
-        <div className="border-b border-line bg-warn/[0.07] px-4 py-2 text-xs text-warn">{warning}</div>
+        <div data-warning className="border-b border-line bg-warn/[0.07] px-4 py-2 text-xs text-warn">{warning}</div>
       ) : null}
       {rejected.length ? (
         <div className="border-b border-line bg-bad/[0.07] px-4 py-2 text-xs text-bad">
@@ -487,9 +583,12 @@ export function TimelineEditor({
               return (
                 <Clip
                   key={segment.id}
+                  id={segment.id}
+                  track="segment"
                   left={g.start * pps}
                   width={Math.max(6, (g.end - g.start) * pps)}
                   selected={selected}
+                  dragging={dragPreview?.id === segment.id}
                   tone={segment.reason === 'hook' ? 'hook' : 'video'}
                   onPointerDown={(e) => beginDrag(e, 'move', { kind: 'segment', id: segment.id }, segment.outStartSec, segment.outEndSec)}
                   onTrimStart={(e) => beginDrag(e, 'trim-start', { kind: 'segment', id: segment.id }, segment.outStartSec, segment.outEndSec)}
@@ -507,9 +606,12 @@ export function TimelineEditor({
               return (
                 <Clip
                   key={cue.id}
+                  id={cue.id}
+                  track="caption"
                   left={g.start * pps}
                   width={Math.max(4, (g.end - g.start) * pps)}
                   selected={selection?.kind === 'caption' && selection.id === cue.id}
+                  dragging={dragPreview?.id === cue.id}
                   tone="caption"
                   onPointerDown={(e) => beginDrag(e, 'move', { kind: 'caption', id: cue.id }, cue.startSec, cue.endSec)}
                   onTrimStart={(e) => beginDrag(e, 'trim-start', { kind: 'caption', id: cue.id }, cue.startSec, cue.endSec)}
@@ -527,9 +629,12 @@ export function TimelineEditor({
               return (
                 <Clip
                   key={clip.id}
+                  id={clip.id}
+                  track="broll"
                   left={g.start * pps}
                   width={Math.max(6, (g.end - g.start) * pps)}
                   selected={selection?.kind === 'broll' && selection.id === clip.id}
+                  dragging={dragPreview?.id === clip.id}
                   tone="broll"
                   onPointerDown={(e) => beginDrag(e, 'move', { kind: 'broll', id: clip.id }, clip.outStartSec, clip.outEndSec)}
                   onTrimStart={(e) => beginDrag(e, 'trim-start', { kind: 'broll', id: clip.id }, clip.outStartSec, clip.outEndSec)}
@@ -547,9 +652,12 @@ export function TimelineEditor({
               return (
                 <Clip
                   key={clip.id}
+                  id={clip.id}
+                  track="graphics"
                   left={g.start * pps}
                   width={Math.max(6, (g.end - g.start) * pps)}
                   selected={selection?.kind === 'graphics' && selection.id === clip.id}
+                  dragging={dragPreview?.id === clip.id}
                   tone="graphic"
                   onPointerDown={(e) => beginDrag(e, 'move', { kind: 'graphics', id: clip.id }, clip.outStartSec, clip.outEndSec)}
                   onTrimStart={(e) => beginDrag(e, 'trim-start', { kind: 'graphics', id: clip.id }, clip.outStartSec, clip.outEndSec)}
@@ -567,9 +675,12 @@ export function TimelineEditor({
               return (
                 <Clip
                   key={clip.id}
+                  id={clip.id}
+                  track="punchIns"
                   left={g.start * pps}
                   width={Math.max(6, (g.end - g.start) * pps)}
                   selected={selection?.kind === 'punchIns' && selection.id === clip.id}
+                  dragging={dragPreview?.id === clip.id}
                   tone="punch"
                   onPointerDown={(e) => beginDrag(e, 'move', { kind: 'punchIns', id: clip.id }, clip.outStartSec, clip.outEndSec)}
                   onTrimStart={(e) => beginDrag(e, 'trim-start', { kind: 'punchIns', id: clip.id }, clip.outStartSec, clip.outEndSec)}
@@ -587,6 +698,8 @@ export function TimelineEditor({
               <button
                 key={cue.id}
                 type="button"
+                data-clip-id={cue.id}
+                data-track="sfx"
                 onPointerDown={(e) => beginDrag(e, 'move', { kind: 'sfx', id: cue.id }, cue.atSec, cue.atSec)}
                 onClick={() => setSelection({ kind: 'sfx', id: cue.id })}
                 title={cue.sound}
@@ -606,6 +719,21 @@ export function TimelineEditor({
               />
             ))}
           </Track>
+
+          {/* The line a drag snapped onto.
+              Snapping you cannot see is indistinguishable from the timeline
+              jumping on its own — the guide is what turns "it moved by itself"
+              into "it landed on the cut". */}
+          {dragPreview?.snappedTo != null ? (
+            <div
+              className="pointer-events-none absolute top-0 z-30 w-px bg-warn"
+              style={{
+                left: TRACK_LABEL_W + dragPreview.snappedTo * pps,
+                height: '100%',
+                boxShadow: '0 0 10px rgba(245,196,83,.75)',
+              }}
+            />
+          ) : null}
 
           {/* playhead, drawn over everything */}
           <div
@@ -630,7 +758,7 @@ export function TimelineEditor({
               <b className="text-chalk">&#8984;Z</b> undoes. Nothing re-renders until you apply.
             </p>
           ) : (
-            <ol className="mt-2 max-h-28 space-y-1 overflow-y-auto text-xs text-muted">
+            <ol data-pending-ops className="mt-2 max-h-28 space-y-1 overflow-y-auto text-xs text-muted">
               {ops.map((op, i) => (
                 <li key={i} className="flex gap-2">
                   <span className="font-mono text-faint">{String(i + 1).padStart(2, '0')}</span>
@@ -745,18 +873,25 @@ const TONES: Record<string, string> = {
 };
 
 function Clip({
+  id,
+  track,
   left,
   width,
   selected,
+  dragging,
   tone,
   children,
   onPointerDown,
   onTrimStart,
   onTrimEnd,
 }: {
+  /** On the element as well as in React, so a drag can be driven and measured. */
+  id: string;
+  track: string;
   left: number;
   width: number;
   selected: boolean;
+  dragging?: boolean;
   tone: keyof typeof TONES;
   children: React.ReactNode;
   onPointerDown: (e: React.PointerEvent) => void;
@@ -765,24 +900,36 @@ function Clip({
 }) {
   return (
     <div
+      data-clip-id={id}
+      data-track={track}
+      data-selected={selected || undefined}
       onPointerDown={onPointerDown}
       className={clsx(
-        'group absolute top-1 bottom-1 cursor-grab overflow-hidden rounded-md border px-2 text-[11px] leading-[26px] active:cursor-grabbing',
+        'group absolute top-1 bottom-1 cursor-grab touch-none select-none overflow-hidden rounded-md border px-2 text-[11px] leading-[26px] active:cursor-grabbing',
         TONES[tone],
         selected && 'ring-2 ring-chalk ring-offset-1 ring-offset-charcoal',
+        // A clip mid-drag floats over its neighbours rather than being clipped
+        // by whichever one happens to come later in the DOM.
+        dragging && 'z-20 opacity-90 shadow-card ring-1 ring-chalk/50',
       )}
-      style={{ left, width }}
+      style={{ left, width, touchAction: 'none' }}
     >
       <span className="pointer-events-none block truncate">{children}</span>
 
       {/* Trim handles: invisible until hover, so the timeline stays calm. */}
+      {/* Eight pixels rather than six: the handle is the only part of a clip
+          most people ever aim for, and six is under the width of a cursor. */}
       <span
         onPointerDown={onTrimStart}
-        className="absolute inset-y-0 left-0 w-1.5 cursor-ew-resize bg-chalk/0 group-hover:bg-chalk/40"
+        data-handle="start"
+        style={{ touchAction: 'none' }}
+        className="absolute inset-y-0 left-0 w-2 cursor-ew-resize touch-none bg-chalk/0 group-hover:bg-chalk/40"
       />
       <span
         onPointerDown={onTrimEnd}
-        className="absolute inset-y-0 right-0 w-1.5 cursor-ew-resize bg-chalk/0 group-hover:bg-chalk/40"
+        data-handle="end"
+        style={{ touchAction: 'none' }}
+        className="absolute inset-y-0 right-0 w-2 cursor-ew-resize touch-none bg-chalk/0 group-hover:bg-chalk/40"
       />
     </div>
   );
@@ -977,6 +1124,16 @@ function AddMenu({ atSec, onAdd }: { atSec: number; onAdd: (op: EdlOperation) =>
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
+  /**
+   * The new clip's identity, decided here rather than inside the reducer.
+   *
+   * The editor re-applies its whole operation stack on every render to show the
+   * pending edit, so anything the reducer invents is re-invented constantly.
+   * Deciding it once, at the click, is what makes an added clip a thing you can
+   * then pick up.
+   */
+  const freshId = (track: string) => `${track}-${Math.random().toString(36).slice(2, 8)}`;
+
   useEffect(() => {
     if (!open) return;
     const close = (e: MouseEvent) => {
@@ -1001,17 +1158,17 @@ function AddMenu({ atSec, onAdd }: { atSec: number; onAdd: (op: EdlOperation) =>
 
       {open ? (
         <div className="absolute left-0 top-full z-50 mt-1 w-52 overflow-hidden rounded-xl border border-line bg-charcoal shadow-card">
-          <MenuItem onClick={() => add({ op: 'clip.add', track: 'broll', atSec, durationSec: 2, value: '' })}>
+          <MenuItem onClick={() => add({ op: 'clip.add', track: 'broll', atSec, durationSec: 2, value: '', id: freshId('broll') })}>
             B-roll insert
             <span className="block text-[10px] font-normal text-muted">2s — type what it shows</span>
           </MenuItem>
-          <MenuItem onClick={() => add({ op: 'clip.add', track: 'graphics', atSec, durationSec: 2.5, value: 'Label', graphicType: 'icon' })}>
+          <MenuItem onClick={() => add({ op: 'clip.add', track: 'graphics', atSec, durationSec: 2.5, value: 'Label', graphicType: 'icon', id: freshId('graphics') })}>
             Icon + label
           </MenuItem>
-          <MenuItem onClick={() => add({ op: 'clip.add', track: 'graphics', atSec, durationSec: 2.5, value: '100', graphicType: 'stat' })}>
+          <MenuItem onClick={() => add({ op: 'clip.add', track: 'graphics', atSec, durationSec: 2.5, value: '100', graphicType: 'stat', id: freshId('graphics') })}>
             Stat card
           </MenuItem>
-          <MenuItem onClick={() => add({ op: 'clip.add', track: 'punchIns', atSec, durationSec: 2, value: '' })}>
+          <MenuItem onClick={() => add({ op: 'clip.add', track: 'punchIns', atSec, durationSec: 2, value: '', id: freshId('punchIns') })}>
             Punch-in
           </MenuItem>
           <div className="border-t border-line-soft px-3 pt-2 pb-1 text-[10px] font-bold uppercase tracking-wider text-faint">
@@ -1022,7 +1179,7 @@ function AddMenu({ atSec, onAdd }: { atSec: number; onAdd: (op: EdlOperation) =>
               <button
                 key={sound}
                 type="button"
-                onClick={() => add({ op: 'clip.add', track: 'sfx', atSec, durationSec: 0.4, value: sound })}
+                onClick={() => add({ op: 'clip.add', track: 'sfx', atSec, durationSec: 0.4, value: sound, id: freshId('sfx') })}
                 className="rounded border border-line px-2 py-0.5 text-[11px] font-semibold text-muted transition-colors hover:border-violet hover:text-violet"
               >
                 {sound}
@@ -1087,6 +1244,18 @@ function tickTimes(duration: number, pps: number): number[] {
   const out: number[] = [];
   for (let t = 0; t <= duration; t += step) out.push(Number(t.toFixed(3)));
   return out;
+}
+
+/**
+ * How fast to auto-scroll, given how far past the edge the pointer is.
+ *
+ * Squared rather than linear so that resting just inside the edge creeps and
+ * pushing hard against it moves, instead of one speed that is either too slow
+ * to be useful or too fast to aim with.
+ */
+function ramp(depthPx: number): number {
+  const t = Math.min(1, Math.max(0, depthPx / AUTOSCROLL_EDGE_PX));
+  return Math.ceil(t * t * AUTOSCROLL_MAX_PX_PER_FRAME);
 }
 
 function nearestIndex(starts: number[], target: number): number {
