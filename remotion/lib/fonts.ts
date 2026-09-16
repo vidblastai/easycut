@@ -1,5 +1,11 @@
 import { continueRender, delayRender, staticFile } from 'remotion';
 import { CAPTION_FONTS, FALLBACK_STACK, fontStackFor } from '../../src/lib/captions/fonts';
+import {
+  cdnStylesheet,
+  faceCss,
+  FONT_MANIFEST_PATH,
+  type FontManifest,
+} from '../../src/lib/captions/local-fonts';
 
 /**
  * Typography for the renderer.
@@ -51,13 +57,7 @@ const FONT_TIMEOUT_MS = 12_000;
 
 const started = new Map<string, string>();
 
-interface LocalFace {
-  weight: string;
-  /** Path under public/, as `staticFile()` wants it. */
-  file: string;
-  unicodeRange: string;
-}
-type FontManifest = Record<string, LocalFace[]>;
+let manifestOnce: Promise<FontManifest> | null = null;
 
 /**
  * What `scripts/fetch-fonts.ts` left behind, read once per renderer process.
@@ -65,10 +65,9 @@ type FontManifest = Record<string, LocalFace[]>;
  * Absent is the normal case before setup has run, and means "use the CDN" —
  * never an error.
  */
-let manifestOnce: Promise<FontManifest> | null = null;
 function localManifest(): Promise<FontManifest> {
   if (!manifestOnce) {
-    manifestOnce = fetch(staticFile('fonts/manifest.json'))
+    manifestOnce = fetch(staticFile(FONT_MANIFEST_PATH))
       .then((response) => (response.ok ? (response.json() as Promise<FontManifest>) : {}))
       .catch(() => ({}));
   }
@@ -76,30 +75,13 @@ function localManifest(): Promise<FontManifest> {
 }
 
 /** Declare the faces we have on disk. No network, so nothing to wait for. */
-function declareLocal(familyId: string, faces: LocalFace[]): void {
+function declareLocal(familyId: string, faces: FontManifest[string]): void {
   const style = document.createElement('style');
   style.dataset.easycutFont = familyId;
-  style.textContent = faces
-    .map(
-      (face) =>
-        `@font-face{font-family:"${familyId}";font-style:normal;font-weight:${face.weight};` +
-        `font-display:block;src:url(${staticFile(face.file)}) format("woff2");` +
-        `unicode-range:${face.unicodeRange};}`,
-    )
-    .join('\n');
+  // `block` rather than `swap`: mid-render a swap would change the type between
+  // one frame and the next.
+  style.textContent = faceCss(familyId, faces, (file) => staticFile(file), 'block');
   document.head.appendChild(style);
-}
-
-function cssUrl(familyId: string, weights: string[]): string {
-  return (
-    'https://fonts.googleapis.com/css2?family=' +
-    encodeURIComponent(familyId).replace(/%20/g, '+') +
-    ':wght@' +
-    weights.join(';') +
-    // Not `swap`: mid-render a swap would change the type between frames.
-    // `block` holds the text invisible while we wait, and we control the wait.
-    '&display=block'
-  );
 }
 
 /**
@@ -169,7 +151,7 @@ export function ensureCaptionFont(familyId: string): string {
 
     const link = document.createElement('link');
     link.rel = 'stylesheet';
-    link.href = cssUrl(font.id, font.weights);
+    link.href = cdnStylesheet(font.id, font.weights, 'block');
     await new Promise<void>((resolve) => {
       link.onload = () => resolve();
       link.onerror = () => resolve();

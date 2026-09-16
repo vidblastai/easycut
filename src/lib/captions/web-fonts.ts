@@ -1,14 +1,25 @@
 'use client';
 
 import { CAPTION_FONTS, findCaptionFont } from './fonts';
+import {
+  cdnStylesheet,
+  faceCss,
+  FONT_MANIFEST_PATH,
+  type FontManifest,
+} from './local-fonts';
 
 /**
  * Loading a caption face in the browser, for the picker's preview.
  *
- * Same source and same weights as the renderer (remotion/lib/fonts.ts), which
- * also asks Google Fonts for a stylesheet rather than going through
- * @remotion/google-fonts — see the note there about what its delayRender
- * handles do to a render on a network that cannot reach the CDN.
+ * Same files as the renderer, which is the point. `npm run fonts` puts the
+ * Latin faces in public/fonts, and both the preview here and the render in
+ * remotion/lib/fonts.ts declare those files rather than asking a CDN. Before
+ * that they each got whatever Google was serving at the moment they ran, from
+ * two different machines, which quietly undercut the one promise this picker
+ * makes: that what you see is what exports.
+ *
+ * Anything not on disk still falls back to the CDN, so skipping the setup step
+ * costs nothing it did not already cost.
  *
  * On demand rather than all sixteen up front: a person opening the picker sees
  * a dozen presets, and pulling every weight of every family to render the ones
@@ -17,9 +28,21 @@ import { CAPTION_FONTS, findCaptionFont } from './fonts';
 
 const injected = new Set<string>();
 
-function href(familyId: string, weights: string[]): string {
-  const family = familyId.replace(/ /g, '+');
-  return `https://fonts.googleapis.com/css2?family=${family}:wght@${weights.join(';')}&display=swap`;
+let manifestOnce: Promise<FontManifest> | null = null;
+function localManifest(): Promise<FontManifest> {
+  if (!manifestOnce) {
+    manifestOnce = fetch(`/${FONT_MANIFEST_PATH}`)
+      .then((response) => (response.ok ? (response.json() as Promise<FontManifest>) : {}))
+      .catch(() => ({}));
+  }
+  return manifestOnce;
+}
+
+function declare(css: string, familyId: string): void {
+  const style = document.createElement('style');
+  style.dataset.captionFont = familyId;
+  style.textContent = css;
+  document.head.appendChild(style);
 }
 
 /** Idempotent. Never throws — a missing face falls back, it does not break the page. */
@@ -31,16 +54,24 @@ export function loadCaptionFont(familyId: string): void {
   if (!font) return;
   injected.add(familyId);
 
-  try {
-    const link = document.createElement('link');
-    link.rel = 'stylesheet';
-    link.href = href(font.id, font.weights);
-    // A font that fails to load is a fallback, not an error worth surfacing.
-    link.crossOrigin = 'anonymous';
-    document.head.appendChild(link);
-  } catch {
-    /* A page that cannot inject a stylesheet still renders in the fallback. */
-  }
+  void localManifest()
+    .then((manifest) => {
+      const faces = manifest[font.id];
+      if (faces?.length) {
+        declare(faceCss(font.id, faces, (file) => `/${file}`, 'swap'), font.id);
+        return;
+      }
+
+      const link = document.createElement('link');
+      link.rel = 'stylesheet';
+      link.href = cdnStylesheet(font.id, font.weights, 'swap');
+      // A font that fails to load is a fallback, not an error worth surfacing.
+      link.crossOrigin = 'anonymous';
+      document.head.appendChild(link);
+    })
+    .catch(() => {
+      /* A page that cannot inject a stylesheet still renders in the fallback. */
+    });
 }
 
 /** Every family a set of styles will need, loaded together. */
