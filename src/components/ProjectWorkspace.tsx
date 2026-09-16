@@ -5,6 +5,7 @@ import { clsx } from 'clsx';
 import dynamic from 'next/dynamic';
 import type { PlayerRef } from '@remotion/player';
 import { TimelineEditor } from '@/components/TimelineEditor';
+import { TimelineDock } from '@/components/TimelineDock';
 import { AppShell } from '@/components/shell/AppShell';
 import type { RecentProject } from '@/components/shell/Sidebar';
 import { Stepper, type StepKey } from '@/components/shell/Stepper';
@@ -337,11 +338,10 @@ export function ProjectWorkspace({
             </aside>
           </div>
 
-          {/* The dock. */}
-          {/* The dock is capped so the picture always wins the argument over
-              space — a timeline that grows a lane per layer will happily take
-              the whole window otherwise. */}
-          <div className="max-h-[38vh] flex-none overflow-y-auto border-t border-line-soft bg-[#0B0B0E] p-3">
+          {/* The dock, with a seam you can drag. Big enough to work in, small
+              enough to watch over — which of those you want changes minute to
+              minute, so it is the person's call rather than a constant. */}
+          <TimelineDock>
             <TimelineEditor
               edl={doc}
               onCommit={applyOperations}
@@ -349,7 +349,7 @@ export function ProjectWorkspace({
               playerRef={playerRef}
               onWorkingEdlChange={setWorkingEdl}
             />
-          </div>
+          </TimelineDock>
         </div>
       </AppShell>
     );
