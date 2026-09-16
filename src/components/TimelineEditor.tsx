@@ -356,6 +356,20 @@ export function TimelineEditor({
    */
   const snapPoints = useMemo(() => snapPointsFor(edl), [edl]);
 
+  /**
+   * Snapping, as a setting rather than only as a held key.
+   *
+   * Alt-to-ignore is right for the one drag where a clip refuses to sit just
+   * off a cut. It is the wrong shape for the other case — deliberately placing
+   * a run of things off the grid — where holding a modifier through every
+   * gesture is the interface arguing with you. Every editing suite has the
+   * toggle for exactly that reason, on N in most of them.
+   */
+  const [snapping, setSnapping] = useState(true);
+
+  /** The shortcut sheet. Shown on `?`, which is where every app of this shape puts it. */
+  const [showKeys, setShowKeys] = useState(false);
+
   /* ────────────────────────────────────────────────── dragging ─── */
 
   const secAtClientX = useCallback((clientX: number): number => {
@@ -375,8 +389,8 @@ export function TimelineEditor({
    * race. A ref is the boring fix: the listeners never change, and they always
    * read current values.
    */
-  const live = useRef({ pps, duration, snapPoints, playhead, edl, snapPx: SNAP_PX });
-  live.current = { pps, duration, snapPoints, playhead, edl, snapPx: SNAP_PX };
+  const live = useRef({ pps, duration, snapPoints, playhead, edl, snapPx: SNAP_PX, snapping });
+  live.current = { pps, duration, snapPoints, playhead, edl, snapPx: SNAP_PX, snapping };
 
   // Same reason: the listeners are registered once, so the functions they call
   // have to be reachable through something that does not go stale.
@@ -434,7 +448,7 @@ export function TimelineEditor({
         draggingId: drag.target.id,
         toleranceSec: SNAP_PX / scale,
         durationSec: dur,
-        disableSnap: drag.freeform,
+        disableSnap: drag.freeform || !live.current.snapping,
       });
 
       setDragPreview({ id: drag.target.id, ...geometry, kind: drag.kind });
@@ -559,6 +573,11 @@ export function TimelineEditor({
         return;
       }
 
+      // Everything below is an unmodified key. Without this, Cmd+S offered to
+      // save the page AND split the clip, and Cmd+, opened preferences while
+      // nudging the selection back a frame.
+      if (mod && event.key.toLowerCase() !== 'd') return;
+
       if (event.key === 'Delete' || event.key === 'Backspace') {
         if (!selection) return;
         event.preventDefault();
@@ -633,6 +652,77 @@ export function TimelineEditor({
       if (event.code === 'Space' || event.key.toLowerCase() === 'k') {
         event.preventDefault();
         togglePlay();
+        return;
+      }
+
+      if (event.key === '?') {
+        event.preventDefault();
+        setShowKeys((open) => !open);
+        return;
+      }
+      if (event.key === 'Escape') {
+        setShowKeys(false);
+        setSelection(null);
+        return;
+      }
+
+      if (event.key.toLowerCase() === 'n') {
+        event.preventDefault();
+        setSnapping((on) => !on);
+        return;
+      }
+
+      /**
+       * Trim the selection to the playhead.
+       *
+       * Park the playhead on the frame you want, press `[` to make that the
+       * start or `]` to make it the end. It is the one trim that needs no
+       * pointer precision at all, which is exactly what somebody who has never
+       * opened an editor needs: they can already hear where the line should
+       * begin, and the keyboard turns that into an exact edit.
+       */
+      if (event.key === '[' || event.key === ']') {
+        if (!selection) return;
+        event.preventDefault();
+        const toStart = event.key === '[';
+
+        if (selection.kind === 'segment') {
+          const segment = edl.segments.find((x) => x.id === selection.id);
+          if (!segment || playhead <= segment.outStartSec || playhead >= segment.outEndSec) {
+            setWarning('Park the playhead inside the clip first.');
+            return;
+          }
+          // Output time is the running order; the trim itself is source-side.
+          const offset = (playhead - segment.outStartSec) * segment.speed;
+          push(
+            toStart
+              ? { op: 'segment.trim', id: segment.id, sourceStartSec: segment.sourceStartSec + offset }
+              : { op: 'segment.trim', id: segment.id, sourceEndSec: segment.sourceStartSec + offset },
+          );
+          return;
+        }
+
+        if (selection.kind === 'caption') {
+          const cue = edl.captions.find((c) => c.id === selection.id);
+          if (!cue) return;
+          push({
+            op: 'caption.time',
+            id: cue.id,
+            startSec: toStart ? playhead : cue.startSec,
+            endSec: toStart ? cue.endSec : playhead,
+          });
+          return;
+        }
+
+        const item = clipById(edl, selection.kind, selection.id);
+        if (!item) return;
+        push({
+          op: 'clip.trim',
+          track: selection.kind,
+          id: selection.id,
+          outStartSec: toStart ? playhead : item.start,
+          outEndSec: toStart ? item.end : playhead,
+        });
         return;
       }
 
@@ -724,10 +814,36 @@ export function TimelineEditor({
         <ToolButton onClick={undo} disabled={!ops.length} title="Undo (Cmd/Ctrl+Z)">Undo</ToolButton>
         <ToolButton onClick={redo} disabled={!redoStack.length} title="Redo (Cmd/Ctrl+Shift+Z)">Redo</ToolButton>
 
+        <div className="mx-1 h-5 w-px bg-line" />
+
+        {/* Snapping, visible. A drag that jumps to a cut when you did not ask
+            it to is indistinguishable from a bug unless you can see that
+            snapping is on and turn it off. */}
+        <button
+          type="button"
+          data-snapping={snapping ? 'on' : 'off'}
+          onClick={() => setSnapping((on) => !on)}
+          title={snapping ? 'Snapping is on (N)' : 'Snapping is off (N)'}
+          aria-pressed={snapping}
+          className={clsx(
+            'flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs font-semibold transition-colors',
+            snapping
+              ? 'border-violet/50 bg-violet-dim text-violet'
+              : 'border-line text-muted hover:text-chalk',
+          )}
+        >
+          <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
+            <path d="M4 2v6a4 4 0 0 0 8 0V2" />
+            <path d="M4 6h3M9 6h3" />
+          </svg>
+          Snap
+        </button>
+
         <div className="ml-auto flex items-center gap-2">
           <ToolButton onClick={() => zoomTo(zoomIndex - 1)} disabled={zoomIndex === 0} title="Zoom out (Ctrl/Cmd + wheel)">&minus;</ToolButton>
           <ToolButton onClick={() => zoomTo(zoomIndex + 1)} disabled={zoomIndex === ZOOMS.length - 1} title="Zoom in (Ctrl/Cmd + wheel)">+</ToolButton>
           <ToolButton onClick={zoomToFit} title="Fit the whole video in the window">Fit</ToolButton>
+          <ToolButton onClick={() => setShowKeys(true)} title="Keyboard shortcuts (?)">?</ToolButton>
 
           <button
             type="button"
@@ -795,6 +911,8 @@ export function TimelineEditor({
                   selected={selected}
                   dragging={dragPreview?.id === segment.id}
                   tone={segment.reason === 'hook' ? 'hook' : 'video'}
+                  startSec={g.start}
+                  endSec={g.end}
                   onPointerDown={(e) => beginDrag(e, 'move', { kind: 'segment', id: segment.id }, segment.outStartSec, segment.outEndSec)}
                   onTrimStart={(e) => beginDrag(e, 'trim-start', { kind: 'segment', id: segment.id }, segment.outStartSec, segment.outEndSec)}
                   onTrimEnd={(e) => beginDrag(e, 'trim-end', { kind: 'segment', id: segment.id }, segment.outStartSec, segment.outEndSec)}
@@ -818,6 +936,8 @@ export function TimelineEditor({
                   selected={selection?.kind === 'caption' && selection.id === cue.id}
                   dragging={dragPreview?.id === cue.id}
                   tone="caption"
+                  startSec={g.start}
+                  endSec={g.end}
                   onPointerDown={(e) => beginDrag(e, 'move', { kind: 'caption', id: cue.id }, cue.startSec, cue.endSec)}
                   onTrimStart={(e) => beginDrag(e, 'trim-start', { kind: 'caption', id: cue.id }, cue.startSec, cue.endSec)}
                   onTrimEnd={(e) => beginDrag(e, 'trim-end', { kind: 'caption', id: cue.id }, cue.startSec, cue.endSec)}
@@ -841,6 +961,8 @@ export function TimelineEditor({
                   selected={selection?.kind === 'broll' && selection.id === clip.id}
                   dragging={dragPreview?.id === clip.id}
                   tone="broll"
+                  startSec={g.start}
+                  endSec={g.end}
                   onPointerDown={(e) => beginDrag(e, 'move', { kind: 'broll', id: clip.id }, clip.outStartSec, clip.outEndSec)}
                   onTrimStart={(e) => beginDrag(e, 'trim-start', { kind: 'broll', id: clip.id }, clip.outStartSec, clip.outEndSec)}
                   onTrimEnd={(e) => beginDrag(e, 'trim-end', { kind: 'broll', id: clip.id }, clip.outStartSec, clip.outEndSec)}
@@ -864,6 +986,8 @@ export function TimelineEditor({
                   selected={selection?.kind === 'graphics' && selection.id === clip.id}
                   dragging={dragPreview?.id === clip.id}
                   tone="graphic"
+                  startSec={g.start}
+                  endSec={g.end}
                   onPointerDown={(e) => beginDrag(e, 'move', { kind: 'graphics', id: clip.id }, clip.outStartSec, clip.outEndSec)}
                   onTrimStart={(e) => beginDrag(e, 'trim-start', { kind: 'graphics', id: clip.id }, clip.outStartSec, clip.outEndSec)}
                   onTrimEnd={(e) => beginDrag(e, 'trim-end', { kind: 'graphics', id: clip.id }, clip.outStartSec, clip.outEndSec)}
@@ -887,6 +1011,8 @@ export function TimelineEditor({
                   selected={selection?.kind === 'punchIns' && selection.id === clip.id}
                   dragging={dragPreview?.id === clip.id}
                   tone="punch"
+                  startSec={g.start}
+                  endSec={g.end}
                   onPointerDown={(e) => beginDrag(e, 'move', { kind: 'punchIns', id: clip.id }, clip.outStartSec, clip.outEndSec)}
                   onTrimStart={(e) => beginDrag(e, 'trim-start', { kind: 'punchIns', id: clip.id }, clip.outStartSec, clip.outEndSec)}
                   onTrimEnd={(e) => beginDrag(e, 'trim-end', { kind: 'punchIns', id: clip.id }, clip.outStartSec, clip.outEndSec)}
@@ -1021,6 +1147,8 @@ export function TimelineEditor({
         </div>
       </div>
 
+      {showKeys ? <ShortcutSheet onClose={() => setShowKeys(false)} /> : null}
+
       {/* ───────────────────────────────────────── inspector + log ─── */}
       <div className="grid gap-4 border-t border-line p-4 sm:grid-cols-2">
         <Inspector edl={edl} selection={selection} onChange={push} />
@@ -1032,12 +1160,14 @@ export function TimelineEditor({
           {ops.length === 0 ? (
             <p className="mt-2 text-xs text-muted">
               Drag to move, drag an edge to trim. <b className="text-chalk">S</b> splits at the
-              playhead, <b className="text-chalk">,</b> and <b className="text-chalk">.</b> nudge the
-              selection a frame (hold shift for a second),{' '}
+              playhead, <b className="text-chalk">[</b> and <b className="text-chalk">]</b> trim the
+              selection to it, <b className="text-chalk">,</b> and <b className="text-chalk">.</b>{' '}
+              nudge it a frame (hold shift for a second),{' '}
               <b className="text-chalk">&#8984;D</b> duplicates,{' '}
               <b className="text-chalk">Delete</b> removes, <b className="text-chalk">&#8984;Z</b> undoes.
-              Hold <b className="text-chalk">Alt</b> while dragging to ignore snapping. Nothing
-              re-renders until you apply.
+              <b className="text-chalk"> N</b> turns snapping off and on; holding{' '}
+              <b className="text-chalk">Alt</b> ignores it for one drag. Press{' '}
+              <b className="text-chalk">?</b> for the rest. Nothing re-renders until you apply.
             </p>
           ) : (
             <ol data-pending-ops className="mt-2 max-h-28 space-y-1 overflow-y-auto text-xs text-muted">
@@ -1056,6 +1186,83 @@ export function TimelineEditor({
 }
 
 /* ────────────────────────────────────────────────── sub-components ─── */
+
+/**
+ * Every key the timeline listens for, on one card.
+ *
+ * The product is for people who have never opened an editor, and the fastest
+ * way to make one of them faster is not another button — it is showing them
+ * that the keys exist at all. Discoverable beats clever: `?` is the one place
+ * people already look.
+ */
+function ShortcutSheet({ onClose }: { onClose: () => void }) {
+  const groups: Array<[string, Array<[string, string]>]> = [
+    ['Playing', [
+      ['Space  K', 'Play or pause'],
+      ['J  L', 'A second back / forward'],
+      ['← →', 'A frame back / forward'],
+      ['⇧← ⇧→', 'A second back / forward'],
+      ['Home  End', 'Jump to the start / end'],
+    ]],
+    ['Editing', [
+      ['S', 'Split the clip under the playhead'],
+      ['[  ]', 'Trim the selection to the playhead'],
+      [',  .', 'Nudge the selection a frame'],
+      ['⇧,  ⇧.', 'Nudge it a second'],
+      ['⌘D', 'Duplicate at the playhead'],
+      ['Delete', 'Remove what is selected'],
+      ['⌘Z  ⇧⌘Z', 'Undo / redo'],
+    ]],
+    ['Looking', [
+      ['⌘ + wheel', 'Zoom where the pointer is'],
+      ['⇧ + wheel', 'Scroll sideways'],
+      ['N', 'Snapping off and on'],
+      ['Alt + drag', 'Ignore snapping for one drag'],
+      ['Esc', 'Deselect'],
+    ]],
+  ];
+
+  return (
+    <div
+      className="fixed inset-0 z-[60] flex items-center justify-center bg-ink/80 p-4 backdrop-blur-sm"
+      onClick={onClose}
+      role="presentation"
+    >
+      <div
+        className="max-h-full w-full max-w-3xl overflow-y-auto rounded-2xl border border-line bg-charcoal p-5 shadow-card"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-baseline justify-between">
+          <h3 className="text-sm font-bold text-chalk">Keyboard</h3>
+          <button type="button" onClick={onClose} className="text-xs text-muted hover:text-chalk">
+            Close
+          </button>
+        </div>
+
+        <div className="mt-4 grid gap-5 sm:grid-cols-3">
+          {groups.map(([title, rows]) => (
+            <div key={title}>
+              <h4 className="text-[11px] font-bold uppercase tracking-wider text-muted/70">{title}</h4>
+              <dl className="mt-2 space-y-1.5">
+                {rows.map(([keys, what]) => (
+                  <div key={keys} className="flex items-baseline gap-2">
+                    <dt className="w-20 shrink-0 whitespace-nowrap font-mono text-[10.5px] text-violet">{keys}</dt>
+                    <dd className="text-[11px] leading-snug text-muted">{what}</dd>
+                  </div>
+                ))}
+              </dl>
+            </div>
+          ))}
+        </div>
+
+        <p className="mt-4 border-t border-line-soft pt-3 text-[11px] text-faint">
+          Nothing here re-renders the video. Edits pile up until you press Apply.
+        </p>
+      </div>
+    </div>
+  );
+}
+
 
 /**
  * Where the speech is, drawn behind the clips.
@@ -1153,6 +1360,13 @@ function Track({
   );
 }
 
+/** Best effort plain text for a clip's label, for its tooltip. */
+function label(children: React.ReactNode): string {
+  if (typeof children === 'string' || typeof children === 'number') return String(children);
+  if (Array.isArray(children)) return children.map(label).join('');
+  return '';
+}
+
 const TONES: Record<string, string> = {
   video: 'bg-violet/25 border-violet/40 text-chalk',
   hook: 'bg-violet/50 border-violet text-ink font-bold',
@@ -1170,6 +1384,8 @@ function Clip({
   selected,
   dragging,
   tone,
+  startSec,
+  endSec,
   children,
   onPointerDown,
   onTrimStart,
@@ -1183,6 +1399,9 @@ function Clip({
   selected: boolean;
   dragging?: boolean;
   tone: keyof typeof TONES;
+  /** Where it sits, for the tooltip — a clip's exact times are otherwise unknowable. */
+  startSec: number;
+  endSec: number;
   children: React.ReactNode;
   onPointerDown: (e: React.PointerEvent) => void;
   onTrimStart: (e: React.PointerEvent) => void;
@@ -1193,6 +1412,10 @@ function Clip({
       data-clip-id={id}
       data-track={track}
       data-selected={selected || undefined}
+      // The label is truncated at almost every zoom, and the times are not
+      // written anywhere until you pick the clip up. Hovering should answer
+      // both questions without changing anything.
+      title={`${label(children)}\n${formatTc(startSec)} – ${formatTc(endSec)}  ·  ${(endSec - startSec).toFixed(2)}s`}
       onPointerDown={onPointerDown}
       className={clsx(
         'group absolute top-1 bottom-1 cursor-grab touch-none select-none overflow-hidden rounded-md border px-2 text-[11px] leading-[26px] active:cursor-grabbing',
