@@ -546,34 +546,43 @@ function LivePreview({
   // A preview that cannot play the source used to be a black rectangle and a
   // line in the console. It happens for real reasons — a browser without the
   // H.264 and AAC decoders (Chromium built without them, some Linux builds of
-  // Firefox), a file the browser will not decode, a dropped connection — and in
+  // Firefox), a B-roll URL that has gone away, a dropped connection — and in
   // every one of them the export is still fine, because the export is made by
   // ffmpeg and a headless browser on the server, not by this one. So say that,
   // rather than showing black and letting somebody conclude their video is
   // ruined.
-  if (failed) {
-    return (
-      <div className="flex h-full w-full flex-col items-center justify-center gap-2 bg-black px-8 text-center">
-        <p className="text-[13.5px] font-bold">This browser can&rsquo;t play the preview.</p>
-        <p className="max-w-full text-[12.5px] leading-relaxed text-muted">
-          Your edit is fine and the export will be correct &mdash; this is the preview
-          player, not the video. Chrome, Safari or Edge will show it.
-        </p>
-        <p className="mt-1 w-full truncate text-[11px] text-faint" title={failed}>
-          {failed}
-        </p>
-      </div>
-    );
-  }
-
+  //
+  // The message arrives through the composition's `onMediaError` rather than an
+  // error boundary, because a media element fails asynchronously: it throws
+  // long after the render that created it, where no boundary can see it.
   // The shape belongs to the box this is placed in — two elements both claiming
   // the aspect is how the picture ends up letterboxed inside its own frame.
   return (
-    <div className="h-full w-full bg-black">
+    <div className="relative h-full w-full bg-black">
+      {/* A notice over the picture rather than instead of it. One B-roll insert
+          whose URL has gone away should not hide the speaker, and a source the
+          browser cannot decode leaves black underneath anyway — so the same
+          overlay covers both without having to guess which happened. */}
+      {failed ? (
+        <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 bg-ink/85 px-4 py-3 text-center backdrop-blur">
+          <p className="text-[12.5px] font-bold">This browser can&rsquo;t play part of the preview.</p>
+          <p className="mt-1 text-[11.5px] leading-relaxed text-muted">
+            Your edit is fine &mdash; the export is made on the server, not here.
+          </p>
+          <p className="mt-1 w-full truncate text-[10.5px] text-faint" title={failed}>{failed}</p>
+        </div>
+      ) : null}
+
       <Player
         ref={playerRef}
         component={EasyCutVideo as never}
-        inputProps={{ edl, previewAudio: true } as never}
+        inputProps={{
+          edl,
+          previewAudio: true,
+          // Only the preview gets this. A render without it fails loudly on an
+          // undecodable source, which is what you want from a render.
+          onMediaError: (message: string) => setFailed((f) => f ?? message),
+        } as never}
         durationInFrames={Math.max(1, Math.round(edl.format.durationSec * fps))}
         fps={fps}
         compositionWidth={edl.format.width}

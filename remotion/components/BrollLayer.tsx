@@ -13,7 +13,7 @@ import { lifecycleOpacity, ramp } from '../lib/timing';
  *  - Stills always move. A static photo held for two seconds looks like the
  *    video froze, so every image gets a slow Ken Burns push.
  */
-export const BrollLayer: React.FC<{ edl: Edl }> = ({ edl }) => {
+export const BrollLayer: React.FC<{ edl: Edl; onMediaError?: (message: string) => void }> = ({ edl, onMediaError }) => {
   const { fps } = useVideoConfig();
 
   return (
@@ -25,7 +25,7 @@ export const BrollLayer: React.FC<{ edl: Edl }> = ({ edl }) => {
 
         return (
           <Sequence key={clip.id} from={from} durationInFrames={durationInFrames} premountFor={Math.round(fps)}>
-            <BrollInsert clip={clip} durationInFrames={durationInFrames} />
+            <BrollInsert clip={clip} durationInFrames={durationInFrames} onMediaError={onMediaError} />
           </Sequence>
         );
       })}
@@ -33,7 +33,7 @@ export const BrollLayer: React.FC<{ edl: Edl }> = ({ edl }) => {
   );
 };
 
-const BrollInsert: React.FC<{ clip: BrollClip; durationInFrames: number }> = ({ clip, durationInFrames }) => {
+const BrollInsert: React.FC<{ clip: BrollClip; durationInFrames: number; onMediaError?: (message: string) => void }> = ({ clip, durationInFrames, onMediaError }) => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
 
@@ -56,6 +56,7 @@ const BrollInsert: React.FC<{ clip: BrollClip; durationInFrames: number }> = ({ 
       >
         {isVideo ? (
           <OffthreadVideo
+            onError={onMediaError ? (e) => onMediaError(e.message) : undefined}
             src={clip.url}
             trimBefore={Math.round(clip.clipStartSec * fps)}
             muted={clip.audioGainDb <= -55}

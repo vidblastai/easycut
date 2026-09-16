@@ -18,6 +18,16 @@ export interface EasyCutVideoProps {
    * the browser preview turns it on so the user can hear roughly what they'll get.
    */
   previewAudio?: boolean;
+  /**
+   * Somewhere to send a media failure instead of throwing.
+   *
+   * Supplied only by the browser preview. A render must NOT have it: a source
+   * the renderer cannot decode has to fail the job loudly, because the
+   * alternative is shipping a video with a silent black hole where a clip was.
+   * In the preview the opposite is true — one unreachable B-roll URL should not
+   * take down the whole picture while somebody is editing.
+   */
+  onMediaError?: (message: string) => void;
 }
 
 /**
@@ -32,13 +42,13 @@ export interface EasyCutVideoProps {
  *   5. transitions        — flash across everything at a cut
  *   6. overlays           — the video's own chrome, above all of it
  */
-export const EasyCutVideo: React.FC<EasyCutVideoProps> = ({ edl, previewAudio = false }) => {
+export const EasyCutVideo: React.FC<EasyCutVideoProps> = ({ edl, previewAudio = false, onMediaError }) => {
   const { fps } = useVideoConfig();
 
   return (
     <AbsoluteFill style={{ backgroundColor: '#0D0D10', fontFamily: FONT_FAMILY }}>
-      <VideoTrack edl={edl} />
-      <BrollLayer edl={edl} />
+      <VideoTrack edl={edl} onMediaError={onMediaError} />
+      <BrollLayer edl={edl} onMediaError={onMediaError} />
       <Graphics edl={edl} />
       <Captions edl={edl} />
       <Transitions edl={edl} />

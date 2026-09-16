@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { clsx } from 'clsx';
 import type { PlayerRef } from '@remotion/player';
 import { applyOperations, describeOperation, type ClipTrack, type EdlOperation } from '@/lib/edl/operations';
@@ -102,6 +102,8 @@ export function TimelineEditor({
   opsRef.current = ops;
   const redoRef = useRef(redoStack);
   redoRef.current = redoStack;
+  const zoomIndexRef = useRef(zoomIndex);
+  zoomIndexRef.current = zoomIndex;
 
   /**
    * Live geometry while a drag is in flight. The clip follows the cursor from
@@ -158,6 +160,87 @@ export function TimelineEditor({
       player.removeEventListener('pause', onPause);
     };
   }, [playerRef, fps]);
+
+  /**
+   * Zooming, anchored.
+   *
+   * Changing pixels-per-second while leaving scrollLeft alone means the moment
+   * under your cursor is not the moment under your cursor afterwards — zoom in
+   * twice on a ten-minute edit and you are looking at a different minute. So a
+   * zoom records what was under a chosen screen position and puts it back there
+   * once the new scale has been laid out.
+   */
+  const zoomAnchor = useRef<{ sec: number; screenX: number } | null>(null);
+
+  const zoomTo = useCallback((nextIndex: number, atClientX?: number) => {
+    const clamped = Math.max(0, Math.min(ZOOMS.length - 1, nextIndex));
+    if (clamped === zoomIndex) return;
+
+    const el = scrollRef.current;
+    if (el) {
+      const rect = el.getBoundingClientRect();
+      // The cursor if there is one, otherwise the playhead, otherwise the
+      // middle of the view — in that order, because that is the order of what
+      // the person is looking at.
+      const screenX = atClientX != null
+        ? atClientX - rect.left - TRACK_LABEL_W
+        : Math.min(Math.max(playhead * pps - el.scrollLeft, 0), el.clientWidth - TRACK_LABEL_W);
+      zoomAnchor.current = { sec: (el.scrollLeft + screenX) / pps, screenX };
+    }
+    setZoomIndex(clamped);
+  }, [zoomIndex, pps, playhead]);
+
+  useLayoutEffect(() => {
+    const el = scrollRef.current;
+    const held = zoomAnchor.current;
+    zoomAnchor.current = null;
+    if (!el || !held) return;
+    el.scrollLeft = Math.max(0, held.sec * pps - held.screenX);
+  }, [pps]);
+
+  /** Fit the whole edit in the window — the "where am I" button. */
+  const zoomToFit = useCallback(() => {
+    const el = scrollRef.current;
+    if (!el || !duration) return;
+    const available = el.clientWidth - TRACK_LABEL_W - 24;
+    let best = 0;
+    ZOOMS.forEach((z, i) => { if (duration * z <= available) best = i; });
+    zoomAnchor.current = { sec: 0, screenX: 0 };
+    setZoomIndex(best);
+  }, [duration]);
+
+  /**
+   * The wheel, behaving the way every editor's wheel behaves.
+   *
+   * Registered by hand rather than with onWheel because zooming has to call
+   * preventDefault — otherwise ctrl+wheel zooms the whole page — and React's
+   * synthetic wheel listener is passive, where preventDefault does nothing.
+   */
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+
+    const onWheel = (event: WheelEvent) => {
+      if (event.ctrlKey || event.metaKey) {
+        event.preventDefault();
+        zoomToRef.current(zoomIndexRef.current + (event.deltaY < 0 ? 1 : -1), event.clientX);
+        return;
+      }
+      // Shift-wheel, and any mouse or trackpad that reports a horizontal
+      // delta, pans. A plain vertical wheel is left to the page.
+      const horizontal = event.shiftKey ? event.deltaY : event.deltaX;
+      if (horizontal !== 0) {
+        event.preventDefault();
+        el.scrollLeft += horizontal;
+      }
+    };
+
+    el.addEventListener('wheel', onWheel, { passive: false });
+    return () => el.removeEventListener('wheel', onWheel);
+  }, []);
+
+  const zoomToRef = useRef(zoomTo);
+  zoomToRef.current = zoomTo;
 
   /**
    * Keep the playhead on screen.
@@ -569,8 +652,9 @@ export function TimelineEditor({
         <ToolButton onClick={redo} disabled={!redoStack.length} title="Redo (Cmd/Ctrl+Shift+Z)">Redo</ToolButton>
 
         <div className="ml-auto flex items-center gap-2">
-          <ToolButton onClick={() => setZoomIndex((z) => Math.max(0, z - 1))} disabled={zoomIndex === 0} title="Zoom out">&minus;</ToolButton>
-          <ToolButton onClick={() => setZoomIndex((z) => Math.min(ZOOMS.length - 1, z + 1))} disabled={zoomIndex === ZOOMS.length - 1} title="Zoom in">+</ToolButton>
+          <ToolButton onClick={() => zoomTo(zoomIndex - 1)} disabled={zoomIndex === 0} title="Zoom out (Ctrl/Cmd + wheel)">&minus;</ToolButton>
+          <ToolButton onClick={() => zoomTo(zoomIndex + 1)} disabled={zoomIndex === ZOOMS.length - 1} title="Zoom in (Ctrl/Cmd + wheel)">+</ToolButton>
+          <ToolButton onClick={zoomToFit} title="Fit the whole video in the window">Fit</ToolButton>
 
           <button
             type="button"

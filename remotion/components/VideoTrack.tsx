@@ -15,7 +15,7 @@ import { ramp } from '../lib/timing';
  * ffmpeg (concat, loudness, ducking, effects) and muxed in at the end. Letting
  * the browser mix audio would be slower and would lose the sidechain ducking.
  */
-export const VideoTrack: React.FC<{ edl: Edl }> = ({ edl }) => {
+export const VideoTrack: React.FC<{ edl: Edl; onMediaError?: (message: string) => void }> = ({ edl, onMediaError }) => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
   const outSec = frame / fps;
@@ -44,6 +44,10 @@ export const VideoTrack: React.FC<{ edl: Edl }> = ({ edl }) => {
           >
             <AbsoluteFill style={{ overflow: 'hidden' }}>
               <OffthreadVideo
+                // Present only in the preview. Absent in a render, where a
+                // source the renderer cannot decode must fail the job rather
+                // than leave a black hole in the delivered video.
+                onError={onMediaError ? (e) => onMediaError(e.message) : undefined}
                 src={edl.source.url}
                 // Trims are expressed in COMPOSITION frames, not source frames —
                 // a 60 fps source in a 30 fps composition would otherwise play
