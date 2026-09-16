@@ -4,7 +4,7 @@ import { AppShell, ShellMain } from '@/components/shell/AppShell';
 import { IconPlus } from '@/components/shell/Icons';
 import { NewProjectBanner } from '@/components/NewProjectBanner';
 import { db, parseJson } from '@/lib/db';
-import { formatUsd, formatUsdCoarse } from '@/lib/pricing/cost';
+import { formatUsd } from '@/lib/pricing/cost';
 import { getStyle } from '@/lib/styles/presets';
 import { recentsFor } from '@/lib/ui/recents';
 
@@ -19,10 +19,6 @@ export default async function DashboardPage() {
     })
     .catch(() => []);
 
-  const ready = projects.filter((p) => p.status === 'ready');
-  const totalSpend = projects.reduce((sum, p) => sum + p.costUsd, 0);
-  const minutes = ready.reduce((sum, p) => sum + (p.durationSec ?? 0), 0) / 60;
-
   return (
     <AppShell
       recents={recentsFor(projects)}
@@ -34,34 +30,18 @@ export default async function DashboardPage() {
       }
     >
       <ShellMain>
-        {/* The one thing this app is for, first and largest. Everything below is
-            what you already made. */}
+        {/* Make one, then the ones you already made. Nothing in between: a
+            heading repeating the nav item that is already highlighted, over a
+            row of totals nobody opened this page for, is a screen's worth of
+            scrolling between the person and their own work. */}
         <div className="pt-6">
           <NewProjectBanner />
-        </div>
-
-        {projects.length > 0 ? (
-          <Kpis
-            videos={projects.length}
-            finished={ready.length}
-            minutes={minutes}
-            spend={totalSpend}
-          />
-        ) : null}
-
-        <div className="mt-8 flex flex-wrap items-end justify-between gap-4">
-          <h2 className="text-[19px] font-extrabold">Your videos</h2>
-          {projects.length ? (
-            <p className="text-[13px] text-muted">
-              {projects.length} video{projects.length === 1 ? '' : 's'}
-            </p>
-          ) : null}
         </div>
 
         {projects.length === 0 ? (
           <Empty />
         ) : (
-          <ul className="mt-4 grid gap-3.5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          <ul className="mt-6 grid gap-3.5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             {projects.map((project) => {
               const job = project.jobs[0];
               const style = getStyle(project.styleId);
@@ -122,49 +102,6 @@ export default async function DashboardPage() {
         )}
       </ShellMain>
     </AppShell>
-  );
-}
-
-/**
- * One hairline-split surface rather than four bordered cards.
- *
- * Border, radius and fill each say "separate object", and four of them in a
- * row said it four times about numbers that are one summary.
- */
-function Kpis({
-  videos,
-  finished,
-  minutes,
-  spend,
-}: {
-  videos: number;
-  finished: number;
-  minutes: number;
-  spend: number;
-}) {
-  const cells = [
-    { label: 'Videos', value: String(videos), note: `${finished} finished` },
-    { label: 'Minutes made', value: minutes >= 10 ? minutes.toFixed(0) : minutes.toFixed(1), note: 'Total runtime' },
-    { label: 'Spent', value: formatUsdCoarse(spend), note: 'Across every render' },
-    {
-      label: 'Average',
-      value: videos ? formatUsdCoarse(spend / videos) : '—',
-      note: 'Per video',
-    },
-  ];
-
-  return (
-    <dl className="mt-5 grid grid-cols-2 gap-px overflow-hidden rounded-[14px] bg-line-soft sm:grid-cols-4">
-      {cells.map((cell) => (
-        <div key={cell.label} className="bg-charcoal px-[17px] py-[15px]">
-          <dt className="eyebrow">{cell.label}</dt>
-          <dd className="mt-1.5 text-[23px] font-extrabold tabular-nums tracking-[-0.035em]">
-            {cell.value}
-          </dd>
-          <p className="mt-0.5 text-[11.5px] text-muted">{cell.note}</p>
-        </div>
-      ))}
-    </dl>
   );
 }
 
@@ -261,7 +198,7 @@ function Status({ status, label }: { status: string; label?: string }) {
  */
 function Empty() {
   return (
-    <div className="mt-4 rounded-[14px] border border-dashed border-line px-6 py-12 text-center">
+    <div className="mt-6 rounded-[14px] border border-dashed border-line px-6 py-12 text-center">
       <p className="text-[14px] font-bold">Nothing here yet.</p>
       <p className="mx-auto mt-1.5 max-w-md text-[13px] text-muted">
         Point a camera at yourself, talk for thirty seconds, and drop the file above. You&rsquo;ll have

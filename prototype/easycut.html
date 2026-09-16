@@ -659,21 +659,6 @@ body.instudio .work { height: calc(100vh - var(--topbar)); }
 .dash-head h1 { font-size: 30px; font-weight: 800; letter-spacing: -.035em; text-wrap: balance; }
 .dash-head p { margin-top: 6px; font-size: 13.5px; color: var(--muted); }
 
-/* One surface split by hairlines, not four bordered cards. Border, radius and
-   fill each say "separate object"; spending all three on a readout flattens the
-   page, because then the videos below — which you actually click — look no more
-   substantial than a number. */
-.kpis {
-  display: grid; grid-template-columns: repeat(4, 1fr); gap: 1px;
-  background: var(--line-soft); border: 1px solid var(--line);
-  border-radius: var(--r-lg); overflow: hidden; margin-bottom: 28px;
-}
-@media (max-width: 760px) { .kpis { grid-template-columns: repeat(2, 1fr); } }
-.kpi { background: var(--charcoal); padding: 15px 17px; }
-.kpi dt { font-size: 10px; letter-spacing: .07em; text-transform: uppercase; color: var(--faint); font-weight: 700; }
-.kpi dd { margin: 6px 0 0; font-size: 23px; font-weight: 800; letter-spacing: -.035em; font-variant-numeric: tabular-nums; }
-.kpi p { margin: 3px 0 0; font-size: 11.5px; color: var(--muted); }
-
 /* Slightly larger minimum so a card never squeezes its title to an ellipsis at
    the width the grid actually lands on. */
 .vidgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(226px, 1fr)); gap: 16px; }
@@ -733,15 +718,6 @@ body.instudio .work { height: calc(100vh - var(--topbar)); }
 .vid.is-working .st { color: var(--warn); }
 .vid.is-failed  .st { color: var(--bad); }
 
-.newcard {
-  border: 1px dashed var(--line); border-radius: var(--r-lg); background: transparent;
-  display: grid; place-items: center; cursor: pointer; align-self: start;
-  aspect-ratio: 16 / 10; transition: border-color var(--fast), background var(--fast);
-  text-align: center; padding: 20px;
-}
-.newcard:hover { border-color: var(--violet); background: var(--violet-dim); }
-.newcard b { display: block; font-size: 14px; font-weight: 700; }
-.newcard span { display: block; margin-top: 4px; font-size: 12px; color: var(--muted); }
 
 .emptyish { border: 1px solid var(--line); border-radius: var(--r-lg); background: var(--charcoal); padding: 26px; }
 .emptyish h3 { font-size: 15px; font-weight: 700; }
@@ -1406,14 +1382,11 @@ body.instudio { overflow: hidden; }
           </span>
         </button>
 
-        <div class="dash-head" style="margin-top:26px">
-          <div>
-            <h1 id="dash-title">Your videos</h1>
-            <p id="dash-sub">Upload footage and it comes back edited.</p>
-          </div>
-        </div>
-        <dl class="kpis" id="kpis"></dl>
-        <div class="vidgrid" id="vidgrid"></div>
+        <!-- Make one, then the ones you already made. Nothing in between: a
+             heading repeating the nav item that is already highlighted, over a
+             row of totals nobody opened this page for, is a screen's worth of
+             scrolling between the person and their own work. -->
+        <div class="vidgrid" id="vidgrid" style="margin-top:24px"></div>
       </section>
 
       <!-- ═══════════════════════════════════ media ═══ -->
@@ -3381,24 +3354,10 @@ function buildNav() {
 }
 
 function buildDashboard() {
-  const ready = LIBRARY.filter((v) => v.status === 'ready');
-  const spend = LIBRARY.reduce((n, v) => n + v.cost, 0);
-  const minutes = LIBRARY.reduce((n, v) => {
-    const [m, sec] = v.len.split(':').map(Number);
-    return n + m + sec / 60;
-  }, 0);
-
-  $('kpis').innerHTML = [
-    ['Videos', LIBRARY.length, `${ready.length} ready`],
-    ['Minutes made', minutes.toFixed(1), 'of finished video'],
-    ['Spent', '$' + spend.toFixed(2), 'all time'],
-    ['Average', '$' + (spend / Math.max(1, ready.length)).toFixed(2), 'per video'],
-  ].map(([k, v, sub]) => `<div class="kpi"><dt>${k}</dt><dd>${v}</dd><p>${sub}</p></div>`).join('');
-
+  // Just the videos. The banner above is the only way in that this screen
+  // needs — a tile at the head of the grid saying the same thing was the
+  // third "new video" control on one page.
   $('vidgrid').innerHTML =
-    `<button class="newcard" data-route="new">
-       <span><b>+ New video</b><span>Drop in footage, pick a look</span></span>
-     </button>` +
     LIBRARY.map((v) => {
       const st = STYLES[v.style];
       // State drives a class, so the colour lives in CSS where the palette is,
@@ -3425,9 +3384,6 @@ function buildDashboard() {
       </div>`;
     }).join('');
 
-  $('dash-sub').textContent =
-    `${LIBRARY.length} videos · $${spend.toFixed(2)} spent · about $${(spend / LIBRARY.length).toFixed(2)} each`;
-  $('dash-title').textContent = state.route === 'myvideos' ? 'My videos' : 'Your videos';
 }
 
 function buildSettings() {

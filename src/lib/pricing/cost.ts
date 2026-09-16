@@ -234,18 +234,3 @@ export function formatUsd(value: number): string {
   if (value < 0.01) return `$${value.toFixed(4)}`;
   return `$${value.toFixed(2)}`;
 }
-
-/**
- * The same number, for somewhere a person is reading rather than auditing.
- *
- * `formatUsd` keeps four decimals under a cent because the whole point of the
- * cost ledger is that fractions of a cent are visible. On a dashboard tile that
- * precision reads as a bug: a brand-new account's total spend rendered as
- * "$0.0000", which looks like something failed rather than like nothing has
- * happened yet.
- */
-export function formatUsdCoarse(value: number): string {
-  if (value <= 0) return '$0';
-  if (value < 0.01) return '<$0.01';
-  return `$${value.toFixed(2)}`;
-}
