@@ -193,25 +193,39 @@ export function TimelineEditor({
 
   /** Times worth landing on exactly: cuts, cue edges, the playhead, the ends. */
   const snapPoints = useMemo(() => {
-    const points = new Set<number>([0, duration, playhead]);
+    // Deliberately NOT keyed on the playhead. It used to be one of the points
+    // in here, which meant this whole set was rebuilt and re-sorted on every
+    // `frameupdate` — thirty times a second during playback. On a ten-minute
+    // video that is 301 captions and 75 segments, so ~760 insertions and a
+    // sort of the same, per frame, for a value that only matters while
+    // something is being dragged. The playhead is considered in `snap` below
+    // instead, where it costs one comparison.
+    const points = new Set<number>([0, duration]);
     for (const s of edl.segments) { points.add(s.outStartSec); points.add(s.outEndSec); }
     for (const c of edl.captions) { points.add(c.startSec); points.add(c.endSec); }
     for (const b of edl.broll) { points.add(b.outStartSec); points.add(b.outEndSec); }
     for (const g of edl.graphics) { points.add(g.outStartSec); points.add(g.outEndSec); }
     return [...points].sort((a, b) => a - b);
-  }, [edl, duration, playhead]);
+  }, [edl, duration]);
 
   const snap = useCallback((sec: number, exclude: number[] = []): number => {
     const tolerance = SNAP_PX / pps;
     let best = sec;
     let bestGap = tolerance;
-    for (const point of snapPoints) {
-      if (exclude.some((e) => Math.abs(e - point) < 1e-6)) continue;
+
+    const consider = (point: number) => {
+      if (exclude.some((e) => Math.abs(e - point) < 1e-6)) return;
       const gap = Math.abs(point - sec);
       if (gap < bestGap) { bestGap = gap; best = point; }
-    }
+    };
+
+    for (const point of snapPoints) consider(point);
+    // Still a snap target — just not one the memo above has to be invalidated
+    // for on every frame of playback.
+    consider(playhead);
+
     return Math.max(0, Math.min(duration, best));
-  }, [snapPoints, pps, duration]);
+  }, [snapPoints, playhead, pps, duration]);
 
   /* ────────────────────────────────────────────────── dragging ─── */
 
