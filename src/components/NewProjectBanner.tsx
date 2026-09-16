@@ -113,7 +113,7 @@ export function NewProjectBanner() {
           'group relative flex w-full items-center justify-center overflow-hidden',
           'rounded-[20px] px-6 py-11 text-ink transition-[transform,box-shadow] duration-200',
           'min-h-[140px] sm:py-14',
-          over ? 'scale-[1.005] shadow-glow' : 'hover:-translate-y-0.5 hover:shadow-glow',
+          over ? 'scale-[1.01] shadow-glow' : 'hover:-translate-y-0.5 hover:shadow-glow',
           sending && 'ec-accept shadow-glow',
         )}
         style={{
@@ -126,14 +126,35 @@ export function NewProjectBanner() {
             'linear-gradient(103deg, #7A57F0 0%, #9B7BFF 52%, #B7A2FF 100%)',
         }}
       >
-        {/* The dashed inset only appears with a file in the air, so the button
-            looks like a button until the moment it needs to look like a target. */}
+        {/* The surface itself has to answer "can I let go here?", not just the
+            outline. A white wash over the gradient does it in one transition
+            that works everywhere — interpolating between two gradients does
+            not animate in every browser, so swapping `background-image` would
+            snap on some machines and slide on others. */}
         <span
           aria-hidden
           className={clsx(
-            'pointer-events-none absolute inset-2.5 rounded-[14px] border-2 border-dashed transition-opacity duration-200',
-            armed ? 'border-ink/35 opacity-100' : 'opacity-0',
+            'pointer-events-none absolute inset-0 bg-white transition-opacity duration-200',
+            over ? 'opacity-[0.22]' : 'opacity-0 group-hover:opacity-[0.08]',
           )}
+          style={{ transitionTimingFunction: 'var(--ease)' }}
+        />
+
+        {/* Two stages, because they answer different questions. A file is
+            somewhere over the page: a dashed outline says "there is a target
+            here". A file is over THIS: the outline goes solid and closes in,
+            saying "this one, let go". */}
+        <span
+          aria-hidden
+          className={clsx(
+            'pointer-events-none absolute rounded-[14px] border-2 transition-all duration-200',
+            over
+              ? 'inset-[7px] border-solid border-ink/55 opacity-100'
+              : armed
+                ? 'inset-2.5 border-dashed border-ink/35 opacity-100'
+                : 'inset-2.5 border-dashed border-ink/35 opacity-0',
+          )}
+          style={{ transitionTimingFunction: 'var(--ease)' }}
         />
 
         {/* A timeline ruler along the bottom edge — the same ticks the studio

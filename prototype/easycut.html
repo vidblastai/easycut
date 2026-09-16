@@ -1045,15 +1045,30 @@ body.instudio { overflow: hidden; }
   transition: transform var(--fast), box-shadow var(--fast);
 }
 .newvid:hover { transform: translateY(-2px); box-shadow: 0 18px 50px -18px rgba(155,123,255,.6); }
-.newvid.over { transform: scale(1.005); box-shadow: 0 18px 50px -18px rgba(155,123,255,.7); }
+.newvid.over { transform: scale(1.01); box-shadow: 0 18px 50px -18px rgba(155,123,255,.7); }
 
-/* The dashed inset appears only with a file in the air, so the banner looks
-   like a button until the moment it needs to look like a target. */
+/* The surface itself has to answer "can I let go here?", not just the outline.
+   A white wash over the gradient does it in one transition that works
+   everywhere — interpolating between two gradients does not animate in every
+   browser, so swapping the background would snap on some machines and slide
+   on others. */
+.newvid .wash {
+  position: absolute; inset: 0; background: #fff; opacity: 0;
+  transition: opacity var(--fast);
+}
+.newvid:hover .wash { opacity: .08; }
+.newvid.over .wash { opacity: .22; }
+
+/* Two stages, because they answer different questions. A file is somewhere
+   over the page: a dashed outline says "there is a target here". A file is
+   over THIS one: the outline goes solid and closes in — "this one, let go". */
 .newvid .ring {
   position: absolute; inset: 10px; border: 2px dashed rgba(13,13,16,.35);
-  border-radius: 14px; opacity: 0; transition: opacity var(--fast);
+  border-radius: 14px; opacity: 0;
+  transition: opacity var(--fast), inset var(--fast), border-color var(--fast);
 }
 .newvid.armed .ring { opacity: 1; }
+.newvid.over .ring { opacity: 1; inset: 7px; border-style: solid; border-color: rgba(13,13,16,.55); }
 
 .newvid .ruler {
   position: absolute; left: 0; right: 0; bottom: 0; height: 12px;
@@ -1417,6 +1432,7 @@ body.instudio { overflow: hidden; }
         <!-- The one thing this app is for, first and largest. A button and a
              drop target at once, because those are the same intention. -->
         <button class="newvid" id="newvid">
+          <span class="wash" aria-hidden="true"></span>
           <span class="ring" aria-hidden="true"></span>
           <!-- A timeline ruler along the bottom edge: the same ticks the studio
                draws under its tracks. It says "this is where footage becomes an
