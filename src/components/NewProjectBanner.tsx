@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { clsx } from 'clsx';
-import { IconPlus } from '@/components/shell/Icons';
+import { LogoMark } from '@/components/Logo';
 import { looksLikeVideo, setPendingUpload } from '@/lib/ui/pending-upload';
 
 /**
@@ -94,8 +94,8 @@ export function NewProjectBanner() {
         }}
         className={clsx(
           'group relative flex w-full items-center justify-center overflow-hidden',
-          'rounded-[20px] px-6 py-10 text-ink transition-[transform,box-shadow] duration-200',
-          'min-h-[128px] sm:py-12',
+          'rounded-[20px] px-6 py-11 text-ink transition-[transform,box-shadow] duration-200',
+          'min-h-[140px] sm:py-14',
           over ? 'scale-[1.005] shadow-glow' : 'hover:-translate-y-0.5 hover:shadow-glow',
         )}
         style={{
@@ -118,22 +118,44 @@ export function NewProjectBanner() {
           )}
         />
 
-        <span className="relative flex items-center gap-4">
-          <span
-            className={clsx(
-              'grid h-11 w-11 flex-none place-items-center rounded-xl bg-ink/90 transition-transform duration-200',
-              over ? 'scale-110' : 'group-hover:scale-105',
-            )}
-          >
-            <IconPlus className="h-5 w-5 text-violet" />
+        {/* A timeline ruler along the bottom edge — the same ticks the studio
+            draws under its tracks. It says "this is where footage becomes an
+            edit" without a word, and it belongs to this app rather than to
+            every other tool with a coloured rectangle on its dashboard. */}
+        <span
+          aria-hidden
+          className="pointer-events-none absolute inset-x-0 bottom-0 h-3"
+          style={{
+            backgroundImage:
+              'repeating-linear-gradient(90deg, rgba(13,13,16,0.26) 0 1px, transparent 1px 12px),' +
+              'repeating-linear-gradient(90deg, rgba(13,13,16,0.40) 0 1.5px, transparent 1.5px 60px)',
+            backgroundSize: '100% 6px, 100% 11px',
+            backgroundPosition: 'left bottom, left bottom',
+            backgroundRepeat: 'repeat-x',
+          }}
+        />
+
+        {/* The mark, whole, as a watermark on the right.
+            It bled off that edge at first, which is exactly the wrong edge: the
+            triangle points right, so the point — the only part that identifies
+            it — was the part being cut. A mark you cannot recognise is not
+            branding, it is a smudge. */}
+        <LogoMark
+          size={128}
+          className={clsx(
+            'pointer-events-none absolute right-8 top-1/2 -translate-y-1/2 text-ink transition-opacity duration-300 sm:right-12',
+            over ? 'opacity-[0.20]' : 'opacity-[0.13]',
+          )}
+        />
+
+        {/* Centred and stacked. The icon-beside-label lockup is the shape every
+            editor's dashboard already has. */}
+        <span className="relative block text-center">
+          <span className="block text-[24px] font-extrabold leading-tight tracking-[-0.035em] sm:text-[30px]">
+            {over ? 'Drop it' : 'New video'}
           </span>
-          <span className="text-left">
-            <span className="block text-[21px] font-extrabold tracking-[-0.03em] sm:text-[24px]">
-              {over ? 'Drop it' : 'New video'}
-            </span>
-            <span className="block text-[13px] font-semibold text-ink/65">
-              {over ? 'Let go and we\u2019ll take it from here' : 'Drop your footage here, or click to browse'}
-            </span>
+          <span className="mt-1 block text-[13px] font-semibold text-ink/65">
+            {over ? 'Let go and we\u2019ll take it from here' : 'Drop your footage here, or click to browse'}
           </span>
         </span>
 
