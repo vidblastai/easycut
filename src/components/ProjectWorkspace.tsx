@@ -108,10 +108,26 @@ export function ProjectWorkspace({
   const playerRef = useRef<PlayerRef | null>(null);
   const [workingEdl, setWorkingEdl] = useState<Edl | null>(null);
 
+  /**
+   * The last EDL the server sent.
+   *
+   * While a render is running the API stops shipping the document — it is
+   * 200 KB on a long video and the page polls every 1.8 seconds. That is right
+   * for someone waiting on a first edit, and wrong for someone already IN the
+   * editor who just hit apply: their status flips to `processing`, the document
+   * goes null, and the studio would close under them mid-session. Holding the
+   * last one means a re-render leaves the editor exactly where it was.
+   */
+  const lastDoc = useRef<Edl | null>(null);
+
   const load = useCallback(async () => {
     const response = await fetch(`/api/projects/${projectId}`, { cache: 'no-store' });
     if (!response.ok) return;
-    setState(await response.json());
+    const next = (await response.json()) as ProjectState;
+    // Remembered here rather than during render: a ref written while rendering
+    // is a side effect in the wrong phase, even when the value is idempotent.
+    if (next.edl?.document) lastDoc.current = next.edl.document;
+    setState(next);
   }, [projectId]);
 
   useEffect(() => {
@@ -207,7 +223,7 @@ export function ProjectWorkspace({
   }
 
   const { project, job, edl } = state;
-  const doc = edl?.document ?? null;
+  const doc = edl?.document ?? lastDoc.current;
   const captionStyle = draftCaption ?? doc?.captionStyle ?? null;
   const captionDirty = Boolean(draftCaption && doc && !sameStyle(draftCaption, doc.captionStyle));
 

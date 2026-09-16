@@ -32,6 +32,22 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
   const job = project.jobs[0];
   const edl = project.edls[0];
 
+  /**
+   * The EDL is only sent once there is something to edit.
+   *
+   * The project page polls this route every 1.8 seconds while a video is
+   * rendering, and a ten-minute EDL is about 200 KB — 301 caption cards, each
+   * with its words and their timings. Over a forty-minute render that is 1,300
+   * requests and a quarter of a gigabyte, for one person watching one video, to
+   * redeliver a document the page cannot use yet: while the status is
+   * `processing` it is showing a progress panel, not the editor.
+   *
+   * The poll that flips the status to `ready` is itself a ready response, so
+   * the document arrives on exactly the request where it first becomes useful.
+   * The id and version always go, so the client can tell a version exists.
+   */
+  const stillWorking = project.status === 'processing' || project.status === 'draft';
+
   return NextResponse.json({
     project: {
       id: project.id,
@@ -62,7 +78,13 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
           log: readStageLog(job.log),
         }
       : null,
-    edl: edl ? { id: edl.id, version: edl.version, document: parseJson(edl.document, null) } : null,
+    edl: edl
+      ? {
+          id: edl.id,
+          version: edl.version,
+          document: stillWorking ? null : parseJson(edl.document, null),
+        }
+      : null,
     renders: project.renders.map((r) => ({
       id: r.id,
       aspect: r.aspect,
