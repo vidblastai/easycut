@@ -209,3 +209,20 @@ reports it as a skipped layer.
 $0.74 for a 10-minute long-form** — against ceilings of $1 and $5.
 
 Copy `.env.example` to `.env`, fill in what you have, and run `npm run doctor`.
+
+## Seeing it work with none of them
+
+```bash
+npm run db:seed
+```
+
+Sample footage, the real pipeline, a real render — no keys and no network. The
+transcript comes from a file (`content/fixtures/demo.transcript.json`) and
+everything downstream of it is the production code path, so what lands on the
+dashboard is a genuine EDL and a genuine MP4.
+
+That fixture provider is opt-in by name: it needs `ASR_PROVIDER=fixture` **and**
+an explicit `ASR_FIXTURE` path. There is no discovery, no default location and
+no fallback to a bundled sample, because a transcription provider that could
+silently substitute prepared words for someone's real speech is a product that
+puts words in their mouth.

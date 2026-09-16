@@ -433,11 +433,6 @@ input[type=range] { width: 100%; accent-color: var(--violet); }
   transform: translateY(-50%);
 }
 .caps .w { display: inline-block; will-change: transform, opacity; line-height: 1.12; }
-.caps.plate {
-  background: rgba(13,13,16,.72); border-radius: 2.4cqw;
-  padding: 2.4cqw 3.4cqw; left: 5%; right: 5%;
-}
-
 .flash { position: absolute; inset: 0; background: #fff; opacity: 0; pointer-events: none; }
 .prog { position: absolute; left: 0; bottom: 0; height: 3px; background: var(--violet); width: 0; }
 
@@ -1738,37 +1733,31 @@ const CAP_BY_ID = Object.fromEntries(CAPS.map((c) => [c.id, c]));
 const STYLES = {
   clean: {
     name: 'Clean', tagline: 'Let the message carry it.', accent: '#9B7BFF',
-    cap: { anim: 'karaoke', weight: 700, size: .046, words: 5, y: .78, upper: false, plate: true, stroke: false },
     short: { broll: 12, gfx: 14, punch: 7, sfx: .2, trans: .25 },
     progress: false, music: 'minimal ambient',
   },
   punchy: {
     name: 'Punchy', tagline: 'Built to stop the scroll.', accent: '#9B7BFF',
-    cap: { anim: 'bounce', weight: 800, size: .068, words: 3, y: .70, upper: true, plate: false, stroke: true },
     short: { broll: 7, gfx: 9, punch: 4.5, sfx: .8, trans: .65 },
     progress: true, music: 'upbeat energetic',
   },
   documentary: {
     name: 'Documentary', tagline: 'Cinematic, patient, considered.', accent: '#E8C89A',
-    cap: { anim: 'fade', weight: 600, size: .038, words: 7, y: .86, upper: false, plate: false, stroke: false },
     short: { broll: 9, gfx: 30, punch: 9.5, sfx: .15, trans: .3 },
     progress: false, music: 'cinematic emotional',
   },
   explainer: {
     name: 'Explainer', tagline: 'Every idea gets a picture.', accent: '#5BD6A0',
-    cap: { anim: 'pop', weight: 700, size: .050, words: 4, y: .80, upper: false, plate: true, stroke: false },
     short: { broll: 14, gfx: 5, punch: 7, sfx: .45, trans: .35 },
     progress: true, music: 'light curious',
   },
   podcast: {
     name: 'Podcast', tagline: 'Long conversations, watchable.', accent: '#9B7BFF',
-    cap: { anim: 'karaoke', weight: 600, size: .036, words: 8, y: .88, upper: false, plate: true, stroke: false },
     short: { broll: 11, gfx: 16, punch: 8.5, sfx: .25, trans: .2 },
     progress: false, music: 'low-key groove',
   },
   vlog: {
     name: 'Vlog', tagline: 'Loose, warm, personal.', accent: '#F5C453',
-    cap: { anim: 'pop', weight: 800, size: .052, words: 4, y: .76, upper: false, plate: false, stroke: true },
     short: { broll: 9, gfx: 13, punch: 6, sfx: .5, trans: .45 },
     progress: false, music: 'warm lo-fi',
   },

@@ -12,6 +12,7 @@ import { CaptionStudio } from '@/components/captions/CaptionStudio';
 import { CaptionBand } from '@/components/captions/CaptionPreview';
 import { captionPresetFor } from '@/lib/captions/presets';
 import { IconDownload, IconPlus } from '@/components/shell/Icons';
+import { CopyButton } from '@/components/CopyButton';
 import type { EdlOperation } from '@/lib/edl/operations';
 import type { CaptionStyle, Edl } from '@/lib/edl/types';
 import Link from 'next/link';
@@ -441,7 +442,16 @@ export function ProjectWorkspace({
 
               {project.socialCaption ? (
                 <div className="card mt-4 p-5">
-                  <h3 className="text-sm font-bold">Caption for your post</h3>
+                  <div className="flex items-center gap-3">
+                    <h3 className="text-sm font-bold">Caption for your post</h3>
+                    {/* The last thing between a finished video and a posted one
+                        is pasting this somewhere. Selecting it by hand on a
+                        phone is the whole reason people give up here. */}
+                    <CopyButton
+                      className="ml-auto"
+                      text={[project.socialCaption, project.hashtags.join(' ')].filter(Boolean).join('\n\n')}
+                    />
+                  </div>
                   <p className="mt-2 text-sm leading-relaxed text-muted">{project.socialCaption}</p>
                   {project.hashtags.length ? (
                     <p className="mt-2 text-sm text-violet">{project.hashtags.join(' ')}</p>

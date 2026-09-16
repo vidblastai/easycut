@@ -13,6 +13,20 @@ http://localhost:3000. Safe to run again.
 
 Needs Node 20 or newer. ffmpeg comes from npm — nothing to install by hand.
 
+**Want to see a finished video before signing up for anything?**
+
+```bash
+npm run db:seed
+```
+
+Builds sample footage, runs the real pipeline over a written transcript, renders
+a real MP4, and leaves it on the dashboard. No keys, no network. Nothing is faked
+at the boundary — the EDL comes out of the same builder a paying job uses. The one
+substitution is the transcript, and it is opt-in by name: `ASR_PROVIDER=fixture`
+plus an explicit `ASR_FIXTURE` path, because a transcriber that could quietly
+swap prepared words for someone's real speech must not be something you can fall
+into.
+
 To put it online instead, see [docs/DEPLOY.md](docs/DEPLOY.md).
 
 
@@ -100,8 +114,29 @@ You make three choices. Everything else is inferred.
 | Framing | Face-tracked vertical crop | Unchanged |
 
 **3 · Which look?** Clean, Punchy, Documentary, Explainer, Podcast or Vlog —
-each a different pacing profile, caption style, transition palette and sound
-design density. Switch after the edit and re-render for free.
+each a different pacing profile, transition palette and sound design density.
+Switch after the edit and re-render for free.
+
+### Captions are their own decision
+
+Most short-form is watched with the sound off, which makes the captions the
+video. So the typography is not welded to the pacing: an edit style *names* a
+caption look, and you can change it without touching anything else. "That
+energy, quieter type" is a thing people want, and it used to be unsayable.
+
+**Sixteen finished looks** across four families — quiet, punchy, loud,
+editorial — each a complete style rather than a variation on one. **Sixteen
+typefaces**, curated against three tests most faces fail: survives being small
+on a phone over moving footage, has a real 700–900 weight, and is actually
+distinct from its neighbours here. Then font, weight, size, position, colour,
+highlight colour, alignment, caps, outline, plate, shadow and nine motion
+treatments on top.
+
+The picker previews each look **at the video's real scale**, drawn by the
+renderer's own paint module (`src/lib/captions/paint.ts`) — the preview and the
+render share one implementation precisely so a look cannot be advertised as one
+thing and exported as another. Every caption change replays cached analysis: no
+transcription, no AI call, no re-upload.
 
 ### The layers it adds
 
@@ -165,7 +200,7 @@ Transcription and the director are the only stages that cost money, and both
 outputs are cached on the project. So all of this replays the deterministic half
 of the pipeline and costs one render:
 
-- change the style, turn any layer off, resize or move the captions
+- change the style, change the caption look, turn any layer off
 - shuffle the music, delete a clip
 - export 1:1 and 16:9 alongside the 9:16
 - **cut a short out of a long-form video you already made**
