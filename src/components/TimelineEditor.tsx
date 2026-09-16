@@ -648,12 +648,24 @@ function SpeechTrack({ edl, pps }: { edl: Edl; pps: number }) {
     if (!duration) return [];
     const count = Math.min(1400, Math.max(40, Math.round(duration * 14)));
 
+    // Flattened ONCE. This used to sit inside the loop below, which rebuilt the
+    // whole word list for every bar — fine at nine cues, and 1,400 × 2,400
+    // words on a ten-minute video. Three and a half million array writes to
+    // draw one waveform, every time the captions change.
+    const words = edl.captions.flatMap((c) => c.words);
+
+    // Bars and words both run forward in time, so a cursor that only ever
+    // advances answers every bar in one pass instead of scanning from the
+    // start each time: O(bars + words) rather than O(bars × words).
+    let cursor = 0;
+
     return Array.from({ length: count }, (_, i) => {
       const at = (i / count) * duration;
-      const word = edl.captions
-        .flatMap((c) => c.words)
-        .find((w) => at >= w.startSec - 0.02 && at <= w.endSec + 0.02);
-      if (!word) return 0.1;
+      while (cursor < words.length && words[cursor].endSec + 0.02 < at) cursor += 1;
+
+      const word = words[cursor];
+      if (!word || at < word.startSec - 0.02) return 0.1;
+
       // Height varies within the word so it reads as speech, not a block.
       const through = (at - word.startSec) / Math.max(0.05, word.endSec - word.startSec);
       return 0.35 + Math.sin(through * Math.PI) * 0.55 + (word.emphasis ? 0.1 : 0);
