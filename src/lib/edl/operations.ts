@@ -4,6 +4,7 @@ import {
   CAPTION_ANIMATIONS,
   GRAPHIC_TYPES,
   TRANSITION_TYPES,
+  EdlSchema,
   type CaptionCue,
   type Edl,
   type Segment,
@@ -205,6 +206,24 @@ export function applyOperations(input: Edl, operations: EdlOperation[]): ApplyRe
   return { edl: normalize(edl), rejected };
 }
 
+/**
+ * Runs a stored document through the same tidy-up every edit ends with.
+ *
+ * Documents written by an older build can break invariants this one relies on —
+ * two captions covering the same second, most of all, which the renderer
+ * resolves by drawing whichever comes first in the array and silently losing
+ * the other. Replaying an empty operation stack re-imposes the rules without
+ * touching anything that was already legal, so the editor and the renderer
+ * always open a document they can trust.
+ *
+ * Anything that will not parse is handed straight back: the caller's own error
+ * path is a better place to find that out than a crash in here.
+ */
+export function healEdl(document: unknown): unknown {
+  const parsed = EdlSchema.safeParse(document);
+  return parsed.success ? applyOperations(parsed.data, []).edl : document;
+}
+
 function applyOne(edl: Edl, op: EdlOperation): Edl {
   switch (op.op) {
     /* ───────────────────────────────────────────────── segments ─── */
@@ -394,13 +413,37 @@ function applyOne(edl: Edl, op: EdlOperation): Edl {
     case 'caption.text':
       return { ...edl, captions: edl.captions.map((c) => (c.id === op.id ? respell(c, op.text) : c)) };
 
-    case 'caption.time':
+    case 'caption.time': {
+      const cue = edl.captions.find((c) => c.id === op.id);
+      if (!cue) throw new Error('Caption not found');
+
+      // Captions are a one-at-a-time track, whatever the schema says. The
+      // renderer picks the first cue covering the current second, so two that
+      // overlap means one silently disappears behind the other — chosen by
+      // array position, which is not a decision anybody made.
+      //
+      // They are also a GAPLESS track: the transcript hands them over back to
+      // back, so there is no free air for a cue to grow or shift into. Clamping
+      // at the neighbour — the right answer for a B-roll insert — would make
+      // every drag a no-op. So the neighbour gives way instead, the way a roll
+      // or a slide works in an editing suite.
+      const others: TimedItem[] = edl.captions.map((c) => ({ id: c.id, start: c.startSec, end: c.endSec }));
+      const wantedEnd = Math.max(op.startSec + MIN_CUE_SEC, op.endSec);
+      const keptLength = Math.abs((wantedEnd - op.startSec) - (cue.endSec - cue.startSec)) < 1e-3;
+
+      const placed = keptLength
+        ? resolveCaptionSlide(others, op.id, op.startSec, edl.format.durationSec)
+        : resolveCaptionEdge(others, op.id, op.startSec, wantedEnd, edl.format.durationSec);
+
       return {
         ...edl,
-        captions: edl.captions.map((c) =>
-          c.id === op.id ? retimeCue(c, op.startSec, Math.max(op.startSec + 0.15, op.endSec)) : c,
-        ),
+        captions: edl.captions.map((c) => {
+          if (c.id === op.id) return retimeCue(c, placed.start, placed.end);
+          const neighbour = placed.moved.get(c.id);
+          return neighbour ? retimeCue(c, neighbour.start, neighbour.end) : c;
+        }),
       };
+    }
 
     case 'caption.emphasis':
       return {
@@ -471,20 +514,62 @@ export function relayout(edl: Edl, nextSegments: Segment[]): Edl {
 
   const after = new TimeMapper(laid);
   const durationSec = after.outputDuration;
+  const afterById = new Map(laid.map((s) => [s.id, s]));
 
-  /** Output → source (old layout) → output (new layout). Null means it was cut. */
-  const move = (outSec: number): number | null => {
-    const sourceSec = before.toSource(outSec);
-    return after.toOutput(sourceSec);
+  /**
+   * Which segment an output timestamp belongs to, and where it sits in the
+   * source.
+   *
+   * The bias is the whole point. A timestamp that lands exactly on a cut is a
+   * member of BOTH neighbouring segments by the arithmetic, and picking the
+   * wrong one used to be harmless — segments stayed in order, so either answer
+   * gave the same source time. Reordering broke that: the two segments are now
+   * in different places, and a caption whose first word began exactly on a cut
+   * was carried off with the wrong one, landing on top of a cue that was
+   * already there. Two captions on screen at once means the renderer picks one
+   * by array position and the other silently never appears.
+   *
+   * So an interval's start belongs to the segment it opens, and its end to the
+   * segment it closes.
+   */
+  const locate = (outSec: number, edge: 'start' | 'end') => {
+    const nudge = edge === 'end' ? -1e-4 : 0;
+    const seg = before.segmentAt(outSec + nudge) ?? before.segmentAt(outSec - nudge);
+    if (!seg) return null;
+    return { seg, sourceSec: seg.sourceStartSec + (outSec - seg.outStartSec) * seg.speed };
+  };
+
+  /** A source timestamp's new home, preferring the segment it came from. */
+  const place = (sourceSec: number, cameFrom: string): number | null => {
+    const holds = (s: Segment) => sourceSec >= s.sourceStartSec - 1e-6 && sourceSec <= s.sourceEndSec + 1e-6;
+    const at = (s: Segment) => s.outStartSec + (sourceSec - s.sourceStartSec) / s.speed;
+
+    const same = afterById.get(cameFrom);
+    if (same && holds(same)) return at(same);
+    // A split leaves the second half under a new id, so fall back to a search.
+    const found = laid.find(holds);
+    return found ? at(found) : null;
+  };
+
+  /** Output → output, carried by the segment the timestamp belongs to. */
+  const move = (outSec: number, edge: 'start' | 'end' = 'start'): number | null => {
+    const found = locate(outSec, edge);
+    return found ? place(found.sourceSec, found.seg.id) : null;
   };
 
   const moveSpan = (start: number, end: number): { start: number; end: number } | null => {
-    const a = move(start);
-    const b = move(end);
+    const a = move(start, 'start');
+    const b = move(end, 'end');
     if (a === null && b === null) return null;
+
     // One end surviving is enough — the cue shortens rather than disappearing.
-    const lo = a ?? move(Math.min(end, start + 0.03)) ?? 0;
-    const hi = b ?? lo + 0.2;
+    const lo = a ?? move(Math.min(end, start + 0.03), 'start') ?? 0;
+    // A span whose ends came to rest in segments that are no longer next to
+    // each other has been torn in half by a reorder. Keep the half that starts
+    // it, at its original length, rather than stretching the cue across
+    // everything that now sits in between.
+    const hi = b !== null && b > lo ? b : lo + Math.max(0.2, end - start);
+
     if (hi - lo < 0.05) return null;
     return { start: clamp(lo, 0, durationSec), end: clamp(hi, 0, durationSec) };
   };
@@ -687,6 +772,135 @@ function freeSlots(
   return slots;
 }
 
+/** The cue immediately before and after this one, if any. */
+function captionNeighbours(others: TimedItem[], me: TimedItem) {
+  const prev = others.filter((o) => o.end <= me.start + ROLL_TOL_SEC).sort((a, b) => b.end - a.end)[0] ?? null;
+  const next = others.filter((o) => o.start >= me.end - ROLL_TOL_SEC).sort((a, b) => a.start - b.start)[0] ?? null;
+  return {
+    prev,
+    next,
+    touchesPrev: prev !== null && me.start - prev.end <= ROLL_TOL_SEC,
+    touchesNext: next !== null && next.start - me.end <= ROLL_TOL_SEC,
+  };
+}
+
+/**
+ * Where a whole caption lands when it is dragged, and what that does to the
+ * cues on either side.
+ *
+ * This is a slide: the cue keeps its length and its place in the running order,
+ * and the neighbours it is touching absorb the shift — the one behind stretches
+ * by however far it went, the one ahead gives up the same. That keeps the track
+ * gapless, which is the point: a hole in the caption track is a stretch of
+ * speech with nothing on screen.
+ *
+ * It travels until a touching neighbour is down to MIN_CUE_SEC, or until it
+ * meets a cue across a real gap — and then it stops there rather than leaping to
+ * some distant patch of free time, because a caption that teleports out from
+ * under the cursor is not something anybody asked for.
+ */
+function resolveCaptionSlide(
+  items: TimedItem[],
+  id: string,
+  wantStart: number,
+  durationSec: number,
+): CaptionPlacement {
+  const me = items.find((i) => i.id === id);
+  if (!me) throw new Error('Caption not found');
+
+  const others = items.filter((i) => i.id !== id);
+  const { prev, next, touchesPrev, touchesNext } = captionNeighbours(others, me);
+  const length = me.end - me.start;
+
+  const earliest = prev === null ? 0 : touchesPrev ? prev.start + MIN_CUE_SEC : prev.end;
+  const latest = (next === null ? durationSec : touchesNext ? next.end - MIN_CUE_SEC : next.start) - length;
+
+  const start = clamp(wantStart, Math.min(earliest, latest), Math.max(earliest, latest));
+  const end = start + length;
+
+  const moved = new Map<string, TimedItem>();
+  if (prev && touchesPrev && Math.abs(start - me.start) > 1e-6) moved.set(prev.id, { ...prev, end: start });
+  if (next && touchesNext && Math.abs(end - me.end) > 1e-6) moved.set(next.id, { ...next, start: end });
+
+  return { start, end, moved };
+}
+
+/** A caption's new span, plus whatever it pushed out of the way getting there. */
+interface CaptionPlacement {
+  start: number;
+  end: number;
+  moved: Map<string, TimedItem>;
+}
+
+/** Shortest a caption may be before it stops being readable. */
+const MIN_CUE_SEC = 0.15;
+
+/**
+ * How close two cues must be to count as touching, and so to roll together.
+ * Speech recognition hands back cues that abut to the microsecond; a tenth of
+ * a second is loose enough to survive a round-trip through the UI and tight
+ * enough that a deliberate gap is still a gap.
+ */
+const ROLL_TOL_SEC = 0.1;
+
+/**
+ * Where a caption's dragged edge lands, and what it does to the cue next door.
+ *
+ * Captions arrive from the transcript back to back, so clamping an edge at its
+ * neighbour — the right answer for a B-roll insert — means dragging a caption's
+ * end does nothing at all: there is never any free air to grow into. Editors
+ * solve this with a roll: drag the boundary between two touching clips and both
+ * edges move, the pair keeping their combined length.
+ *
+ * So that is what happens here. An edge dragged into a cue that is TOUCHING
+ * this one takes the boundary with it, stopping when the neighbour is down to
+ * MIN_CUE_SEC. An edge dragged at a cue across a real gap still clamps, because
+ * there the gap is something somebody chose.
+ */
+function resolveCaptionEdge(
+  items: TimedItem[],
+  id: string,
+  wantStart: number,
+  wantEnd: number,
+  durationSec: number,
+): CaptionPlacement {
+  const me = items.find((i) => i.id === id);
+  if (!me) throw new Error('Caption not found');
+
+  const others = items.filter((i) => i.id !== id);
+  const moved = new Map<string, TimedItem>();
+
+  let lo = clamp(wantStart, 0, durationSec);
+  let hi = clamp(wantEnd, 0, durationSec);
+
+  if (lo < me.start - 1e-6) {
+    const prev = others.filter((o) => o.end <= me.start + ROLL_TOL_SEC).sort((a, b) => b.end - a.end)[0];
+    if (prev && lo < prev.end - 1e-6) {
+      if (me.start - prev.end <= ROLL_TOL_SEC) {
+        lo = Math.max(lo, prev.start + MIN_CUE_SEC);
+        moved.set(prev.id, { ...prev, end: lo });
+      } else {
+        lo = prev.end;
+      }
+    }
+  }
+
+  if (hi > me.end + 1e-6) {
+    const next = others.filter((o) => o.start >= me.end - ROLL_TOL_SEC).sort((a, b) => a.start - b.start)[0];
+    if (next && hi > next.start + 1e-6) {
+      if (next.start - me.end <= ROLL_TOL_SEC) {
+        hi = Math.min(hi, next.end - MIN_CUE_SEC);
+        moved.set(next.id, { ...next, start: hi });
+      } else {
+        hi = next.start;
+      }
+    }
+  }
+
+  if (hi < lo + MIN_CUE_SEC) hi = lo + MIN_CUE_SEC;
+  return { start: lo, end: hi, moved };
+}
+
 /**
  * Collision for a clip being TRIMMED.
  *
@@ -714,6 +928,35 @@ function resolveTrim(
   return { start: lo, end: Math.max(lo + 0.15, hi) };
 }
 
+/**
+ * Last line of defence for the caption track.
+ *
+ * The renderer draws the FIRST cue covering the current second, so two that
+ * overlap means one of them silently never appears — and which one is decided
+ * by array position, which is nobody's decision. Every operation above already
+ * keeps the track clear; this catches anything that arrives from outside them
+ * (an older document, a hand-written EDL, a pipeline change) by trimming the
+ * overhang off the cue that started first. A cue trimmed to nothing is dropped:
+ * it was never going to be on screen anyway.
+ */
+function deoverlap(sorted: CaptionCue[]): CaptionCue[] {
+  const out: CaptionCue[] = [];
+
+  for (const cue of sorted) {
+    const previous = out[out.length - 1];
+    if (previous && cue.startSec < previous.endSec - 1e-6) {
+      if (cue.startSec - previous.startSec < 0.05) {
+        out.pop();
+      } else {
+        out[out.length - 1] = retimeCue(previous, previous.startSec, cue.startSec);
+      }
+    }
+    out.push(cue);
+  }
+
+  return out;
+}
+
 /** Final tidy so the document always satisfies the renderer's assumptions. */
 function normalize(edl: Edl): Edl {
   const d = edl.format.durationSec;
@@ -724,7 +967,7 @@ function normalize(edl: Edl): Edl {
 
   return {
     ...edl,
-    captions: edl.captions.filter((c) => c.words.length > 0).sort((a, b) => a.startSec - b.startSec),
+    captions: deoverlap(edl.captions.filter((c) => c.words.length > 0).sort((a, b) => a.startSec - b.startSec)),
     broll: inRange(edl.broll),
     graphics: inRange(edl.graphics),
     overlays: inRange(edl.overlays),

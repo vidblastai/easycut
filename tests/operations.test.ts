@@ -366,3 +366,61 @@ describe('adding clips', () => {
     expect(after).toBeCloseTo(before - 1, 5);
   });
 });
+
+/* ── reordering must not stack two captions on the same second ───────────── */
+
+describe('a caption that begins exactly on a cut', () => {
+  /** Three segments, with one cue opening on each seam. */
+  const onSeams = (): Edl => {
+    const base = makeEdl();
+    return EdlSchema.parse({
+      ...base,
+      captions: [
+        { id: 'a', startSec: 0, endSec: 4, words: [{ text: 'one', startSec: 0, endSec: 4, emphasis: false }] },
+        { id: 'b', startSec: 4, endSec: 8, words: [{ text: 'two', startSec: 4, endSec: 8, emphasis: false }] },
+        { id: 'c', startSec: 8, endSec: 12, words: [{ text: 'three', startSec: 8, endSec: 12, emphasis: false }] },
+      ],
+    });
+  };
+
+  const spans = (edl: Edl) =>
+    edl.captions.map((c) => [c.id, +c.startSec.toFixed(3), +c.endSec.toFixed(3)] as const);
+
+  it('travels with the segment it opens, not the one it closes', () => {
+    // Move the last segment to the front. Each cue should follow its own clip.
+    const { edl, rejected } = applyOperations(onSeams(), [
+      { op: 'segment.reorder', id: 'seg-2', toIndex: 0 },
+    ]);
+    expect(rejected).toHaveLength(0);
+    expect(spans(edl)).toEqual([
+      ['c', 0, 4],
+      ['a', 4, 8],
+      ['b', 8, 12],
+    ]);
+  });
+
+  it('leaves no two cues on screen at the same time, whatever the order', () => {
+    for (const [id, toIndex] of [['seg-0', 2], ['seg-1', 0], ['seg-2', 1], ['seg-2', 0]] as const) {
+      const { edl } = applyOperations(onSeams(), [{ op: 'segment.reorder', id, toIndex }]);
+      const cues = edl.captions;
+      expect(cues).toHaveLength(3);
+      for (let i = 1; i < cues.length; i++) {
+        expect(cues[i].startSec).toBeGreaterThanOrEqual(cues[i - 1].endSec - 1e-6);
+      }
+    }
+  });
+
+  it('carries its words with it rather than leaving them behind', () => {
+    const { edl } = applyOperations(onSeams(), [{ op: 'segment.reorder', id: 'seg-2', toIndex: 0 }]);
+    for (const cue of edl.captions) {
+      expect(cue.words[0].startSec).toBeCloseTo(cue.startSec, 6);
+      expect(cue.words[cue.words.length - 1].endSec).toBeCloseTo(cue.endSec, 6);
+    }
+  });
+
+  it('is dropped, not stacked, when its own segment is deleted', () => {
+    const { edl } = applyOperations(onSeams(), [{ op: 'segment.delete', id: 'seg-1' }]);
+    expect(edl.captions.map((c) => c.id)).toEqual(['a', 'c']);
+    expect(spans(edl)).toEqual([['a', 0, 4], ['c', 4, 8]]);
+  });
+});

@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { db, parseJson, stringifyJson } from '@/lib/db';
 import { ASPECTS, CaptionStyleSchema, EdlSchema, type Edl } from '@/lib/edl/types';
-import { applyOperations, EdlOperationsSchema } from '@/lib/edl/operations';
+import { applyOperations, EdlOperationsSchema, healEdl } from '@/lib/edl/operations';
 import { rebuildEdl } from '@/lib/pipeline/rebuild';
 import { queue } from '@/lib/queue';
 import { selectMusic } from '@/lib/assets/music';
@@ -105,9 +105,12 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
 
   return NextResponse.json({
     versions: rows.map((r) => ({ id: r.id, version: r.version, origin: r.origin, createdAt: r.createdAt })),
-    current: rows[0] ? { id: rows[0].id, version: rows[0].version, document: parseJson(rows[0].document, null) } : null,
+    current: rows[0]
+      ? { id: rows[0].id, version: rows[0].version, document: healEdl(parseJson(rows[0].document, null)) }
+      : null,
   });
 }
+
 
 export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;

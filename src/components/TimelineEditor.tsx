@@ -122,6 +122,10 @@ export function TimelineEditor({
     [committedEdl, ops],
   );
 
+  /** The same document, readable from a listener registered once on mount. */
+  const edlRef = useRef(edl);
+  edlRef.current = edl;
+
   const pps = ZOOMS[zoomIndex];
   const duration = edl.format.durationSec;
   const width = Math.max(320, duration * pps);
@@ -292,11 +296,19 @@ export function TimelineEditor({
     const next = [...opsRef.current, op];
     // Applying against the live document tells us immediately whether the edit
     // is possible, so the user gets the reason instead of silence.
-    const failed = applyOperations(committedEdl, next).rejected.at(-1);
+    const result = applyOperations(committedEdl, next);
+    const failed = result.rejected.at(-1);
     if (failed) {
       setWarning(failed.reason);
       return;
     }
+
+    // An edit that changed nothing has no business in the undo history. Nudging
+    // a clip against a neighbour it cannot pass used to leave a step behind
+    // that undid to exactly the same picture; three of those in a row and the
+    // history stops describing what the user did.
+    if (JSON.stringify(result.edl) === JSON.stringify(edlRef.current)) return;
+
     setWarning(null);
     setOps(next);
     setRedoStack([]);
@@ -557,6 +569,67 @@ export function TimelineEditor({
         return;
       }
 
+      /**
+       * Nudge whatever is selected, one frame at a time.
+       *
+       * A mouse cannot place a cue on a specific frame at any zoom you can
+       * still see the whole edit at, and "nearly on the beat" is the one thing
+       * a person opens a timeline to fix. `,` and `.` are where an editor's
+       * hand already is; shift makes it a second.
+       */
+      // Holding shift turns `,` and `.` into `<` and `>` on most layouts, which
+      // is why the second-sized nudge quietly did nothing at all: the handler
+      // was looking for a character the keyboard had stopped sending. The
+      // physical key is the thing that was pressed, so that is what decides.
+      const back = event.key === ',' || event.key === '<' || event.code === 'Comma';
+      const forward = event.key === '.' || event.key === '>' || event.code === 'Period';
+
+      if (back || forward) {
+        if (!selection) return;
+        event.preventDefault();
+        const step = (event.shiftKey ? 1 : 1 / fps) * (back ? -1 : 1);
+
+        if (selection.kind === 'segment') {
+          // A segment's position IS the running order, so nudging it would mean
+          // re-cutting. Nudge its source instead: the same frames, shifted.
+          const seg = edl.segments.find((x) => x.id === selection.id);
+          if (seg) {
+            push({
+              op: 'segment.trim',
+              id: seg.id,
+              sourceStartSec: seg.sourceStartSec + step,
+              sourceEndSec: seg.sourceEndSec + step,
+            });
+          }
+          return;
+        }
+        if (selection.kind === 'caption') {
+          const cue = edl.captions.find((c) => c.id === selection.id);
+          if (cue) push({ op: 'caption.time', id: cue.id, startSec: cue.startSec + step, endSec: cue.endSec + step });
+          return;
+        }
+        const item = clipById(edl, selection.kind, selection.id);
+        if (item) push({ op: 'clip.move', track: selection.kind, id: selection.id, outStartSec: item.start + step });
+        return;
+      }
+
+      // Duplicate, at the playhead, so "another one of those" is one key.
+      if (mod && event.key.toLowerCase() === 'd') {
+        if (!selection || selection.kind === 'segment' || selection.kind === 'caption') return;
+        event.preventDefault();
+        const item = clipById(edl, selection.kind, selection.id);
+        if (!item) return;
+        push({
+          op: 'clip.add',
+          track: selection.kind,
+          atSec: playhead,
+          durationSec: Math.max(0.2, item.end - item.start),
+          value: item.label ?? '',
+          id: `${selection.kind}-${Math.random().toString(36).slice(2, 8)}`,
+        });
+        return;
+      }
+
       if (event.code === 'Space' || event.key.toLowerCase() === 'k') {
         event.preventDefault();
         togglePlay();
@@ -585,7 +658,7 @@ export function TimelineEditor({
 
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [selection, playhead, edl.segments, fps, duration, push, undo, redo, seek, togglePlay]);
+  }, [selection, playhead, edl, fps, duration, push, undo, redo, seek, togglePlay]);
 
   /* ───────────────────────────────────────────────── rendering ─── */
 
@@ -852,6 +925,40 @@ export function TimelineEditor({
             ))}
           </Track>
 
+          {/* What the drag is actually doing, in numbers.
+              Dragging against a waveform gets you close; the readout is how you
+              know you landed on 4.20 and not 4.17, which is the difference
+              between a cut on the breath and a cut through it. */}
+          {dragPreview ? (
+            <div
+              className="pointer-events-none absolute top-8 z-40 whitespace-nowrap rounded-md border border-line bg-ink/95 px-2 py-1 font-mono text-[10.5px] tabular-nums text-chalk shadow-card backdrop-blur"
+              style={{
+                left: Math.max(
+                  TRACK_LABEL_W + 4,
+                  Math.min(
+                    TRACK_LABEL_W + dragPreview.start * pps,
+                    TRACK_LABEL_W + width - 150,
+                  ),
+                ),
+              }}
+            >
+              {dragPreview.kind === 'move' ? (
+                <>
+                  {formatTc(dragPreview.start)}
+                  {dragPreview.end > dragPreview.start ? (
+                    <span className="text-faint"> &rarr; {formatTc(dragPreview.end)}</span>
+                  ) : null}
+                </>
+              ) : (
+                <>
+                  {formatTc(dragPreview.start)}&ndash;{formatTc(dragPreview.end)}
+                  <span className="text-violet"> {(dragPreview.end - dragPreview.start).toFixed(2)}s</span>
+                </>
+              )}
+              {dragPreview.snappedTo != null ? <span className="text-warn"> snap</span> : null}
+            </div>
+          ) : null}
+
           {/* The line a drag snapped onto.
               Snapping you cannot see is indistinguishable from the timeline
               jumping on its own — the guide is what turns "it moved by itself"
@@ -885,9 +992,13 @@ export function TimelineEditor({
           </h4>
           {ops.length === 0 ? (
             <p className="mt-2 text-xs text-muted">
-              Drag a clip to move it, drag its edges to trim. <b className="text-chalk">S</b> splits at
-              the playhead, <b className="text-chalk">Delete</b> removes what&rsquo;s selected,{' '}
-              <b className="text-chalk">&#8984;Z</b> undoes. Nothing re-renders until you apply.
+              Drag to move, drag an edge to trim. <b className="text-chalk">S</b> splits at the
+              playhead, <b className="text-chalk">,</b> and <b className="text-chalk">.</b> nudge the
+              selection a frame (hold shift for a second),{' '}
+              <b className="text-chalk">&#8984;D</b> duplicates,{' '}
+              <b className="text-chalk">Delete</b> removes, <b className="text-chalk">&#8984;Z</b> undoes.
+              Hold <b className="text-chalk">Alt</b> while dragging to ignore snapping. Nothing
+              re-renders until you apply.
             </p>
           ) : (
             <ol data-pending-ops className="mt-2 max-h-28 space-y-1 overflow-y-auto text-xs text-muted">
@@ -1388,6 +1499,25 @@ function tickTimes(duration: number, pps: number): number[] {
 function ramp(depthPx: number): number {
   const t = Math.min(1, Math.max(0, depthPx / AUTOSCROLL_EDGE_PX));
   return Math.ceil(t * t * AUTOSCROLL_MAX_PX_PER_FRAME);
+}
+
+/** One clip's timing and seed text, whichever track it is on. */
+function clipById(
+  edl: Edl,
+  track: ClipTrack,
+  id: string,
+): { start: number; end: number; label?: string } | null {
+  if (track === 'sfx') {
+    const cue = edl.sfx.find((c) => c.id === id);
+    return cue ? { start: cue.atSec, end: cue.atSec, label: cue.sound } : null;
+  }
+  if (track === 'transitions') {
+    const cue = edl.transitions.find((c) => c.id === id);
+    return cue ? { start: cue.atSec, end: cue.atSec + cue.durationSec, label: cue.type } : null;
+  }
+  const item = (edl[track] as Array<{ id: string; outStartSec: number; outEndSec: number; query?: string; text?: string }>)
+    .find((c) => c.id === id);
+  return item ? { start: item.outStartSec, end: item.outEndSec, label: item.query ?? item.text } : null;
 }
 
 function nearestIndex(starts: number[], target: number): number {

@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { db, parseJson } from '@/lib/db';
+import { healEdl } from '@/lib/edl/operations';
 import { readStageLog } from '@/worker/process-project';
 import { STAGE_LABELS, type Stage } from '@/lib/pipeline/types';
 import { guardProject } from '@/lib/auth';
@@ -82,7 +83,8 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
       ? {
           id: edl.id,
           version: edl.version,
-          document: stillWorking ? null : parseJson(edl.document, null),
+          // Healed on the way out: this is the document the editor opens.
+          document: stillWorking ? null : healEdl(parseJson(edl.document, null)),
         }
       : null,
     renders: project.renders.map((r) => ({

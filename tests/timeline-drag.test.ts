@@ -295,3 +295,173 @@ describe('placing a clip on a one-at-a-time track', () => {
     expect(brollOf(edl)).toEqual([[9, 11]]);
   });
 });
+
+/* ── captions are one at a time, whatever the schema says ────────────────── */
+
+function edlWithCaptions(cues: Array<{ id: string; a: number; b: number }>): Edl {
+  const base = edlWith([]);
+  return {
+    ...base,
+    captions: cues.map((c) => ({
+      id: c.id,
+      startSec: c.a,
+      endSec: c.b,
+      words: [{ text: 'word', startSec: c.a, endSec: c.b, emphasis: false }],
+    })),
+  } as unknown as Edl;
+}
+
+const capsOf = (edl: Edl) =>
+  edl.captions.map((c) => [+c.startSec.toFixed(3), +c.endSec.toFixed(3)] as const);
+
+describe('retiming a caption', () => {
+  it('moves it when the space is free', () => {
+    const { edl, rejected } = applyOperations(edlWithCaptions([{ id: 'a', a: 0, b: 1 }]), [
+      { op: 'caption.time', id: 'a', startSec: 5, endSec: 6 },
+    ]);
+    expect(rejected).toHaveLength(0);
+    expect(capsOf(edl)).toEqual([[5, 6]]);
+  });
+
+  it('never leaves two captions on screen at once', () => {
+    // The renderer picks the FIRST cue covering the current second, so an
+    // overlap means one silently disappears behind the other — chosen by array
+    // position, which is not a decision anybody made.
+    const { edl } = applyOperations(
+      edlWithCaptions([{ id: 'a', a: 0, b: 1 }, { id: 'b', a: 2, b: 3 }]),
+      [{ op: 'caption.time', id: 'a', startSec: 2.4, endSec: 3.4 }],
+    );
+    const cues = capsOf(edl).sort((x, y) => x[0] - y[0]);
+    for (let i = 1; i < cues.length; i++) {
+      expect(cues[i - 1][1]).toBeLessThanOrEqual(cues[i][0] + 1e-6);
+    }
+  });
+
+  it('clamps a trim to the neighbour rather than swallowing it', () => {
+    const { edl } = applyOperations(
+      edlWithCaptions([{ id: 'a', a: 0, b: 1 }, { id: 'b', a: 2, b: 3 }]),
+      // Dragging a's right edge way past b's start.
+      [{ op: 'caption.time', id: 'a', startSec: 0, endSec: 2.8 }],
+    );
+    const a = edl.captions.find((c) => c.id === 'a')!;
+    expect(a.endSec).toBeLessThanOrEqual(2 + 1e-6);
+  });
+
+  it('keeps a moved caption the same length', () => {
+    const { edl } = applyOperations(
+      edlWithCaptions([{ id: 'a', a: 0, b: 1.5 }, { id: 'b', a: 5, b: 6 }]),
+      [{ op: 'caption.time', id: 'a', startSec: 4.8, endSec: 6.3 }],
+    );
+    const a = edl.captions.find((c) => c.id === 'a')!;
+    expect(a.endSec - a.startSec).toBeCloseTo(1.5, 6);
+  });
+});
+
+/* ── sliding a cue between two that touch it ─────────────────────────────── */
+
+describe('a whole caption dragged along a gapless track', () => {
+  const run = () =>
+    edlWithCaptions([{ id: 'a', a: 0, b: 1 }, { id: 'b', a: 1, b: 2 }, { id: 'c', a: 2, b: 4 }]);
+
+  it('nudges forward instead of refusing, and the neighbours absorb it', () => {
+    const { edl, rejected } = applyOperations(run(), [
+      { op: 'caption.time', id: 'b', startSec: 1.2, endSec: 2.2 },
+    ]);
+    expect(rejected).toHaveLength(0);
+    expect(capsOf(edl)).toEqual([[0, 1.2], [1.2, 2.2], [2.2, 4]]);
+  });
+
+  it('nudges backward the same way', () => {
+    const { edl } = applyOperations(run(), [
+      { op: 'caption.time', id: 'b', startSec: 0.6, endSec: 1.6 },
+    ]);
+    expect(capsOf(edl)).toEqual([[0, 0.6], [0.6, 1.6], [1.6, 4]]);
+  });
+
+  it('keeps its own length whatever the neighbours do', () => {
+    const { edl } = applyOperations(run(), [
+      { op: 'caption.time', id: 'b', startSec: 3.4, endSec: 4.4 },
+    ]);
+    const b = edl.captions.find((c) => c.id === 'b')!;
+    expect(b.endSec - b.startSec).toBeCloseTo(1, 6);
+  });
+
+  it('stops before it swallows the cue ahead', () => {
+    const { edl } = applyOperations(run(), [
+      { op: 'caption.time', id: 'b', startSec: 9, endSec: 10 },
+    ]);
+    expect(capsOf(edl)).toEqual([[0, 2.85], [2.85, 3.85], [3.85, 4]]);
+  });
+
+  it('never opens a hole in the track', () => {
+    for (const to of [0.05, 0.4, 1.1, 1.9, 2.6, 3.9]) {
+      const { edl } = applyOperations(run(), [{ op: 'caption.time', id: 'b', startSec: to, endSec: to + 1 }]);
+      const cues = capsOf(edl);
+      for (let i = 1; i < cues.length; i++) expect(cues[i][0]).toBeCloseTo(cues[i - 1][1], 6);
+    }
+  });
+
+  it('does not stretch a neighbour across a deliberate gap', () => {
+    const { edl } = applyOperations(
+      edlWithCaptions([{ id: 'a', a: 0, b: 1 }, { id: 'b', a: 3, b: 4 }]),
+      [{ op: 'caption.time', id: 'b', startSec: 2, endSec: 3 }],
+    );
+    expect(capsOf(edl)).toEqual([[0, 1], [2, 3]]);
+  });
+});
+
+/* ── rolling the boundary between two cues that touch ────────────────────── */
+
+describe('a caption edge dragged into the cue next door', () => {
+  const touching = () => edlWithCaptions([{ id: 'a', a: 0, b: 1 }, { id: 'b', a: 1, b: 3 }]);
+
+  it('takes the boundary with it instead of refusing to move', () => {
+    const { edl, rejected } = applyOperations(touching(), [
+      { op: 'caption.time', id: 'a', startSec: 0, endSec: 1.8 },
+    ]);
+    expect(rejected).toHaveLength(0);
+    expect(capsOf(edl)).toEqual([[0, 1.8], [1.8, 3]]);
+  });
+
+  it('rolls the other way too', () => {
+    const { edl } = applyOperations(touching(), [
+      { op: 'caption.time', id: 'b', startSec: 0.4, endSec: 3 },
+    ]);
+    expect(capsOf(edl)).toEqual([[0, 0.4], [0.4, 3]]);
+  });
+
+  it('stops before the neighbour becomes unreadable', () => {
+    const { edl } = applyOperations(touching(), [
+      // Far past b's own end — b must survive with something left.
+      { op: 'caption.time', id: 'a', startSec: 0, endSec: 9 },
+    ]);
+    const b = edl.captions.find((c) => c.id === 'b')!;
+    expect(b.endSec - b.startSec).toBeCloseTo(0.15, 6);
+    expect(capsOf(edl)).toEqual([[0, 2.85], [2.85, 3]]);
+  });
+
+  it('keeps the pair the same total length', () => {
+    const { edl } = applyOperations(touching(), [
+      { op: 'caption.time', id: 'a', startSec: 0, endSec: 2.2 },
+    ]);
+    const cues = capsOf(edl);
+    expect(cues[cues.length - 1][1] - cues[0][0]).toBeCloseTo(3, 6);
+  });
+
+  it('still clamps when there is a real gap, rather than rolling across it', () => {
+    const { edl } = applyOperations(
+      edlWithCaptions([{ id: 'a', a: 0, b: 1 }, { id: 'b', a: 2, b: 3 }]),
+      [{ op: 'caption.time', id: 'a', startSec: 0, endSec: 2.6 }],
+    );
+    expect(capsOf(edl)).toEqual([[0, 2], [2, 3]]);
+  });
+
+  it('drags the neighbour word timings along with its edge', () => {
+    const { edl } = applyOperations(touching(), [
+      { op: 'caption.time', id: 'a', startSec: 0, endSec: 1.8 },
+    ]);
+    const b = edl.captions.find((c) => c.id === 'b')!;
+    expect(b.words[0].startSec).toBeCloseTo(1.8, 6);
+    expect(b.words[b.words.length - 1].endSec).toBeCloseTo(3, 6);
+  });
+});
