@@ -706,7 +706,13 @@ body.instudio .work { height: calc(100vh - var(--topbar)); }
 }
 .vid .body { padding: 11px 13px 13px; }
 .vid .body b { display: block; font-size: 13px; font-weight: 700; letter-spacing: -.01em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.vid .body .row { display: flex; align-items: center; justify-content: space-between; margin-top: 6px; font-size: 11.5px; color: var(--muted); }
+.vid .body .row { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin-top: 6px; font-size: 11.5px; color: var(--muted); }
+.vid .body .row span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.vid .body .row .cost, .vid .body .row .pct { flex: none; color: var(--faint); font-variant-numeric: tabular-nums; }
+.vid .body .row .bad { color: var(--bad); font-weight: 600; }
+.vid .body .row .work { color: var(--chalk); }
+.vid .body .bar { display: block; height: 3px; margin-top: 6px; border-radius: 99px; background: var(--ink); overflow: hidden; }
+.vid .body .bar i { display: block; height: 100%; border-radius: 99px; background: var(--violet); }
 .vid .body .row .st { display: flex; align-items: center; gap: 6px; font-weight: 600; }
 /* A dot is the smallest thing that encodes state without reading. Colour does
    the work; the word is confirmation. */
@@ -3446,23 +3452,35 @@ function buildDashboard() {
       // State drives a class, so the colour lives in CSS where the palette is,
       // not in a ternary halfway down a template string.
       const state = v.status === 'ready' ? 'ready' : v.status === 'failed' ? 'failed' : 'working';
+      /* A finished video says nothing about being finished. Four cards each
+         carrying a green dot and the word "Ready" is the interface reporting
+         its own success back at you — a line on every card for the thing that
+         is true of nearly all of them. So "ready" is the silent state and the
+         line carries what you would actually want: the look, and how long ago.
+         Colour is spent only where there is something to act on. */
+      const meta = state === 'failed'
+        ? `<span class="bad">Didn\u2019t finish &mdash; open it to see why</span>`
+        : state === 'working'
+          ? `<span class="work">Cutting the ums\u2026</span><span class="pct">41%</span>`
+          : `<span>${st.name} &middot; ${v.when}</span>` +
+            (v.cost ? `<span class="cost">$${v.cost.toFixed(2)}</span>` : '');
+
       return `<div class="vid is-${state}" data-open="${v.id}">
         <div class="shot">
-          <span class="badge">${v.mode === 'long' ? '16:9' : '9:16'}</span>
+          <!-- No aspect badge. The frame inside is drawn at the video's real
+               shape, so a chip reading "9:16" over a visibly vertical thumbnail
+               is the interface telling you what you can already see. -->
+          <!-- A stand-in for the real thumbnail, at the video's own shape. It
+               used to print the style name, which the line under the title now
+               says properly — the same word twice on one card is filler. -->
           <span class="frame ${v.mode === 'long' ? 'wide' : ''}"
-                style="aspect-ratio:${v.mode === 'long' ? '16/9' : '9/16'}">
-            <span class="ratio">${v.status === 'processing' ? 'editing…' : st.name}</span>
-          </span>
+                style="aspect-ratio:${v.mode === 'long' ? '16/9' : '9/16'}"></span>
           <span class="len">${v.len}</span>
         </div>
         <div class="body">
           <b>${v.title}</b>
-          <div class="row">
-            <span class="st"><i></i>${
-              { ready: 'Ready', failed: 'Failed', working: 'Editing' }[state]
-            }</span>
-            <span>${v.cost ? '$' + v.cost.toFixed(2) : '—'}</span>
-          </div>
+          <div class="row">${meta}</div>
+          ${state === 'working' ? '<span class="bar"><i style="width:41%"></i></span>' : ''}
         </div>
       </div>`;
     }).join('');

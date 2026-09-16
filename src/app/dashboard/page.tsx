@@ -3,10 +3,11 @@ import { clsx } from 'clsx';
 import { AppShell, ShellMain } from '@/components/shell/AppShell';
 import { IconPlus } from '@/components/shell/Icons';
 import { NewProjectBanner } from '@/components/NewProjectBanner';
-import { db, parseJson } from '@/lib/db';
+import { db } from '@/lib/db';
 import { formatUsd } from '@/lib/pricing/cost';
 import { getStyle } from '@/lib/styles/presets';
 import { recentsFor } from '@/lib/ui/recents';
+import { relativeTime } from '@/lib/ui/relative-time';
 
 export const dynamic = 'force-dynamic';
 
@@ -45,7 +46,6 @@ export default async function DashboardPage() {
             {projects.map((project) => {
               const job = project.jobs[0];
               const style = getStyle(project.styleId);
-              const hashtags = parseJson<string[]>(project.hashtags, []);
 
               return (
                 <li key={project.id}>
@@ -63,10 +63,11 @@ export default async function DashboardPage() {
                         what tore the grid's rows apart — so the real format is
                         drawn inside the tile as a nested frame instead. */}
                     <div className="relative grid aspect-video place-items-center bg-ink">
-                      <Frame project={project} label={job?.progressLabel} progress={job?.progress ?? 0} />
-                      <span className="absolute left-2.5 top-2.5 rounded-md bg-ink/80 px-1.5 py-0.5 text-[10.5px] font-semibold backdrop-blur">
-                        {project.mode === 'short' ? '9:16' : '16:9'}
-                      </span>
+                      <Frame project={project} />
+                      {/* No aspect badge. The thumbnail inside the tile is
+                          drawn at the video's real shape, so a chip reading
+                          "9:16" over a visibly vertical frame is the interface
+                          telling you what you can already see. */}
                       {project.durationSec ? (
                         <span className="absolute bottom-2.5 right-2.5 rounded-md bg-ink/80 px-1.5 py-0.5 text-[10.5px] font-semibold tabular-nums backdrop-blur">
                           {formatDuration(project.durationSec)}
@@ -78,21 +79,14 @@ export default async function DashboardPage() {
                       <b className="block truncate text-[13px] font-bold tracking-[-0.01em]">
                         {project.title}
                       </b>
-                      <div className="mt-1.5 flex items-center justify-between text-[11.5px] text-muted">
-                        <Status status={project.status} label={job?.progressLabel} />
-                        <span className="tabular-nums">
-                          {project.costUsd > 0 ? formatUsd(project.costUsd) : '—'}
-                        </span>
-                      </div>
-                      <p className="mt-1.5 flex items-center gap-1.5 truncate text-[11px] text-faint">
-                        <span
-                          className="h-1.5 w-1.5 flex-none rounded-full"
-                          style={{ background: style.accent }}
-                          aria-hidden
-                        />
-                        {style.name}
-                        {hashtags.length ? ` · ${hashtags.slice(0, 3).join(' ')}` : ''}
-                      </p>
+                      <Meta
+                        status={project.status}
+                        styleName={style.name}
+                        createdAt={project.createdAt}
+                        costUsd={project.costUsd}
+                        label={job?.progressLabel}
+                        progress={job?.progress ?? 0}
+                      />
                     </div>
                   </Link>
                 </li>
@@ -106,15 +100,7 @@ export default async function DashboardPage() {
 }
 
 /** The video's real shape, drawn inside the uniform tile. */
-function Frame({
-  project,
-  label,
-  progress,
-}: {
-  project: { mode: string; thumbnailUrl: string | null; status: string };
-  label?: string;
-  progress: number;
-}) {
+function Frame({ project }: { project: { mode: string; thumbnailUrl: string | null; status: string } }) {
   const wide = project.mode === 'long';
 
   if (project.thumbnailUrl) {
@@ -136,28 +122,15 @@ function Frame({
     );
   }
 
-  if (project.status === 'failed') {
-    return <span className="px-6 text-center text-[12px] font-semibold text-bad">Something went wrong</span>;
-  }
-
-  if (project.status === 'processing') {
-    return (
-      <span className="block w-full px-6 text-center">
-        <span className="block text-[11.5px] font-semibold text-muted">{label || 'Working on it'}</span>
-        <span className="mx-auto mt-2.5 block h-1 w-32 overflow-hidden rounded-full bg-charcoal2">
-          <span
-            className="block h-full rounded-full bg-violet transition-[width] duration-500"
-            style={{ width: `${Math.max(4, progress * 100)}%` }}
-          />
-        </span>
-      </span>
-    );
-  }
-
+  // No stage label and no progress bar up here: the line under the title
+  // already carries both, and a card that reports the same thing twice reads
+  // as a layout that could not decide. What this owes the grid is the video's
+  // shape, so the rows keep their rhythm while there is nothing to show yet.
   return (
     <span
       className={clsx(
-        'block rounded-md border border-dashed border-line',
+        'block rounded-md border border-dashed',
+        project.status === 'failed' ? 'border-bad/30' : 'border-line',
         wide ? 'h-[72%]' : 'h-[76%]',
       )}
       style={{ aspectRatio: wide ? '16 / 9' : '9 / 16' }}
@@ -166,36 +139,74 @@ function Frame({
 }
 
 /**
- * Status reads as colour first.
+ * The line under the title.
  *
- * The tone comes from a lookup rather than a ternary inside a template string,
- * which is how the third state ended up the same grey as the first.
+ * A finished video says nothing about being finished. Four cards in a row each
+ * carrying a green dot and the word "Ready" is an interface reporting its own
+ * success back at you — it costs a line on every card to tell you the thing
+ * that is true of almost all of them. So "ready" is the silent state, and the
+ * line carries what you would actually want: what look it was cut in, and how
+ * long ago.
+ *
+ * Colour is spent only where there is something to act on. Still working gets
+ * the stage it is on and a bar; failed gets the one red thing on the screen.
  */
-function Status({ status, label }: { status: string; label?: string }) {
-  const tone =
-    status === 'ready'
-      ? { dot: 'bg-ok', text: 'text-ok', word: 'Ready' }
-      : status === 'failed'
-        ? { dot: 'bg-bad', text: 'text-bad', word: 'Failed' }
-        : status === 'processing'
-          ? { dot: 'bg-warn', text: 'text-warn', word: label || 'Editing' }
-          : { dot: 'bg-faint', text: 'text-muted', word: 'Queued' };
+function Meta({
+  status,
+  styleName,
+  createdAt,
+  costUsd,
+  label,
+  progress,
+}: {
+  status: string;
+  styleName: string;
+  createdAt: Date;
+  costUsd: number;
+  label?: string;
+  progress: number;
+}) {
+  if (status === 'failed') {
+    return (
+      <p className="mt-1.5 truncate text-[11.5px] font-semibold text-bad">
+        Didn&rsquo;t finish &mdash; open it to see why
+      </p>
+    );
+  }
+
+  if (status === 'processing' || status === 'draft') {
+    return (
+      <div className="mt-1.5">
+        <div className="flex items-center justify-between gap-2 text-[11.5px]">
+          <span className="truncate text-chalk">{label || 'Getting started'}</span>
+          <span className="flex-none tabular-nums text-faint">{Math.round(progress * 100)}%</span>
+        </div>
+        <span className="mt-1.5 block h-[3px] overflow-hidden rounded-full bg-ink">
+          <span
+            className="block h-full rounded-full bg-violet transition-[width] duration-500"
+            style={{ width: `${Math.max(4, progress * 100)}%` }}
+          />
+        </span>
+      </div>
+    );
+  }
 
   return (
-    <span className={clsx('flex items-center gap-1.5 font-semibold', tone.text)}>
-      <span className={clsx('h-1.5 w-1.5 flex-none rounded-full', tone.dot)} aria-hidden />
-      <span className="truncate">{tone.word}</span>
-    </span>
+    <div className="mt-1.5 flex items-baseline justify-between gap-2 text-[11.5px] text-muted">
+      <span className="truncate">
+        {styleName} &middot; {relativeTime(createdAt)}
+      </span>
+      {/* `formatUsd` keeps four decimals under a cent because the cost ledger
+          exists to make fractions of a cent visible. On a card that is machine
+          output: "$0.0006" is not a number anyone reads, it is a number
+          something printed. Under a cent, say nothing. */}
+      {costUsd >= 0.01 ? (
+        <span className="flex-none tabular-nums text-faint">{formatUsd(costUsd)}</span>
+      ) : null}
+    </div>
   );
 }
 
-/**
- * Nothing made yet.
- *
- * No button: the banner directly above this one IS the button, and a second
- * call to action a hundred pixels below the first reads as an interface that
- * does not trust you to have seen the first.
- */
 function Empty() {
   return (
     <div className="mt-6 rounded-[14px] border border-dashed border-line px-6 py-12 text-center">
