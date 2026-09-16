@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { clsx } from 'clsx';
 import type { PlayerRef } from '@remotion/player';
 import { applyOperations, describeOperation, type ClipTrack, type EdlOperation } from '@/lib/edl/operations';
@@ -47,6 +48,17 @@ interface TimelineEditorProps {
   playerRef?: React.RefObject<PlayerRef | null>;
   /** The working document, lifted so the preview renders the pending edits. */
   onWorkingEdlChange?: (edl: Edl) => void;
+  /**
+   * Somewhere better than the dock to put the inspector and the change list.
+   *
+   * Both belong beside the picture rather than under the tracks: in the dock
+   * they stole height from the timeline and buried the caption picker behind a
+   * scroll. When a layout provides these two nodes they are rendered into them
+   * instead, and the dock is nothing but track.
+   */
+  panels?: { inspector: HTMLElement; changes: HTMLElement } | null;
+  /** Fired when something is picked, so the panel can bring its pane forward. */
+  onSelect?: () => void;
 }
 
 type Selection = { kind: 'segment' | ClipTrack | 'caption'; id: string } | null;
@@ -104,6 +116,8 @@ export function TimelineEditor({
   busy = false,
   playerRef,
   onWorkingEdlChange,
+  panels = null,
+  onSelect,
 }: TimelineEditorProps) {
   const [ops, setOps] = useState<EdlOperation[]>([]);
   const [redoStack, setRedoStack] = useState<EdlOperation[]>([]);
@@ -140,6 +154,8 @@ export function TimelineEditor({
     () => applyOperations(committedEdl, ops),
     [committedEdl, ops],
   );
+
+  useEffect(() => { if (selection) onSelect?.(); }, [selection, onSelect]);
 
   /** The same document, readable from a listener registered once on mount. */
   const edlRef = useRef(edl);
@@ -896,7 +912,50 @@ export function TimelineEditor({
 
   const activeSegment = edl.segments.find((s) => playhead >= s.outStartSec && playhead < s.outEndSec);
 
+  /* ───────────────────────────────────── the two side panes ─── */
+  /* What is selected, and what you have changed. They used to sit under the
+     tracks, inside the dock — which took height from the one part of this
+     screen that genuinely wants it, and put the caption picker somewhere you
+     had to scroll a timeline to reach. When the layout offers somewhere better
+     they are rendered there instead, through a portal: the state stays here,
+     where the selection and the operation stack live, and only the DOM moves. */
+  const inspectorPane = <Inspector edl={edl} selection={selection} onChange={push} />;
+
+  const changesPane = (
+    <div>
+      <h4 className="text-[11px] font-bold uppercase tracking-wider text-muted/70">
+        Pending changes {ops.length ? `(${ops.length})` : ''}
+      </h4>
+      {ops.length === 0 ? (
+        <p className="mt-2 text-xs text-muted">
+          Drag to move, drag an edge to trim. <b className="text-chalk">S</b> splits at the
+          playhead, <b className="text-chalk">[</b> and <b className="text-chalk">]</b> trim the
+          selection to it, <b className="text-chalk">,</b> and <b className="text-chalk">.</b>{' '}
+          nudge it a frame (hold shift for a second),{' '}
+          <b className="text-chalk">&#8984;D</b> duplicates,{' '}
+          <b className="text-chalk">Delete</b> removes, <b className="text-chalk">&#8984;Z</b> undoes.
+          <b className="text-chalk"> N</b> turns snapping off and on; holding{' '}
+          <b className="text-chalk">Alt</b> ignores it for one drag. Press{' '}
+          <b className="text-chalk">?</b> for the rest. Nothing re-renders until you apply.
+        </p>
+      ) : (
+        <ol data-pending-ops className="mt-2 space-y-1 text-xs text-muted">
+          {ops.map((op, i) => (
+            <li key={i} className="flex gap-2">
+              <span className="font-mono text-faint">{String(i + 1).padStart(2, '0')}</span>
+              {describeOperation(op)}
+            </li>
+          ))}
+        </ol>
+      )}
+    </div>
+  );
+
   return (
+    <>
+      {panels ? createPortal(inspectorPane, panels.inspector) : null}
+      {panels ? createPortal(changesPane, panels.changes) : null}
+
     <div className="card overflow-hidden">
       {/* ─────────────────────────────────────────────── toolbar ─── */}
       <div className="flex flex-wrap items-center gap-2 border-b border-line px-4 py-3">
@@ -1299,39 +1358,15 @@ export function TimelineEditor({
 
       {showKeys ? <ShortcutSheet onClose={() => setShowKeys(false)} /> : null}
 
-      {/* ───────────────────────────────────────── inspector + log ─── */}
-      <div className="grid gap-4 border-t border-line p-4 sm:grid-cols-2">
-        <Inspector edl={edl} selection={selection} onChange={push} />
-
-        <div>
-          <h4 className="text-[11px] font-bold uppercase tracking-wider text-muted/70">
-            Pending changes {ops.length ? `(${ops.length})` : ''}
-          </h4>
-          {ops.length === 0 ? (
-            <p className="mt-2 text-xs text-muted">
-              Drag to move, drag an edge to trim. <b className="text-chalk">S</b> splits at the
-              playhead, <b className="text-chalk">[</b> and <b className="text-chalk">]</b> trim the
-              selection to it, <b className="text-chalk">,</b> and <b className="text-chalk">.</b>{' '}
-              nudge it a frame (hold shift for a second),{' '}
-              <b className="text-chalk">&#8984;D</b> duplicates,{' '}
-              <b className="text-chalk">Delete</b> removes, <b className="text-chalk">&#8984;Z</b> undoes.
-              <b className="text-chalk"> N</b> turns snapping off and on; holding{' '}
-              <b className="text-chalk">Alt</b> ignores it for one drag. Press{' '}
-              <b className="text-chalk">?</b> for the rest. Nothing re-renders until you apply.
-            </p>
-          ) : (
-            <ol data-pending-ops className="mt-2 max-h-28 space-y-1 overflow-y-auto text-xs text-muted">
-              {ops.map((op, i) => (
-                <li key={i} className="flex gap-2">
-                  <span className="font-mono text-faint">{String(i + 1).padStart(2, '0')}</span>
-                  {describeOperation(op)}
-                </li>
-              ))}
-            </ol>
-          )}
+      {/* Only when there is nowhere better to put them. See `panels` above. */}
+      {panels ? null : (
+        <div className="grid gap-4 border-t border-line p-4 sm:grid-cols-2">
+          {inspectorPane}
+          {changesPane}
         </div>
+      )}
       </div>
-    </div>
+    </>
   );
 }
 

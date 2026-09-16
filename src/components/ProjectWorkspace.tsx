@@ -110,6 +110,40 @@ export function ProjectWorkspace({
   const [workingEdl, setWorkingEdl] = useState<Edl | null>(null);
 
   /**
+   * The side panel: what's selected, the caption look, what you've changed.
+   *
+   * All three used to be somewhere worse. The inspector and the change list
+   * lived under the tracks, inside the dock, where they took height from the
+   * timeline and buried the caption picker behind a scroll. They live here now
+   * and the dock is nothing but track. The timeline editor renders into these
+   * two nodes through a portal, so the selection and the operation stack stay
+   * where they belong.
+   */
+  const [pane, setPane] = useState<'selected' | 'captions' | 'changes'>('captions');
+  const [inspectorHost, setInspectorHost] = useState<HTMLDivElement | null>(null);
+  const [changesHost, setChangesHost] = useState<HTMLDivElement | null>(null);
+
+  /**
+   * Below `lg` the panel is not on screen at all, so portalling into it would
+   * hide the inspector rather than move it. There the editor keeps them under
+   * the tracks, which is the right answer when there is nowhere else.
+   */
+  const [wide, setWide] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia('(min-width: 1024px)');
+    const sync = () => setWide(mq.matches);
+    sync();
+    mq.addEventListener('change', sync);
+    return () => mq.removeEventListener('change', sync);
+  }, []);
+
+  const panels = wide && inspectorHost && changesHost
+    ? { inspector: inspectorHost, changes: changesHost }
+    : null;
+
+  const showSelected = useCallback(() => setPane('selected'), []);
+
+  /**
    * The last EDL the server sent.
    *
    * While a render is running the API stops shipping the document — it is
@@ -297,44 +331,95 @@ export function ProjectWorkspace({
               </div>
             </div>
 
-            <aside className="hidden w-[340px] flex-none overflow-y-auto border-l border-line-soft p-4 lg:block">
-              {error ? (
-                <p className="mb-3 rounded-xl border border-bad/40 bg-bad/[0.08] px-3 py-2 text-[12.5px] text-bad">
-                  {error}
-                </p>
-              ) : null}
+            {/* Beside the picture, never inside the timeline. */}
+            <aside className="hidden w-[368px] flex-none border-l border-line-soft lg:flex">
+              <nav
+                aria-label="Side panel"
+                className="flex w-[48px] flex-none flex-col gap-1 border-r border-line-soft p-2.5"
+              >
+                {(
+                  [
+                    ['selected', 'What\u2019s selected', 'M4.5 3.5l6 16 2.4-6.6 6.6-2.4z'],
+                    ['captions', 'Caption look', 'M3 5h18v14H3zM7 14h4M14 14h3'],
+                    ['changes', 'What you changed', 'M4 5v5h5M4.6 14a7.6 7.6 0 1 0 1.2-5.6M12 8.5V12l2.5 1.6'],
+                  ] as const
+                ).map(([key, label, path]) => (
+                  <button
+                    key={key}
+                    type="button"
+                    data-pane={key}
+                    aria-pressed={pane === key}
+                    title={label}
+                    onClick={() => setPane(key)}
+                    className={clsx(
+                      'grid h-9 w-9 place-items-center rounded-[10px] transition-colors',
+                      pane === key
+                        ? 'bg-violet-dim text-violet'
+                        : 'text-faint hover:bg-charcoal2 hover:text-chalk',
+                    )}
+                  >
+                    <svg
+                      width="17"
+                      height="17"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="1.8"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <path d={path} />
+                    </svg>
+                  </button>
+                ))}
+              </nav>
 
-              {captionStyle ? (
-                <>
-                  <h3 className="mb-3 text-[14px] font-bold">Captions</h3>
-                  <CaptionStudio
-                    style={captionStyle}
-                    onChange={setDraftCaption}
-                    mode={project.mode}
-                    posterUrl={project.thumbnailUrl}
-                    compact
-                  />
-                  {captionDirty ? (
-                    <div className="sticky bottom-0 mt-4 flex gap-2 bg-ink/90 py-3 backdrop-blur">
-                      <button
-                        type="button"
-                        onClick={() => setDraftCaption(null)}
-                        className="btn-ghost flex-1"
-                      >
-                        Revert
-                      </button>
-                      <button
-                        type="button"
-                        disabled={busy}
-                        onClick={() => void commitCaption()}
-                        className="btn-primary flex-1"
-                      >
-                        Apply
-                      </button>
-                    </div>
+              <div className="min-w-0 flex-1 overflow-y-auto p-4">
+                {error ? (
+                  <p className="mb-3 rounded-xl border border-bad/40 bg-bad/[0.08] px-3 py-2 text-[12.5px] text-bad">
+                    {error}
+                  </p>
+                ) : null}
+
+                {/* The editor portals into these two, so they are always mounted
+                    — `hidden` switches panes without unmounting what it holds. */}
+                <div ref={setInspectorHost} hidden={pane !== 'selected'} />
+                <div ref={setChangesHost} hidden={pane !== 'changes'} />
+
+                <div hidden={pane !== 'captions'}>
+                  {captionStyle ? (
+                    <>
+                      <h3 className="mb-3 text-[14px] font-bold">Captions</h3>
+                      <CaptionStudio
+                        style={captionStyle}
+                        onChange={setDraftCaption}
+                        mode={project.mode}
+                        posterUrl={project.thumbnailUrl}
+                        compact
+                      />
+                      {captionDirty ? (
+                        <div className="sticky bottom-0 mt-4 flex gap-2 bg-ink/90 py-3 backdrop-blur">
+                          <button
+                            type="button"
+                            onClick={() => setDraftCaption(null)}
+                            className="btn-ghost flex-1"
+                          >
+                            Revert
+                          </button>
+                          <button
+                            type="button"
+                            disabled={busy}
+                            onClick={() => void commitCaption()}
+                            className="btn-primary flex-1"
+                          >
+                            Apply
+                          </button>
+                        </div>
+                      ) : null}
+                    </>
                   ) : null}
-                </>
-              ) : null}
+                </div>
+              </div>
             </aside>
           </div>
 
@@ -348,6 +433,8 @@ export function ProjectWorkspace({
               busy={busy}
               playerRef={playerRef}
               onWorkingEdlChange={setWorkingEdl}
+              panels={panels}
+              onSelect={showSelected}
             />
           </TimelineDock>
         </div>

@@ -15,11 +15,15 @@ import { useCallback, useEffect, useRef, useState } from 'react';
  * Every editing suite solves this the same way, by letting you drag the seam.
  * The size is remembered per browser, because the right split is a property of
  * the person and their screen rather than of the video.
+ *
+ * The default is generous because the dock is now nothing but timeline — the
+ * inspector and the caption picker moved out to the side panel, where they cost
+ * the tracks no height at all.
  */
 
 const MIN_VH = 22;
 const MAX_VH = 74;
-const DEFAULT_VH = 38;
+const DEFAULT_VH = 44;
 const STORAGE_KEY = 'easycut.dock-height-vh';
 
 export function TimelineDock({ children }: { children: React.ReactNode }) {

@@ -874,9 +874,9 @@ body.instudio { overflow: hidden; }
 /* ── the dock ──────────────────────────────────────────────────────── */
 .st-dock {
   flex: none; display: flex; flex-direction: column; min-height: 0;
-  /* Tall enough that all six lanes are visible at once — a timeline you have to
+  /* Tall enough that every lane is visible at once — a timeline you have to
      scroll to see is a timeline you cannot judge. Drag the grip for more. */
-  height: clamp(300px, 40vh, 348px); min-height: 210px; border-top: 1px solid var(--line);
+  height: clamp(300px, 44vh, 420px); min-height: 210px; border-top: 1px solid var(--line);
   background: var(--charcoal);
 }
 .st-grip { flex: none; height: 11px; display: grid; place-items: center; cursor: ns-resize; }
@@ -1163,23 +1163,52 @@ body.instudio { overflow: hidden; }
 .capmeta { margin-top: 8px; font-size: 10.5px; color: var(--faint); }
 
 /* ── inspector, docked to the right of the tracks ──────────────────── */
-.st-insp {
-  flex: none; width: 250px; border-left: 1px solid var(--line-soft);
-  padding: 12px 14px; overflow-y: auto; background: var(--charcoal);
+/* ── the side panel ────────────────────────────────────────────────────
+   Everything that is not the timeline lives here: what is selected, the
+   caption look, what you have changed.
+
+   It used to be docked INSIDE the timeline, which was wrong twice over. It
+   stole 250px of width from the tracks, and it made the dock taller than the
+   timeline needed to be — so the one part of this screen that genuinely wants
+   room had the least of it. Beside the picture it costs the timeline nothing:
+   the dock now runs the full width of the window and every pixel of it is
+   track. */
+.st-mid { flex: 1; min-height: 0; display: flex; }
+
+.st-side {
+  flex: none; display: flex; align-items: stretch;
+  border-left: 1px solid var(--line-soft); background: var(--charcoal);
 }
-.st-insp h5 { margin: 0 0 9px; font-size: 10px; letter-spacing: .07em; text-transform: uppercase; color: var(--faint); font-weight: 700; }
-.st-insp p { font-size: 12px; color: var(--muted); line-height: 1.55; margin: 0; }
+/* Collapsed, the rail is all that is left — so the panel is a thing you open
+   when you need it rather than a column you have to live with. */
+.st-side.shut .st-panes { display: none; }
+
+.st-rail {
+  flex: none; width: 46px; display: flex; flex-direction: column; gap: 2px;
+  padding: 10px 6px; border-right: 1px solid var(--line-soft);
+}
+.st-rail button {
+  width: 34px; height: 34px; border-radius: 9px; display: grid; place-items: center;
+  color: var(--faint); transition: background var(--fast), color var(--fast);
+}
+.st-rail button:hover { background: var(--raised); color: var(--chalk); }
+.st-rail button[aria-pressed="true"] { background: var(--violet-dim); color: var(--violet); }
+
+.st-panes { width: 268px; overflow-y: auto; padding: 12px 14px 20px; }
+.st-pane { display: none; }
+.st-pane.on { display: block; }
+.st-pane h5 { margin: 0 0 9px; font-size: 10px; letter-spacing: .07em; text-transform: uppercase; color: var(--faint); font-weight: 700; }
+.st-pane p { font-size: 12px; color: var(--muted); line-height: 1.55; margin: 0; }
+.st-pane kbd { font-family: var(--mono); font-size: 10.5px; background: var(--ink); border: 1px solid var(--line); border-radius: 4px; padding: 1px 5px; color: var(--chalk); }
 .tl-ops { list-style: none; margin: 0; padding: 0; }
 .tl-ops li { display: flex; gap: 8px; font-size: 12px; color: var(--muted); padding: 1.5px 0; }
 .tl-ops li b { font-family: var(--mono); font-size: 10px; color: var(--faint); font-weight: 400; }
-.st-insp kbd { font-family: var(--mono); font-size: 10.5px; background: var(--ink); border: 1px solid var(--line); border-radius: 4px; padding: 1px 5px; color: var(--chalk); }
-.st-body { flex: 1; min-height: 0; display: flex; }
-.st-lanes { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+
 .st-warn { flex: none; padding: 7px 14px; background: rgba(245,196,83,.08); font-size: 12px; color: var(--warn); }
 .tl-inner { position: relative; padding: 0 0 14px; }
 
 @media (max-width: 880px) {
-  .st-insp { display: none; }
+  .st-side { display: none; }
   .st-crumb { display: none; }
   .st-dock { height: 300px; }
 }
@@ -2419,12 +2448,51 @@ body.instudio { overflow: hidden; }
       </div>
     </div>
 
-    <div class="st-canvas">
-      <div class="st-stage" id="st-stage"></div>
-      <button class="st-expand" id="st-expand" title="Fill the screen">
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-          stroke-linecap="round" stroke-linejoin="round"><path d="M14 4h6v6M10 20H4v-6M20 4l-7 7M4 20l7-7"/></svg>
-      </button>
+    <div class="st-mid">
+      <div class="st-canvas">
+        <div class="st-stage" id="st-stage"></div>
+        <button class="st-expand" id="st-expand" title="Fill the screen">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round"><path d="M14 4h6v6M10 20H4v-6M20 4l-7 7M4 20l7-7"/></svg>
+        </button>
+      </div>
+
+      <!-- Beside the picture, not inside the timeline. Click a tab to open it,
+           click it again to fold the panel away. -->
+      <aside class="st-side" id="st-side">
+        <nav class="st-rail" id="st-rail" aria-label="Side panel">
+          <button data-pane="sel" title="What&rsquo;s selected" aria-pressed="true">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+              stroke-linecap="round" stroke-linejoin="round"><path d="m4.5 3.5 6 16 2.4-6.6 6.6-2.4z"/></svg>
+          </button>
+          <button data-pane="caps" title="Caption look" aria-pressed="false">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+              stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2.5"/><path d="M7 14h4M14 14h3"/></svg>
+          </button>
+          <button data-pane="ops" title="What you changed" aria-pressed="false">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+              stroke-linecap="round" stroke-linejoin="round"><path d="M4 5v5h5"/><path d="M4.6 14a7.6 7.6 0 1 0 1.2-5.6"/><path d="M12 8.5V12l2.5 1.6"/></svg>
+          </button>
+        </nav>
+
+        <div class="st-panes">
+          <div class="st-pane on" data-pane="sel">
+            <h5 id="tl-ops-h">Selected</h5>
+            <div class="insp" id="tl-insp"></div>
+          </div>
+
+          <div class="st-pane" data-pane="caps">
+            <h5>Caption look</h5>
+            <div class="capbar" id="cap-fams"></div>
+            <div class="capgrid" id="cap-grid"></div>
+            <p class="capmeta" id="cap-meta"></p>
+          </div>
+
+          <div class="st-pane" data-pane="ops">
+            <div id="tl-ops-body"></div>
+          </div>
+        </div>
+      </aside>
     </div>
 
     <div class="st-dock" id="st-dock">
@@ -2498,24 +2566,9 @@ body.instudio { overflow: hidden; }
 
       <div class="st-warn" id="tl-warn" hidden></div>
 
-      <div class="st-body">
-        <div class="st-lanes">
-          <div class="st-scroll" id="tl-scroll">
-            <div class="tl-inner" id="tl-inner"></div>
-          </div>
-        </div>
-        <aside class="st-insp">
-          <h5 id="tl-ops-h">Selected</h5>
-          <div class="insp" id="tl-insp"></div>
-          <div id="tl-ops-body" style="margin-top:14px"></div>
-
-          <div style="margin-top:20px;border-top:1px solid var(--line-soft);padding-top:16px">
-            <h5>Caption look</h5>
-            <div class="capbar" id="cap-fams"></div>
-            <div class="capgrid" id="cap-grid"></div>
-            <p class="capmeta" id="cap-meta"></p>
-          </div>
-        </aside>
+      <!-- Nothing but track. -->
+      <div class="st-scroll" id="tl-scroll">
+        <div class="tl-inner" id="tl-inner"></div>
       </div>
     </div>
   </section>
@@ -3782,7 +3835,7 @@ function drawTimeline() {
   if (tl.warn) $('tl-warn').textContent = tl.warn;
 
   $('tl-ops-body').innerHTML = tl.ops.length
-    ? `<h5>Pending (${tl.ops.length})</h5>
+    ? `<h5>Pending &middot; ${tl.ops.length}</h5>
        <ol class="tl-ops">${tl.ops.map((o, i) => `<li><b>${String(i + 1).padStart(2, '0')}</b>${OP_LABEL[o.op] ?? o.op}</li>`).join('')}</ol>`
     : `<h5>How this works</h5>
        <p>Drag a clip to move it, drag its edges to trim. <kbd>S</kbd> splits at the playhead,
@@ -3887,6 +3940,7 @@ $('tl-inner').addEventListener('pointerdown', (e) => {
   if (sfx) {
     const f = DOC.sfx.find((x) => x.id === sfx.dataset.sfx);
     tl.sel = { kind: 'sfx', id: f.id };
+    openPane('sel');
     tl.drag = { kind: 'move', id: f.id, track: 'sfx', a: f.at, b: f.at, x: e.clientX, moved: false };
     drawTimeline();
     return;
@@ -3903,6 +3957,7 @@ $('tl-inner').addEventListener('pointerdown', (e) => {
   const a = kind === 'seg' ? item.o0 : item.a;
   const b = kind === 'seg' ? item.o1 : item.b;
   tl.sel = { kind, id };
+  openPane('sel');
   tl.drag = { kind: edge === 'l' ? 'trim-l' : edge === 'r' ? 'trim-r' : 'move', id, track: kind, a, b, x: e.clientX, moved: false };
   drawTimeline();
 });
@@ -4087,16 +4142,49 @@ $('st-tools').addEventListener('click', (e) => {
     case 'music': return flashInsp(`Music comes with the look you picked &mdash;
       <b>${STYLES[state.style].music}</b>. Switch looks in Simple mode and the bed changes with it.
       Sound effects go in from the <b>+</b> in the timeline.`);
-    case 'ops':   return flashInsp(tl.ops.length
-      ? `<ol class="tl-ops">${tl.ops.map((o, i) => `<li><b>${String(i + 1).padStart(2, '0')}</b>${OP_LABEL[o.op] ?? o.op}</li>`).join('')}</ol>`
-      : 'Nothing changed yet. This is exactly the cut the AI made.');
+    case 'ops':   return openPane('ops');
   }
+});
+
+/* ── the side panel ────────────────────────────────────────────────────
+   Three panes, one rail. Clicking the pane you are already on folds the whole
+   thing away, because the only thing better than a panel out of the timeline's
+   way is no panel at all while you are watching the picture. */
+function showPane(name) {
+  const side = $('st-side');
+  if (!side) return;
+  const already = side.classList.contains('shut') ? null
+    : (document.querySelector('.st-pane.on') || {}).dataset?.pane;
+  if (already === name) { side.classList.add('shut'); }
+  else {
+    side.classList.remove('shut');
+    document.querySelectorAll('.st-pane').forEach((el) => el.classList.toggle('on', el.dataset.pane === name));
+  }
+  const open = !side.classList.contains('shut');
+  document.querySelectorAll('#st-rail button').forEach((b) =>
+    b.setAttribute('aria-pressed', String(open && b.dataset.pane === name)));
+}
+
+/** Open a pane without the click-to-close half — for code that is showing you something. */
+function openPane(name) {
+  const side = $('st-side');
+  if (!side) return;
+  side.classList.remove('shut');
+  document.querySelectorAll('.st-pane').forEach((el) => el.classList.toggle('on', el.dataset.pane === name));
+  document.querySelectorAll('#st-rail button').forEach((b) =>
+    b.setAttribute('aria-pressed', String(b.dataset.pane === name)));
+}
+
+$('st-rail').addEventListener('click', (e) => {
+  const b = e.target.closest('[data-pane]');
+  if (b) showPane(b.dataset.pane);
 });
 
 function flashInsp(html) {
   tl.sel = null;
   $('tl-insp').innerHTML = `<p style="font-size:12px;color:var(--muted);line-height:1.6;margin:0">${html}</p>`;
   $('tl-ops-h').textContent = 'Note';
+  openPane('sel');
 }
 
 /* ── transport extras ── */
