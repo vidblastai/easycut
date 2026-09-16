@@ -12,6 +12,11 @@ import { IconCheck } from './Icons';
  *
  * Numbering is used here because this genuinely is a sequence — you cannot
  * fine-tune footage that has not been cut — not as decoration.
+ *
+ * On a phone only the step you are on is named. Four labels sharing 430px
+ * truncated every one of them — "Uplo…", "Fine-…", "Your …" — which tells you
+ * less than a numbered circle does, in more space. The numbers still say how
+ * many steps there are and which one this is.
  */
 
 export const PIPELINE_STEPS = [
@@ -43,12 +48,16 @@ export function Stepper({
         const Tag = reachable ? 'button' : 'div';
 
         return (
-          <li key={step.key} className="min-w-0 flex-1">
+          <li
+            key={step.key}
+            className={clsx('min-w-0 sm:flex-1', state === 'current' ? 'flex-1' : 'flex-none')}
+          >
             <Tag
               {...(reachable ? { type: 'button' as const, onClick: () => onStepClick?.(step.key) } : {})}
               aria-current={state === 'current' ? 'step' : undefined}
               className={clsx(
-                'flex w-full items-center gap-2.5 rounded-xl px-2.5 py-2.5 text-left transition-colors sm:px-3.5',
+                'flex w-full items-center rounded-xl py-2.5 text-left transition-colors sm:gap-2.5 sm:px-3.5',
+                state === 'current' ? 'gap-2.5 px-2.5' : 'justify-center px-2 sm:justify-start',
                 reachable && 'hover:bg-charcoal',
                 state === 'current' && 'bg-violet-dim',
               )}
@@ -66,7 +75,8 @@ export function Stepper({
               <span className="min-w-0">
                 <span
                   className={clsx(
-                    'block truncate text-[13px] font-semibold leading-tight',
+                    'truncate text-[13px] font-semibold leading-tight',
+                    state === 'current' ? 'block' : 'hidden sm:block',
                     state === 'todo' ? 'text-faint' : 'text-chalk',
                   )}
                 >

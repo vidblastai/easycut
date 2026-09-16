@@ -280,9 +280,12 @@ export function ProjectWorkspace({
         <div className="flex min-h-0 flex-1 flex-col">
           <div className="flex min-h-0 flex-1">
             {/* The picture, centred in whatever room the inspector leaves. */}
-            <div className="flex min-h-[220px] min-w-0 flex-1 items-center justify-center p-5">
+            <div className="flex min-h-[220px] min-w-0 flex-1 items-center justify-center p-3 sm:p-5">
+              {/* Capped on a phone. A 9:16 preview given the whole column takes
+                  three quarters of the screen, which puts the timeline — the
+                  entire reason for being on this screen — below the fold. */}
               <div
-                className="overflow-hidden rounded-[14px] bg-black shadow-card"
+                className="max-h-[42vh] overflow-hidden rounded-[14px] bg-black shadow-card sm:max-h-none"
                 style={{
                   aspectRatio: project.mode === 'short' ? '9 / 16' : '16 / 9',
                   height: '100%',
@@ -538,6 +541,31 @@ function LivePreview({
   playerRef: React.RefObject<PlayerRef | null>;
 }) {
   const fps = edl.format.fps || 30;
+  const [failed, setFailed] = useState<string | null>(null);
+
+  // A preview that cannot play the source used to be a black rectangle and a
+  // line in the console. It happens for real reasons — a browser without the
+  // H.264 and AAC decoders (Chromium built without them, some Linux builds of
+  // Firefox), a file the browser will not decode, a dropped connection — and in
+  // every one of them the export is still fine, because the export is made by
+  // ffmpeg and a headless browser on the server, not by this one. So say that,
+  // rather than showing black and letting somebody conclude their video is
+  // ruined.
+  if (failed) {
+    return (
+      <div className="flex h-full w-full flex-col items-center justify-center gap-2 bg-black px-8 text-center">
+        <p className="text-[13.5px] font-bold">This browser can&rsquo;t play the preview.</p>
+        <p className="max-w-xs text-[12.5px] leading-relaxed text-muted">
+          Your edit is fine and the export will be correct &mdash; this is the preview
+          player, not the video. Chrome, Safari or Edge will show it.
+        </p>
+        <p className="mt-1 max-w-xs truncate text-[11px] text-faint" title={failed}>
+          {failed}
+        </p>
+      </div>
+    );
+  }
+
   // The shape belongs to the box this is placed in — two elements both claiming
   // the aspect is how the picture ends up letterboxed inside its own frame.
   return (
@@ -554,6 +582,14 @@ function LivePreview({
         // The timeline is the transport; a second set of controls inside the
         // frame would be two things claiming to be in charge.
         controls={false}
+        errorFallback={({ error }) => {
+          // Remotion renders this in place of the frame. The message is handed
+          // to state so the block above owns the wording — after the current
+          // render, because setting state while React is rendering something
+          // else is how you get an infinite loop with a warning in front of it.
+          queueMicrotask(() => setFailed(error.message));
+          return <div className="h-full w-full bg-black" />;
+        }}
         acknowledgeRemotionLicense
       />
     </div>
