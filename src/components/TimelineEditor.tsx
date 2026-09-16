@@ -5,7 +5,7 @@ import { clsx } from 'clsx';
 import type { PlayerRef } from '@remotion/player';
 import { applyOperations, describeOperation, type ClipTrack, type EdlOperation } from '@/lib/edl/operations';
 import { reorderIndexFor, resolveDrag, snapPointsFor, type DragKind } from '@/lib/timeline/drag';
-import type { Edl } from '@/lib/edl/types';
+import { TRANSITION_TYPES, type Edl } from '@/lib/edl/types';
 
 /**
  * The timeline editor.
@@ -897,32 +897,71 @@ export function TimelineEditor({
             })}
           </Track>
 
-          {/* Instants rather than spans, so they get markers, not blocks. */}
-          <Track label="Sound" labelHint={`${edl.sfx.length} cues`} compact>
+          {/* Instants rather than spans, so they get markers, not blocks.
+
+              Both marks are drawn a few pixels wide but grabbed through a
+              16px-wide invisible button. A 3px target is a target you miss, and
+              missing it deselects instead — the marker looked broken when the
+              only thing wrong was the size of the hitbox. */}
+          <Track label="Sound" labelHint={`${edl.sfx.length + edl.transitions.length} cues`} lanes>
             {edl.sfx.map((cue) => (
               <button
                 key={cue.id}
                 type="button"
                 data-clip-id={cue.id}
                 data-track="sfx"
+                data-selected={selection?.kind === 'sfx' && selection.id === cue.id ? 'true' : undefined}
                 onPointerDown={(e) => beginDrag(e, 'move', { kind: 'sfx', id: cue.id }, cue.atSec, cue.atSec)}
                 onClick={() => setSelection({ kind: 'sfx', id: cue.id })}
-                title={cue.sound}
-                className={clsx(
-                  'absolute top-1 h-5 w-[3px] -translate-x-1/2 cursor-grab rounded-full transition-colors',
-                  selection?.kind === 'sfx' && selection.id === cue.id ? 'bg-chalk' : 'bg-warn',
-                )}
+                title={`${cue.sound} · ${formatTc(cue.atSec)}`}
+                className="group absolute top-0 flex h-[19px] w-4 -translate-x-1/2 cursor-grab touch-none items-center justify-center"
                 style={{ left: (dragPreview?.id === cue.id ? dragPreview.start : cue.atSec) * pps }}
-              />
+              >
+                <span
+                  className={clsx(
+                    'h-[13px] w-[3px] rounded-full transition-colors',
+                    selection?.kind === 'sfx' && selection.id === cue.id
+                      ? 'bg-chalk shadow-[0_0_6px_rgba(245,245,247,.7)]'
+                      : 'bg-warn group-hover:bg-chalk',
+                  )}
+                />
+              </button>
             ))}
-            {edl.transitions.map((cue) => (
-              <span
-                key={cue.id}
-                title={cue.type}
-                className="absolute bottom-1 h-2 w-2 -translate-x-1/2 rotate-45 rounded-[2px] bg-violet"
-                style={{ left: cue.atSec * pps }}
-              />
-            ))}
+
+            {/* A transition is an instant too, but it has a LENGTH — the cue is
+                drawn at the cut and the diamond marks where it starts. Dragging
+                it moves the whole thing; the inspector changes how long it
+                lasts, because 40ms of drag precision is not how anybody wants
+                to set a quarter-second dissolve. */}
+            {edl.transitions.map((cue) => {
+              const at = dragPreview?.id === cue.id ? dragPreview.start : cue.atSec;
+              const chosen = selection?.kind === 'transitions' && selection.id === cue.id;
+              return (
+                <button
+                  key={cue.id}
+                  type="button"
+                  data-clip-id={cue.id}
+                  data-track="transitions"
+                  data-selected={chosen ? 'true' : undefined}
+                  onPointerDown={(e) => beginDrag(e, 'move', { kind: 'transitions', id: cue.id }, cue.atSec, cue.atSec)}
+                  onClick={() => setSelection({ kind: 'transitions', id: cue.id })}
+                  title={`${cue.type} · ${cue.durationSec.toFixed(2)}s at ${formatTc(cue.atSec)}`}
+                  className="group absolute bottom-0 flex h-[19px] w-4 -translate-x-1/2 cursor-grab touch-none items-center justify-center"
+                  style={{ left: at * pps }}
+                >
+                  <span
+                    className="pointer-events-none absolute h-[2px] rounded-full bg-violet/45"
+                    style={{ width: Math.max(2, cue.durationSec * pps), left: '50%' }}
+                  />
+                  <span
+                    className={clsx(
+                      'relative h-2 w-2 rotate-45 rounded-[2px] transition-colors',
+                      chosen ? 'bg-chalk shadow-[0_0_6px_rgba(245,245,247,.7)]' : 'bg-violet group-hover:bg-chalk',
+                    )}
+                  />
+                </button>
+              );
+            })}
           </Track>
 
           {/* What the drag is actually doing, in numbers.
@@ -1083,16 +1122,24 @@ function SpeechTrack({ edl, pps }: { edl: Edl; pps: number }) {
 function Track({
   label,
   labelHint,
-  compact,
+  lanes,
   children,
 }: {
   label: string;
   labelHint?: string;
-  compact?: boolean;
+  /**
+   * Two rows of markers in one track, each with the full height to itself.
+   *
+   * Sound cues and transitions both belong at a cut, so they land on the same
+   * pixel constantly — and a hitbox tall enough to grab is then a hitbox that
+   * swallows its neighbour's clicks. Splitting the track in half means the two
+   * never compete for a pointer.
+   */
+  lanes?: boolean;
   children: React.ReactNode;
 }) {
   return (
-    <div className={clsx('flex border-b border-line-soft', compact ? 'h-8' : 'h-11')}
+    <div className={clsx('flex border-b border-line-soft', lanes ? 'h-10' : 'h-11')}
          style={{ borderBottomColor: '#232330' }}>
       <div
         className="sticky left-0 z-10 flex shrink-0 flex-col justify-center border-r border-line bg-charcoal px-3"
@@ -1328,6 +1375,84 @@ function Inspector({
     );
   }
 
+  if (selection.kind === 'transitions') {
+    const cue = edl.transitions.find((c) => c.id === selection.id);
+    if (!cue) return null;
+    return (
+      <div>
+        <h4 className="text-[11px] font-bold uppercase tracking-wider text-muted/70">
+          Transition <span className="font-mono normal-case text-faint">at {formatTc(cue.atSec)}</span>
+        </h4>
+        <div className="mt-2 flex flex-wrap gap-1.5">
+          {TRANSITION_TYPES.filter((t) => t !== 'none').map((type) => (
+            <button
+              key={type}
+              type="button"
+              onClick={() => onChange({ op: 'transition.set', id: cue.id, type })}
+              className={clsx(
+                'rounded border px-2 py-0.5 text-[11px] font-semibold',
+                cue.type === type ? 'border-violet text-violet' : 'border-line text-muted hover:text-chalk',
+              )}
+            >
+              {type}
+            </button>
+          ))}
+        </div>
+        {/* Set by button, not by drag: a transition is a fifth of a second long,
+            which is three pixels at a zoom you can still see the edit at. */}
+        <div className="mt-2 flex flex-wrap items-center gap-1.5">
+          <span className="text-[11px] text-faint">Length</span>
+          {[0.16, 0.24, 0.4, 0.6].map((d) => (
+            <button
+              key={d}
+              type="button"
+              onClick={() =>
+                onChange({ op: 'clip.trim', track: 'transitions', id: cue.id, outStartSec: cue.atSec, outEndSec: cue.atSec + d })
+              }
+              className={clsx(
+                'rounded border px-2 py-0.5 text-[11px] font-semibold tabular-nums',
+                Math.abs(cue.durationSec - d) < 0.02 ? 'border-violet text-violet' : 'border-line text-muted hover:text-chalk',
+              )}
+            >
+              {d.toFixed(2)}s
+            </button>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  if (selection.kind === 'punchIns') {
+    const clip = edl.punchIns.find((c) => c.id === selection.id);
+    if (!clip) return null;
+    return (
+      <div>
+        <h4 className="text-[11px] font-bold uppercase tracking-wider text-muted/70">
+          Punch-in{' '}
+          <span className="font-mono normal-case text-faint">
+            {formatTc(clip.outStartSec)}&ndash;{formatTc(clip.outEndSec)}
+          </span>
+        </h4>
+        <p className="mt-2 text-xs text-muted">How far in the camera pushes for this line.</p>
+        <div className="mt-2 flex flex-wrap gap-1.5">
+          {[1.08, 1.15, 1.25, 1.4].map((scale) => (
+            <button
+              key={scale}
+              type="button"
+              onClick={() => onChange({ op: 'clip.update', track: 'punchIns', id: clip.id, patch: { scale } })}
+              className={clsx(
+                'rounded border px-2 py-0.5 text-[11px] font-semibold tabular-nums',
+                Math.abs(clip.scale - scale) < 0.01 ? 'border-violet text-violet' : 'border-line text-muted hover:text-chalk',
+              )}
+            >
+              {scale.toFixed(2)}&times;
+            </button>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
   if (selection.kind === 'sfx') {
     const cue = edl.sfx.find((c) => c.id === selection.id);
     if (!cue) return null;
@@ -1414,6 +1539,22 @@ function AddMenu({ atSec, onAdd }: { atSec: number; onAdd: (op: EdlOperation) =>
           <MenuItem onClick={() => add({ op: 'clip.add', track: 'punchIns', atSec, durationSec: 2, value: '', id: freshId('punchIns') })}>
             Punch-in
           </MenuItem>
+          <div className="border-t border-line-soft px-3 pt-2 pb-1 text-[10px] font-bold uppercase tracking-wider text-faint">
+            Transition
+          </div>
+          <div className="flex flex-wrap gap-1 p-2 pt-0">
+            {(['dissolve', 'whip-pan', 'zoom-punch', 'flash', 'glitch', 'slide', 'film-burn'] as const).map((type) => (
+              <button
+                key={type}
+                type="button"
+                onClick={() => add({ op: 'clip.add', track: 'transitions', atSec, durationSec: 0.24, value: type, id: freshId('transitions') })}
+                className="rounded border border-line px-2 py-0.5 text-[11px] font-semibold text-muted transition-colors hover:border-violet hover:text-violet"
+              >
+                {type}
+              </button>
+            ))}
+          </div>
+
           <div className="border-t border-line-soft px-3 pt-2 pb-1 text-[10px] font-bold uppercase tracking-wider text-faint">
             Sound
           </div>

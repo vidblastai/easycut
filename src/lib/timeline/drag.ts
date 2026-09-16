@@ -199,6 +199,14 @@ export function snapPointsFor(edl: Edl): SnapPoint[] {
   for (const p of edl.punchIns) {
     points.push({ at: p.outStartSec, ownerId: p.id }, { at: p.outEndSec, ownerId: p.id });
   }
+  // Instants count too. A whoosh and the transition it sells belong on the same
+  // frame, and lining the second one up by eye at 32px/s is a 30ms guess.
+  for (const c of edl.sfx) {
+    points.push({ at: c.atSec, ownerId: c.id });
+  }
+  for (const t of edl.transitions) {
+    points.push({ at: t.atSec, ownerId: t.id }, { at: t.atSec + t.durationSec, ownerId: t.id });
+  }
 
   return points;
 }
