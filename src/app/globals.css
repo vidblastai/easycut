@@ -94,6 +94,45 @@ h1, h2, h3 { letter-spacing: -0.03em; text-wrap: balance; }
 ::-webkit-scrollbar-thumb { background: #2C2C36; border-radius: 99px; border: 3px solid #0D0D10; }
 ::-webkit-scrollbar-thumb:hover { background: #3a3a47; }
 
+/* ───────────────────────────────────────────────────── the hand-off ───
+   What happens between "I gave you my footage" and the wizard.
+
+   The gap is real work — reading the file, routing, mounting the next screen —
+   and about half a second of it. Unacknowledged, that half second reads as a
+   click that did nothing, and people click again. So the arrow leaves, a ring
+   goes out after it, and the ruler scrubs left as if the footage were being
+   pulled onto a timeline. It is the same half second, spent saying "got it".
+
+   Every one of these is a transform or an opacity, so none of them causes
+   layout, and `prefers-reduced-motion` above turns the lot into a cut. */
+
+/* Two identical arrows stacked, moved up by exactly one arrow. The first
+   leaves through the top of the disc as the second arrives from below, so the
+   disc is never empty — a single arrow that faded out left a hole in the
+   middle of the gesture, which reads as a missing icon rather than as motion. */
+@keyframes ec-feed {
+  0%   { transform: translateY(0); }
+  100% { transform: translateY(-56px); }
+}
+@keyframes ec-ripple {
+  0%   { transform: scale(0.9); opacity: 0.55; }
+  100% { transform: scale(2.4); opacity: 0; }
+}
+@keyframes ec-scrub {
+  0%   { background-position-x: 0, 0; }
+  100% { background-position-x: -120px, -120px; }
+}
+@keyframes ec-accept {
+  0%   { transform: scale(1); }
+  35%  { transform: scale(0.988); }
+  100% { transform: scale(1); }
+}
+
+.ec-feed   { animation: ec-feed 0.62s cubic-bezier(0.5, 0, 0.2, 1) both; }
+.ec-ripple { animation: ec-ripple 0.62s var(--ease) both; }
+.ec-scrub  { animation: ec-scrub 0.62s cubic-bezier(0.3, 0, 0.1, 1) both; }
+.ec-accept { animation: ec-accept 0.62s var(--ease) both; }
+
 @layer components {
   /* Border, fill, radius and shadow each say "separate object". They are spent
      by role here — `.card` lifts something that genuinely is one, and the flat

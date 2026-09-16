@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { clsx } from 'clsx';
 import { LogoMark } from '@/components/Logo';
+import { IconUpload } from '@/components/shell/Icons';
 import { looksLikeVideo, setPendingUpload } from '@/lib/ui/pending-upload';
 
 /**
@@ -24,6 +25,7 @@ export function NewProjectBanner() {
   const inputRef = useRef<HTMLInputElement>(null);
   const [armed, setArmed] = useState(false);   // a file is somewhere over the page
   const [over, setOver] = useState(false);     // …and specifically over this
+  const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const accept = useCallback(
@@ -34,8 +36,22 @@ export function NewProjectBanner() {
         return;
       }
       setError(null);
+      setOver(false);
       setPendingUpload(file);
-      router.push('/new');
+
+      // The routing and the next screen's mount take about this long anyway.
+      // The animation spends that time saying "got it" rather than leaving the
+      // click looking like it did nothing — which is what makes people click a
+      // second time. Someone who has asked for less motion just goes.
+      const reduced =
+        typeof window !== 'undefined' &&
+        window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      if (reduced) {
+        router.push('/new');
+        return;
+      }
+      setSending(true);
+      window.setTimeout(() => router.push('/new'), 560);
     },
     [router],
   );
@@ -81,6 +97,7 @@ export function NewProjectBanner() {
     <div>
       <button
         type="button"
+        disabled={sending}
         onClick={() => inputRef.current?.click()}
         onDragOver={(e) => {
           e.preventDefault();
@@ -97,6 +114,7 @@ export function NewProjectBanner() {
           'rounded-[20px] px-6 py-11 text-ink transition-[transform,box-shadow] duration-200',
           'min-h-[140px] sm:py-14',
           over ? 'scale-[1.005] shadow-glow' : 'hover:-translate-y-0.5 hover:shadow-glow',
+          sending && 'ec-accept shadow-glow',
         )}
         style={{
           transitionTimingFunction: 'var(--ease)',
@@ -124,7 +142,7 @@ export function NewProjectBanner() {
             every other tool with a coloured rectangle on its dashboard. */}
         <span
           aria-hidden
-          className="pointer-events-none absolute inset-x-0 bottom-0 h-3"
+          className={clsx('pointer-events-none absolute inset-x-0 bottom-0 h-3', sending && 'ec-scrub')}
           style={{
             backgroundImage:
               'repeating-linear-gradient(90deg, rgba(13,13,16,0.26) 0 1px, transparent 1px 12px),' +
@@ -148,14 +166,55 @@ export function NewProjectBanner() {
           )}
         />
 
-        {/* Centred and stacked. The icon-beside-label lockup is the shape every
-            editor's dashboard already has. */}
-        <span className="relative block text-center">
+        {/* Centred and stacked, with the disc above rather than beside — the
+            icon-beside-label lockup is the shape every editor's dashboard
+            already has. */}
+        <span className="relative flex flex-col items-center text-center">
+          <span className="relative mb-3 grid h-[54px] w-[54px] place-items-center">
+            {/* The ring that goes out after the arrow. Rendered only while
+                sending so it cannot be seen sitting still at scale 1. */}
+            {sending ? (
+              <span
+                aria-hidden
+                className="ec-ripple absolute inset-0 rounded-full border-2 border-ink/50"
+              />
+            ) : null}
+            <span
+              className={clsx(
+                'relative grid h-[54px] w-[54px] place-items-center overflow-hidden rounded-full bg-ink/90 transition-transform duration-200',
+                over ? 'scale-110' : 'group-hover:scale-105',
+              )}
+              style={{ transitionTimingFunction: 'var(--ease)' }}
+            >
+              {/* The disc clips, so the arrow leaves through its top edge
+                  rather than fading in mid-air — posted into a slot, not
+                  evaporating.
+
+                  The pitch (24px arrow + 32px gap = 56px) has to exceed the
+                  disc's own 54px, or the second arrow is already in view while
+                  the first is still centred and the button sits there showing
+                  two of them. The animation moves by exactly one pitch. */}
+              <span
+                className={clsx(
+                  'absolute inset-x-0 top-[15px] flex flex-col items-center gap-8',
+                  sending && 'ec-feed',
+                )}
+              >
+                <IconUpload className="h-6 w-6 flex-none text-violet" />
+                <IconUpload className="h-6 w-6 flex-none text-violet" />
+              </span>
+            </span>
+          </span>
+
           <span className="block text-[24px] font-extrabold leading-tight tracking-[-0.035em] sm:text-[30px]">
-            {over ? 'Drop it' : 'New video'}
+            {sending ? 'Got it' : over ? 'Drop it' : 'New video'}
           </span>
           <span className="mt-1 block text-[13px] font-semibold text-ink/65">
-            {over ? 'Let go and we\u2019ll take it from here' : 'Drop your footage here, or click to browse'}
+            {sending
+              ? 'Taking it into the edit\u2026'
+              : over
+                ? 'Let go and we\u2019ll take it from here'
+                : 'Drop your footage here, or click to browse'}
           </span>
         </span>
 

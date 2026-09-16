@@ -88,6 +88,20 @@ export const IconCheck: React.FC<IconProps> = (p) => (
   <Svg {...p}><path d="m5 12.5 4.5 4.5L19 7" /></Svg>
 );
 
+/**
+ * Upload: a solid arrow over a bar.
+ *
+ * Solid rather than stroked because it sits inside a disc at a size where a
+ * 1.7px stroke reads as a thin scratch — every other icon here is chrome, this
+ * one is the subject.
+ */
+export const IconUpload: React.FC<IconProps> = ({ className }) => (
+  <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor" className={className} aria-hidden>
+    <path d="M12 4.4a.9.9 0 0 1 .66.29l6.1 6.55a.8.8 0 0 1-.58 1.34h-3.06v3.5a.9.9 0 0 1-.9.9h-4.44a.9.9 0 0 1-.9-.9v-3.5H5.82a.8.8 0 0 1-.58-1.34l6.1-6.55A.9.9 0 0 1 12 4.4Z" />
+    <rect x="5.4" y="18.7" width="13.2" height="2.6" rx="1.3" />
+  </svg>
+);
+
 export const IconFilm: React.FC<IconProps> = (p) => (
   <Svg {...p}>
     <rect x="3" y="4.5" width="18" height="15" rx="2.5" />
