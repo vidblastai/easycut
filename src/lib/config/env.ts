@@ -12,6 +12,16 @@ function str(name: string): string | undefined {
   return v && v.trim().length > 0 ? v.trim() : undefined;
 }
 
+/** How many cores this process can actually use, floored at one. */
+function coreCount(): number {
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    return Math.max(1, (require('node:os') as typeof import('node:os')).cpus().length);
+  } catch {
+    return 1;
+  }
+}
+
 function num(name: string, fallback: number): number {
   const v = str(name);
   const n = v ? Number(v) : NaN;
@@ -98,7 +108,26 @@ export const env = {
     lambdaFunctionName: str('REMOTION_LAMBDA_FUNCTION'),
     lambdaServeUrl: str('REMOTION_SERVE_URL'),
     lambdaRegion: str('REMOTION_LAMBDA_REGION') ?? 'us-east-1',
-    concurrency: num('RENDER_CONCURRENCY', 4),
+    /**
+     * Browser tabs rendering frames in parallel.
+     *
+     * Was a flat 4, which is two too many on the single-vCPU container this is
+     * most likely to be deployed to — four headless Chromes contending for one
+     * core is slower than one, not faster. Derived from the CPUs actually
+     * present, capped so a large build machine does not open sixteen.
+     */
+    concurrency: num('RENDER_CONCURRENCY', Math.max(1, Math.min(4, coreCount() - 1))),
+    /**
+     * Ceiling on Remotion's decoded-frame cache, in megabytes.
+     *
+     * Left unset, Remotion sizes this from the host's free memory. That is a
+     * sensible default for a workstation and a trap for a product: the same
+     * render takes ~6 GB on a 12 GB machine and a fraction of that on a small
+     * container, so behaviour — speed, and whether the OOM killer arrives —
+     * becomes a property of the box rather than of the video. Pinning it makes
+     * a render reproducible, and makes 'it worked locally' mean something.
+     */
+    offthreadCacheMb: num('RENDER_OFFTHREAD_CACHE_MB', 512),
     /**
      * Path to a Chromium/Chrome binary for local rendering. Remotion downloads
      * its own headless shell by default, which fails on locked-down hosts and

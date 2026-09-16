@@ -166,6 +166,12 @@ async function renderLocally(
     crf: 21,
     onProgress: ({ progress }) => onProgress(progress),
     browserExecutable: env.render.browserExecutable,
+    // Pinned rather than derived from the host's free memory. Remotion's own
+    // default is a share of whatever RAM happens to be there, which means the
+    // same ten-minute video takes ~6 GB on a workstation and something else
+    // entirely on a small container — speed, and whether the OOM killer turns
+    // up, become properties of the box instead of the job.
+    offthreadVideoCacheSizeInBytes: env.render.offthreadCacheMb * 1024 * 1024,
     // SwANGLE is the software GL path: slower than a GPU but identical output on
     // every machine, which matters when a render can be resumed on another host.
     chromiumOptions: {
