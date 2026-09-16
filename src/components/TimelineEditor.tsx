@@ -1439,6 +1439,8 @@ const Clip = React.memo(function Clip({
    */
   text: string;
 }) {
+  const handle = width >= 14 ? Math.max(4, Math.min(8, Math.round(width * 0.2))) : 0;
+
   return (
     <div
       data-clip-id={id}
@@ -1460,19 +1462,28 @@ const Clip = React.memo(function Clip({
     >
       <span className="pointer-events-none block truncate">{text}</span>
 
-      {/* Trim handles: invisible until hover, so the timeline stays calm. */}
-      {/* Eight pixels rather than six: the handle is the only part of a clip
-          most people ever aim for, and six is under the width of a cursor. */}
-      <span
-        data-handle="start"
-        style={{ touchAction: 'none' }}
-        className="absolute inset-y-0 left-0 w-2 cursor-ew-resize touch-none bg-chalk/0 group-hover:bg-chalk/40"
-      />
-      <span
-        data-handle="end"
-        style={{ touchAction: 'none' }}
-        className="absolute inset-y-0 right-0 w-2 cursor-ew-resize touch-none bg-chalk/0 group-hover:bg-chalk/40"
-      />
+      {/* Trim handles: invisible until hover, so the timeline stays calm.
+
+          Their width is a fraction of the clip's, never a constant. Eight
+          pixels a side is right for a two-second clip and catastrophic for a
+          caption: a 16px cue was ENTIRELY handle, so every attempt to move one
+          trimmed it instead. There is always a middle left to grab, and below
+          fourteen pixels there are no handles at all — a clip that thin is
+          something you move and nudge, not something you trim by eye. */}
+      {handle > 0 ? (
+        <>
+          <span
+            data-handle="start"
+            style={{ touchAction: 'none', width: handle }}
+            className="absolute inset-y-0 left-0 cursor-ew-resize touch-none bg-chalk/0 group-hover:bg-chalk/40"
+          />
+          <span
+            data-handle="end"
+            style={{ touchAction: 'none', width: handle }}
+            className="absolute inset-y-0 right-0 cursor-ew-resize touch-none bg-chalk/0 group-hover:bg-chalk/40"
+          />
+        </>
+      ) : null}
     </div>
   );
 });
