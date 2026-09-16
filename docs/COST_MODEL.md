@@ -97,7 +97,10 @@ Concurrency buys latency, not money. `RENDER_FRAMES_PER_LAMBDA=80` splits a
 10-minute video across ~225 invocations that run in parallel; dropping it to 40
 halves the wall-clock and costs the same, plus $0.00005 in extra invocations.
 
-**Levers.** `RENDER_DRIVER=local` is free in dollars and roughly 8× slower.
+**Levers.** `RENDER_DRIVER=local` is free in dollars and much slower: a
+ten-minute 1080p edit measured 27 minutes on four cores (9.4 rendered frames
+per second) against ~2.5 minutes on Lambda. A sixty-second short is about
+100 seconds locally, which is fine to live with; long-form is not.
 720p instead of 1080p is 2.25× cheaper and nearly invisible on a phone — this is
 what the budget guard reaches for when a job would otherwise overrun.
 

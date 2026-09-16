@@ -239,7 +239,7 @@ export function capabilities(): Capability[] {
       key: 'render',
       label: 'Cloud rendering',
       configured: env.render.driver === 'lambda' && Boolean(env.render.lambdaFunctionName),
-      fallback: 'Renders on this machine. Correct, but roughly 8× slower for long-form.',
+      fallback: 'Renders on this machine. Correct, but a ten-minute video takes ~27 min on four cores instead of ~2.5.',
       envVars: ['REMOTION_LAMBDA_FUNCTION', 'REMOTION_SERVE_URL', 'AWS_ACCESS_KEY_ID'],
       signupUrl: 'https://www.remotion.dev/docs/lambda/setup',
     },

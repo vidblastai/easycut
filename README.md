@@ -179,9 +179,9 @@ than overspending. Captions are never on that list at any budget.
 
 ## Speed
 
-Design targets, from the per-stage budget in
-[ARCHITECTURE.md](docs/ARCHITECTURE.md) — measured locally for analysis, modelled
-for the cloud render.
+Analysis is measured. The Lambda render is modelled from its per-frame cost; the
+local render is measured, because that is what you get before you configure
+anything.
 
 | Stage | 60 s short | 10 min long |
 | --- | --- | --- |
@@ -191,6 +191,17 @@ for the cloud render.
 | Reframe + assets | 11 s | 20 s |
 | Render (Lambda) | 35 s | 150 s |
 | **Total** | **~72 s** | **~5 min** |
+
+**Rendering on your own machine instead.** A real ten-minute edit — 75 segments,
+301 captions, 47 sound cues, 1080p — took **27 minutes** on four cores, at 9.4
+rendered frames per second, end to end including the 51-second analysis. A
+sixty-second short is about a hundred seconds. `npm run bench:render` measures
+your machine rather than trusting this table.
+
+That number used to be 111 minutes. Remotion's Linux default puts a software
+OpenGL stack (SwANGLE) under the headless browser, which for video, text and
+boxes means a hardware emulator sitting between Skia and a bitmap Skia can
+already write. Turning it off is 4.1×, and is now the default — see `RENDER_GL`.
 
 ---
 
