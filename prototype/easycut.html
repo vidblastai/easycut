@@ -2,6 +2,11 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap">
+<!-- The caption faces. Sixteen looks are only sixteen looks if they are set in
+     sixteen typefaces; a picker that changes the colour of one face is a colour
+     picker. These are the same families src/lib/captions/fonts.ts names, so what
+     this page shows is what the renderer draws. -->
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@500;600;700;900&family=Poppins:wght@500;600;700;800&family=Montserrat:wght@600;700;800;900&family=Outfit:wght@500;600;700;900&family=Figtree:wght@500;600;700;800&family=Archivo+Black&family=Anton&family=Bebas+Neue&family=Oswald:wght@500;600;700&family=Rubik:wght@500;600;700;800&family=Luckiest+Guy&family=Space+Grotesk:wght@500;600;700&family=Playfair+Display:wght@600;700;800&family=Lora:wght@500;600;700&display=swap">
 
 <style>
 /* ───────────────────────────────────────────────────────────────────────────
@@ -1047,6 +1052,44 @@ body.instudio { overflow: hidden; }
 }
 .snapline { position: absolute; top: 0; bottom: 0; width: 1px; background: var(--warn); opacity: .85; pointer-events: none; z-index: 6; }
 
+
+/* ── the caption look picker ───────────────────────────────────────── */
+.capbar { display: flex; gap: 4px; background: var(--charcoal); border-radius: 10px; padding: 3px; margin-bottom: 10px; }
+.capbar button {
+  flex: 1; border-radius: 7px; padding: 4px 2px; font-size: 11px; font-weight: 600;
+  color: var(--muted); transition: background var(--fast), color var(--fast);
+}
+.capbar button[aria-pressed="true"] { background: var(--violet); color: var(--ink); }
+.capbar button:hover:not([aria-pressed="true"]) { color: var(--chalk); }
+
+.capgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; }
+.captile {
+  border: 1px solid var(--line); border-radius: 10px; overflow: hidden; text-align: left;
+  transition: border-color var(--fast);
+}
+.captile:hover { border-color: #3a3a47; }
+.captile[aria-pressed="true"] { border-color: var(--violet); }
+/* A window onto the strip of frame where this look's captions sit, rather than
+   a whole 9:16 frame — sixteen of those would be four thousand pixels tall. */
+.captile .win {
+  position: relative; display: block; aspect-ratio: 16 / 9; overflow: hidden;
+  /* `cqw` inside resolves against this box, which is how a tile can be drawn at
+     the video's own scale without knowing its pixel width. */
+  container-type: inline-size;
+  background: radial-gradient(120% 140% at 24% 12%, #4a4a63 0%, #26263a 44%, #121218 100%);
+}
+.captile .win .at {
+  position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+  display: flex; flex-wrap: wrap; align-items: baseline; justify-content: center;
+  gap: .1em .26em; max-width: 88%; text-align: center;
+}
+.captile .nm {
+  display: block; padding: 5px 8px; font-size: 11px; font-weight: 600;
+  color: var(--muted); background: var(--charcoal);
+}
+.captile[aria-pressed="true"] .nm { color: var(--chalk); background: var(--violet-dim); }
+.capmeta { margin-top: 8px; font-size: 10.5px; color: var(--faint); }
+
 /* ── inspector, docked to the right of the tracks ──────────────────── */
 .st-insp {
   flex: none; width: 250px; border-left: 1px solid var(--line-soft);
@@ -1629,6 +1672,13 @@ body.instudio { overflow: hidden; }
           <h5 id="tl-ops-h">Selected</h5>
           <div class="insp" id="tl-insp"></div>
           <div id="tl-ops-body" style="margin-top:14px"></div>
+
+          <div style="margin-top:20px;border-top:1px solid var(--line-soft);padding-top:16px">
+            <h5>Caption look</h5>
+            <div class="capbar" id="cap-fams"></div>
+            <div class="capgrid" id="cap-grid"></div>
+            <p class="capmeta" id="cap-meta"></p>
+          </div>
         </aside>
       </div>
     </div>
@@ -1658,6 +1708,33 @@ body.instudio { overflow: hidden; }
    page keeps that property: changing the selection below re-derives the layer
    counts, the caption treatment and the preview. Nothing branches on a name.
    ═══════════════════════════════════════════════════════════════════════════ */
+/* ═══════════════════════════════════════════════════════════════════════════
+   Caption looks — the same sixteen as src/lib/captions/presets.ts.
+
+   Pacing and typography are separate decisions. An edit style names a default
+   caption look; picking a different one changes nothing else about the edit,
+   and costs nothing to re-render because the analysis is cached.
+   ═══════════════════════════════════════════════════════════════════════════ */
+const CAPS = [
+  { id:'clean-plate',  name:'Clean plate',  fam:'quiet', font:'Plus Jakarta Sans', anim:'karaoke', weight:700, size:.046, words:5, y:.78, upper:false, col:'#FFFFFF', hot:'#9B7BFF', plate:'rgba(13,13,16,.72)', stroke:0, box:null, glow:0, grad:null },
+  { id:'subtitle',     name:'Subtitle',     fam:'quiet', font:'Inter',             anim:'fade',    weight:600, size:.030, words:8, y:.88, upper:false, col:'#FFFFFF', hot:'#FFFFFF', plate:'rgba(0,0,0,.66)',    stroke:0, box:null, glow:0, grad:null },
+  { id:'soft',         name:'Soft',         fam:'quiet', font:'Figtree',           anim:'fade',    weight:600, size:.040, words:6, y:.82, upper:false, col:'#F5F5F7', hot:'#B39AFF', plate:null,                 stroke:0, box:null, glow:0, grad:null },
+  { id:'podcast',      name:'Podcast',      fam:'quiet', font:'Rubik',             anim:'karaoke', weight:600, size:.034, words:8, y:.88, upper:false, col:'#F5F5F7', hot:'#5BD6A0', plate:'rgba(13,13,16,.62)', stroke:0, box:null, glow:0, grad:null },
+  { id:'bold-pop',     name:'Bold pop',     fam:'punchy',font:'Poppins',           anim:'bounce',  weight:800, size:.062, words:3, y:.72, upper:false, col:'#FFFFFF', hot:'#9B7BFF', plate:null,                 stroke:7, box:null, glow:0, grad:null },
+  { id:'highlight-box',name:'Highlight box',fam:'punchy',font:'Montserrat',        anim:'box',     weight:800, size:.058, words:4, y:.74, upper:false, col:'#FFFFFF', hot:'#0D0D10', plate:null,                 stroke:0, box:'#9B7BFF', glow:0, grad:null },
+  { id:'neon',         name:'Neon',         fam:'punchy',font:'Outfit',            anim:'pop',     weight:700, size:.056, words:3, y:.72, upper:false, col:'#EAFBFF', hot:'#5BD6A0', plate:null,                 stroke:0, box:null, glow:26, grad:null },
+  { id:'gradient',     name:'Gradient',     fam:'punchy',font:'Space Grotesk',     anim:'pop',     weight:700, size:.056, words:3, y:.74, upper:true,  col:'#FFFFFF', hot:'#B39AFF', plate:null,                 stroke:0, box:null, glow:0, grad:['#9B7BFF','#5BD6A0'] },
+  { id:'mono',         name:'Mono',         fam:'punchy',font:'JetBrains Mono',    anim:'typewriter',weight:700,size:.040, words:5, y:.80, upper:false, col:'#F5F5F7', hot:'#5BD6A0', plate:'rgba(13,13,16,.8)',  stroke:0, box:null, glow:0, grad:null },
+  { id:'impact',       name:'Impact',       fam:'loud',  font:'Anton',             anim:'shake',   weight:400, size:.082, words:3, y:.70, upper:true,  col:'#FFFFFF', hot:'#F5C453', plate:null,                 stroke:9, box:null, glow:0, grad:null },
+  { id:'cartoon',      name:'Cartoon',      fam:'loud',  font:'Luckiest Guy',      anim:'bounce',  weight:400, size:.072, words:3, y:.72, upper:true,  col:'#FFF2C7', hot:'#FF7B7B', plate:null,                 stroke:10,box:null, glow:0, grad:null },
+  { id:'slab',         name:'Slab',         fam:'loud',  font:'Archivo Black',     anim:'scale',   weight:400, size:.068, words:3, y:.72, upper:true,  col:'#0D0D10', hot:'#0D0D10', plate:'#F5C453',            stroke:0, box:null, glow:0, grad:null },
+  { id:'ticker',       name:'Ticker',       fam:'loud',  font:'Bebas Neue',        anim:'slide',   weight:400, size:.062, words:5, y:.86, upper:true,  col:'#FFFFFF', hot:'#9B7BFF', plate:'rgba(13,13,16,.85)', stroke:0, box:null, glow:0, grad:null },
+  { id:'newsroom',     name:'Newsroom',     fam:'editorial',font:'Oswald',         anim:'slide',   weight:600, size:.048, words:6, y:.84, upper:true,  col:'#FFFFFF', hot:'#FF7B7B', plate:'rgba(13,13,16,.9)',  stroke:0, box:null, glow:0, grad:null },
+  { id:'editorial',    name:'Editorial',    fam:'editorial',font:'Playfair Display',anim:'fade',   weight:700, size:.046, words:6, y:.84, upper:false, col:'#F5F5F7', hot:'#E8C89A', plate:null,                 stroke:0, box:null, glow:0, grad:null },
+  { id:'memoir',       name:'Memoir',       fam:'editorial',font:'Lora',           anim:'fade',    weight:600, size:.040, words:7, y:.86, upper:false, col:'#F1EDE4', hot:'#E8C89A', plate:null,                 stroke:0, box:null, glow:0, grad:null },
+];
+const CAP_BY_ID = Object.fromEntries(CAPS.map((c) => [c.id, c]));
+
 const STYLES = {
   clean: {
     name: 'Clean', tagline: 'Let the message carry it.', accent: '#9B7BFF',
@@ -1757,7 +1834,18 @@ const state = {
   note: 'Keep the bit about raising prices.',
   fmt: 'short', style: 'punchy', inmode: 'raw', step: 0,
                 layers: { captions: true, broll: true, graphics: true, sfx: true, punchIns: true, music: true },
-                capScale: 1, capPos: null, edited: false };
+                capScale: 1, capPos: null, edited: false,
+                /* The caption look, independent of the edit style. Null means
+                   "whatever this style defaults to" — the two lists are
+                   separate on purpose. */
+                capPreset: null, capFam: 'all' };
+
+/* The caption look in force: the user's pick, or the one the edit style names. */
+const STYLE_CAP_DEFAULT = { clean: 'clean-plate', punchy: 'bold-pop', documentary: 'editorial',
+                            explainer: 'highlight-box', podcast: 'podcast', vlog: 'cartoon' };
+function capNow() {
+  return CAP_BY_ID[state.capPreset ?? STYLE_CAP_DEFAULT[state.style]] ?? CAPS[0];
+}
 
 const $ = (id) => document.getElementById(id);
 const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -1768,7 +1856,7 @@ function buildHomeLooks() {
     <button class="look" data-style="${k}" data-route="new">
       <span class="t"><i class="dot" style="background:${s.accent}"></i>${s.name}</span>
       <span class="l">${s.tagline}</span>
-      <span class="b">${s.cap.words} words a card · ${s.cap.upper ? 'all caps' : 'sentence case'} · ${s.music}</span>
+      <span class="b">${CAP_BY_ID[STYLE_CAP_DEFAULT[k]].name} captions · ${s.music}</span>
     </button>`).join('');
 }
 
@@ -2004,7 +2092,7 @@ function render() {
   $('stats').innerHTML = [
     ['Removed', `${removed}s`, 'pauses, ums, retakes'],
     ['Cuts', DOC.segments.length - 1, 'visible splices'],
-    ['Captions', c.caps, `cards, ${s.cap.words} words each`],
+    ['Captions', c.caps, `cards, ${capNow().words} words each`],
     ['B-roll', c.broll, 'inserts'],
     ['Graphics', c.gfx, 'stat cards'],
     ['Sound effects', c.sfx, 'cues'],
@@ -2063,7 +2151,7 @@ function syncTweaks() {
     <button class="pill ${state.layers[k] ? '' : 'off'}" data-layer="${k}"
       aria-pressed="false">${state.layers[k] ? n : n + ' off'}</button>`).join('');
 
-  const cap = STYLES[state.style].cap;
+  const cap = capNow();
   $('cap-size').value = Math.round(cap.size * state.capScale * 1000);
   $('cap-size-v').textContent = Math.round(state.capScale * 100) + '%';
   const pos = state.capPos ?? cap.y;
@@ -2072,7 +2160,7 @@ function syncTweaks() {
 }
 
 $('cap-size').addEventListener('input', (e) => {
-  state.capScale = (+e.target.value / 1000) / STYLES[state.style].cap.size;
+  state.capScale = (+e.target.value / 1000) / capNow().size;
   state.edited = true;
   $('cap-size-v').textContent = Math.round(state.capScale * 100) + '%';
   paintPreview(); render();
@@ -2082,6 +2170,58 @@ $('cap-pos').addEventListener('input', (e) => {
   state.edited = true;
   $('cap-pos-v').textContent = e.target.value + '%';
   paintPreview(); render();
+});
+
+
+/* ═══════════════════════════════════════════════ the caption picker ═══ */
+/* Sixteen finished looks, each drawn by the same `capWordHtml` the live
+   preview uses, so a tile can never advertise something the video will not
+   render. The tile is a window onto the band where THIS look's captions sit —
+   the translate is a percentage of the frame's own height, so the crop follows
+   `y` rather than assuming the middle. */
+const CAP_FAMS = [['all', 'All'], ['quiet', 'Quiet'], ['punchy', 'Punchy'], ['loud', 'Loud'], ['editorial', 'Editorial']];
+const CAP_SAMPLE = 'Watched on mute';
+
+function capTileHtml(cap, chosen) {
+  /* The tile shows the band where captions live, not a whole 9:16 frame —
+     sixteen of those would be four thousand pixels of mostly empty picture.
+     Size is in `cqw`, a share of the tile's own width, and the frame this look
+     would be set in is 16/9 tile-widths tall — so a 4.6%-of-height caption
+     lands at exactly the size it would in the video, whatever the tile's
+     pixel width turns out to be. */
+  const size = (16 / 9) * cap.size * 100;
+  const words = CAP_SAMPLE.split(' ').slice(0, Math.max(2, Math.min(cap.words, 3)));
+  const inner = words.map((w, i) => capWordHtml(cap, w, size, { active: i === 1, u: 'cqw' })).join('');
+  const plate = cap.plate
+    ? `background:${cap.plate};padding:${(size * .3).toFixed(2)}cqw ${(size * .5).toFixed(2)}cqw;border-radius:${(size * .22).toFixed(2)}cqw;`
+    : '';
+  return `<button class="captile" data-cap="${cap.id}" aria-pressed="${chosen}" title="${cap.name}">
+    <span class="win"><span class="at" style="${plate}">${inner}</span></span>
+    <span class="nm">${cap.name}</span>
+  </button>`;
+}
+
+function renderCapPicker() {
+  const now = capNow();
+  $('cap-fams').innerHTML = CAP_FAMS.map(([k, n]) =>
+    `<button data-capfam="${k}" aria-pressed="${state.capFam === k}">${n}</button>`).join('');
+  const shown = CAPS.filter((c) => state.capFam === 'all' || c.fam === state.capFam);
+  $('cap-grid').innerHTML = shown.map((c) => capTileHtml(c, c.id === now.id)).join('');
+  $('cap-meta').textContent = `${now.name} · ${now.font} ${now.weight} · ${now.words} words a card`;
+}
+
+document.addEventListener('click', (e) => {
+  const fam = e.target.closest('[data-capfam]');
+  if (fam) { state.capFam = fam.dataset.capfam; renderCapPicker(); return; }
+
+  const tile = e.target.closest('[data-cap]');
+  if (!tile) return;
+  state.capPreset = tile.dataset.cap;
+  /* A different look regroups the words, so the document is rebuilt — which is
+     exactly what happens in the real pipeline, from cached analysis, for free. */
+  state.capScale = 1; state.capPos = null; state.edited = true;
+  BASE_OVERRIDE = null;
+  renderCapPicker(); paintPreview(); render();
 });
 
 /* ═══════════════════════════════════════════════ the preview ═══ */
@@ -2094,13 +2234,71 @@ let playing = !reduced, last = performance.now();
    dragging either one moves the other — because they are the same number. */
 Object.defineProperty(window, 't', { get: () => tl.head, set: (v) => { tl.head = v; } });
 
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   One caption word, painted.
+
+   Shared by the live preview and every tile in the picker, so a look can never
+   be advertised as one thing and rendered as another. Mirrors
+   src/lib/captions/paint.ts — the module the real renderer uses for exactly
+   the same reason.
+   ═══════════════════════════════════════════════════════════════════════════ */
+function capWordHtml(cap, txt, size, st) {
+  const { arrived = true, active = false, emphasis = false, k = 1, lineK = 1, u = 'px' } = st || {};
+  let op = 1, sc = 1, ty = 0, rot = 0;
+
+  switch (cap.anim) {
+    case 'karaoke': case 'box':
+      op = arrived ? 1 : .45; if (active && cap.anim === 'karaoke') sc = 1.04; break;
+    case 'fade': op = lineK; break;
+    case 'slide': op = lineK; ty = (1 - lineK) * size * .5; break;
+    case 'scale': op = lineK; sc = .84 + lineK * .16; break;
+    case 'typewriter': if (!arrived) return ''; break;
+    case 'shake':
+      if (!arrived) return '';
+      sc = .8 + k * .2; op = Math.min(1, k * 1.8);
+      if (emphasis) rot = (1 - k) * 7;
+      break;
+    default: {
+      if (!arrived) return '';
+      const over = cap.anim === 'bounce' ? Math.sin(k * Math.PI) * .13 : 0;
+      sc = .74 + k * .26 + over; op = Math.min(1, k * 1.7); ty = (1 - k) * size * .26;
+    }
+  }
+
+  const boxed = cap.anim === 'box' && active && cap.box;
+  let col = emphasis ? cap.hot : cap.col;
+  if ((cap.anim === 'karaoke' || cap.anim === 'box') && active) col = cap.hot;
+
+  /* A stroke centred on the outline eats half its width out of the glyph, so a
+     heavy one closes the counters. `paint-order` puts the whole width outside. */
+  const stroke = cap.stroke && !boxed
+    ? `-webkit-text-stroke:${(cap.stroke * size / 62).toFixed(3)}${u} #000;paint-order:stroke fill;` : '';
+  const glow = cap.glow
+    ? `text-shadow:0 0 ${(size * cap.glow / 160).toFixed(3)}${u} ${cap.hot},0 0 ${(size * cap.glow / 62).toFixed(3)}${u} ${cap.hot};`
+    : `text-shadow:0 ${(size * .07).toFixed(3)}${u} ${(size * .3).toFixed(3)}${u} rgba(0,0,0,.6);`;
+  /* A gradient fill has to be clipped to the glyphs, which means no flat colour. */
+  const grad = cap.grad
+    ? `background-image:linear-gradient(180deg,${cap.grad[0]},${cap.grad[1]});-webkit-background-clip:text;background-clip:text;color:transparent;`
+    : `color:${col};`;
+  const box = boxed
+    ? `background:${cap.box};border-radius:${(size * .14).toFixed(3)}${u};` +
+      `padding:${(size * .05).toFixed(3)}${u} ${(size * .12).toFixed(3)}${u};` +
+      `margin:${(-size * .05).toFixed(3)}${u} ${(-size * .06).toFixed(3)}${u};` : '';
+
+  return `<span class="w" style="font-family:'${cap.font}',var(--sans);font-size:${size}${u};` +
+    `font-weight:${emphasis ? Math.min(900, cap.weight + 100) : cap.weight};` +
+    `opacity:${op};transform:scale(${sc}) translateY(${ty}${u}) rotate(${rot}deg);` +
+    `${glow}${grad}${stroke}${box}">${cap.upper ? txt.toUpperCase() : txt}</span>`;
+}
+
 function cueFor(time) {
   const cue = DOC.captions.find((c) => time >= c.a - .12 && time <= c.b + .30);
   return cue ? cue.words.map((w) => [w.t, w.a, w.b, w.em ? 1 : 0]) : [];
 }
 
 function paintPreview() {
-  const s = STYLES[state.style], cap = s.cap;
+  const s = STYLES[state.style], cap = capNow();
   const ph = $('phone');
   ph.style.aspectRatio = state.fmt === 'short' ? '9 / 16' : '16 / 9';
   $('fmt-badge').textContent = `${FORMATS[state.fmt].ratio} · ${FORMATS[state.fmt].dims}`;
@@ -2110,36 +2308,18 @@ function paintPreview() {
   /* Captions ------------------------------------------------------------- */
   const caps = $('caps');
   caps.style.top = ((state.capPos ?? cap.y) * 100) + '%';
-  caps.classList.toggle('plate', !!cap.plate && state.layers.captions);
+  caps.style.background = cap.plate && state.layers.captions ? cap.plate : 'transparent';
+  caps.style.padding = cap.plate && state.layers.captions ? '.5em .9em' : '0';
+  caps.style.borderRadius = '14px';
 
   const grp = state.layers.captions ? cueFor(t) : [];
   const size = H * cap.size * state.capScale;
 
-  caps.innerHTML = grp.map(([txt, a, b, em]) => {
-    const on = t >= a;
-    let op = 1, sc = 1, ty = 0, col = em ? s.accent : '#fff';
-
-    if (cap.anim === 'karaoke') {
-      op = on ? 1 : .42;
-      if (t >= a && t < b) { col = s.accent; sc = 1.04; }
-    } else if (cap.anim === 'fade') {
-      op = Math.min(1, Math.max(0, (t - grp[0][1] + .12) / .3));
-    } else {
-      if (!on) return '';
-      const k = Math.min(1, (t - a) / .22);
-      const over = cap.anim === 'bounce' ? Math.sin(k * Math.PI) * .13 : 0;
-      sc = .74 + k * .26 + over;
-      op = Math.min(1, k * 1.7);
-      ty = (1 - k) * size * .26;
-    }
-
-    const stroke = cap.stroke
-      ? `-webkit-text-stroke:${Math.max(1, size * .085)}px #000;paint-order:stroke fill;` : '';
-    return `<span class="w" style="font-size:${size}px;font-weight:${em ? Math.min(900, cap.weight + 100) : cap.weight};
-      color:${col};opacity:${op};transform:scale(${sc}) translateY(${ty}px);
-      text-shadow:0 ${size * .07}px ${size * .3}px rgba(0,0,0,.6);${stroke}">${
-        cap.upper ? txt.toUpperCase() : txt}</span>`;
-  }).join('');
+  caps.innerHTML = grp.map(([txt, a, b, em]) => capWordHtml(cap, txt, size, {
+    arrived: t >= a, active: t >= a && t < b, emphasis: !!em,
+    k: Math.min(1, Math.max(0, (t - a) / .22)),
+    lineK: Math.min(1, Math.max(0, (t - (grp[0] ? grp[0][1] : 0) + .12) / .3)),
+  })).join('');
 
   /* Camera: reframe drift + punch-in -------------------------------------- */
   let scale = 1;
@@ -2264,7 +2444,7 @@ let BASE_OVERRIDE = null;
 
 /** The untouched document, rebuilt whenever the style changes caption grouping. */
 function baseDoc() {
-  const words = STYLES[state.style].cap.words;
+  const words = capNow().words;
   const caps = [];
   for (let i = 0; i < WORDS.length; i += words) {
     const grp = WORDS.slice(i, i + words);
@@ -3319,6 +3499,7 @@ buildHomeLooks();
 buildWizard();
 buildNav();
 buildDashboard();
+renderCapPicker();
 syncTweaks();
 refreshDoc();
 buildLanes();

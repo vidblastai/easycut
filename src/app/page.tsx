@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { Logo, LogoMark } from '@/components/Logo';
+import { CaptionShowcase } from '@/components/captions/CaptionShowcase';
 import { STYLE_LIST } from '@/lib/styles/presets';
 
 /**
@@ -93,6 +94,13 @@ export default function HomePage() {
             See an example
           </Link>
         </div>
+
+        {/* The captions are the product — most short-form is watched muted —
+            so the page shows them rather than describing them. These are the
+            real presets, drawn by the renderer's own paint code. */}
+        <div className="mt-14">
+          <CaptionShowcase />
+        </div>
       </section>
 
       {/* ----------------------------------------------------------- steps */}
@@ -118,9 +126,12 @@ export default function HomePage() {
             Not filters on top of your video — an actual edit, built from what you said.
           </p>
 
-          <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {/* One surface split by hairlines rather than six bordered cards.
+              Border, radius and fill each say "separate object", and six of
+              them in a grid said it six times about one list. */}
+          <div className="mt-10 grid gap-px overflow-hidden rounded-2xl bg-line sm:grid-cols-2 lg:grid-cols-3">
             {LAYERS.map((layer) => (
-              <div key={layer.title} className="card p-6 transition-colors hover:border-violet/40">
+              <div key={layer.title} className="bg-charcoal p-6">
                 <h3 className="text-base font-bold tracking-[-0.02em]">{layer.title}</h3>
                 <p className="mt-2 text-sm leading-relaxed text-muted">{layer.body}</p>
               </div>
