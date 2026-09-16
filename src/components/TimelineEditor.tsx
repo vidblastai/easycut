@@ -64,8 +64,27 @@ interface DragState {
   freeform: boolean;
 }
 
-/** Zoom steps in pixels per second. */
-const ZOOMS = [12, 20, 32, 50, 80, 130, 210];
+/**
+ * Zoom, in pixels per second, as a continuous quantity.
+ *
+ * It used to be seven fixed stops, which is what a zoom control looks like when
+ * nobody has had to work at frame level with it. Every step was a jump of
+ * 55–65%, so the scale you actually wanted was almost always between two of
+ * them: one stop showed the whole edit and the next showed a quarter of it,
+ * and there was nothing in between. Now any scale is reachable and the stops
+ * are gone.
+ *
+ * The top end puts a 30fps frame thirteen pixels wide, which is the point past
+ * which more zoom buys nothing. The bottom end is computed per video — the
+ * scale at which the whole thing fits the window — because "further out than
+ * the whole video" is not a view of anything.
+ */
+const MAX_PPS = 400;
+const DEFAULT_PPS = 32;
+/** One press of − or +. A ratio rather than an amount, because zoom is geometric. */
+const ZOOM_STEP = 1.3;
+/** How hard a wheel notch bites. One notch is about 12%. */
+const WHEEL_ZOOM = 0.0022;
 /**
  * How close, in SCREEN pixels, counts as a snap.
  *
@@ -90,7 +109,7 @@ export function TimelineEditor({
   const [redoStack, setRedoStack] = useState<EdlOperation[]>([]);
   const [selection, setSelection] = useState<Selection>(null);
   const [playhead, setPlayhead] = useState(0);
-  const [zoomIndex, setZoomIndex] = useState(2);
+  const [pps, setPps] = useState(DEFAULT_PPS);
   const [warning, setWarning] = useState<string | null>(null);
 
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -102,8 +121,8 @@ export function TimelineEditor({
   opsRef.current = ops;
   const redoRef = useRef(redoStack);
   redoRef.current = redoStack;
-  const zoomIndexRef = useRef(zoomIndex);
-  zoomIndexRef.current = zoomIndex;
+  const ppsRef = useRef(pps);
+  ppsRef.current = pps;
 
   /**
    * Live geometry while a drag is in flight. The clip follows the cursor from
@@ -126,7 +145,6 @@ export function TimelineEditor({
   const edlRef = useRef(edl);
   edlRef.current = edl;
 
-  const pps = ZOOMS[zoomIndex];
   const duration = edl.format.durationSec;
   const width = Math.max(320, duration * pps);
   const fps = edl.format.fps || 30;
@@ -176,9 +194,32 @@ export function TimelineEditor({
    */
   const zoomAnchor = useRef<{ sec: number; screenX: number } | null>(null);
 
-  const zoomTo = useCallback((nextIndex: number, atClientX?: number) => {
-    const clamped = Math.max(0, Math.min(ZOOMS.length - 1, nextIndex));
-    if (clamped === zoomIndex) return;
+  /**
+   * How wide the tracks are allowed to be, watched rather than measured once.
+   *
+   * The bottom of the zoom range is "the whole video fits", which depends on
+   * the window — and the dock is resizable, so it changes while you work.
+   */
+  const [viewport, setViewport] = useState(960);
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const measure = () => setViewport(Math.max(240, el.clientWidth - TRACK_LABEL_W - 24));
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+
+  /** The scale at which the whole edit is exactly one screen wide. */
+  const fitPps = duration > 0 ? viewport / duration : DEFAULT_PPS;
+  // Never further out than the whole video — that is a view of nothing — but
+  // short clips are still allowed to breathe rather than being pinned wide.
+  const minPps = Math.max(0.4, Math.min(fitPps, 12));
+
+  const zoomTo = useCallback((nextPps: number, atClientX?: number) => {
+    const clamped = Math.max(minPps, Math.min(MAX_PPS, nextPps));
+    if (Math.abs(clamped - ppsRef.current) < 1e-4) return;
 
     const el = scrollRef.current;
     if (el) {
@@ -188,11 +229,11 @@ export function TimelineEditor({
       // the person is looking at.
       const screenX = atClientX != null
         ? atClientX - rect.left - TRACK_LABEL_W
-        : Math.min(Math.max(playhead * pps - el.scrollLeft, 0), el.clientWidth - TRACK_LABEL_W);
-      zoomAnchor.current = { sec: (el.scrollLeft + screenX) / pps, screenX };
+        : Math.min(Math.max(playhead * ppsRef.current - el.scrollLeft, 0), el.clientWidth - TRACK_LABEL_W);
+      zoomAnchor.current = { sec: (el.scrollLeft + screenX) / ppsRef.current, screenX };
     }
-    setZoomIndex(clamped);
-  }, [zoomIndex, pps, playhead]);
+    setPps(clamped);
+  }, [minPps, playhead]);
 
   useLayoutEffect(() => {
     const el = scrollRef.current;
@@ -204,14 +245,31 @@ export function TimelineEditor({
 
   /** Fit the whole edit in the window — the "where am I" button. */
   const zoomToFit = useCallback(() => {
-    const el = scrollRef.current;
-    if (!el || !duration) return;
-    const available = el.clientWidth - TRACK_LABEL_W - 24;
-    let best = 0;
-    ZOOMS.forEach((z, i) => { if (duration * z <= available) best = i; });
+    if (!duration) return;
     zoomAnchor.current = { sec: 0, screenX: 0 };
-    setZoomIndex(best);
-  }, [duration]);
+    setPps(Math.max(minPps, Math.min(MAX_PPS, fitPps)));
+  }, [duration, fitPps, minPps]);
+
+  // Resizing the dock moves the floor — the whole video fits at a different
+  // scale — so a view that was legal can stop being. Pull it back in rather
+  // than leaving the slider pinned past its own end.
+  useEffect(() => {
+    setPps((current) => Math.max(minPps, Math.min(MAX_PPS, current)));
+  }, [minPps]);
+
+  /**
+   * The slider's position, 0 to 1, and its inverse.
+   *
+   * Logarithmic, because zoom is multiplicative: the difference between 4 and 8
+   * pixels per second is the same GESTURE as the difference between 200 and
+   * 400, and a linear slider would spend nine tenths of its travel in the
+   * zoomed-in half where nobody needs the resolution.
+   */
+  const zoomFraction = Math.max(0, Math.min(1, Math.log(pps / minPps) / Math.log(MAX_PPS / minPps)));
+  const ppsAtFraction = useCallback(
+    (t: number) => minPps * Math.pow(MAX_PPS / minPps, Math.max(0, Math.min(1, t))),
+    [minPps],
+  );
 
   /**
    * The wheel, behaving the way every editor's wheel behaves.
@@ -227,7 +285,11 @@ export function TimelineEditor({
     const onWheel = (event: WheelEvent) => {
       if (event.ctrlKey || event.metaKey) {
         event.preventDefault();
-        zoomToRef.current(zoomIndexRef.current + (event.deltaY < 0 ? 1 : -1), event.clientX);
+        // Continuous, and bounded per event: a trackpad can report a delta of
+        // several hundred in one go, and an unbounded exponent turns that into
+        // a jump from the whole edit to two seconds of it.
+        const bite = Math.max(-80, Math.min(80, -event.deltaY));
+        zoomToRef.current(ppsRef.current * Math.exp(bite * WHEEL_ZOOM), event.clientX);
         return;
       }
       // Shift-wheel, and any mouse or trackpad that reports a horizontal
@@ -257,12 +319,22 @@ export function TimelineEditor({
    * band, and never while you are dragging — the timeline yanking itself
    * sideways under a clip you are holding is how a drag ends up somewhere you
    * did not choose.
+   *
+   * And never on a zoom, which is the subtler version of the same mistake. A
+   * zoom is anchored on the moment under the cursor; this effect ran afterwards
+   * and dragged the view back to wherever the playhead was parked, so zooming
+   * into second ninety while the playhead sat at zero silently snapped you back
+   * to the top. Looking somewhere other than the playhead is a thing people do
+   * on purpose.
    */
+  const followedPlayhead = useRef(playhead);
   useEffect(() => {
     const el = scrollRef.current;
     if (!el || dragRef.current) return;
+    if (followedPlayhead.current === playhead) return;
+    followedPlayhead.current = playhead;
 
-    const x = playhead * pps;
+    const x = playhead * ppsRef.current;
     const viewLeft = el.scrollLeft;
     const viewWidth = el.clientWidth - TRACK_LABEL_W;
     const margin = Math.min(160, viewWidth * 0.18);
@@ -272,7 +344,7 @@ export function TimelineEditor({
     } else if (x > viewLeft + viewWidth - margin) {
       el.scrollTo({ left: x - viewWidth + margin, behavior: 'auto' });
     }
-  }, [playhead, pps]);
+  }, [playhead]);
 
   const togglePlay = useCallback(() => {
     const player = playerRef?.current;
@@ -717,6 +789,11 @@ export function TimelineEditor({
         return;
       }
 
+      // Zoom from the keyboard, the same geometric step as the buttons.
+      if (event.key === '-' || event.key === '_') { event.preventDefault(); zoomTo(ppsRef.current / ZOOM_STEP); return; }
+      if (event.key === '=' || event.key === '+') { event.preventDefault(); zoomTo(ppsRef.current * ZOOM_STEP); return; }
+      if (event.key === '0') { event.preventDefault(); zoomToFit(); return; }
+
       if (event.key === '?') {
         event.preventDefault();
         setShowKeys((open) => !open);
@@ -810,7 +887,7 @@ export function TimelineEditor({
 
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [selection, playhead, edl, fps, duration, push, undo, redo, seek, togglePlay]);
+  }, [selection, playhead, edl, fps, duration, push, undo, redo, seek, togglePlay, zoomTo, zoomToFit]);
 
   /* ───────────────────────────────────────────────── rendering ─── */
 
@@ -902,8 +979,41 @@ export function TimelineEditor({
         </button>
 
         <div className="ml-auto flex items-center gap-2">
-          <ToolButton onClick={() => zoomTo(zoomIndex - 1)} disabled={zoomIndex === 0} title="Zoom out (Ctrl/Cmd + wheel)">&minus;</ToolButton>
-          <ToolButton onClick={() => zoomTo(zoomIndex + 1)} disabled={zoomIndex === ZOOMS.length - 1} title="Zoom in (Ctrl/Cmd + wheel)">+</ToolButton>
+          {/* Zoom, as one continuous control.
+              The buttons multiply rather than add, and the slider is
+              logarithmic, so a given distance of travel is the same change in
+              scale wherever you start from. */}
+          <div className="flex items-center gap-1.5">
+            <ToolButton
+              onClick={() => zoomTo(pps / ZOOM_STEP)}
+              disabled={pps <= minPps + 1e-4}
+              title="Zoom out (Ctrl/Cmd + wheel)"
+            >
+              &minus;
+            </ToolButton>
+
+            <input
+              type="range"
+              min={0}
+              max={1}
+              step={0.001}
+              value={zoomFraction}
+              data-zoom
+              onChange={(e) => zoomTo(ppsAtFraction(Number(e.target.value)))}
+              aria-label="Timeline zoom"
+              title={`${pps.toFixed(1)} pixels per second`}
+              className="zoom-slider h-4 w-24 cursor-ew-resize sm:w-32"
+            />
+
+            <ToolButton
+              onClick={() => zoomTo(pps * ZOOM_STEP)}
+              disabled={pps >= MAX_PPS - 1e-4}
+              title="Zoom in (Ctrl/Cmd + wheel)"
+            >
+              +
+            </ToolButton>
+          </div>
+
           <ToolButton onClick={zoomToFit} title="Fit the whole video in the window">Fit</ToolButton>
           <ToolButton onClick={() => setShowKeys(true)} title="Keyboard shortcuts (?)">?</ToolButton>
 
@@ -944,13 +1054,17 @@ export function TimelineEditor({
           >
             <div className="shrink-0 border-r border-line" style={{ width: TRACK_LABEL_W }} />
             <div className="relative" style={{ width }}>
+              {/* The mark is drawn at every tick; the LABEL is dropped when it
+                  would run off the end. A timecode is about 44px wide, and one
+                  hanging past the last frame made the timeline wider than the
+                  edit — which is why Fit could never quite fit. */}
               {ticks.map((t) => (
                 <span
                   key={t}
                   className="absolute top-0 border-l border-line pl-1 font-mono text-[10px] leading-7 text-faint"
                   style={{ left: t * pps, color: '#6E6E7C' }}
                 >
-                  {formatTc(t)}
+                  {t * pps + 46 <= width ? formatTc(t) : ''}
                 </span>
               ))}
             </div>
@@ -1252,6 +1366,8 @@ function ShortcutSheet({ onClose }: { onClose: () => void }) {
     ['Looking', [
       ['⌘ + wheel', 'Zoom where the pointer is'],
       ['⇧ + wheel', 'Scroll sideways'],
+      ['−  =', 'Zoom out / in'],
+      ['0', 'Fit the whole edit'],
       ['N', 'Snapping off and on'],
       ['Alt + drag', 'Ignore snapping for one drag'],
       ['Esc', 'Deselect'],
@@ -1886,7 +2002,7 @@ function formatTc(sec: number): string {
 
 /** Ruler ticks at a spacing that keeps labels from colliding at any zoom. */
 function tickTimes(duration: number, pps: number): number[] {
-  const candidates = [0.5, 1, 2, 5, 10, 15, 30, 60, 120];
+  const candidates = [0.1, 0.25, 0.5, 1, 2, 5, 10, 15, 30, 60, 120];
   const step = candidates.find((c) => c * pps > 64) ?? 300;
   const out: number[] = [];
   for (let t = 0; t <= duration; t += step) out.push(Number(t.toFixed(3)));

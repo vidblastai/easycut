@@ -161,3 +161,46 @@ h1, h2, h3 { letter-spacing: -0.03em; text-wrap: balance; }
   /* The one content column, centred in the space beside the sidebar. */
   .measure { width: 100%; max-width: var(--measure); margin-inline: auto; }
 }
+
+/* The timeline's zoom slider.
+   A native range input, restyled rather than rebuilt: it already handles the
+   keyboard, the pointer, touch and the screen reader, and none of that is worth
+   losing to draw a nicer track. The thumb has to be declared twice because
+   WebKit and Firefox have never agreed on the pseudo-element. */
+.zoom-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  background: transparent;
+}
+.zoom-slider::-webkit-slider-runnable-track {
+  height: 3px;
+  border-radius: 999px;
+  background: #232330;
+}
+.zoom-slider::-moz-range-track {
+  height: 3px;
+  border-radius: 999px;
+  background: #232330;
+}
+.zoom-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 12px;
+  height: 12px;
+  margin-top: -4.5px;
+  border-radius: 999px;
+  background: #9B7BFF;
+  transition: background-color 0.15s ease, transform 0.15s ease;
+}
+.zoom-slider::-moz-range-thumb {
+  width: 12px;
+  height: 12px;
+  border: 0;
+  border-radius: 999px;
+  background: #9B7BFF;
+}
+.zoom-slider:hover::-webkit-slider-thumb { background: #B39AFF; transform: scale(1.12); }
+.zoom-slider:hover::-moz-range-thumb { background: #B39AFF; }
+.zoom-slider:focus-visible { outline: none; }
+.zoom-slider:focus-visible::-webkit-slider-thumb { box-shadow: 0 0 0 3px rgba(155, 123, 255, 0.35); }
+.zoom-slider:focus-visible::-moz-range-thumb { box-shadow: 0 0 0 3px rgba(155, 123, 255, 0.35); }

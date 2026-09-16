@@ -2482,7 +2482,7 @@ body.instudio { overflow: hidden; }
           <button id="tl-zout" title="Zoom out">
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 12h14"/></svg>
           </button>
-          <input type="range" id="tl-zoomr" min="0" max="4" step="1" value="2" aria-label="Timeline zoom">
+          <input type="range" id="tl-zoomr" min="0" max="1" step="0.001" value="0.5" aria-label="Timeline zoom">
           <button id="tl-zin" title="Zoom in">
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
           </button>
@@ -3322,7 +3322,7 @@ function frame(now) {
 
 function movePlayhead() {
   const head = document.querySelector('.tl-head');
-  if (head) head.style.left = (GUTTER + tl.head * ZOOMS[tl.zoom]) + 'px';
+  if (head) head.style.left = (GUTTER + tl.head * tl.pps) + 'px';
   const tc = $('tl-tc');
   if (tc) tc.textContent = `${tcode(tl.head)} / ${tcode(DOC.duration)}`;
 }
@@ -3336,13 +3336,25 @@ function movePlayhead() {
    captions drift after a trim.
    ══════════════════════════════════════════════════════════════════ */
 
-const ZOOMS = [26, 42, 68, 110, 175];
+/* Zoom is a continuous quantity, not a ladder.
+   It used to be five fixed stops, each a 60% jump from the last, so the scale
+   you actually wanted was almost always between two of them — one stop showed
+   the whole edit and the next showed a third of it. Now the slider, the
+   buttons and the wheel all move the same single number, and every scale in
+   between is reachable. The top end puts a frame about thirteen pixels wide,
+   past which more zoom buys nothing; the bottom is "the whole video fits",
+   because further out than that is a view of nothing. */
+const MAX_PPS = 400;
+/** One press of − or +. A ratio, because zoom is multiplicative. */
+const ZOOM_STEP = 1.3;
+/** How hard one wheel notch bites. About 12%. */
+const WHEEL_ZOOM = 0.0022;
 // Just wide enough for the drag handle. The old 84px label column spelled out a
 // name for every lane, which at this density is more reading than reading of.
 const GUTTER = 30;
 const SNAP_PX = 7;
 
-const tl = { ops: [], redo: [], sel: null, zoom: 2, head: 0, drag: null, preview: null, warn: null, snapAt: null, rate: 1 };
+const tl = { ops: [], redo: [], sel: null, pps: 68, head: 0, drag: null, preview: null, warn: null, snapAt: null, rate: 1 };
 /** After an apply, the edited document becomes the new starting point. */
 let BASE_OVERRIDE = null;
 
@@ -3591,7 +3603,7 @@ function tlRedo() { if (tl.redo.length) { tl.ops.push(tl.redo.pop()); refreshDoc
 /* ─────────────────────────────────────────────────── drawing ─── */
 
 function snapSec(sec, skip) {
-  const tol = SNAP_PX / ZOOMS[tl.zoom];
+  const tol = SNAP_PX / tl.pps;
   const pts = [0, DOC.duration, tl.head];
   for (const s of DOC.segments) pts.push(s.o0, s.o1);
   for (const c of DOC.captions) pts.push(c.a, c.b);
@@ -3641,9 +3653,50 @@ const G = {
   grip:  '<svg width="11" height="15" viewBox="0 0 11 15" fill="currentColor"><circle cx="3" cy="3" r="1.2"/><circle cx="8" cy="3" r="1.2"/><circle cx="3" cy="7.5" r="1.2"/><circle cx="8" cy="7.5" r="1.2"/><circle cx="3" cy="12" r="1.2"/><circle cx="8" cy="12" r="1.2"/></svg>',
 };
 
+/** The scale at which the whole edit is exactly one screen wide. */
+function fitPps() {
+  const el = $('tl-scroll');
+  const avail = Math.max(240, (el ? el.clientWidth : 900) - GUTTER - 24);
+  return DOC.duration > 0 ? avail / DOC.duration : 68;
+}
+
+/* Never further out than the whole video, but short clips can still breathe. */
+function minPps() { return Math.max(0.4, Math.min(fitPps(), 12)); }
+
+/** Slider position 0–1. Logarithmic: the same travel is the same change in scale. */
+function zoomFraction() {
+  const lo = minPps();
+  return Math.max(0, Math.min(1, Math.log(tl.pps / lo) / Math.log(MAX_PPS / lo)));
+}
+function ppsAtFraction(t) {
+  const lo = minPps();
+  return lo * Math.pow(MAX_PPS / lo, Math.max(0, Math.min(1, t)));
+}
+
+/* Zooming, anchored.
+   Changing pixels-per-second and leaving the scroll alone means the moment
+   under your cursor is not the moment under your cursor afterwards. So we note
+   what was under a chosen screen position and put it back there. */
+function zoomTo(next, atClientX) {
+  const el = $('tl-scroll');
+  const lo = minPps();
+  const want = Math.max(lo, Math.min(MAX_PPS, next));
+  if (!el || Math.abs(want - tl.pps) < 1e-4) { tl.pps = want; drawTimeline(); return; }
+
+  const rect = el.getBoundingClientRect();
+  const screenX = atClientX != null
+    ? atClientX - rect.left - GUTTER
+    : Math.min(Math.max(tl.head * tl.pps - el.scrollLeft, 0), el.clientWidth - GUTTER);
+  const sec = (el.scrollLeft + screenX) / tl.pps;
+
+  tl.pps = want;
+  drawTimeline();
+  el.scrollLeft = Math.max(0, sec * want - screenX);
+}
+
 function drawTimeline() {
   if (state.mode !== 'timeline') return;
-  const pps = ZOOMS[tl.zoom];
+  const pps = tl.pps;
   const w = Math.max(280, DOC.duration * pps);
 
   const clip = (cls, id, a, b, label, kind, glyph, wave) => {
@@ -3671,7 +3724,11 @@ function drawTimeline() {
   let ticks = '';
   for (let t = 0; t <= DOC.duration + 0.001; t += step / 5) {
     const major = Math.abs(t / step - Math.round(t / step)) < 1e-6;
-    ticks += `<span class="tl-tick${major ? '' : ' minor'}" style="left:${t * pps}px">${major ? rulerLabel(t) : ''}</span>`;
+    // The mark is drawn at every gradation; the LABEL is dropped when it would
+    // run off the end, because one hanging past the last frame makes the
+    // timeline wider than the edit — which is why Fit could never quite fit.
+    const labelled = major && t * pps + 46 <= w;
+    ticks += `<span class="tl-tick${major ? '' : ' minor'}" style="left:${t * pps}px">${labelled ? rulerLabel(t) : ''}</span>`;
   }
 
   const musicOn = !!STYLES[state.style].music;
@@ -3717,9 +3774,9 @@ function drawTimeline() {
   $('tl-split').disabled = !DOC.segments.some((s) => tl.head > s.o0 + 0.25 && tl.head < s.o1 - 0.25);
   $('tl-apply').disabled = !tl.ops.length;
   $('tl-apply').textContent = tl.ops.length ? `Apply ${tl.ops.length} change${tl.ops.length === 1 ? '' : 's'}` : 'No changes';
-  $('tl-zin').disabled = tl.zoom === ZOOMS.length - 1;
-  $('tl-zout').disabled = tl.zoom === 0;
-  $('tl-zoomr').value = String(tl.zoom);
+  $('tl-zin').disabled = tl.pps >= MAX_PPS - 1e-4;
+  $('tl-zout').disabled = tl.pps <= minPps() + 1e-4;
+  $('tl-zoomr').value = String(zoomFraction());
 
   $('tl-warn').hidden = !tl.warn;
   if (tl.warn) $('tl-warn').textContent = tl.warn;
@@ -3815,7 +3872,7 @@ const tcode = (s) => `${Math.floor(s / 60)}:${(s % 60).toFixed(2).padStart(5, '0
 function secAtX(clientX) {
   const el = $('tl-scroll');
   const r = el.getBoundingClientRect();
-  return Math.max(0, Math.min(DOC.duration, (clientX - r.left + el.scrollLeft - GUTTER) / ZOOMS[tl.zoom]));
+  return Math.max(0, Math.min(DOC.duration, (clientX - r.left + el.scrollLeft - GUTTER) / tl.pps));
 }
 
 $('tl-inner').addEventListener('pointerdown', (e) => {
@@ -3855,7 +3912,7 @@ window.addEventListener('pointermove', (e) => {
   if (!d) return;
   if (d.kind === 'head') { tl.head = secAtX(e.clientX); paintPreview(); movePlayhead(); return; }
 
-  const delta = (e.clientX - d.x) / ZOOMS[tl.zoom];
+  const delta = (e.clientX - d.x) / tl.pps;
   if (Math.abs(e.clientX - d.x) > 2) d.moved = true;
   tl.preview = {
     id: d.id,
@@ -3991,8 +4048,8 @@ $('tl-split').addEventListener('click', splitAtHead);
 $('tl-del').addEventListener('click', deleteSelection);
 $('tl-undo').addEventListener('click', tlUndo);
 $('tl-redo').addEventListener('click', tlRedo);
-$('tl-zin').addEventListener('click', () => { tl.zoom = Math.min(ZOOMS.length - 1, tl.zoom + 1); drawTimeline(); });
-$('tl-zout').addEventListener('click', () => { tl.zoom = Math.max(0, tl.zoom - 1); drawTimeline(); });
+$('tl-zin').addEventListener('click', () => zoomTo(tl.pps * ZOOM_STEP));
+$('tl-zout').addEventListener('click', () => zoomTo(tl.pps / ZOOM_STEP));
 
 /* ══════════════════════════════════════════════ the studio chrome ═══
    Every one of these drives the same document the AI wrote. The top strip is
@@ -4043,14 +4100,29 @@ function flashInsp(html) {
 }
 
 /* ── transport extras ── */
-$('tl-zoomr').addEventListener('input', (e) => { tl.zoom = +e.target.value; drawTimeline(); });
+$('tl-zoomr').addEventListener('input', (e) => zoomTo(ppsAtFraction(+e.target.value)));
 $('tl-fit').addEventListener('click', () => {
-  const avail = $('tl-scroll').clientWidth - GUTTER - 24;
-  let best = 0;
-  ZOOMS.forEach((z, i) => { if (DOC.duration * z <= avail) best = i; });
-  tl.zoom = best;
+  tl.pps = Math.max(minPps(), Math.min(MAX_PPS, fitPps()));
   drawTimeline();
+  $('tl-scroll').scrollLeft = 0;
 });
+
+/* Ctrl or ⌘ and the wheel zooms where the pointer is; shift-wheel pans.
+   Registered by hand because zooming has to preventDefault — otherwise the
+   browser zooms the whole page — and a passive listener cannot. */
+$('tl-scroll').addEventListener('wheel', (e) => {
+  if (e.ctrlKey || e.metaKey) {
+    e.preventDefault();
+    // Bounded per event: a trackpad can report several hundred in one go, and
+    // an unbounded exponent turns that into a jump from the whole edit to two
+    // seconds of it.
+    const bite = Math.max(-80, Math.min(80, -e.deltaY));
+    zoomTo(tl.pps * Math.exp(bite * WHEEL_ZOOM), e.clientX);
+    return;
+  }
+  const sideways = e.shiftKey ? e.deltaY : e.deltaX;
+  if (sideways) { e.preventDefault(); $('tl-scroll').scrollLeft += sideways; }
+}, { passive: false });
 
 const RATES = [0.5, 1, 1.5, 2];
 $('tl-rate').addEventListener('click', () => {
