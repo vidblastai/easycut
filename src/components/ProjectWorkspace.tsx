@@ -555,11 +555,11 @@ function LivePreview({
     return (
       <div className="flex h-full w-full flex-col items-center justify-center gap-2 bg-black px-8 text-center">
         <p className="text-[13.5px] font-bold">This browser can&rsquo;t play the preview.</p>
-        <p className="max-w-xs text-[12.5px] leading-relaxed text-muted">
+        <p className="max-w-full text-[12.5px] leading-relaxed text-muted">
           Your edit is fine and the export will be correct &mdash; this is the preview
           player, not the video. Chrome, Safari or Edge will show it.
         </p>
-        <p className="mt-1 max-w-xs truncate text-[11px] text-faint" title={failed}>
+        <p className="mt-1 w-full truncate text-[11px] text-faint" title={failed}>
           {failed}
         </p>
       </div>

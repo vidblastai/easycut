@@ -131,6 +131,11 @@ export const SFX_LIBRARY: Record<SfxName, SfxDefinition> = {
 
 export const SFX_NAMES = Object.keys(SFX_LIBRARY) as SfxName[];
 
+/** How long a cue actually sounds for. Falls back long rather than short. */
+export function sfxDurationSec(name: string): number {
+  return SFX_LIBRARY[name as SfxName]?.durationSec ?? 1;
+}
+
 export function sfxUrl(name: SfxName): string {
   return `/audio/sfx/${name}.wav`;
 }

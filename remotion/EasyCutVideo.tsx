@@ -1,5 +1,6 @@
 import React from 'react';
 import { AbsoluteFill, Audio, Sequence, useVideoConfig } from 'remotion';
+import { sfxDurationSec } from '../src/lib/assets/sfx';
 import { FONT_FAMILY } from './lib/fonts';
 import type { Edl } from '../src/lib/edl/types';
 import { BrollLayer } from './components/BrollLayer';
@@ -82,9 +83,22 @@ const PreviewAudio: React.FC<{ edl: Edl; fps: number }> = ({ edl, fps }) => (
       />
     ) : null}
 
+    {/* Each cue is bounded by how long it actually sounds for.
+        A Sequence with no `durationInFrames` runs to the end of the video, so
+        every sound effect kept its audio element mounted from the moment it
+        played until the credits — and the browser caps how many media elements
+        can exist at once. Four cues plus the music plus the voice was enough to
+        hit it, and the Player refused to mount anything further with "tried to
+        simultaneously mount 6 <Html5Audio /> tags": the preview lost its sound
+        entirely, on an edit with four whooshes in it. */}
     {edl.sfx.map((cue) =>
       cue.url ? (
-        <Sequence key={`sfx-${cue.id}`} from={Math.round(cue.atSec * fps)} layout="none">
+        <Sequence
+          key={`sfx-${cue.id}`}
+          from={Math.round(cue.atSec * fps)}
+          durationInFrames={Math.max(1, Math.ceil(sfxDurationSec(cue.sound) * fps))}
+          layout="none"
+        >
           <Audio src={cue.url} volume={Math.pow(10, cue.gainDb / 20)} />
         </Sequence>
       ) : null,
