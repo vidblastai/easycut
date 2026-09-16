@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { clsx } from 'clsx';
 import type { PlayerRef } from '@remotion/player';
 import { applyOperations, describeOperation, type ClipTrack, type EdlOperation } from '@/lib/edl/operations';
@@ -356,6 +356,16 @@ export function TimelineEditor({
    */
   const snapPoints = useMemo(() => snapPointsFor(edl), [edl]);
 
+  /* Both of these are rebuilt on every render otherwise — which during a drag
+     is every pointermove. The ruler's labels and the captions' text do not
+     change while a clip is moving, so they are computed when the document
+     does. */
+  const ticks = useMemo(() => tickTimes(duration, pps), [duration, pps]);
+  const captionText = useMemo(
+    () => new Map(edl.captions.map((c) => [c.id, c.words.map((w) => w.text).join(' ')])),
+    [edl.captions],
+  );
+
   /**
    * Snapping, as a setting rather than only as a held key.
    *
@@ -421,13 +431,52 @@ export function TimelineEditor({
     if (target) setSelection(target);
   };
 
+  /**
+   * One pointer handler for every clip on the timeline.
+   *
+   * Each clip used to carry three inline closures — move, trim-start,
+   * trim-end — which meant every clip's props changed identity on every render
+   * and `React.memo` could never skip one. During a drag that is a re-render of
+   * all four hundred of them per pointermove: measured at 41ms a move on a
+   * four-minute edit, so the clip you were dragging lagged the cursor by two
+   * frames and the whole gesture felt like it was happening underwater.
+   *
+   * Delegation fixes it at the root. The clips are now plain data, the handler
+   * reads which one was hit off the DOM, and React skips the 399 that did not
+   * move.
+   */
+  const beginDragFromEvent = (event: React.PointerEvent) => {
+    const hit = (event.target as HTMLElement).closest('[data-clip-id]') as HTMLElement | null;
+    if (!hit) {
+      // Anywhere that is not a clip means "nothing". Without it the only way to
+      // put the inspector down is to pick up something else.
+      setSelection(null);
+      return;
+    }
+
+    const id = hit.dataset.clipId;
+    const track = hit.dataset.track as Selection extends null ? never : string;
+    if (!id || !track) return;
+
+    const span = spanOf(edl, track, id);
+    if (!span) return;
+
+    const handle = (event.target as HTMLElement).dataset.handle;
+    const kind: DragState['kind'] = handle === 'start' ? 'trim-start' : handle === 'end' ? 'trim-end' : 'move';
+    beginDrag(event, kind, { kind: track as Exclude<Selection, null>['kind'], id }, span.start, span.end);
+  };
+
   /* Auto-scroll while dragging near an edge. Without it you can only move a
      clip as far as the visible window, which on a ten-minute edit is a few
      seconds. */
   const autoScroll = useRef<number | null>(null);
+  /** The frame a queued drag resolve is waiting on, so only one is ever in flight. */
+  const pendingMove = useRef<number | null>(null);
   const stopAutoScroll = () => {
     if (autoScroll.current !== null) cancelAnimationFrame(autoScroll.current);
     autoScroll.current = null;
+    if (pendingMove.current !== null) cancelAnimationFrame(pendingMove.current);
+    pendingMove.current = null;
   };
 
   useEffect(() => {
@@ -497,7 +546,20 @@ export function TimelineEditor({
         return;
       }
 
-      resolveFrom(event.clientX);
+      // One resolve per painted frame, never one per event.
+      //
+      // A 120Hz mouse — or any mouse while the main thread is busy — delivers
+      // several pointermoves between two frames, and each one used to re-render
+      // the whole timeline for a picture nobody would ever see. On a long edit
+      // that is where the drag's stutter came from: the work was real, the
+      // frames it produced were thrown away.
+      if (pendingMove.current === null) {
+        pendingMove.current = requestAnimationFrame(() => {
+          pendingMove.current = null;
+          const current = dragRef.current;
+          if (current) resolveFrom(current.lastClientX);
+        });
+      }
       if (autoScroll.current === null) autoScroll.current = requestAnimationFrame(tickAutoScroll);
     };
 
@@ -872,9 +934,7 @@ export function TimelineEditor({
         className="relative overflow-x-auto overflow-y-hidden"
         // Anywhere that is not a clip means "nothing". Without it the only way
         // to put the inspector down is to pick up something else.
-        onPointerDown={(e) => {
-          if (!(e.target as HTMLElement).closest('[data-clip-id]')) setSelection(null);
-        }}
+        onPointerDown={beginDragFromEvent}
       >
         <div style={{ width: width + TRACK_LABEL_W, minWidth: '100%' }}>
           {/* ruler */}
@@ -884,7 +944,7 @@ export function TimelineEditor({
           >
             <div className="shrink-0 border-r border-line" style={{ width: TRACK_LABEL_W }} />
             <div className="relative" style={{ width }}>
-              {tickTimes(duration, pps).map((t) => (
+              {ticks.map((t) => (
                 <span
                   key={t}
                   className="absolute top-0 border-l border-line pl-1 font-mono text-[10px] leading-7 text-faint"
@@ -913,12 +973,8 @@ export function TimelineEditor({
                   tone={segment.reason === 'hook' ? 'hook' : 'video'}
                   startSec={g.start}
                   endSec={g.end}
-                  onPointerDown={(e) => beginDrag(e, 'move', { kind: 'segment', id: segment.id }, segment.outStartSec, segment.outEndSec)}
-                  onTrimStart={(e) => beginDrag(e, 'trim-start', { kind: 'segment', id: segment.id }, segment.outStartSec, segment.outEndSec)}
-                  onTrimEnd={(e) => beginDrag(e, 'trim-end', { kind: 'segment', id: segment.id }, segment.outStartSec, segment.outEndSec)}
-                >
-                  {segment.reason === 'hook' ? 'HOOK · ' : ''}{segment.text || 'clip'}
-                </Clip>
+                  text={`${segment.reason === 'hook' ? 'HOOK · ' : ''}${segment.text || 'clip'}`}
+                />
               );
             })}
           </Track>
@@ -938,12 +994,8 @@ export function TimelineEditor({
                   tone="caption"
                   startSec={g.start}
                   endSec={g.end}
-                  onPointerDown={(e) => beginDrag(e, 'move', { kind: 'caption', id: cue.id }, cue.startSec, cue.endSec)}
-                  onTrimStart={(e) => beginDrag(e, 'trim-start', { kind: 'caption', id: cue.id }, cue.startSec, cue.endSec)}
-                  onTrimEnd={(e) => beginDrag(e, 'trim-end', { kind: 'caption', id: cue.id }, cue.startSec, cue.endSec)}
-                >
-                  {cue.words.map((w) => w.text).join(' ')}
-                </Clip>
+                  text={captionText.get(cue.id) ?? ''}
+                />
               );
             })}
           </Track>
@@ -963,12 +1015,8 @@ export function TimelineEditor({
                   tone="broll"
                   startSec={g.start}
                   endSec={g.end}
-                  onPointerDown={(e) => beginDrag(e, 'move', { kind: 'broll', id: clip.id }, clip.outStartSec, clip.outEndSec)}
-                  onTrimStart={(e) => beginDrag(e, 'trim-start', { kind: 'broll', id: clip.id }, clip.outStartSec, clip.outEndSec)}
-                  onTrimEnd={(e) => beginDrag(e, 'trim-end', { kind: 'broll', id: clip.id }, clip.outStartSec, clip.outEndSec)}
-                >
-                  {clip.query || 'B-roll'}
-                </Clip>
+                  text={clip.query || 'B-roll'}
+                />
               );
             })}
           </Track>
@@ -988,12 +1036,8 @@ export function TimelineEditor({
                   tone="graphic"
                   startSec={g.start}
                   endSec={g.end}
-                  onPointerDown={(e) => beginDrag(e, 'move', { kind: 'graphics', id: clip.id }, clip.outStartSec, clip.outEndSec)}
-                  onTrimStart={(e) => beginDrag(e, 'trim-start', { kind: 'graphics', id: clip.id }, clip.outStartSec, clip.outEndSec)}
-                  onTrimEnd={(e) => beginDrag(e, 'trim-end', { kind: 'graphics', id: clip.id }, clip.outStartSec, clip.outEndSec)}
-                >
-                  {clip.text || clip.type}
-                </Clip>
+                  text={clip.text || clip.type}
+                />
               );
             })}
           </Track>
@@ -1013,12 +1057,8 @@ export function TimelineEditor({
                   tone="punch"
                   startSec={g.start}
                   endSec={g.end}
-                  onPointerDown={(e) => beginDrag(e, 'move', { kind: 'punchIns', id: clip.id }, clip.outStartSec, clip.outEndSec)}
-                  onTrimStart={(e) => beginDrag(e, 'trim-start', { kind: 'punchIns', id: clip.id }, clip.outStartSec, clip.outEndSec)}
-                  onTrimEnd={(e) => beginDrag(e, 'trim-end', { kind: 'punchIns', id: clip.id }, clip.outStartSec, clip.outEndSec)}
-                >
-                  {clip.scale.toFixed(2)}&times;
-                </Clip>
+                  text={`${clip.scale.toFixed(2)}×`}
+                />
               );
             })}
           </Track>
@@ -1037,8 +1077,6 @@ export function TimelineEditor({
                 data-clip-id={cue.id}
                 data-track="sfx"
                 data-selected={selection?.kind === 'sfx' && selection.id === cue.id ? 'true' : undefined}
-                onPointerDown={(e) => beginDrag(e, 'move', { kind: 'sfx', id: cue.id }, cue.atSec, cue.atSec)}
-                onClick={() => setSelection({ kind: 'sfx', id: cue.id })}
                 title={`${cue.sound} · ${formatTc(cue.atSec)}`}
                 className="group absolute top-0 flex h-[19px] w-4 -translate-x-1/2 cursor-grab touch-none items-center justify-center"
                 style={{ left: (dragPreview?.id === cue.id ? dragPreview.start : cue.atSec) * pps }}
@@ -1069,8 +1107,6 @@ export function TimelineEditor({
                   data-clip-id={cue.id}
                   data-track="transitions"
                   data-selected={chosen ? 'true' : undefined}
-                  onPointerDown={(e) => beginDrag(e, 'move', { kind: 'transitions', id: cue.id }, cue.atSec, cue.atSec)}
-                  onClick={() => setSelection({ kind: 'transitions', id: cue.id })}
                   title={`${cue.type} · ${cue.durationSec.toFixed(2)}s at ${formatTc(cue.atSec)}`}
                   className="group absolute bottom-0 flex h-[19px] w-4 -translate-x-1/2 cursor-grab touch-none items-center justify-center"
                   style={{ left: at * pps }}
@@ -1273,7 +1309,7 @@ function ShortcutSheet({ onClose }: { onClose: () => void }) {
  * rather than by decoding audio: it is free, exact about where words start and
  * stop, and available before any audio has loaded.
  */
-function SpeechTrack({ edl, pps }: { edl: Edl; pps: number }) {
+const SpeechTrack = React.memo(function SpeechTrack({ edl, pps }: { edl: Edl; pps: number }) {
   const bars = useMemo(() => {
     const duration = edl.format.durationSec;
     if (!duration) return [];
@@ -1324,7 +1360,7 @@ function SpeechTrack({ edl, pps }: { edl: Edl; pps: number }) {
       ))}
     </div>
   );
-}
+});
 
 function Track({
   label,
@@ -1360,13 +1396,6 @@ function Track({
   );
 }
 
-/** Best effort plain text for a clip's label, for its tooltip. */
-function label(children: React.ReactNode): string {
-  if (typeof children === 'string' || typeof children === 'number') return String(children);
-  if (Array.isArray(children)) return children.map(label).join('');
-  return '';
-}
-
 const TONES: Record<string, string> = {
   video: 'bg-violet/25 border-violet/40 text-chalk',
   hook: 'bg-violet/50 border-violet text-ink font-bold',
@@ -1376,7 +1405,7 @@ const TONES: Record<string, string> = {
   punch: 'bg-bad/15 border-bad/35 text-chalk',
 };
 
-function Clip({
+const Clip = React.memo(function Clip({
   id,
   track,
   left,
@@ -1386,10 +1415,7 @@ function Clip({
   tone,
   startSec,
   endSec,
-  children,
-  onPointerDown,
-  onTrimStart,
-  onTrimEnd,
+  text,
 }: {
   /** On the element as well as in React, so a drag can be driven and measured. */
   id: string;
@@ -1402,10 +1428,16 @@ function Clip({
   /** Where it sits, for the tooltip — a clip's exact times are otherwise unknowable. */
   startSec: number;
   endSec: number;
-  children: React.ReactNode;
-  onPointerDown: (e: React.PointerEvent) => void;
-  onTrimStart: (e: React.PointerEvent) => void;
-  onTrimEnd: (e: React.PointerEvent) => void;
+  /**
+   * The label, as a plain string rather than children.
+   *
+   * `children` is a fresh React element on every render, so a memoised Clip
+   * compared its props, found one that always differed, and re-rendered
+   * anyway — which is how four hundred clips came to re-render on every
+   * pointermove of a drag. Every prop here is now a primitive, so the
+   * comparison can actually succeed.
+   */
+  text: string;
 }) {
   return (
     <div
@@ -1415,8 +1447,7 @@ function Clip({
       // The label is truncated at almost every zoom, and the times are not
       // written anywhere until you pick the clip up. Hovering should answer
       // both questions without changing anything.
-      title={`${label(children)}\n${formatTc(startSec)} – ${formatTc(endSec)}  ·  ${(endSec - startSec).toFixed(2)}s`}
-      onPointerDown={onPointerDown}
+      title={`${text}\n${formatTc(startSec)} – ${formatTc(endSec)}  ·  ${(endSec - startSec).toFixed(2)}s`}
       className={clsx(
         'group absolute top-1 bottom-1 cursor-grab touch-none select-none overflow-hidden rounded-md border px-2 text-[11px] leading-[26px] active:cursor-grabbing',
         TONES[tone],
@@ -1427,26 +1458,24 @@ function Clip({
       )}
       style={{ left, width, touchAction: 'none' }}
     >
-      <span className="pointer-events-none block truncate">{children}</span>
+      <span className="pointer-events-none block truncate">{text}</span>
 
       {/* Trim handles: invisible until hover, so the timeline stays calm. */}
       {/* Eight pixels rather than six: the handle is the only part of a clip
           most people ever aim for, and six is under the width of a cursor. */}
       <span
-        onPointerDown={onTrimStart}
         data-handle="start"
         style={{ touchAction: 'none' }}
         className="absolute inset-y-0 left-0 w-2 cursor-ew-resize touch-none bg-chalk/0 group-hover:bg-chalk/40"
       />
       <span
-        onPointerDown={onTrimEnd}
         data-handle="end"
         style={{ touchAction: 'none' }}
         className="absolute inset-y-0 right-0 w-2 cursor-ew-resize touch-none bg-chalk/0 group-hover:bg-chalk/40"
       />
     </div>
   );
-}
+});
 
 /** Editing the content of whatever is selected, rather than only its timing. */
 function Inspector({
@@ -1882,6 +1911,29 @@ function clipById(
   const item = (edl[track] as Array<{ id: string; outStartSec: number; outEndSec: number; query?: string; text?: string }>)
     .find((c) => c.id === id);
   return item ? { start: item.outStartSec, end: item.outEndSec, label: item.query ?? item.text } : null;
+}
+
+/**
+ * Where something on the timeline sits, by track name, for a drag that starts.
+ *
+ * Instants — sound cues, transitions — report a zero-length span on purpose:
+ * that is what tells `resolveDrag` there is no length to preserve or protect,
+ * so the marker follows the pointer instead of being clamped to a minimum.
+ */
+function spanOf(edl: Edl, track: string, id: string): { start: number; end: number } | null {
+  if (track === 'segment') {
+    const s = edl.segments.find((x) => x.id === id);
+    return s ? { start: s.outStartSec, end: s.outEndSec } : null;
+  }
+  if (track === 'caption') {
+    const c = edl.captions.find((x) => x.id === id);
+    return c ? { start: c.startSec, end: c.endSec } : null;
+  }
+  if (track === 'sfx' || track === 'transitions') {
+    const c = (track === 'sfx' ? edl.sfx : edl.transitions).find((x) => x.id === id);
+    return c ? { start: c.atSec, end: c.atSec } : null;
+  }
+  return clipById(edl, track as ClipTrack, id);
 }
 
 function nearestIndex(starts: number[], target: number): number {
