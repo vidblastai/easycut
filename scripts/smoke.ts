@@ -2,6 +2,7 @@ import { mkdir, stat } from 'node:fs/promises';
 import { basename, join } from 'node:path';
 import { readFile, writeFile } from 'node:fs/promises';
 import '../src/lib/config/load-env';
+import { localMusicPath } from '../src/lib/assets/music';
 import { db, stringifyJson } from '../src/lib/db';
 import { runPipeline } from '../src/lib/pipeline/run';
 import { renderVideo } from '../src/lib/render';
@@ -110,6 +111,10 @@ async function main() {
     edl,
     sourceVideoPath: result.context.sourcePath,
     sourceAudioPath: result.context.mixAudioPath!,
+    // Was missing, and the omission was invisible: the EDL named a music track,
+    // the mixer requires BOTH the EDL entry and a path, and so every smoke run
+    // silently rendered without the bed it had just chosen.
+    musicPath: edl.music ? localMusicPath(edl.music.url) : null,
     outputDir,
     onProgress: (fraction, label) => {
       // Only report on each 10 % so the log stays readable when piped.

@@ -71,7 +71,7 @@ every tweak afterwards is free.
 
 ```bash
 npm install
-npm run setup     # database, sound-effect library, system check
+npm run setup     # database, sound effects, caption fonts, music beds, system check
 
 npm run dev       # the web app      → http://localhost:3000
 npm run worker    # the pipeline     (needs to be running for edits to happen)
@@ -150,6 +150,14 @@ transcription, no AI call, no re-upload.
 | **Transitions** | Whip pans, zoom punches, glitches — only on real cuts | $0 |
 | **Reframing** | Subject-tracked crop so you never lose your head going vertical | $0 |
 | **Punch-ins** | The second camera you never had | $0 |
+
+The music is six beds synthesised by `npm run music` from the recipes in
+`src/lib/assets/music-beds.ts` — royalty-free by construction, licence-auditable,
+and tuned for the one job a bed has: sitting under a voice for ten minutes
+without competing with it. They are scooped at 1.9 kHz where consonants live, and
+they loop seamlessly because every pitch is snapped to a whole number of cycles
+per loop. Drop real licensed tracks into `content/music/manifest.json` and they
+take precedence by matching better, not by being special-cased.
 
 The expensive things are the ones it refuses to do: no generative video, no
 voice cloning, no frame-by-frame AI. You bring the pixels; it brings the edit.
@@ -272,7 +280,10 @@ remotion/             the composition: captions, graphics, overlays, transitions
 npm run dev              # web app
 npm run worker           # pipeline worker
 npm run doctor           # what's configured, and what each video will cost
-npm test                 # 55 tests across the logic that would silently corrupt output
+npm run fonts            # put the caption typefaces on disk (no CDN at render time)
+npm run music            # synthesise the music beds
+npm run bench:render     # frames per second on this machine
+npm test                 # 133 tests across the logic that would silently corrupt output
 npm run remotion:studio  # iterate on the renderer's look
 npm run build
 ```

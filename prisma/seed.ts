@@ -35,6 +35,7 @@ async function main() {
   const { renderVideo } = await import('../src/lib/render');
   const { assetKey, storage } = await import('../src/lib/storage');
   const { probe } = await import('../src/lib/media/ffmpeg');
+  const { localMusicPath } = await import('../src/lib/assets/music');
 
   if (!existsSync(FIXTURE_VIDEO)) {
     console.log('Building the sample footage first...');
@@ -96,6 +97,7 @@ async function main() {
     edl,
     sourceVideoPath: context.sourcePath,
     sourceAudioPath: context.mixAudioPath!,
+    musicPath: edl.music ? localMusicPath(edl.music.url) : null,
     outputDir,
   });
 

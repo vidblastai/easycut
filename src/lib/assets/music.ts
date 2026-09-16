@@ -1,4 +1,4 @@
-import { readFile } from 'node:fs/promises';
+import { access, readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 
 /**
@@ -12,8 +12,19 @@ import { join } from 'node:path';
  * licence-auditable: every track in a shipped video traces back to a manifest
  * entry with a stated licence.
  *
- * An empty library is a supported state: the video renders without music and
- * the job reports `music` as a degraded layer.
+ * The library is two files merged:
+ *
+ *  - `content/music/manifest.json` — the operator's. Hand-written entries for
+ *    real licensed tracks. Tracked in git, never written to by a script.
+ *  - `content/music/generated.json` — written by `npm run music`, which
+ *    synthesises a set of beds from the recipes in `music-beds.ts`. Gitignored,
+ *    like the sound effects, because it is output.
+ *
+ * The operator's entries come first, so a track somebody chose outranks a
+ * generated one on an otherwise equal score.
+ *
+ * An empty library is still a supported state: the video renders without music
+ * and the job reports `music` as a degraded layer.
  */
 
 export interface MusicEntry {
@@ -38,20 +49,62 @@ export interface MusicManifest {
   tracks: MusicEntry[];
 }
 
-const MANIFEST_PATH = join(process.cwd(), 'content', 'music', 'manifest.json');
+const CURATED_PATH = join(process.cwd(), 'content', 'music', 'manifest.json');
+const GENERATED_PATH = join(process.cwd(), 'content', 'music', 'generated.json');
 
 let cached: MusicManifest | null = null;
 
+async function readManifest(path: string): Promise<MusicEntry[]> {
+  try {
+    const parsed = JSON.parse(await readFile(path, 'utf8')) as MusicManifest;
+    return Array.isArray(parsed.tracks) ? parsed.tracks : [];
+  } catch {
+    return [];
+  }
+}
+
 export async function loadMusicLibrary(): Promise<MusicManifest> {
   if (cached) return cached;
-  try {
-    const raw = await readFile(MANIFEST_PATH, 'utf8');
-    const parsed = JSON.parse(raw) as MusicManifest;
-    cached = { version: 1, tracks: Array.isArray(parsed.tracks) ? parsed.tracks : [] };
-  } catch {
-    cached = { version: 1, tracks: [] };
+
+  const [curated, generated] = await Promise.all([
+    readManifest(CURATED_PATH),
+    readManifest(GENERATED_PATH),
+  ]);
+
+  const seen = new Set<string>();
+  const merged: MusicEntry[] = [];
+  for (const track of [...curated, ...generated]) {
+    if (!track?.id || seen.has(track.id)) continue;
+    seen.add(track.id);
+    merged.push(track);
+  }
+
+  // A manifest entry whose file is missing used to take the whole audio mix
+  // down with it: ffmpeg fails on the missing input, renderAudio throws, and
+  // the caller falls back to a video with NO audio track at all. One typo in a
+  // hand-written manifest should not cost somebody their voice.
+  const present = await Promise.all(merged.map((track) => hasFile(track)));
+  cached = { version: 1, tracks: merged.filter((_, i) => present[i]) };
+
+  const missing = merged.length - cached.tracks.length;
+  if (missing > 0) {
+    console.warn(
+      `[music] ${missing} track(s) listed in a manifest have no file on disk and were skipped.` +
+        ` Run \`npm run music\` to build the synthesised beds.`,
+    );
   }
   return cached;
+}
+
+/** Local library files live under public/. A remote URL is taken on trust. */
+async function hasFile(track: MusicEntry): Promise<boolean> {
+  if (!track.url?.startsWith('/')) return true;
+  try {
+    await access(join(process.cwd(), 'public', track.url.replace(/^\//, '')));
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 export interface MusicSelection {
@@ -79,24 +132,31 @@ export async function selectMusic(options: {
   const candidates = library.tracks.filter((t) => t.id !== options.excludeId);
   if (!candidates.length) return null;
 
-  const wanted = tokenize(options.mood);
-  const targetEnergy = options.mode === 'short' ? 0.75 : 0.4;
-
-  const scored = candidates.map((track) => {
-    const tags = new Set(track.moods.flatMap(tokenize));
-    const overlap = wanted.filter((w) => tags.has(w)).length;
-
-    let score = overlap * 0.4;
-    score += (1 - Math.abs(track.energy - targetEnergy)) * 0.4;
-    // A track shorter than the video has to loop, which is audible.
-    if (track.durationSec >= options.durationSec) score += 0.2;
-    else score -= 0.15;
-
-    return { track, score };
-  });
-
+  const scored = candidates.map((track) => ({ track, score: scoreTrack(track, options) }));
   scored.sort((a, b) => b.score - a.score);
   return scored[0] ?? null;
+}
+
+/**
+ * How well one track fits one video. Exported because it is the whole of the
+ * decision and the only part worth a test.
+ */
+export function scoreTrack(
+  track: MusicEntry,
+  options: { mood: string; mode: 'short' | 'long'; durationSec: number },
+): number {
+  const wanted = tokenize(options.mood);
+  const targetEnergy = options.mode === 'short' ? 0.75 : 0.4;
+  const tags = new Set(track.moods.flatMap(tokenize));
+  const overlap = wanted.filter((w) => tags.has(w)).length;
+
+  let score = overlap * 0.4;
+  score += (1 - Math.abs(track.energy - targetEnergy)) * 0.4;
+  // A track shorter than the video has to loop, which is audible.
+  if (track.durationSec >= options.durationSec) score += 0.2;
+  else score -= 0.15;
+
+  return score;
 }
 
 function tokenize(value: string): string[] {
@@ -104,6 +164,24 @@ function tokenize(value: string): string[] {
     .toLowerCase()
     .split(/[^a-z0-9]+/)
     .filter((w) => w.length > 2);
+}
+
+/**
+ * The file on disk for a track the EDL names.
+ *
+ * Library tracks are served out of public/, so the URL maps straight back. A
+ * remote URL (an operator pointing at object storage) has no local path and
+ * returns null, which the mixer reads as "no music" rather than failing.
+ *
+ * This lives here rather than in the worker because three different things
+ * render an EDL — the worker, the re-render path, and scripts/smoke.ts — and
+ * when it was private to the worker, two of them quietly rendered without the
+ * music the EDL had already chosen. A smoke test that cannot see a missing
+ * layer is not testing the thing it is for.
+ */
+export function localMusicPath(url: string): string | null {
+  if (!url.startsWith('/audio/')) return null;
+  return join(process.cwd(), 'public', url.replace(/^\//, ''));
 }
 
 /** True when there is at least one usable track. */

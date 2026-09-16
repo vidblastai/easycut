@@ -1,5 +1,6 @@
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
+import { localMusicPath } from '@/lib/assets/music';
 import { db, parseJson, stringifyJson } from '@/lib/db';
 import { EdlSchema, type Edl } from '@/lib/edl/types';
 import { cleanupWorkDir, runPipeline } from '@/lib/pipeline/run';
@@ -328,11 +329,6 @@ export async function rerenderProject(projectId: string, edlId: string): Promise
   }
 }
 
-function localMusicPath(url: string): string | null {
-  // Library tracks are served from public/, so map the URL back to disk.
-  if (!url.startsWith('/audio/')) return null;
-  return join(process.cwd(), 'public', url.replace(/^\//, ''));
-}
 
 export function readStageLog(json: string): StageLogEntry[] {
   return parseJson<StageLogEntry[]>(json, []);

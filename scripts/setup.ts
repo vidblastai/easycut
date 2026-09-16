@@ -22,6 +22,7 @@ step('Synthesising the sound-effect library', 'npx tsx scripts/generate-sfx.ts')
 // renderer falls back to fetching them at render time — so `step` swallowing
 // the error is the behaviour we want.
 step('Fetching the caption typefaces', 'npx tsx scripts/fetch-fonts.ts');
+step('Synthesising the music beds', 'npx tsx scripts/generate-music.ts');
 step('Checking the system', 'npx tsx scripts/doctor.ts');
 
 console.log(`

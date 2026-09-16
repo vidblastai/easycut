@@ -19,6 +19,7 @@
     "remotion:render": "tsx scripts/render-local.ts",
     "setup": "tsx scripts/setup.ts",
     "fonts": "tsx scripts/fetch-fonts.ts",
+    "music": "tsx scripts/generate-music.ts",
     "bench:render": "tsx scripts/bench-render.ts",
     "doctor": "tsx scripts/doctor.ts",
     "db:postgres": "tsx scripts/use-postgres.ts",
