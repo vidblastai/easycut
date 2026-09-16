@@ -5,10 +5,10 @@ import { CAPTION_FONTS, findCaptionFont } from './fonts';
 /**
  * Loading a caption face in the browser, for the picker's preview.
  *
- * The renderer gets its fonts from @remotion/google-fonts, which is a build-time
- * dependency and cannot run in the page. The picker needs the same families in
- * the same weights, so it asks Google Fonts directly — one stylesheet link per
- * family, injected the first time that family is shown.
+ * Same source and same weights as the renderer (remotion/lib/fonts.ts), which
+ * also asks Google Fonts for a stylesheet rather than going through
+ * @remotion/google-fonts — see the note there about what its delayRender
+ * handles do to a render on a network that cannot reach the CDN.
  *
  * On demand rather than all sixteen up front: a person opening the picker sees
  * a dozen presets, and pulling every weight of every family to render the ones

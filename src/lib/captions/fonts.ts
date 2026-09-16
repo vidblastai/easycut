@@ -17,14 +17,20 @@
  *  3. **It has to be distinct from its neighbours here.** Two geometric sans
  *     that differ only in the leg of the R is a longer list, not a better one.
  *
- * Every entry is a real Google Font available through @remotion/google-fonts,
- * so the renderer can fetch exactly the one an EDL names and nothing else.
+ * Every entry is a real Google Font, so the renderer can fetch exactly the one
+ * an EDL names, in exactly the weights it uses, and nothing else.
  */
 
 export interface CaptionFont {
   /** What the EDL stores, and what CSS asks for. */
   id: string;
-  /** The @remotion/google-fonts submodule name. */
+  /**
+   * The @remotion/google-fonts submodule name.
+   *
+   * Kept as the family's canonical PascalCase id — it is how the registry is
+   * cross-checked against that package's catalogue, so a typo in `id` shows up
+   * as a mismatch rather than as a silent fallback at render time.
+   */
   module: string;
   /** Weights we actually fetch — the rest are dead bytes on every render. */
   weights: string[];
