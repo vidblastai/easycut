@@ -1,25 +1,29 @@
 import Link from 'next/link';
 import { Logo, LogoMark } from '@/components/Logo';
 import { CaptionShowcase } from '@/components/captions/CaptionShowcase';
+import { BeforeAfter } from '@/components/marketing/BeforeAfter';
+import { EditReel } from '@/components/marketing/EditReel';
+import { LayerDemos } from '@/components/marketing/LayerDemos';
+import { MarketingStyles } from '@/components/marketing/styles';
 import { STYLE_LIST } from '@/lib/styles/presets';
 
 /**
  * The marketing page.
  *
  * It has one job: make someone who has never opened an editor believe this will
- * work for them, and get them to the upload screen. So the copy leads with the
- * outcome ("a finished video"), the mechanics are shown as three steps, and the
- * only call to action anywhere on the page is "Upload your footage".
+ * work for them, and get them to the upload screen.
+ *
+ * Which is why it is now mostly pictures. Everything this product does happens
+ * to a video, and a paragraph about a video is the weakest possible way to
+ * describe one — "we cut the dead air and add captions" is a claim the reader
+ * has heard from four other tools this week. So the page shows: the edit
+ * assembling itself at the top, the same take before and after in the middle,
+ * and each layer doing its one thing further down. The words stayed; they are
+ * captions now rather than evidence.
+ *
+ * Every visual is a MediaSlot, so a real screen recording dropped into
+ * public/marketing replaces the drawn one without a code change.
  */
-
-const LAYERS = [
-  { title: 'Captions', body: 'Word-perfect, animated, with the words that matter picked out in your accent colour.' },
-  { title: 'B-roll', body: 'Real footage cut in wherever you name something concrete. Never generic, never over your punchline.' },
-  { title: 'Motion graphics', body: 'Numbers become stat cards. Lists build in. Named ideas get an animated icon.' },
-  { title: 'Sound design', body: 'Whooshes on cuts, pops on graphics, a music bed that ducks under your voice automatically.' },
-  { title: 'Transitions', body: 'Whip pans, zoom punches and glitches — placed only on real cuts, never for decoration.' },
-  { title: 'Reframing', body: 'Shot landscape, posting vertical? We track you through the frame so you never lose your head.' },
-];
 
 const STEPS = [
   {
@@ -42,6 +46,7 @@ const STEPS = [
 export default function HomePage() {
   return (
     <main className="relative overflow-hidden">
+      <MarketingStyles />
       {/* Ambient accent glow — the only decorative element on the page. */}
       <div
         aria-hidden
@@ -62,7 +67,7 @@ export default function HomePage() {
       </header>
 
       {/* ------------------------------------------------------------ hero */}
-      <section className="relative z-10 mx-auto max-w-4xl px-6 pb-20 pt-16 text-center sm:pt-24">
+      <section className="relative z-10 mx-auto max-w-5xl px-6 pb-16 pt-12 text-center sm:pt-16">
         <div className="animate-rise">
           <span className="inline-flex items-center gap-2 rounded-full border border-line bg-charcoal px-3.5 py-1.5 text-xs font-semibold text-muted">
             <span className="h-1.5 w-1.5 animate-pulseDot rounded-full bg-violet" />
@@ -70,23 +75,19 @@ export default function HomePage() {
           </span>
         </div>
 
-        <h1 className="animate-rise mt-7 text-[40px] font-extrabold leading-[1.04] tracking-[-0.035em] sm:text-[62px]">
+        <h1 className="animate-rise mt-6 text-[40px] font-extrabold leading-[1.04] tracking-[-0.035em] sm:text-[62px]">
           Upload your footage.
           <br />
           <span className="text-violet">Get a finished video.</span>
         </h1>
 
-        <p className="animate-rise mx-auto mt-6 max-w-2xl text-[17px] leading-[1.65] text-muted sm:text-lg">
+        <p className="animate-rise mx-auto mt-5 max-w-2xl text-[17px] leading-[1.65] text-muted sm:text-lg">
           You talk to camera. We do the rest — cutting out the pauses and the
           &ldquo;umm&rdquo;s, adding captions, B-roll, graphics, sound design and music,
           and framing it for wherever you&rsquo;re posting it.
         </p>
 
-        <p className="animate-rise mx-auto mt-3 max-w-xl text-sm text-muted/70">
-          No timeline. No keyframes. No editing knowledge of any kind.
-        </p>
-
-        <div className="animate-rise mt-9 flex flex-col items-center justify-center gap-3 sm:flex-row">
+        <div className="animate-rise mt-7 flex flex-col items-center justify-center gap-3 sm:flex-row">
           <Link href="/new" className="btn-primary w-full px-7 py-3.5 text-[15px] sm:w-auto">
             Upload your footage
           </Link>
@@ -95,16 +96,50 @@ export default function HomePage() {
           </Link>
         </div>
 
-        {/* The captions are the product — most short-form is watched muted —
-            so the page shows them rather than describing them. These are the
-            real presets, drawn by the renderer's own paint code. */}
-        <div className="mt-14">
-          <CaptionShowcase />
+        <p className="mt-4 text-sm text-muted/70">No timeline. No keyframes. No editing knowledge of any kind.</p>
+      </section>
+
+      {/* The edit, assembling itself. This is the page's whole argument, and it
+          sits above the fold on a laptop for exactly that reason. */}
+      <section className="relative z-10 mx-auto max-w-4xl px-6 pb-24">
+        <EditReel />
+      </section>
+
+      {/* ---------------------------------------------------- before / after */}
+      <section className="relative z-10 border-t border-line bg-[#0B0B0E] py-24">
+        <div className="mx-auto max-w-5xl px-6">
+          <div className="max-w-2xl">
+            <h2 className="text-3xl font-extrabold tracking-[-0.03em] sm:text-[40px]">
+              The same thirty seconds.
+            </h2>
+            <p className="mt-4 text-muted">
+              Drag it. On the left is what came off the camera — the pauses are the
+              red ones. On the right is what you&rsquo;d post.
+            </p>
+          </div>
+
+          <div className="mt-10">
+            <BeforeAfter />
+          </div>
+
+          <dl className="mt-8 grid gap-px overflow-hidden rounded-xl border border-line bg-line sm:grid-cols-3">
+            {[
+              ['Cuts made', '94', 'Every pause, um and false start'],
+              ['Time removed', '2:34', 'Out of a 3:42 take'],
+              ['Your input', '1 upload', 'And two dropdowns'],
+            ].map(([label, value, note]) => (
+              <div key={label} className="bg-charcoal px-5 py-5">
+                <dt className="text-[11.5px] font-semibold uppercase tracking-[0.14em] text-faint">{label}</dt>
+                <dd className="mt-1.5 text-2xl font-extrabold tracking-[-0.03em] text-violet">{value}</dd>
+                <dd className="mt-1 text-[13px] text-muted">{note}</dd>
+              </div>
+            ))}
+          </dl>
         </div>
       </section>
 
       {/* ----------------------------------------------------------- steps */}
-      <section className="relative z-10 mx-auto max-w-6xl px-6 pb-24">
+      <section className="relative z-10 mx-auto max-w-6xl px-6 py-24">
         <div className="grid gap-4 sm:grid-cols-3">
           {STEPS.map((step) => (
             <div key={step.number} className="card p-6">
@@ -126,22 +161,31 @@ export default function HomePage() {
             Not filters on top of your video — an actual edit, built from what you said.
           </p>
 
-          {/* One surface split by hairlines rather than six bordered cards.
-              Border, radius and fill each say "separate object", and six of
-              them in a grid said it six times about one list. */}
-          <div className="mt-10 grid gap-px overflow-hidden rounded-2xl bg-line sm:grid-cols-2 lg:grid-cols-3">
-            {LAYERS.map((layer) => (
-              <div key={layer.title} className="bg-charcoal p-6">
-                <h3 className="text-base font-bold tracking-[-0.02em]">{layer.title}</h3>
-                <p className="mt-2 text-sm leading-relaxed text-muted">{layer.body}</p>
-              </div>
-            ))}
+          <div className="mt-10">
+            <LayerDemos />
           </div>
         </div>
       </section>
 
-      {/* ---------------------------------------------------------- styles */}
+      {/* -------------------------------------------------------- captions */}
       <section className="relative z-10 py-24">
+        <div className="mx-auto max-w-6xl px-6">
+          <h2 className="max-w-2xl text-3xl font-extrabold tracking-[-0.03em] sm:text-[40px]">
+            Most of it gets watched muted.
+          </h2>
+          <p className="mt-4 max-w-xl text-muted">
+            Which makes the captions the video. Sixteen finished looks, drawn here by
+            the renderer&rsquo;s own code — so what you pick is what exports.
+          </p>
+        </div>
+
+        <div className="mt-12">
+          <CaptionShowcase />
+        </div>
+      </section>
+
+      {/* ---------------------------------------------------------- styles */}
+      <section className="relative z-10 border-t border-line py-24">
         <div className="mx-auto max-w-6xl px-6">
           <h2 className="text-3xl font-extrabold tracking-[-0.03em] sm:text-[40px]">Pick a look.</h2>
           <p className="mt-4 max-w-xl text-muted">
