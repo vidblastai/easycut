@@ -1,6 +1,8 @@
 import '../src/lib/config/load-env';
 import { capabilities, env } from '../src/lib/config/env';
-import { isMusicAvailable } from '../src/lib/assets/music';
+import { loadMusicLibrary } from '../src/lib/assets/music';
+import { CAPTION_FONTS } from '../src/lib/captions/fonts';
+import { FONT_MANIFEST_PATH } from '../src/lib/captions/local-fonts';
 import { FFMPEG, FFPROBE, run } from '../src/lib/media/ffmpeg';
 import { estimateCost } from '../src/lib/pricing/cost';
 import { selectedProvider } from '../src/lib/director';
@@ -42,11 +44,25 @@ async function main() {
     }
   }
 
-  const music = await isMusicAvailable();
-  console.log(
-    `  ${music ? GREEN + '✓' : YELLOW + '!'}${RESET} ${'Music library'.padEnd(20)}${
-      music ? '' : DIM + 'empty — add tracks to content/music/manifest.json' + RESET
-    }`,
+  // The two things `npm run setup` puts on disk. Both degrade rather than fail,
+  // which is exactly why they are worth printing — a video that came out in the
+  // wrong typeface with no music looks like a bad edit, not a missing step.
+  const library = await loadMusicLibrary();
+  line(
+    library.tracks.length > 0,
+    'Music library',
+    library.tracks.length
+      ? `${library.tracks.length} track${library.tracks.length === 1 ? '' : 's'}`
+      : 'empty — run `npm run music`, or add your own to content/music/manifest.json',
+  );
+
+  const fonts = await countLocalFonts();
+  line(
+    fonts > 0,
+    'Caption typefaces',
+    fonts
+      ? `${fonts}/${CAPTION_FONTS.length} families on disk`
+      : 'none on disk — run `npm run fonts`, or every render waits on Google',
   );
 
   /* -------------------------------- costs -------------------------------- */
@@ -123,3 +139,20 @@ main().catch((error) => {
   console.error(error);
   process.exit(1);
 });
+
+/** A status line in the same shape as the capability rows above it. */
+function line(ok: boolean, label: string, detail: string): void {
+  console.log(`  ${ok ? GREEN + '✓' : YELLOW + '!'}${RESET} ${label.padEnd(20)}${DIM}${detail}${RESET}`);
+}
+
+/** How many caption families `npm run fonts` has put in public/. */
+async function countLocalFonts(): Promise<number> {
+  try {
+    const { readFile } = await import('node:fs/promises');
+    const { join } = await import('node:path');
+    const raw = await readFile(join(process.cwd(), 'public', FONT_MANIFEST_PATH), 'utf8');
+    return Object.keys(JSON.parse(raw) as Record<string, unknown>).length;
+  } catch {
+    return 0;
+  }
+}
