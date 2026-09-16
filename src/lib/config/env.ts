@@ -118,6 +118,27 @@ export const env = {
      */
     concurrency: num('RENDER_CONCURRENCY', Math.max(1, Math.min(4, coreCount() - 1))),
     /**
+     * Which OpenGL backend the headless browser uses, or none.
+     *
+     * Remotion's default on Linux is `swangle` — software GL through ANGLE —
+     * and it is the single most expensive setting in this whole file. Measured
+     * on a four-core box with `npm run bench:render`, over a real ten-minute
+     * edit:
+     *
+     *     swangle   2.29 fps   111 min
+     *     (unset)   9.37 fps    27 min     ← 4.1× faster
+     *
+     * All of that goes into a GPU process rasterising through SwiftShader,
+     * which on a machine with no GPU is a software renderer emulating hardware
+     * so that Skia can draw through it, instead of Skia simply drawing. It
+     * earns its keep for WebGL and 3D; this composition is video, text and
+     * boxes, so it buys nothing.
+     *
+     * Left unset, which passes no GL flag at all. Set it to `swangle`, `angle`,
+     * `angle-egl` or `vulkan` if a composition ever does need WebGL.
+     */
+    gl: (str('RENDER_GL') ?? null) as 'swangle' | 'angle' | 'angle-egl' | 'vulkan' | 'swiftshader' | null,
+    /**
      * Ceiling on Remotion's decoded-frame cache, in megabytes.
      *
      * Left unset, Remotion sizes this from the host's free memory. That is a

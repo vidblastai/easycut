@@ -120,7 +120,7 @@ async function main() {
         frame: 70,
         browserExecutable: env.render.browserExecutable,
         chromiumOptions: {
-          gl: 'swangle',
+          gl: env.render.gl,
           ignoreCertificateErrors: env.render.ignoreCertificateErrors,
         },
       });

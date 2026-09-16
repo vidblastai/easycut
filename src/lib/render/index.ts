@@ -172,10 +172,10 @@ async function renderLocally(
     // entirely on a small container — speed, and whether the OOM killer turns
     // up, become properties of the box instead of the job.
     offthreadVideoCacheSizeInBytes: env.render.offthreadCacheMb * 1024 * 1024,
-    // SwANGLE is the software GL path: slower than a GPU but identical output on
-    // every machine, which matters when a render can be resumed on another host.
     chromiumOptions: {
-      gl: 'swangle',
+      // Unset by default, and that is the point: see `render.gl` in
+      // src/lib/config/env.ts for the 4× this is worth.
+      gl: env.render.gl,
       ignoreCertificateErrors: env.render.ignoreCertificateErrors,
     },
   });

@@ -262,51 +262,70 @@ export async function rerenderProject(projectId: string, edlId: string): Promise
   if (!source) throw new Error('Source asset missing');
 
   const workDir = renderWorkDir(projectId, render.id);
-  const { mkdir, writeFile } = await import('node:fs/promises');
+  const { mkdir, rm, writeFile } = await import('node:fs/promises');
   await mkdir(workDir, { recursive: true });
 
-  const { localPathFor } = await import('@/lib/storage');
-  let sourcePath = localPathFor(source.storageKey);
-  if (!sourcePath) {
-    sourcePath = join(workDir, 'source.mp4');
-    await writeFile(sourcePath, await storage().get(source.storageKey));
+  // A re-render is the cheap path — change a style, change a caption look, and
+  // it replays without touching an API. Which is exactly why its scratch space
+  // has to be swept up: a ten-minute video's uncompressed mix is 110 MB, and
+  // somebody trying five caption looks on one video would otherwise leave half
+  // a gigabyte behind for the privilege.
+  try {
+    const { localPathFor } = await import('@/lib/storage');
+    let sourcePath = localPathFor(source.storageKey);
+    if (!sourcePath) {
+      sourcePath = join(workDir, 'source.mp4');
+      await writeFile(sourcePath, await storage().get(source.storageKey));
+    }
+
+    const { extractAudio } = await import('@/lib/media/ffmpeg');
+    const audioPath = join(workDir, 'mix.wav');
+    await extractAudio(sourcePath, audioPath);
+
+    const rendered = await renderVideo({
+      edl,
+      sourceVideoPath: sourcePath,
+      sourceAudioPath: audioPath,
+      musicPath: edl.music ? localMusicPath(edl.music.url) : null,
+      outputDir: workDir,
+      onProgress: async (fraction) => {
+        await db.render.update({ where: { id: render.id }, data: { progress: fraction } }).catch(() => {});
+      },
+    });
+
+    const key = assetKey(projectId, 'render', `${render.id}.mp4`);
+    const object = await storage().putFile(key, rendered.videoPath, 'video/mp4');
+
+    await db.render.update({
+      where: { id: render.id },
+      data: {
+        status: 'succeeded',
+        progress: 1,
+        url: object.url,
+        sizeBytes: object.sizeBytes,
+        durationSec: edl.format.durationSec,
+        renderMs: rendered.renderMs,
+        finishedAt: new Date(),
+      },
+    });
+
+    await db.project.update({
+      where: { id: projectId },
+      data: { status: 'ready', previewUrl: object.url, durationSec: edl.format.durationSec },
+    });
+  } catch (error) {
+    // Without this the row stays `running` for ever and the editor shows a
+    // progress bar that will never move again.
+    await db.render
+      .update({
+        where: { id: render.id },
+        data: { status: 'failed', errorMessage: (error as Error).message, finishedAt: new Date() },
+      })
+      .catch(() => {});
+    throw error;
+  } finally {
+    await rm(workDir, { recursive: true, force: true }).catch(() => {});
   }
-
-  const { extractAudio } = await import('@/lib/media/ffmpeg');
-  const audioPath = join(workDir, 'mix.wav');
-  await extractAudio(sourcePath, audioPath);
-
-  const rendered = await renderVideo({
-    edl,
-    sourceVideoPath: sourcePath,
-    sourceAudioPath: audioPath,
-    musicPath: edl.music ? localMusicPath(edl.music.url) : null,
-    outputDir: workDir,
-    onProgress: async (fraction) => {
-      await db.render.update({ where: { id: render.id }, data: { progress: fraction } }).catch(() => {});
-    },
-  });
-
-  const key = assetKey(projectId, 'render', `${render.id}.mp4`);
-  const object = await storage().putFile(key, rendered.videoPath, 'video/mp4');
-
-  await db.render.update({
-    where: { id: render.id },
-    data: {
-      status: 'succeeded',
-      progress: 1,
-      url: object.url,
-      sizeBytes: object.sizeBytes,
-      durationSec: edl.format.durationSec,
-      renderMs: rendered.renderMs,
-      finishedAt: new Date(),
-    },
-  });
-
-  await db.project.update({
-    where: { id: projectId },
-    data: { status: 'ready', previewUrl: object.url, durationSec: edl.format.durationSec },
-  });
 }
 
 function localMusicPath(url: string): string | null {

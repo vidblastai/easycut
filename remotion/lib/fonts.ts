@@ -1,4 +1,4 @@
-import { continueRender, delayRender } from 'remotion';
+import { continueRender, delayRender, staticFile } from 'remotion';
 import { CAPTION_FONTS, FALLBACK_STACK, fontStackFor } from '../../src/lib/captions/fonts';
 
 /**
@@ -15,7 +15,7 @@ import { CAPTION_FONTS, FALLBACK_STACK, fontStackFor } from '../../src/lib/capti
  *  3. **Waiting, so every frame matches.** A frame-by-frame render must not
  *     start until the face is resident, or the first second comes out in the
  *     fallback and the rest does not.
- *  4. **A font CDN must never fail a video.**
+ *  4. **A font CDN must never fail a video, or quietly change it.**
  *
  * The fourth is why this does not use `@remotion/google-fonts`, which is
  * otherwise exactly the right tool. Its `loadFont()` opens a `delayRender()`
@@ -31,12 +31,64 @@ import { CAPTION_FONTS, FALLBACK_STACK, fontStackFor } from '../../src/lib/capti
  * here and the wait is ours: one handle, a bounded race, cleared in `finally`
  * whichever way it goes. An unreachable CDN now costs one timeout and a
  * fallback face, which is what "never fails a video" has to mean.
+ *
+ * Better still is not to ask the CDN. `npm run fonts` puts the Latin faces in
+ * `public/fonts`, and when a family is there it is declared straight from disk:
+ * no network, no wait, and no way for the type to change between one render and
+ * the next because something upstream moved. The CDN stays as the fallback for
+ * whatever was not fetched — a family added since setup, a script outside
+ * Latin — so nothing gets worse if the step is skipped.
+ *
+ * That fallback is not theoretical. On a host behind a TLS-intercepting proxy
+ * the headless browser does not trust the proxy's CA, every Google stylesheet
+ * fails `ERR_CERT_AUTHORITY_INVALID`, and the video comes out in the system
+ * stack with nothing in the log that looks like an error. Local files are
+ * immune to all of it.
  */
 
 /** How long a render will wait for type before deciding to go without it. */
 const FONT_TIMEOUT_MS = 12_000;
 
 const started = new Map<string, string>();
+
+interface LocalFace {
+  weight: string;
+  /** Path under public/, as `staticFile()` wants it. */
+  file: string;
+  unicodeRange: string;
+}
+type FontManifest = Record<string, LocalFace[]>;
+
+/**
+ * What `scripts/fetch-fonts.ts` left behind, read once per renderer process.
+ *
+ * Absent is the normal case before setup has run, and means "use the CDN" —
+ * never an error.
+ */
+let manifestOnce: Promise<FontManifest> | null = null;
+function localManifest(): Promise<FontManifest> {
+  if (!manifestOnce) {
+    manifestOnce = fetch(staticFile('fonts/manifest.json'))
+      .then((response) => (response.ok ? (response.json() as Promise<FontManifest>) : {}))
+      .catch(() => ({}));
+  }
+  return manifestOnce;
+}
+
+/** Declare the faces we have on disk. No network, so nothing to wait for. */
+function declareLocal(familyId: string, faces: LocalFace[]): void {
+  const style = document.createElement('style');
+  style.dataset.easycutFont = familyId;
+  style.textContent = faces
+    .map(
+      (face) =>
+        `@font-face{font-family:"${familyId}";font-style:normal;font-weight:${face.weight};` +
+        `font-display:block;src:url(${staticFile(face.file)}) format("woff2");` +
+        `unicode-range:${face.unicodeRange};}`,
+    )
+    .join('\n');
+  document.head.appendChild(style);
+}
 
 function cssUrl(familyId: string, weights: string[]): string {
   return (
@@ -101,29 +153,37 @@ export function ensureCaptionFont(familyId: string): string {
     handle = null;
   };
 
-  try {
+  // `document.fonts.load` matches against the @font-face rules that exist NOW.
+  // Called before the rules are in the document it matches nothing, resolves
+  // immediately, and the render starts in the fallback while the real face
+  // arrives a frame or two later — the exact inconsistency this waits to avoid.
+  // So in both paths the fetch is chained off the declaration being in place,
+  // and a stylesheet that errors resolves rather than rejects: there is simply
+  // nothing left to wait for, and the fallback is already correct.
+  const declared = async (): Promise<void> => {
+    const faces = (await localManifest())[font.id];
+    if (faces?.length) {
+      declareLocal(font.id, faces);
+      return;
+    }
+
     const link = document.createElement('link');
     link.rel = 'stylesheet';
     link.href = cssUrl(font.id, font.weights);
-
-    // `document.fonts.load` matches against @font-face rules that exist NOW.
-    // Called before the stylesheet has parsed it matches nothing, resolves
-    // immediately, and the render starts in the fallback while the real face
-    // arrives a frame or two later — the exact inconsistency this waits to
-    // avoid. So the fetch is chained off the stylesheet, and an errored
-    // stylesheet resolves rather than rejects: there is simply nothing to wait
-    // for, and the fallback is already correct.
-    const stylesheetReady = new Promise<void>((resolve) => {
+    await new Promise<void>((resolve) => {
       link.onload = () => resolve();
       link.onerror = () => resolve();
+      document.head.appendChild(link);
     });
-    document.head.appendChild(link);
+  };
 
-    withTimeout(stylesheetReady.then(() => fetchFaces(font.id, font.weights)), FONT_TIMEOUT_MS)
+  try {
+    withTimeout(declared().then(() => fetchFaces(font.id, font.weights)), FONT_TIMEOUT_MS)
       .then((result) => {
         if (result === 'timeout') {
           console.warn(
-            `[easycut] ${font.id} did not arrive in ${FONT_TIMEOUT_MS / 1000}s — rendering in the system stack`,
+            `[easycut] ${font.id} did not arrive in ${FONT_TIMEOUT_MS / 1000}s — rendering in the system stack.` +
+              ` Run \`npm run fonts\` to keep the faces on disk.`,
           );
         }
       })
@@ -132,7 +192,7 @@ export function ensureCaptionFont(familyId: string): string {
       })
       .finally(done);
   } catch {
-    // Injecting the stylesheet failed outright. Nothing to wait for.
+    // Declaring the face failed outright. Nothing to wait for.
     done();
   }
 

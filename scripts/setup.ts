@@ -18,6 +18,10 @@ console.log('EasyCut setup');
 step('Generating the Prisma client', 'npx prisma generate');
 step('Creating the database', 'npx prisma db push --skip-generate');
 step('Synthesising the sound-effect library', 'npx tsx scripts/generate-sfx.ts');
+// Keeps a font CDN out of the render path. Failing here is survivable — the
+// renderer falls back to fetching them at render time — so `step` swallowing
+// the error is the behaviour we want.
+step('Fetching the caption typefaces', 'npx tsx scripts/fetch-fonts.ts');
 step('Checking the system', 'npx tsx scripts/doctor.ts');
 
 console.log(`

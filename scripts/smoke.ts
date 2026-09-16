@@ -1,6 +1,6 @@
 import { mkdir, stat } from 'node:fs/promises';
 import { basename, join } from 'node:path';
-import { readFile } from 'node:fs/promises';
+import { readFile, writeFile } from 'node:fs/promises';
 import '../src/lib/config/load-env';
 import { db, stringifyJson } from '../src/lib/db';
 import { runPipeline } from '../src/lib/pipeline/run';
@@ -15,9 +15,15 @@ import { assetKey, storage } from '../src/lib/storage';
  * points straight at the stage that broke.
  *
  *   npx tsx scripts/smoke.ts out/fixture.mp4 short punchy
+ *
+ * The EDL is written beside the output and saved to the database, so the
+ * project opens in the app afterwards and `--analyse-only` gives you a real
+ * EDL to render again without paying for the analysis twice.
  */
 async function main() {
-  const [input = 'out/fixture.mp4', mode = 'short', styleId = 'punchy'] = process.argv.slice(2);
+  const argv = process.argv.slice(2);
+  const analyseOnly = argv.includes('--analyse-only');
+  const [input = 'out/fixture.mp4', mode = 'short', styleId = 'punchy'] = argv.filter((a) => !a.startsWith('--'));
 
   const project = await db.project.create({
     data: { title: 'Smoke test', mode, styleId, inputMode: 'raw', status: 'processing' },
@@ -81,6 +87,22 @@ async function main() {
   const outputDir = join('out', 'smoke');
   await mkdir(outputDir, { recursive: true });
 
+  // Saved rather than thrown away: the project then opens in the app like any
+  // other, and a render that needs debugging can be repeated from this EDL
+  // instead of paying for the analysis again.
+  const edlRow = await db.edl.create({
+    data: { projectId: project.id, version: 1, document: stringifyJson(edl) },
+  });
+  const edlPath = join(outputDir, `${project.id}.edl.json`);
+  await writeFile(edlPath, JSON.stringify(edl, null, 2));
+  console.log(`\nedl  ${edlPath}  (db id ${edlRow.id})`);
+
+  if (analyseOnly) {
+    await db.project.update({ where: { id: project.id }, data: { status: 'draft' } });
+    console.log('\n--analyse-only: stopping before the render.');
+    process.exit(0);
+  }
+
   console.log(`\nrendering...`);
   const renderStart = Date.now();
   let lastDecile = -1;
@@ -122,7 +144,48 @@ async function main() {
     console.error(`\nFAILED:\n${problems.map((p) => `  - ${p}`).join('\n')}`);
     process.exit(1);
   }
-  console.log(`\nOK`);
+  // Publish it like the worker does, so the run leaves a project you can
+  // actually open rather than a card stuck on "processing" for ever. This is
+  // the quickest way to get a real ten-minute edit in front of the editor.
+  const renderKey = assetKey(project.id, 'render', 'preview.mp4');
+  await storage().put(renderKey, await readFile(rendered.videoPath), 'video/mp4');
+  const thumbKey = assetKey(project.id, 'thumbnail', 'poster.jpg');
+  await storage()
+    .put(thumbKey, await readFile(rendered.thumbnailPath), 'image/jpeg')
+    .catch(() => {});
+
+  await db.render.create({
+    data: {
+      projectId: project.id,
+      edlId: edlRow.id,
+      aspect: edl.format.aspect,
+      width: info.width,
+      height: info.height,
+      fps: info.fps,
+      status: 'succeeded',
+      progress: 1,
+      url: storage().publicUrl(renderKey),
+      sizeBytes: size,
+      durationSec: info.durationSec,
+      renderMs: rendered.renderMs,
+      finishedAt: new Date(),
+    },
+  });
+
+  await db.project.update({
+    where: { id: project.id },
+    data: {
+      status: 'ready',
+      durationSec: info.durationSec,
+      previewUrl: storage().publicUrl(renderKey),
+      thumbnailUrl: storage().publicUrl(thumbKey),
+      costUsd: result.costUsd,
+      title: edl.deliverable.title || project.title,
+      transcriptJson: stringifyJson(result.context.transcript ?? {}),
+    },
+  });
+
+  console.log(`\nOK  —  open it at ${process.env.APP_URL ?? 'http://localhost:3000'}/projects/${project.id}`);
   process.exit(0);
 }
 

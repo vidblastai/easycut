@@ -25,3 +25,7 @@ public/audio/sfx/
 # it is hand-written, and the demo seed depends on it.
 content/fixtures/long.transcript.json
 out/caption-sheet/
+
+# The caption typefaces, fetched at setup (npm run fonts) from Google Fonts.
+# Regenerable, ~2.5 MB, and not ours to redistribute.
+public/fonts/
