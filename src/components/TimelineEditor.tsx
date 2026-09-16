@@ -96,6 +96,13 @@ export function TimelineEditor({
   const scrollRef = useRef<HTMLDivElement>(null);
   const dragRef = useRef<DragState | null>(null);
 
+  // Read by push/undo/redo so they can decide everything before calling a
+  // setter, rather than deciding inside one.
+  const opsRef = useRef(ops);
+  opsRef.current = ops;
+  const redoRef = useRef(redoStack);
+  redoRef.current = redoStack;
+
   /**
    * Live geometry while a drag is in flight. The clip follows the cursor from
    * here; the operation is only pushed on release, so a drag that gets
@@ -152,6 +159,34 @@ export function TimelineEditor({
     };
   }, [playerRef, fps]);
 
+  /**
+   * Keep the playhead on screen.
+   *
+   * A ten-minute edit is twenty thousand pixels wide at this zoom, so pressing
+   * End, or simply letting it play, used to walk the playhead off the right of
+   * the window and leave you looking at a static picture of second four.
+   *
+   * It scrolls only when the playhead has actually left the comfortable middle
+   * band, and never while you are dragging — the timeline yanking itself
+   * sideways under a clip you are holding is how a drag ends up somewhere you
+   * did not choose.
+   */
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el || dragRef.current) return;
+
+    const x = playhead * pps;
+    const viewLeft = el.scrollLeft;
+    const viewWidth = el.clientWidth - TRACK_LABEL_W;
+    const margin = Math.min(160, viewWidth * 0.18);
+
+    if (x < viewLeft + margin) {
+      el.scrollTo({ left: Math.max(0, x - margin), behavior: 'auto' });
+    } else if (x > viewLeft + viewWidth - margin) {
+      el.scrollTo({ left: x - viewWidth + margin, behavior: 'auto' });
+    }
+  }, [playhead, pps]);
+
   const togglePlay = useCallback(() => {
     const player = playerRef?.current;
     if (!player) { setPlaying((p) => !p); return; }
@@ -160,40 +195,44 @@ export function TimelineEditor({
 
   /* ─────────────────────────────────────────────── op plumbing ─── */
 
+  /**
+   * Add one operation to the pending stack.
+   *
+   * Everything is decided BEFORE any setter is called. React may invoke a state
+   * updater more than once — it does exactly that in development, to surface
+   * impurity — so a setter called from inside another setter's updater runs
+   * twice. Undo and redo both did that, and the symptom was redo restoring two
+   * copies of one edit: a stack of three went to two on undo and came back as
+   * four.
+   */
   const push = useCallback((op: EdlOperation) => {
-    setOps((current) => {
-      const next = [...current, op];
-      // Applying against the live document tells us immediately whether the
-      // edit is possible, so the user gets the reason instead of silence.
-      const result = applyOperations(committedEdl, next);
-      const failed = result.rejected.at(-1);
-      if (failed) {
-        setWarning(failed.reason);
-        return current;
-      }
-      setWarning(null);
-      return next;
-    });
+    const next = [...opsRef.current, op];
+    // Applying against the live document tells us immediately whether the edit
+    // is possible, so the user gets the reason instead of silence.
+    const failed = applyOperations(committedEdl, next).rejected.at(-1);
+    if (failed) {
+      setWarning(failed.reason);
+      return;
+    }
+    setWarning(null);
+    setOps(next);
     setRedoStack([]);
   }, [committedEdl]);
 
   const undo = useCallback(() => {
-    setOps((current) => {
-      if (!current.length) return current;
-      const last = current[current.length - 1];
-      setRedoStack((r) => [...r, last]);
-      return current.slice(0, -1);
-    });
+    const current = opsRef.current;
+    if (!current.length) return;
+    setOps(current.slice(0, -1));
+    setRedoStack([...redoRef.current, current[current.length - 1]]);
     setWarning(null);
   }, []);
 
   const redo = useCallback(() => {
-    setRedoStack((stack) => {
-      if (!stack.length) return stack;
-      const op = stack[stack.length - 1];
-      setOps((current) => [...current, op]);
-      return stack.slice(0, -1);
-    });
+    const stack = redoRef.current;
+    if (!stack.length) return;
+    setOps([...opsRef.current, stack[stack.length - 1]]);
+    setRedoStack(stack.slice(0, -1));
+    setWarning(null);
   }, []);
 
   const commit = useCallback(async () => {
@@ -554,7 +593,16 @@ export function TimelineEditor({
       ) : null}
 
       {/* ────────────────────────────────────────────── the tracks ─── */}
-      <div ref={scrollRef} className="relative overflow-x-auto overflow-y-hidden">
+      <div
+        ref={scrollRef}
+        data-timeline-scroll
+        className="relative overflow-x-auto overflow-y-hidden"
+        // Anywhere that is not a clip means "nothing". Without it the only way
+        // to put the inspector down is to pick up something else.
+        onPointerDown={(e) => {
+          if (!(e.target as HTMLElement).closest('[data-clip-id]')) setSelection(null);
+        }}
+      >
         <div style={{ width: width + TRACK_LABEL_W, minWidth: '100%' }}>
           {/* ruler */}
           <div
