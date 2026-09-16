@@ -52,7 +52,21 @@ export const env = {
   },
 
   queue: {
-    driver: (str('QUEUE_DRIVER') ?? 'memory') as 'memory' | 'db' | 'redis',
+    /**
+     * Default `db`, not `memory`.
+     *
+     * The README tells you to run `npm run dev` and `npm run worker` in two
+     * terminals, which is right — but an in-process queue means those two
+     * processes each have their OWN queue and neither ever sees the other's
+     * jobs. The symptom is an upload that sits at "queued" for ever with
+     * nothing in either log, which is about the worst first five minutes this
+     * product could give somebody.
+     *
+     * The database queue works fine for one process too, so it is the safe
+     * default. `memory` stays available for tests, where a shared table between
+     * parallel runs is the problem rather than the solution.
+     */
+    driver: (str('QUEUE_DRIVER') ?? 'db') as 'memory' | 'db' | 'redis',
     redisUrl: str('REDIS_URL'),
     concurrency: num('QUEUE_CONCURRENCY', 2),
   },

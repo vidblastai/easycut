@@ -66,6 +66,16 @@ export async function main(): Promise<void> {
     : 'rule-based (no DEEPGRAM/GEMINI/ANTHROPIC key)'}`);
   console.log(`  workers  : ${env.queue.concurrency}`);
 
+  // A worker in its own terminal with an in-process queue is a worker that will
+  // never be given anything to do, and it looks exactly like a worker that is
+  // simply idle.
+  if (env.queue.driver === 'memory') {
+    console.warn(
+      '\n  ! QUEUE_DRIVER=memory — this worker has its own queue and will never\n' +
+      '    see jobs from the web app. Unset it, or set QUEUE_DRIVER=db.\n',
+    );
+  }
+
   // Jobs left "running" by a crashed worker are re-queued once on boot.
   const stale = await db.job.findMany({
     where: { status: 'running', attempts: { lt: 3 } },
