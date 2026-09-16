@@ -18,4 +18,10 @@ out/
 
 # Synthesised at setup (npm run setup) — regenerable, not source
 public/audio/sfx/
+
+# The long-form fixture's transcript is generated with its video by
+# scripts/make-long-fixture.ts, and the video cannot be committed. One without
+# the other is useless, so neither is tracked. demo.transcript.json IS tracked:
+# it is hand-written, and the demo seed depends on it.
+content/fixtures/long.transcript.json
 out/caption-sheet/
