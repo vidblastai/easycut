@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { clsx } from 'clsx';
 import { IconArrowRight, IconCheck } from '@/components/shell/Icons';
 import { readDefaultCaptionPreset } from '@/lib/captions/default-preset';
+import { takePendingUpload } from '@/lib/ui/pending-upload';
 
 /**
  * The upload wizard: one question per screen.
@@ -78,6 +79,14 @@ export function UploadFlow({ styles, formats }: { styles: StyleOption[]; formats
     // confirm the thing they just did.
     setAt(1);
   }, []);
+
+  // A file dropped on the dashboard banner is waiting here. Adopting it skips
+  // the question it already answered, so dropping and clicking land in the same
+  // place rather than being two different flows.
+  useEffect(() => {
+    const dropped = takePendingUpload();
+    if (dropped) pickFile(dropped);
+  }, [pickFile]);
 
   // Enter advances, which is what every form on the web has taught people to
   // expect — except in the note field, where it would submit mid-sentence.

@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { clsx } from 'clsx';
 import { AppShell, ShellMain } from '@/components/shell/AppShell';
 import { IconPlus } from '@/components/shell/Icons';
+import { NewProjectBanner } from '@/components/NewProjectBanner';
 import { db, parseJson } from '@/lib/db';
 import { formatUsd, formatUsdCoarse } from '@/lib/pricing/cost';
 import { getStyle } from '@/lib/styles/presets';
@@ -33,15 +34,10 @@ export default async function DashboardPage() {
       }
     >
       <ShellMain>
-        <div className="flex flex-wrap items-end justify-between gap-4 pt-7">
-          <div>
-            <h1 className="text-[28px] font-extrabold">Your videos</h1>
-            <p className="mt-1 text-[13.5px] text-muted">
-              {projects.length === 0
-                ? 'Nothing here yet.'
-                : `${projects.length} project${projects.length === 1 ? '' : 's'}`}
-            </p>
-          </div>
+        {/* The one thing this app is for, first and largest. Everything below is
+            what you already made. */}
+        <div className="pt-6">
+          <NewProjectBanner />
         </div>
 
         {projects.length > 0 ? (
@@ -53,10 +49,19 @@ export default async function DashboardPage() {
           />
         ) : null}
 
+        <div className="mt-8 flex flex-wrap items-end justify-between gap-4">
+          <h2 className="text-[19px] font-extrabold">Your videos</h2>
+          {projects.length ? (
+            <p className="text-[13px] text-muted">
+              {projects.length} video{projects.length === 1 ? '' : 's'}
+            </p>
+          ) : null}
+        </div>
+
         {projects.length === 0 ? (
           <Empty />
         ) : (
-          <ul className="mt-5 grid gap-3.5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          <ul className="mt-4 grid gap-3.5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             {projects.map((project) => {
               const job = project.jobs[0];
               const style = getStyle(project.styleId);
@@ -247,17 +252,21 @@ function Status({ status, label }: { status: string; label?: string }) {
   );
 }
 
+/**
+ * Nothing made yet.
+ *
+ * No button: the banner directly above this one IS the button, and a second
+ * call to action a hundred pixels below the first reads as an interface that
+ * does not trust you to have seen the first.
+ */
 function Empty() {
   return (
-    <div className="card mt-5 px-6 py-14 text-center">
-      <h2 className="text-[19px] font-bold">Upload something and see what happens.</h2>
-      <p className="mx-auto mt-2 max-w-md text-[13.5px] text-muted">
-        Point a camera at yourself, talk for thirty seconds, and drop the file in. You&rsquo;ll have a
-        postable video before you&rsquo;ve finished making coffee.
+    <div className="mt-4 rounded-[14px] border border-dashed border-line px-6 py-12 text-center">
+      <p className="text-[14px] font-bold">Nothing here yet.</p>
+      <p className="mx-auto mt-1.5 max-w-md text-[13px] text-muted">
+        Point a camera at yourself, talk for thirty seconds, and drop the file above. You&rsquo;ll have
+        a postable video before you&rsquo;ve finished making coffee.
       </p>
-      <Link href="/new" className="btn-primary mt-6">
-        Upload your footage
-      </Link>
     </div>
   );
 }
