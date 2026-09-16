@@ -50,6 +50,43 @@ const LOADERS: Record<string, Loader> = {
  */
 const loaded = new Set<string>();
 
+/**
+ * Stop a font's network failure from killing the render.
+ *
+ * `waitUntilDone()` is caught below, but that is not the only promise in play:
+ * `@remotion/google-fonts` also drives `FontFace.load()`, whose rejection
+ * surfaces as an unhandled rejection on the page — and Remotion treats an
+ * unhandled page error as a failed render. So the documented promise ("a font
+ * CDN must never fail a video") was not actually true: point a render at a
+ * network where fonts.gstatic.com is unreachable — a corporate proxy, an
+ * offline host, Google Fonts having a bad day — and the whole video failed
+ * instead of falling back to the system stack.
+ *
+ * The guard is deliberately narrow. It swallows a rejection only when it names
+ * a font host or reads as a font-loading network error; anything else still
+ * fails the render, because a genuine bug in a composition should.
+ */
+let guardInstalled = false;
+function guardFontFailures(): void {
+  if (guardInstalled || typeof window === 'undefined') return;
+  guardInstalled = true;
+
+  window.addEventListener('unhandledrejection', (event) => {
+    const reason = event.reason;
+    const text = String(
+      (reason && (reason.message ?? reason.toString?.())) ?? reason ?? '',
+    );
+    const isFontFailure =
+      /fonts\.gstatic\.com|fonts\.googleapis\.com/.test(text) ||
+      /A network error occurred/i.test(text) ||
+      (reason instanceof Error && reason.name === 'NetworkError');
+
+    if (!isFontFailure) return;
+    event.preventDefault();
+    console.warn('[easycut] a web font could not be fetched; rendering with the system stack');
+  });
+}
+
 export function ensureCaptionFont(familyId: string): string {
   const font = CAPTION_FONTS.find((f) => f.id === familyId);
   if (!font) {
@@ -61,6 +98,8 @@ export function ensureCaptionFont(familyId: string): string {
   const stack = fontStackFor(font.id);
   if (loaded.has(font.id)) return stack;
   loaded.add(font.id);
+
+  guardFontFailures();
 
   const loader = LOADERS[font.module];
   if (!loader) return stack;
