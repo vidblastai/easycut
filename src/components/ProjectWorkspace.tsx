@@ -270,11 +270,7 @@ export function ProjectWorkspace({
    * with a job that is progressing in another process.
    */
   const step: StepKey =
-    project.status === 'processing' || project.status === 'draft'
-      ? 'editing'
-      : mode === 'studio'
-        ? 'tune'
-        : 'done';
+    project.status === 'processing' || project.status === 'draft' ? 'apply' : 'export';
 
   const commitCaption = async () => {
     if (!captionStyle) return;
@@ -308,7 +304,7 @@ export function ProjectWorkspace({
       >
         <div className="px-4 pt-3 sm:px-8">
           <div className="measure">
-            <Stepper current={step} onStepClick={(k) => k !== 'tune' && setMode('simple')} />
+            <Stepper current={step} onStepClick={() => setMode('simple')} />
           </div>
         </div>
 
@@ -469,7 +465,24 @@ export function ProjectWorkspace({
     >
       <div className="px-4 pt-5 sm:px-8">
         <div className="measure">
-          <Stepper current={step} onStepClick={(k) => k === 'tune' && doc && setMode('studio')} />
+          <Stepper current={step} />
+          {/* The last step is two things, not one, and the second one is easy
+              to miss: the video is finished, AND it is still editable. Saying
+              so here — next to the step that is lit — is the difference between
+              an editor people find and an editor people never open. */}
+          {step === 'export' && doc ? (
+            <p className="mt-2 px-2.5 text-[12.5px] text-muted sm:px-3.5">
+              Download it and post it &mdash; or{' '}
+              <button
+                type="button"
+                onClick={() => setMode('studio')}
+                className="font-semibold text-violet underline-offset-2 hover:underline"
+              >
+                adjust it in the editor
+              </button>
+              .
+            </p>
+          ) : null}
         </div>
       </div>
 

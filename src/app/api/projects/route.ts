@@ -6,6 +6,7 @@ import { assetKey, storage } from '@/lib/storage';
 import { FORMAT_PRESETS, getStyle } from '@/lib/styles/presets';
 import { findCaptionPreset } from '@/lib/captions/presets';
 import { currentUserId, ensureUser, isAuthEnabled } from '@/lib/auth';
+import { LAYER_NAMES, type LayerName } from '@/lib/edl/layers';
 
 export const runtime = 'nodejs';
 
@@ -16,6 +17,16 @@ const CreateProjectSchema = z.object({
   /** The caption look, when the picker set a default. Omitted takes the style's. */
   captionPreset: z.string().optional(),
   inputMode: z.enum(['raw', 'roughcut']).default('raw'),
+  /**
+   * Layers the person declined, before anything is made.
+   *
+   * Sent as the switches that are OFF. These have always been changeable on a
+   * finished video — turn one off and it re-renders from cached analysis for
+   * nothing — which is fine and is not the same as being asked. Somebody who
+   * knows they never want music should not have to watch a video get scored and
+   * then unscore it.
+   */
+  layers: z.record(z.string(), z.boolean()).optional(),
   userNote: z.string().max(500).optional(),
   filename: z.string().min(1).max(300),
   contentType: z.string().default('video/mp4'),
@@ -57,6 +68,11 @@ export async function POST(request: Request) {
       styleId: getStyle(input.styleId).id,
       // Validated rather than trusted: an id that no longer exists would make
       // every render of this project silently fall back, forever.
+      layersOff: JSON.stringify(
+        Object.entries(input.layers ?? {})
+          .filter(([name, on]) => !on && LAYER_NAMES.includes(name as LayerName))
+          .map(([name]) => name),
+      ),
       captionPreset: input.captionPreset && findCaptionPreset(input.captionPreset)
         ? input.captionPreset
         : null,

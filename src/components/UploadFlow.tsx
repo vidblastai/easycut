@@ -7,6 +7,7 @@ import { StylePreview } from '@/components/styles/StylePreview';
 import { detectFormat, probeInBrowser, type Detected } from '@/lib/styles/detect';
 import type { Layout } from '@/lib/edl/types';
 import { IconArrowRight, IconCheck } from '@/components/shell/Icons';
+import { Stepper, type StepKey } from '@/components/shell/Stepper';
 import { readDefaultCaptionPreset } from '@/lib/captions/default-preset';
 import { takePendingUpload } from '@/lib/ui/pending-upload';
 
@@ -44,17 +45,45 @@ interface FormatOption {
   platforms: string[];
 }
 
+/**
+ * The layers a person can decline before anything is made.
+ *
+ * These existed already, as switches on a finished video — turn one off and it
+ * re-renders from cached analysis for nothing. Which is fine, and is not the
+ * same as being asked. Somebody who knows they never want music should not have
+ * to watch a video get scored and then unscore it.
+ */
+const LAYERS = [
+  { key: 'captions', label: 'Captions', body: 'Word by word, timed to the syllable.' },
+  { key: 'broll', label: 'B-roll', body: 'Real footage cut in where you name something concrete.' },
+  { key: 'graphics', label: 'Graphics', body: 'Stat cards, lists and icons for the numbers you say.' },
+  { key: 'sfx', label: 'Sound effects', body: 'Whooshes on the cuts, pops on the graphics.' },
+  { key: 'punchIns', label: 'Punch-ins', body: 'A second camera that pushes in on your point.' },
+  { key: 'music', label: 'Music', body: 'A bed that ducks under your voice and lifts between lines.' },
+] as const;
+
+type LayerKey = (typeof LAYERS)[number]['key'];
+
 type Phase = 'choose' | 'uploading' | 'starting';
 
 /**
- * Three, where there were four.
+ * Two decisions, and dropping the file in is not one of them.
  *
- * "Where is it going?" is gone. It asked about distribution when what it needed
- * was a fact about the file — nobody shoots vertical for YouTube — and it asked
- * it before the person had seen anything to choose between. The footage answers
- * it, and the answer decides which styles are even worth showing.
+ * The file is how you start, not something you decide — numbering it pushed the
+ * first real choice to position two and made the whole thing read as longer
+ * than it is. So the drop lives at the top of the first question, and the
+ * question is the style.
+ *
+ * "Where is it going?" is gone for a different reason: it asked about
+ * distribution when what it needed was a fact about the file — nobody shoots
+ * vertical for YouTube — and it asked it before the person had seen anything to
+ * choose between. The footage answers it, and the answer decides which styles
+ * are even worth showing.
  */
-const QUESTIONS = ['footage', 'style', 'state'] as const;
+const QUESTIONS = ['style', 'edits'] as const;
+
+/** Which of the four steps each question belongs to. */
+const STEP_OF: Record<Question, StepKey> = { style: 'style', edits: 'edits' };
 type Question = (typeof QUESTIONS)[number];
 
 export function UploadFlow({ styles, formats }: { styles: StyleOption[]; formats: FormatOption[] }) {
@@ -68,6 +97,9 @@ export function UploadFlow({ styles, formats }: { styles: StyleOption[]; formats
   const mode = override ?? detected?.mode ?? 'short';
   const [styleId, setStyleId] = useState(styles[0]?.id ?? 'clean');
   const [inputMode, setInputMode] = useState<'raw' | 'roughcut'>('raw');
+  const [layers, setLayers] = useState<Record<LayerKey, boolean>>(
+    () => Object.fromEntries(LAYERS.map((l) => [l.key, true])) as Record<LayerKey, boolean>,
+  );
   const [note, setNote] = useState('');
 
   const [phase, setPhase] = useState<Phase>('choose');
@@ -87,6 +119,9 @@ export function UploadFlow({ styles, formats }: { styles: StyleOption[]; formats
   const chosen = choices.some((s) => s.id === styleId) ? styleId : (choices[0]?.id ?? styleId);
   const style = useMemo(() => styles.find((s) => s.id === chosen), [styles, chosen]);
 
+  /** What they have declined, for the line that summarises the whole thing. */
+  const off = LAYERS.filter((l) => !layers[l.key]).map((l) => l.label.toLowerCase());
+
   const pickFile = useCallback((next: File | null) => {
     setError(null);
     if (!next) return;
@@ -103,9 +138,6 @@ export function UploadFlow({ styles, formats }: { styles: StyleOption[]; formats
     // than after a round trip on a two-gigabyte upload.
     void probeInBrowser(next).then((probe) => setDetected(detectFormat(probe)));
 
-    // Choosing a file is an answer, so move on rather than making them
-    // confirm the thing they just did.
-    setAt(1);
   }, []);
 
   // A file dropped on the dashboard banner is waiting here. Adopting it skips
@@ -150,6 +182,9 @@ export function UploadFlow({ styles, formats }: { styles: StyleOption[]; formats
           // fine — the edit style names its own caption look.
           captionPreset: readDefaultCaptionPreset() ?? undefined,
           inputMode,
+          // Only the ones being declined: the default is everything on, and a
+          // request that spells out six `true`s says nothing the absence did not.
+          layers: Object.fromEntries(Object.entries(layers).filter(([, on]) => !on)),
           userNote: note.trim() || undefined,
           filename: file.name,
           contentType: file.type || 'video/mp4',
@@ -200,19 +235,21 @@ export function UploadFlow({ styles, formats }: { styles: StyleOption[]; formats
 
   return (
     <div className="pb-4">
-      <Rail at={at} answered={{ footage: Boolean(file), style: true, state: true }} onGo={setAt} />
+      {/* One stepper, not two. The wizard's own hairline rail said the same
+          thing as the four steps above it, in a second visual language. */}
+      <Stepper current={STEP_OF[question]} onStepClick={(k) => setAt(QUESTIONS.indexOf(k as Question))} />
 
       <div key={question} className="mt-7 animate-rise">
-        {question === 'footage' ? (
+        {question === 'style' ? (
           <Ask
-            title="Start with your footage"
-            sub="One file. We'll work out the rest — length, shape, where the cuts go."
+            title="Pick a style"
+            sub="The shape of the video, and everything that follows from it — captions, B-roll, pacing, sound."
           >
+            {/* The file, as a strip rather than a screen of its own. Dropping
+                it in is how you start, not a decision — it does not deserve a
+                step, and it does not deserve a page. */}
             <div
-              onDragOver={(e) => {
-                e.preventDefault();
-                setDragging(true);
-              }}
+              onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
               onDragLeave={() => setDragging(false)}
               onDrop={(e) => {
                 e.preventDefault();
@@ -221,15 +258,13 @@ export function UploadFlow({ styles, formats }: { styles: StyleOption[]; formats
               }}
               onClick={() => inputRef.current?.click()}
               onKeyDown={(e) => {
-                if (e.key === ' ' || e.key === 'Enter') {
-                  e.preventDefault();
-                  inputRef.current?.click();
-                }
+                if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); inputRef.current?.click(); }
               }}
               role="button"
               tabIndex={0}
               className={clsx(
-                'grid cursor-pointer place-items-center rounded-[18px] border border-dashed px-6 py-16 text-center transition-colors',
+                'mb-4 flex cursor-pointer items-center gap-3 rounded-xl border border-dashed px-4 transition-colors',
+                file ? 'py-3' : 'py-8 justify-center text-center',
                 dragging ? 'border-violet bg-violet-dim' : 'border-line bg-charcoal hover:border-violet/50',
               )}
             >
@@ -242,27 +277,26 @@ export function UploadFlow({ styles, formats }: { styles: StyleOption[]; formats
                 onChange={(e) => pickFile(e.target.files?.[0] ?? null)}
               />
               {file ? (
-                <div>
-                  <p className="text-[15px] font-semibold">{file.name}</p>
-                  <p className="mt-1 text-[13px] text-muted">
-                    {formatBytes(file.size)} — click to choose a different file
-                  </p>
-                </div>
+                <>
+                  <span className="grid h-9 w-9 flex-none place-items-center rounded-lg bg-violet-dim text-violet">
+                    <IconArrowRight className="h-4 w-4 -rotate-90" />
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-[13.5px] font-semibold">{file.name}</span>
+                    <span className="block font-mono text-[11.5px] text-muted">{formatBytes(file.size)}</span>
+                  </span>
+                  <span className="flex-none text-[12.5px] text-muted underline decoration-line underline-offset-4">
+                    Choose another
+                  </span>
+                </>
               ) : (
-                <div>
-                  <p className="text-[17px] font-bold">Drop your video here</p>
-                  <p className="mt-1.5 text-[13px] text-muted">MP4, MOV, WebM — or click to browse</p>
-                </div>
+                <span>
+                  <span className="block text-[15px] font-bold">Drop your video here</span>
+                  <span className="mt-1 block text-[12.5px] text-muted">MP4, MOV, WebM — or click to browse</span>
+                </span>
               )}
             </div>
-          </Ask>
-        ) : null}
 
-        {question === 'style' ? (
-          <Ask
-            title="Pick a style"
-            sub="The shape of the video, and everything that follows from it — captions, B-roll, pacing, sound."
-          >
             {/* What was decided about the footage, and how to disagree with it.
                 A guess presented as a fact is worse than the question it
                 replaced. */}
@@ -325,12 +359,44 @@ export function UploadFlow({ styles, formats }: { styles: StyleOption[]; formats
           </Ask>
         ) : null}
 
-        {question === 'state' ? (
+        {question === 'edits' ? (
           <Ask
-            title="How finished is it?"
-            sub="The only thing we need to know before touching your cut."
+            title="What goes in it"
+            sub="Everything is on by default. Turn off anything you do not want and it is never made — you are not paying for a layer you then delete."
           >
-            <div className="grid gap-3 sm:grid-cols-2">
+            <div className="grid gap-2 sm:grid-cols-2">
+              {LAYERS.map((layer) => (
+                <button
+                  key={layer.key}
+                  type="button"
+                  data-layer={layer.key}
+                  aria-pressed={layers[layer.key]}
+                  onClick={() => setLayers((now) => ({ ...now, [layer.key]: !now[layer.key] }))}
+                  className={clsx(
+                    'flex items-start gap-3 rounded-xl border px-3.5 py-3 text-left transition-colors',
+                    layers[layer.key]
+                      ? 'border-violet/50 bg-violet-dim'
+                      : 'border-line bg-charcoal text-muted hover:bg-charcoal2',
+                  )}
+                >
+                  <span
+                    className={clsx(
+                      'mt-0.5 grid h-4 w-4 flex-none place-items-center rounded-[5px] border transition-colors',
+                      layers[layer.key] ? 'border-violet bg-violet text-ink' : 'border-line',
+                    )}
+                  >
+                    {layers[layer.key] ? <IconCheck className="h-2.5 w-2.5" /> : null}
+                  </span>
+                  <span className="min-w-0">
+                    <span className="block text-[13.5px] font-bold">{layer.label}</span>
+                    <span className="mt-0.5 block text-[12px] leading-snug text-muted">{layer.body}</span>
+                  </span>
+                </button>
+              ))}
+            </div>
+
+            <h3 className="mt-7 text-[13px] font-bold">How finished is the footage?</h3>
+            <div className="mt-2 grid gap-3 sm:grid-cols-2">
               <Choice
                 selected={inputMode === 'raw'}
                 onClick={() => setInputMode('raw')}
@@ -387,7 +453,7 @@ export function UploadFlow({ styles, formats }: { styles: StyleOption[]; formats
           </button>
         ) : (
           <button type="button" onClick={submit} disabled={!file} className="btn-primary ml-auto px-6 py-3">
-            Make my video
+            Apply and make my video
             <IconArrowRight className="h-4 w-4" />
           </button>
         )}
@@ -397,6 +463,7 @@ export function UploadFlow({ styles, formats }: { styles: StyleOption[]; formats
         <p className="mt-4 text-[12.5px] text-faint">
           {file.name} · {format?.label} · {style?.name} ·{' '}
           {inputMode === 'raw' ? 'Completely raw' : 'Already trimmed'}
+          {off.length ? ` · no ${off.join(', ')}` : ''}
         </p>
       ) : null}
     </div>
@@ -412,42 +479,6 @@ function Ask({ title, sub, children }: { title: string; sub: string; children: R
       <p className="mt-1.5 text-[13.5px] text-muted">{sub}</p>
       <div className="mt-5">{children}</div>
     </section>
-  );
-}
-
-/** The wizard's own position — distinct from the four-step pipeline above it. */
-function Rail({
-  at,
-  answered,
-  onGo,
-}: {
-  at: number;
-  answered: Record<Question, boolean>;
-  onGo: (n: number) => void;
-}) {
-  return (
-    <ol className="flex gap-2">
-      {QUESTIONS.map((q, i) => {
-        const past = i < at;
-        return (
-          <li key={q} className="flex-1">
-            <button
-              type="button"
-              onClick={() => (past || answered[QUESTIONS[i]]) && onGo(i)}
-              disabled={!past && i !== at && !answered[q]}
-              aria-label={`Question ${i + 1} of ${QUESTIONS.length}`}
-              aria-current={i === at ? 'step' : undefined}
-              className={clsx(
-                'h-1 w-full rounded-full transition-colors',
-                i <= at ? 'bg-violet' : 'bg-line',
-                past && 'cursor-pointer hover:bg-violet-hover',
-              )}
-              style={{ transitionDuration: '0.32s' }}
-            />
-          </li>
-        );
-      })}
-    </ol>
   );
 }
 

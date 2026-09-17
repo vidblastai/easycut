@@ -5,25 +5,29 @@ import { IconCheck } from './Icons';
 /**
  * The four steps of making a video, and where you are in them.
  *
- * Fine-tuning is a step rather than a button on the finished video, because
- * it is a place people are meant to go. Hidden behind "edit" on a done video
- * it read as a repair tool for a bad result; as step three it reads as the
- * part of the process where you make it yours.
+ * Dropping the file in is not one of them. It is how you start, not a decision
+ * you make — and numbering it pushed the first real choice to position two,
+ * which made the whole thing read as longer than it is.
  *
- * Numbering is used here because this genuinely is a sequence — you cannot
- * fine-tune footage that has not been cut — not as decoration.
+ * What is left is four things a person actually does: choose the shape, choose
+ * what goes in it, let it run, take the result. Fine-tuning lives on the last
+ * one rather than being a step of its own, because by then the video exists and
+ * adjusting it is something you may or may not want.
+ *
+ * Numbering is used because this genuinely is a sequence — you cannot apply an
+ * edit you have not chosen — not as decoration.
  *
  * On a phone only the step you are on is named. Four labels sharing 430px
- * truncated every one of them — "Uplo…", "Fine-…", "Your …" — which tells you
- * less than a numbered circle does, in more space. The numbers still say how
- * many steps there are and which one this is.
+ * truncated every one of them, which tells you less than a numbered circle does
+ * in more space. The numbers still say how many steps there are and which one
+ * this is.
  */
 
 export const PIPELINE_STEPS = [
-  { key: 'upload', label: 'Upload', hint: 'Your footage' },
-  { key: 'editing', label: 'Editing', hint: 'We cut it' },
-  { key: 'tune', label: 'Fine-tune', hint: 'Make it yours' },
-  { key: 'done', label: 'Your video', hint: 'Post it' },
+  { key: 'style', label: 'Style', hint: 'Pick the shape' },
+  { key: 'edits', label: 'Edits', hint: "What's in it" },
+  { key: 'apply', label: 'Apply', hint: 'We cut it' },
+  { key: 'export', label: 'Export', hint: 'Post or adjust' },
 ] as const;
 
 export type StepKey = (typeof PIPELINE_STEPS)[number]['key'];

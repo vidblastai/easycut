@@ -562,25 +562,6 @@ body.instudio .work { height: calc(100vh - var(--topbar)); }
    nothing to decide. */
 .wiz { max-width: 640px; margin: 0; padding-top: 26px; }
 
-.wizrail { margin-bottom: 30px; }
-.wizdots { display: flex; gap: 22px; margin-bottom: 12px; flex-wrap: wrap; }
-.wizdots span {
-  font-size: 12px; font-weight: 600; color: var(--faint);
-  display: flex; align-items: center; gap: 7px; transition: color .2s;
-}
-.wizdots span b {
-  width: 19px; height: 19px; border-radius: 99px; display: grid; place-items: center;
-  font-family: var(--mono); font-size: 10px; font-weight: 700;
-  background: var(--charcoal); color: var(--faint); transition: background var(--fast), color var(--fast);
-}
-.wizdots span.now { color: var(--chalk); }
-.wizdots span.now b { background: var(--violet); color: var(--ink); }
-.wizdots span.was { color: var(--muted); }
-.wizdots span.was b { background: rgba(91,214,160,.16); color: var(--ok); }
-
-.wizbar { height: 3px; border-radius: 99px; background: var(--charcoal); overflow: hidden; }
-.wizbar i { display: block; height: 100%; background: var(--violet); border-radius: 99px; transition: width .35s cubic-bezier(.4,0,.2,1); }
-
 .wiz h1 { font-size: 30px; font-weight: 800; letter-spacing: -.035em; text-wrap: balance; }
 .wizsub { margin-top: 7px; font-size: 15px; color: var(--muted); }
 #wiz-body { margin-top: 26px; }
@@ -591,26 +572,27 @@ body.instudio .work { height: calc(100vh - var(--topbar)); }
 .wizfoot .cta-ghost[hidden] { display: none; }
 .wizhint { margin-top: 14px; font-size: 12.5px; color: var(--faint); line-height: 1.6; }
 
-/* step 1 — the file */
+/* The file, at the top of the style question. It is how you start, not a
+   decision you make, so it gets a strip rather than a screen of its own. */
 .bigdrop {
   border: 1px dashed var(--line); border-radius: var(--r-xl); background: var(--charcoal);
-  padding: 44px 28px; text-align: center; cursor: pointer;
+  padding: 30px 28px; margin-bottom: 16px; text-align: center; cursor: pointer;
   transition: border-color var(--fast), background var(--fast);
 }
 .bigdrop:hover { border-color: rgba(155,123,255,.5); background: var(--raised); }
 .bigdrop .ic {
-  width: 52px; height: 52px; margin: 0 auto 16px; border-radius: 14px;
+  width: 44px; height: 44px; margin: 0 auto 12px; border-radius: 12px;
   display: grid; place-items: center; background: var(--violet-dim); color: var(--violet);
 }
 .bigdrop b { display: block; font-size: 16px; font-weight: 700; }
 .bigdrop span { display: block; margin-top: 5px; font-size: 13px; color: var(--muted); }
 
 .picked {
-  display: flex; align-items: center; gap: 14px;
+  display: flex; align-items: center; gap: 12px; cursor: pointer;
   border: 1px solid var(--violet); background: var(--violet-dim);
-  border-radius: var(--r-xl); padding: 18px 20px;
+  border-radius: var(--r-xl); padding: 12px 16px; margin-bottom: 16px;
 }
-.picked .ic { width: 44px; height: 44px; flex: none; border-radius: 11px; background: rgba(0,0,0,.28); display: grid; place-items: center; color: var(--violet); }
+.picked .ic { width: 36px; height: 36px; flex: none; border-radius: 10px; background: rgba(0,0,0,.28); display: grid; place-items: center; color: var(--violet); }
 .picked .meta { flex: 1; min-width: 0; }
 .picked .meta b { display: block; font-size: 14.5px; font-weight: 700; }
 .picked .meta i { font-style: normal; display: block; margin-top: 3px; font-family: var(--mono); font-size: 11.5px; color: var(--muted); }
@@ -633,6 +615,29 @@ body.instudio .work { height: calc(100vh - var(--topbar)); }
 .choice p { margin-top: 8px; font-size: 13px; color: var(--muted); line-height: 1.55; }
 .choice .chips { display: flex; gap: 5px; flex-wrap: wrap; margin-top: auto; padding-top: 12px; }
 .choice .chips span { font-size: 10.5px; font-weight: 600; color: var(--muted); border: 1px solid var(--line); border-radius: 6px; padding: 2px 7px; }
+
+/* The edits question — six layers, all on until you say otherwise. */
+.layercards { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+@media (max-width: 620px) { .layercards { grid-template-columns: 1fr; } }
+.layercard {
+  display: flex; align-items: flex-start; gap: 11px; text-align: left;
+  border: 1px solid var(--line); background: var(--charcoal);
+  border-radius: var(--r-lg); padding: 12px 14px;
+  transition: border-color var(--fast), background var(--fast), color var(--fast);
+}
+.layercard:hover { background: var(--raised); }
+.layercard[aria-pressed="true"] { border-color: rgba(155,123,255,.5); background: var(--violet-dim); }
+.layercard .box {
+  width: 16px; height: 16px; flex: none; margin-top: 2px; border-radius: 5px;
+  border: 1px solid var(--line); display: grid; place-items: center;
+  font-size: 10px; line-height: 1; color: var(--ink);
+  transition: background var(--fast), border-color var(--fast);
+}
+.layercard[aria-pressed="true"] .box { background: var(--violet); border-color: var(--violet); }
+.layercard .txt { min-width: 0; }
+.layercard .txt b { display: block; font-size: 13.5px; font-weight: 700; }
+.layercard .txt i { font-style: normal; display: block; margin-top: 2px; font-size: 12px; line-height: 1.45; color: var(--muted); }
+.wizsec { margin: 26px 0 9px; font-size: 13px; font-weight: 700; }
 
 /* step 4 — the look */
 .looks { display: grid; grid-template-columns: repeat(3, 1fr); gap: 9px; }
@@ -2237,10 +2242,10 @@ body.instudio { overflow: hidden; }
     <div class="work">
 
     <nav class="steps" aria-label="Stages">
-      <button class="step" data-go="0"><span class="num">1</span> Upload</button>
-      <button class="step" data-go="1"><span class="num">2</span> Editing</button>
-      <button class="step" data-go="2"><span class="num">3</span> Your video</button>
-      <button class="step" data-go="3"><span class="num">4</span> Fine-tune</button>
+      <button class="step" data-go="0"><span class="num">1</span> Style</button>
+      <button class="step" data-go="1"><span class="num">2</span> Edits</button>
+      <button class="step" data-go="2"><span class="num">3</span> Apply</button>
+      <button class="step" data-go="3"><span class="num">4</span> Export</button>
     </nav>
 
     <div class="mainarea">
@@ -2328,11 +2333,6 @@ body.instudio { overflow: hidden; }
       <!-- ─────────────────────────────────────────────── 1 · upload ─── -->
       <section class="panel on" id="p0">
         <div class="wiz">
-          <div class="wizrail">
-            <div class="wizdots" id="wiz-dots"></div>
-            <div class="wizbar"><i id="wiz-fill"></i></div>
-          </div>
-
           <h1 id="wiz-title">Your footage</h1>
           <p class="wizsub" id="wiz-sub">Drop in the video you filmed.</p>
 
@@ -2364,10 +2364,14 @@ body.instudio { overflow: hidden; }
           <div>
             <h1 style="font-size:30px;font-weight:800;margin-bottom:4px">Most people get pricing backwards</h1>
             <p style="color:var(--muted);font-size:14px" id="hdr-sub"></p>
+            <p style="color:var(--muted);font-size:12.5px;margin-top:6px">
+              Download it and post it &mdash; or
+              <button data-timeline style="color:var(--violet);font-weight:600;text-decoration:underline;text-underline-offset:2px">adjust
+              it in the editor</button>.</p>
           </div>
           <div style="display:flex;align-items:center;gap:10px">
-            <button class="ghost tl-open" data-go="3" style="padding:9px 15px">
-              Fine-tune in the editor &rarr;</button>
+            <button class="ghost tl-open" data-timeline style="padding:9px 15px">
+              Adjust in the editor &rarr;</button>
             <button class="ghost" id="dl" style="padding:9px 15px">Download</button>
           </div>
         </div>
@@ -2836,13 +2840,31 @@ function buildHomeLooks() {
     </button>`).join('');
 }
 
-/* Three questions, where there were four. The one about where the video was
-   headed is gone: the footage answers it, and the answer decides which styles
-   are even worth showing. */
+/* Two questions, where there were four.
+
+   "Where is it going?" went first: it asked about distribution when what it
+   needed was a fact about the file. And dropping the footage in is not a
+   question at all — it is how you start — so numbering it only pushed the
+   first real choice to position two and made the whole thing read as longer
+   than it is. It now sits at the top of the style question as a strip.
+
+   What is left is the same four steps the app shows: style, edits, apply,
+   export. The wizard owns the first two. */
 const WIZ = [
-  { key: 'file',  title: 'Your footage',  sub: 'Drop in the video you filmed.' },
   { key: 'look',  title: 'Pick a style',  sub: 'The shape of the video, and everything that follows from it.' },
-  { key: 'input', title: 'How finished is it?', sub: 'The last thing we need before touching your cut.' },
+  { key: 'edits', title: 'What goes in it', sub: 'Everything is on by default. Turn off anything you don\u2019t want and it is never made.' },
+];
+
+/* The layers a person can decline before anything is made. Turning one off on a
+   finished video is free — but somebody who knows they never want music should
+   not have to watch a video get scored and then unscore it. */
+const LAYER_CARDS = [
+  ['captions', 'Captions', 'Word by word, timed to the syllable.'],
+  ['broll', 'B-roll', 'Real footage cut in where you name something concrete.'],
+  ['graphics', 'Graphics', 'Stat cards, lists and icons for the numbers you say.'],
+  ['sfx', 'Sound effects', 'Whooshes on the cuts, pops on the graphics.'],
+  ['punchIns', 'Punch-ins', 'A second camera that pushes in on your point.'],
+  ['music', 'Music', 'A bed that ducks under your voice and lifts between lines.'],
 ];
 
 /* Which format a piece of footage is, read off the footage. Vertical or square
@@ -2886,9 +2908,8 @@ function styleShape(style, mode) {
 }
 
 const HINTS = {
-  file: 'MP4, MOV or WebM. Up to 4&nbsp;GB. A sample file is already loaded so you can walk the flow.',
-  input: 'Raw means we cut the pauses, the ums, the false starts and the takes you redid. Already trimmed means we respect your edit and only add layers. Everything here re-renders for free afterwards.',
-  look: 'We read the shape and the length off your footage, so the list is already the one that suits it. Every one of these re-renders for free afterwards &mdash; nothing here is a one-way door.',
+  look: 'MP4, MOV or WebM, up to 4&nbsp;GB &mdash; a sample is already loaded so you can walk the flow. We read the shape and the length off it, so the list below is already the one that suits your footage. Every style re-renders for free afterwards &mdash; nothing here is a one-way door.',
+  edits: 'Raw means we cut the pauses, the ums, the false starts and the takes you redid. Already trimmed means we respect your edit and only add layers on top. Anything you switch off here is never made, so you are not paying for a layer you then delete.',
 };
 
 /** Only the styles that suit this footage, and the one in force among them. */
@@ -2903,30 +2924,24 @@ function styleNow() {
 function buildWizard() {
   const step = WIZ[state.wiz];
 
-  $('wiz-dots').innerHTML = WIZ.map((w, i) => `
-    <span class="${i === state.wiz ? 'now' : i < state.wiz ? 'was' : ''}">
-      <b>${i < state.wiz ? '✓' : i + 1}</b>${w.title.replace('?', '')}
-    </span>`).join('');
-  $('wiz-fill').style.width = ((state.wiz + 1) / WIZ.length * 100) + '%';
+  // The wizard's position IS the pipeline's position — one stepper, not two.
+  state.step = state.wiz;
+  paintSteps();
 
   $('wiz-title').textContent = step.title;
   $('wiz-sub').textContent = step.sub;
   $('wiz-hint').innerHTML = HINTS[step.key];
 
   $('wiz-body').innerHTML = {
-    file: () => state.file
-      ? `<div class="picked">
-           <span class="ic">${filmIcon()}</span>
-           <span class="meta"><b>${state.file.name}</b><i>${state.file.meta}</i></span>
-           <button class="swap" data-wiz="clear">Choose another</button>
-         </div>`
-      : `<div class="bigdrop" data-wiz="pick">
-           <span class="ic">${filmIcon()}</span>
-           <b>Drop your video here</b>
-           <span>MP4, MOV or WebM &mdash; or click to browse</span>
-         </div>`,
+    edits: () => `
+      <div class="layercards">${LAYER_CARDS.map(([k, name, body]) => `
+        <button class="layercard" data-layer="${k}" aria-pressed="${state.layers[k]}">
+          <span class="box">${state.layers[k] ? '&#10003;' : ''}</span>
+          <span class="txt"><b>${name}</b><i>${body}</i></span>
+        </button>`).join('')}</div>
 
-    input: () => `<div class="pair">${Object.entries(INPUT_MODES).map(([k, m]) => `
+      <h3 class="wizsec">How finished is the footage?</h3>
+      <div class="pair">${Object.entries(INPUT_MODES).map(([k, m]) => `
       <button class="choice" data-inmode="${k}" aria-pressed="${state.inmode === k}">
         <span class="hd"><b>${m.label}</b></span>
         <p>${m.desc}</p>
@@ -2938,6 +2953,17 @@ function buildWizard() {
       </div>`,
 
     look: () => `
+      ${state.file
+        ? `<div class="picked" data-wiz="pick">
+             <span class="ic">${filmIcon()}</span>
+             <span class="meta"><b>${state.file.name}</b><i>${state.file.meta}</i></span>
+             <span class="swap" data-wiz="clear">Choose another</span>
+           </div>`
+        : `<div class="bigdrop" data-wiz="pick">
+             <span class="ic">${filmIcon()}</span>
+             <b>Drop your video here</b>
+             <span>MP4, MOV or WebM &mdash; or click to browse</span>
+           </div>`}
       <div class="verdict">
         <span class="tag">${FORMATS[state.fmt].label}</span>
         <span class="why">${state.fmtOverride
@@ -2955,8 +2981,10 @@ function buildWizard() {
   }[step.key]();
 
   $('wiz-back').hidden = state.wiz === 0;
-  $('wiz-next').textContent = state.wiz === WIZ.length - 1 ? 'Make my video' : 'Continue';
-  $('wiz-next').disabled = step.key === 'file' && !state.file;
+  $('wiz-next').textContent = state.wiz === WIZ.length - 1
+    ? 'Apply and make my video'
+    : (state.file ? 'Continue' : 'Choose a file first');
+  $('wiz-next').disabled = !state.file;
 
   const noteEl = $('note');
   if (noteEl) noteEl.addEventListener('input', (e) => { state.note = e.target.value; });
@@ -2964,6 +2992,7 @@ function buildWizard() {
   // The preview is only meaningful once a look is on the table; before that it
   // is decoration competing with the question being asked.
   document.querySelector('.grid').classList.toggle('wizsolo', step.key !== 'look');
+  document.querySelector('.steps').style.display = 'flex';
   applyLayout();
 }
 
@@ -2985,7 +3014,7 @@ document.addEventListener('click', (e) => {
 
   if (b.hasAttribute('data-timeline')) return openTimeline();
 
-  if (b.dataset.wiz === 'clear') { state.file = null; buildWizard(); return; }
+  if (b.dataset.wiz === 'clear') { state.file = null; buildWizard(); render(); return; }
   if (b.dataset.wiz === 'pick') {
     state.file = { name: 'pricing-talk-take3.mov', meta: '0:47 · 1920×1080 · 412 MB' };
     // The sample is 47 seconds of 1920×1080 — short enough to cut vertical.
@@ -3015,17 +3044,21 @@ document.addEventListener('click', (e) => {
     // therefore discards manual timeline edits, exactly as the app does.
     BASE_OVERRIDE = null; tl.ops = []; tl.redo = []; tl.sel = null;
     refreshDoc();
-    if (state.step >= 2) { state.edited = true; }
+    if (state.step >= 3) { state.edited = true; }
   }
   if (b.dataset.layer) {
     state.layers[b.dataset.layer] = !state.layers[b.dataset.layer];
-    state.edited = true;
+    // Declining a layer BEFORE it is made is not an edit to a finished video —
+    // it is part of the brief, and calling it a change would be a lie told in
+    // the changes list.
+    if (state.step >= 3) state.edited = true;
   }
   if (b.dataset.go !== undefined) {
     const n = +b.dataset.go;
-    // Clicking "Editing" from the start runs the pipeline; jumping straight to
-    // "Your video" skips it, which is what you want when reviewing screens.
-    if (n === 1 && state.step === 0) return runPipeline();
+    // "Apply" from inside the wizard means run it, not jump past it. Landing on
+    // step 3 without a pipeline behind it would show a progress bar for work
+    // nobody started.
+    if (n === 2 && state.step <= 1) return runPipeline();
     goto(n);
   }
   buildWizard(); syncTweaks(); render(); paintPreview(); drawTimeline(); buildLanes();
@@ -3064,7 +3097,7 @@ const STAGE_DETAIL = {
 let procTimer = null;
 
 function runPipeline() {
-  goto(1);
+  goto(2);
   const rawOnly = state.inmode === 'raw';
   $('proc-sub').textContent = state.fmt === 'short'
     ? 'Usually about 90 seconds, start to finish.'
@@ -3097,7 +3130,7 @@ function runPipeline() {
           '<b>Respected your edit.</b> You told us the footage was already trimmed, so we skipped ' +
           'false-start and retake detection entirely and only removed genuine dead air.';
       }
-      setTimeout(() => goto(2), 520);
+      setTimeout(() => { setMode('simple'); goto(3); }, 520);
       return;
     }
     const el = $('stages').children[i];
@@ -4443,7 +4476,7 @@ $('tl-reset').addEventListener('click', () => {
               : 'Back to the AI&rsquo;s cut.');
 });
 
-$('st-back').addEventListener('click', () => goto(2));
+$('st-back').addEventListener('click', () => { setMode('simple'); goto(3); });
 
 $('st-expand').addEventListener('click', () => {
   const c = document.querySelector('.st-canvas');
@@ -4647,7 +4680,7 @@ function go(route, opts) {
   const inFlow = ['new', 'processing', 'editor', 'timeline'].includes(route);
   // The wizard carries its own progress rail — two steppers stacked on one
   // screen is exactly the noise this pass is removing.
-  document.querySelector('.steps').style.display = inFlow && route !== 'new' ? 'flex' : 'none';
+  document.querySelector('.steps').style.display = inFlow ? 'flex' : 'none';
   document.querySelector('.grid').style.display = inFlow ? 'grid' : 'none';
   applyTimelineLayout();
 
@@ -4661,9 +4694,10 @@ function go(route, opts) {
   // `startAt` is how a dropped file skips the question it already answered.
   // Without it `go('new')` would helpfully reset the wizard to "Your footage"
   // and ask for the file the person just gave us.
-  if (route === 'new') { state.step = 0; state.wiz = (opts && opts.startAt) || 0; buildWizard(); }
-  if (route === 'processing') state.step = 1;
-  if (route === 'editor' || route === 'timeline') { state.step = state.mode === 'timeline' ? 3 : 2; render(); }
+  if (route === 'new') { state.wiz = (opts && opts.startAt) || 0; state.step = state.wiz; buildWizard(); }
+  if (route === 'processing') state.step = 2;
+  if (route === 'editor' || route === 'timeline') { state.step = 3; render(); }
+  if (route === 'editor') { setMode('simple'); applyTimelineLayout(); }
   if (route === 'timeline') openTimeline();
 
   paintSteps();
@@ -4726,6 +4760,8 @@ function applyTimelineLayout() {
 }
 
 function openTimeline() {
+  // The studio is the second half of step 4, not a step of its own.
+  setMode('timeline');
   goto(3);
   refreshDoc();
   drawTimeline();
@@ -4754,20 +4790,22 @@ function goto(n) {
     $('footwrap').hidden = true;
     moveStage('rail');
   }
-  // Step 4 is step 3 with the studio open: same document, same panel, a
-  // different way of looking at it. Making it a step rather than a toggle is
-  // what says it is optional and that you are still inside the same job.
-  state.route = ['new', 'processing', 'editor', 'editor'][n];
-  if (n >= 2) setMode(n === 3 ? 'timeline' : 'simple');
-  document.querySelector('.steps').style.display = n === 0 ? 'none' : 'flex';
+  // Steps 1 and 2 are the wizard's two questions; 3 is the machine working; 4
+  // is the finished video. Fine-tuning is NOT a fifth step — it is the second
+  // half of the fourth, which is what says it is optional and that you are
+  // still inside the same job.
+  state.route = ['new', 'new', 'processing', 'editor'][n];
+  if (n <= 1) state.wiz = n;
+  document.querySelector('.steps').style.display = 'flex';
   document.querySelector('.grid').style.display = 'grid';
   buildNav();
   state.step = n;
-  APP_PANELS.forEach((id) => $(id).classList.toggle('on', id === ['p0', 'p1', 'p2', 'p2'][n]));
+  APP_PANELS.forEach((id) => $(id).classList.toggle('on', id === ['p0', 'p0', 'p1', 'p2'][n]));
+  if (n <= 1) buildWizard();
   paintSteps();
   applyTimelineLayout();
   window.scrollTo({ top: 0, behavior: reduced ? 'auto' : 'smooth' });
-  if (n >= 2) { render(); drawTimeline(); }
+  if (n === 3) { render(); drawTimeline(); }
 }
 
 function paintSteps() {
@@ -4777,7 +4815,7 @@ function paintSteps() {
   });
 }
 
-/** The toggle in the header and step 4 in the stepper are the same switch. */
+/** Which half of step 4 you are in: the finished video, or the studio. */
 function setMode(mode) { state.mode = mode; }
 
 const measureTopbar = () => document.documentElement.style.setProperty(

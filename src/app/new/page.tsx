@@ -1,5 +1,4 @@
 import { AppShell, ShellMain } from '@/components/shell/AppShell';
-import { Stepper } from '@/components/shell/Stepper';
 import { UploadFlow } from '@/components/UploadFlow';
 import { STYLE_LIST, FORMAT_PRESETS } from '@/lib/styles/presets';
 import { capabilities } from '@/lib/config/env';
@@ -16,19 +15,11 @@ export default async function NewProjectPage() {
 
   return (
     <AppShell recents={recentsFor(projects)}>
-      {/* The stepper shares the wizard's column rather than the full measure —
-          a rail that starts 200px left of the question it labels reads as two
-          unrelated pages stacked. */}
-      <div className="px-4 pt-5 sm:px-8">
-        <div className="measure">
-          <div className="mx-auto max-w-[760px]">
-            <Stepper current="upload" />
-          </div>
-        </div>
-      </div>
-
+      {/* The stepper lives inside the wizard, not above it. A static copy here
+          plus the live one in the flow meant two rails saying different things
+          the moment you answered the first question. */}
       <ShellMain>
-        <div className="mx-auto max-w-[760px] pt-6">
+        <div className="mx-auto max-w-[760px] pt-5">
           {missing.length > 0 ? (
             <div className="mb-6 rounded-2xl border border-warn/30 bg-warn/[0.06] p-4 text-[13px]">
               <p className="font-semibold text-warn">Running with reduced features</p>

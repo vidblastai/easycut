@@ -1,4 +1,5 @@
 import type { DirectorPlan } from '@/lib/director/schema';
+import type { LayerName } from '@/lib/edl/layers';
 import type { Edl } from '@/lib/edl/types';
 import type { FormatMode, StylePreset } from '@/lib/styles/presets';
 import type { Transcript } from '@/lib/transcribe/types';
@@ -64,6 +65,14 @@ export interface PipelineRequest {
   captionPreset?: string | null;
   inputMode: 'raw' | 'roughcut';
   userNote?: string;
+  /**
+   * Layers the person declined at upload.
+   *
+   * Applied where the document is built rather than where it is rendered, so a
+   * refused layer is absent from the timeline, the editor and the cost report
+   * — not present everywhere and merely hidden at paint time.
+   */
+  layersOff?: readonly LayerName[];
   /** Storage key of the uploaded source file. */
   sourceKey: string;
   /** Resume from this stage instead of the beginning. */

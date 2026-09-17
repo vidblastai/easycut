@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { db, parseJson, stringifyJson } from '@/lib/db';
 import { ASPECTS, CaptionStyleSchema, EdlSchema, type Edl } from '@/lib/edl/types';
 import { applyOperations, EdlOperationsSchema, healEdl } from '@/lib/edl/operations';
+import { stripLayers, type LayerName } from '@/lib/edl/layers';
 import { rebuildEdl } from '@/lib/pipeline/rebuild';
 import { queue } from '@/lib/queue';
 import { selectMusic } from '@/lib/assets/music';
@@ -199,17 +200,15 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
   }
 
   if (patch.layers) {
-    const l = patch.layers;
-    edl = {
-      ...edl,
-      captions: l.captions === false ? [] : edl.captions,
-      broll: l.broll === false ? [] : edl.broll,
-      graphics: l.graphics === false ? [] : edl.graphics,
-      sfx: l.sfx === false ? [] : edl.sfx,
-      punchIns: l.punchIns === false ? [] : edl.punchIns,
-      transitions: l.transitions === false ? [] : edl.transitions,
-      music: l.music === false ? null : edl.music,
-    };
+    // The same strip the pipeline applies to a refusal made at upload. One
+    // implementation, because two of them is how "transitions" came to be
+    // switchable in one place and not the other.
+    edl = stripLayers(
+      edl,
+      Object.entries(patch.layers)
+        .filter(([, on]) => on === false)
+        .map(([name]) => name as LayerName),
+    );
   }
 
   // A preset is the base; hand-tuned fields land on top of it, so sending both

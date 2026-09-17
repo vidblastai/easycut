@@ -1,6 +1,7 @@
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { localMusicPath } from '@/lib/assets/music';
+import { parseLayersOff } from '@/lib/edl/layers';
 import { db, parseJson, stringifyJson } from '@/lib/db';
 import { EdlSchema, type Edl } from '@/lib/edl/types';
 import { cleanupWorkDir, runPipeline } from '@/lib/pipeline/run';
@@ -52,6 +53,7 @@ export async function processProject(payload: ProcessJobPayload): Promise<void> 
         captionPreset: project.captionPreset,
         inputMode: project.inputMode as 'raw' | 'roughcut',
         userNote: project.userNote ?? undefined,
+        layersOff: parseLayersOff(project.layersOff),
         sourceKey: source.storageKey,
         resumeFrom: payload.resumeFrom,
       },

@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os';
 import { env } from '@/lib/config/env';
 import { direct, planWindows } from '@/lib/director';
 import { buildEdl } from '@/lib/edl/builder';
+import { stripLayers } from '@/lib/edl/layers';
 import { ASPECT_DIMENSIONS, type Aspect, type Edl } from '@/lib/edl/types';
 import {
   detectSilence,
@@ -426,7 +427,11 @@ async function stageAssets(ctx: PipelineContext): Promise<void> {
     degraded: ctx.degraded,
   });
 
-  const resolved = await resolveAssets(built, {
+  // Declined layers come out BEFORE the assets are fetched: a B-roll clip
+  // nobody asked for is a download and a bill as well as a layer.
+  const wanted = stripLayers(built, ctx.request.layersOff ?? []);
+
+  const resolved = await resolveAssets(wanted, {
     mode: ctx.request.mode,
     musicMood: ctx.plan.musicMood || ctx.style.musicMood,
     ledger: ctx.ledger,
