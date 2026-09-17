@@ -12,7 +12,8 @@ import { Stepper, type StepKey } from '@/components/shell/Stepper';
 import { CaptionStudio } from '@/components/captions/CaptionStudio';
 import { CaptionBand } from '@/components/captions/CaptionPreview';
 import { captionPresetFor } from '@/lib/captions/presets';
-import { IconDownload, IconPlus } from '@/components/shell/Icons';
+import { IconDownload, IconPlus, IconSliders } from '@/components/shell/Icons';
+import { AddedList, CutRibbon, Glance, TheCut } from '@/components/export/ExportReport';
 import { CopyButton } from '@/components/CopyButton';
 import type { EdlOperation } from '@/lib/edl/operations';
 import type { CaptionStyle, Edl } from '@/lib/edl/types';
@@ -272,6 +273,9 @@ export function ProjectWorkspace({
   const step: StepKey =
     project.status === 'processing' || project.status === 'draft' ? 'apply' : 'export';
 
+  const modeLabel = project.mode === 'short' ? 'Short form' : 'Long form';
+  const styleName = styles.find((s) => s.id === project.styleId)?.name ?? project.styleId;
+
   const commitCaption = async () => {
     if (!captionStyle) return;
     await patch({ captionStyle, captionPreset: captionStyle.preset });
@@ -443,173 +447,206 @@ export function ProjectWorkspace({
     <AppShell
       recents={recents}
       action={
-        <>
-          {doc ? (
-            <button type="button" onClick={() => setMode('studio')} className="btn-ghost">
-              Fine-tune
-            </button>
-          ) : null}
-          {project.previewUrl ? (
-            <a href={project.previewUrl} download className="btn-primary">
-              <IconDownload className="h-4 w-4" />
-              Download
-            </a>
-          ) : (
-            <Link href="/new" className="btn-ghost">
-              <IconPlus className="h-4 w-4" />
-              New video
-            </Link>
-          )}
-        </>
+        <Link href="/new" className="btn-ghost">
+          <IconPlus className="h-4 w-4" />
+          New video
+        </Link>
       }
     >
       <div className="px-4 pt-5 sm:px-8">
         <div className="measure">
           <Stepper current={step} />
-          {/* The last step is two things, not one, and the second one is easy
-              to miss: the video is finished, AND it is still editable. Saying
-              so here — next to the step that is lit — is the difference between
-              an editor people find and an editor people never open. */}
-          {step === 'export' && doc ? (
-            <p className="mt-2 px-2.5 text-[12.5px] text-muted sm:px-3.5">
-              Download it and post it &mdash; or{' '}
-              <button
-                type="button"
-                onClick={() => setMode('studio')}
-                className="font-semibold text-violet underline-offset-2 hover:underline"
-              >
-                adjust it in the editor
-              </button>
-              .
-            </p>
-          ) : null}
         </div>
       </div>
 
       <main className="min-w-0 flex-1 px-4 pb-20 sm:px-8">
         <div className="measure">
-          <div className="pt-6">
-            <h1 className="text-[26px] font-extrabold">{project.title}</h1>
-            <p className="mt-1.5 text-[13px] text-muted">
-              {project.mode === 'short' ? 'Short form' : 'Long form'} ·{' '}
-              {styles.find((s) => s.id === project.styleId)?.name ?? project.styleId}
-              {project.durationSec ? ` · ${formatDuration(project.durationSec)}` : ''}
-              {project.costUsd > 0 ? ` · ${project.costUsd < 0.01 ? '<$0.01' : `$${project.costUsd.toFixed(2)}`} to make` : ''}
-            </p>
-          </div>
-
           {project.status === 'failed' ? (
-            <FailureCard message={project.errorMessage ?? job?.errorMessage ?? 'Unknown error'} />
+            <div className="pt-6">
+              <FailureCard message={project.errorMessage ?? job?.errorMessage ?? 'Unknown error'} />
+            </div>
           ) : null}
 
-          <div className="mt-6 grid gap-6 lg:grid-cols-[1.35fr_1fr]">
-            {/* ----------------------------------------------------- the video */}
-            <div>
-              {project.status === 'processing' || !project.previewUrl ? (
+          {project.status === 'processing' || !project.previewUrl ? (
+            <div className="pt-6">
+              <h1 className="text-[26px] font-extrabold">{project.title}</h1>
+              <p className="mt-1.5 text-[13px] text-muted">{modeLabel} · {styleName}</p>
+              <div className="mt-6">
                 <ProgressPanel job={job} mode={project.mode} />
-              ) : (
-                <div className="card overflow-hidden">
-                  {/* The shape has to live on a box that is only ever that
-                      shape. `width: 100%` plus `max-height` describes a
-                      DIFFERENT rectangle the moment the height clamps, and the
-                      video then letterboxes itself inside it — black bars on a
-                      correctly rendered 9:16 file, which reads as a broken
-                      render rather than a broken stylesheet. */}
-                  {/* Black belongs to the picture, not to the room it sits in
-                      — a black gutter beside a correctly sized 9:16 video is
-                      indistinguishable from a letterboxed render. */}
-                  <div className="flex justify-center">
-                    <div
-                      className="bg-black"
-                      style={{
-                        aspectRatio: project.mode === 'short' ? '9 / 16' : '16 / 9',
-                        height: '70vh',
-                        maxWidth: '100%',
-                      }}
-                    >
-                      <video
-                        key={project.previewUrl}
-                        src={project.previewUrl}
-                        poster={project.thumbnailUrl ?? undefined}
-                        controls
-                        playsInline
-                        className="h-full w-full"
-                      />
-                    </div>
-                  </div>
-                  <div className="flex flex-wrap items-center gap-2 border-t border-line p-4">
-                    <a href={project.previewUrl} download className="btn-primary">
-                      <IconDownload className="h-4 w-4" />
-                      Download
-                    </a>
-                    {(['9:16', '1:1', '16:9'] as const)
-                      .filter((a) => a !== doc?.format.aspect)
-                      .map((aspect) => (
-                        <button
-                          key={aspect}
-                          type="button"
-                          disabled={busy}
-                          onClick={() => void exportAspect(aspect)}
-                          className="btn-ghost"
-                        >
-                          Export {aspect}
-                        </button>
-                      ))}
-                  </div>
+              </div>
+            </div>
+          ) : (
+            <>
+              {/* ------------------------------------------------ the hero ---
+                  The finished video IS the page. Watching it is the whole
+                  decision — if it is right you post it and never open an
+                  editor — so it is not a thumbnail in a sidebar, and the two
+                  ways out of here are the same size as the choice between
+                  them. */}
+              <div
+                className={clsx(
+                  'grid items-start gap-8 pb-7 pt-6',
+                  project.mode === 'short'
+                    ? 'lg:grid-cols-[minmax(0,340px)_minmax(0,1fr)]'
+                    : 'lg:grid-cols-[minmax(0,1.25fr)_minmax(0,1fr)]',
+                )}
+              >
+                {/* The shape has to live on a box that is only ever that shape.
+                    `width: 100%` plus `max-height` describes a DIFFERENT
+                    rectangle the moment the height clamps, and the video then
+                    letterboxes itself inside it — black bars on a correctly
+                    rendered 9:16 file, which reads as a broken render rather
+                    than a broken stylesheet. */}
+                <div
+                  className="overflow-hidden rounded-[18px] bg-black shadow-card"
+                  style={{ aspectRatio: project.mode === 'short' ? '9 / 16' : '16 / 9' }}
+                >
+                  <video
+                    key={project.previewUrl}
+                    src={project.previewUrl}
+                    poster={project.thumbnailUrl ?? undefined}
+                    controls
+                    playsInline
+                    className="h-full w-full"
+                  />
                 </div>
-              )}
 
-              {project.socialCaption ? (
-                <div className="card mt-4 p-5">
-                  <div className="flex items-center gap-3">
-                    <h3 className="text-sm font-bold">Caption for your post</h3>
-                    {/* The last thing between a finished video and a posted one
-                        is pasting this somewhere. Selecting it by hand on a
-                        phone is the whole reason people give up here. */}
-                    <CopyButton
-                      className="ml-auto"
-                      text={[project.socialCaption, project.hashtags.join(' ')].filter(Boolean).join('\n\n')}
-                    />
+                <div className="min-w-0">
+                  <h1 className="text-[32px] font-extrabold leading-[1.12] tracking-[-.038em]">
+                    {project.title}
+                  </h1>
+                  <p className="mt-2 text-[13.5px] text-muted">
+                    {modeLabel} · {styleName}
+                    {project.durationSec ? ` · ${formatDuration(project.durationSec)}` : ''}
+                    {doc ? ` · ${doc.format.width}×${doc.format.height}` : ''}
+                    {project.costUsd > 0
+                      ? ` · ${project.costUsd < 0.01 ? '<$0.01' : `$${project.costUsd.toFixed(2)}`} to make`
+                      : ''}
+                  </p>
+
+                  <div className="mt-5 grid gap-2.5 sm:grid-cols-2">
+                    <a href={project.previewUrl} download className="act act-go">
+                      <IconDownload className="h-[19px] w-[19px] flex-none" />
+                      <span>
+                        Export video
+                        <i className="mt-0.5 block font-mono text-[11.5px] font-medium not-italic text-ink/[.62]">
+                          MP4{doc ? ` · ${doc.format.width}×${doc.format.height}` : ''}
+                          {project.durationSec ? ` · ${formatDuration(project.durationSec)}` : ''}
+                        </i>
+                      </span>
+                    </a>
+                    <button type="button" onClick={() => setMode('studio')} disabled={!doc} className="act act-alt">
+                      <IconSliders className="h-[19px] w-[19px] flex-none text-violet" />
+                      <span>
+                        Open editor
+                        <i className="mt-0.5 block text-[11.5px] font-medium not-italic text-muted">
+                          Change any cut, caption or clip
+                        </i>
+                      </span>
+                    </button>
                   </div>
-                  <p className="mt-2 text-sm leading-relaxed text-muted">{project.socialCaption}</p>
-                  {project.hashtags.length ? (
-                    <p className="mt-2 text-sm text-violet">{project.hashtags.join(' ')}</p>
+
+                  {doc ? (
+                    <>
+                      <CutRibbon edl={doc} />
+                      <Glance edl={doc} />
+                    </>
+                  ) : null}
+
+                  {error ? (
+                    <p className="mt-4 rounded-xl border border-bad/40 bg-bad/[0.08] px-4 py-3 text-[13px] text-bad">
+                      {error}
+                    </p>
                   ) : null}
                 </div>
-              ) : null}
+              </div>
 
-              {doc ? <WhatWeDid edl={doc} /> : null}
-            </div>
+              {/* -------------------------------------------------- the report */}
+              <div className="flex flex-wrap items-center gap-3 border-t border-line-soft pb-3.5 pt-5">
+                <h2 className="text-[19px] font-extrabold tracking-[-.03em]">The report</h2>
+                <span className="rounded-full border border-line px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider text-muted">
+                  Version {edl?.version ?? 1}
+                </span>
+                <p className="basis-full text-[13px] text-muted">
+                  Every decision the edit made, and everything it put on top.
+                </p>
+              </div>
 
-            {/* ---------------------------------------------------- the tweaks */}
-            <aside className="space-y-4">
-              {error ? (
-                <div className="rounded-xl border border-bad/40 bg-bad/[0.08] px-4 py-3 text-sm text-bad">
-                  {error}
+              <div className="grid items-start gap-3.5">
+                {doc ? <TheCut edl={doc} /> : null}
+                {doc ? <AddedList edl={doc} /> : null}
+
+                {/* The tweaks are one tall card, so they take a column of
+                    their own — stacking everything in the left half left the
+                    right half of the page empty on any project without a
+                    social caption. */}
+                <div className="grid items-start gap-3.5 lg:grid-cols-2">
+                  <TweakPanel
+                    disabled={busy}
+                    edl={doc}
+                    styles={styles}
+                    currentStyle={project.styleId}
+                    onPatch={patch}
+                    onOpenCaptions={doc ? () => setMode('studio') : undefined}
+                  />
+
+                  <div className="grid gap-3.5">
+                  {project.socialCaption ? (
+                    <div className="card p-5">
+                      <div className="flex items-center gap-3">
+                        <h3 className="text-sm font-bold">Caption for your post</h3>
+                        {/* The last thing between a finished video and a posted
+                            one is pasting this somewhere. Selecting it by hand
+                            on a phone is the whole reason people give up. */}
+                        <CopyButton
+                          className="ml-auto"
+                          text={[project.socialCaption, project.hashtags.join(' ')].filter(Boolean).join('\n\n')}
+                        />
+                      </div>
+                      <p className="mt-2 text-sm leading-relaxed text-muted">{project.socialCaption}</p>
+                      {project.hashtags.length ? (
+                        <p className="mt-2 text-sm text-violet">{project.hashtags.join(' ')}</p>
+                      ) : null}
+                    </div>
+                  ) : null}
+
+                    {doc?.degraded.length ? (
+                      <div className="card p-4">
+                        <h3 className="text-sm font-bold text-warn">Skipped layers</h3>
+                        <ul className="mt-2 space-y-1 text-xs text-muted">
+                          {doc.degraded.map((item, i) => (
+                            <li key={i}>&bull; {item}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    ) : null}
+
+                    <div className="card p-4">
+                      <h3 className="text-sm font-bold">Another shape</h3>
+                      <p className="mt-1 text-[12.5px] text-muted">
+                        Re-cut for a different feed. Free — it replays the analysis it already has.
+                      </p>
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        {(['9:16', '1:1', '16:9'] as const)
+                          .filter((a) => a !== doc?.format.aspect)
+                          .map((aspect) => (
+                            <button
+                              key={aspect}
+                              type="button"
+                              disabled={busy}
+                              onClick={() => void exportAspect(aspect)}
+                              className="btn-ghost"
+                            >
+                              Export {aspect}
+                            </button>
+                          ))}
+                      </div>
+                    </div>
+                  </div>
                 </div>
-              ) : null}
-
-              {doc?.degraded.length ? (
-                <div className="card p-4">
-                  <h3 className="text-sm font-bold text-warn">Skipped layers</h3>
-                  <ul className="mt-2 space-y-1 text-xs text-muted">
-                    {doc.degraded.map((item, i) => (
-                      <li key={i}>&bull; {item}</li>
-                    ))}
-                  </ul>
-                </div>
-              ) : null}
-
-              <TweakPanel
-                disabled={busy || project.status === 'processing'}
-                edl={doc}
-                styles={styles}
-                currentStyle={project.styleId}
-                onPatch={patch}
-                onOpenCaptions={doc ? () => setMode('studio') : undefined}
-              />
-            </aside>
-          </div>
+              </div>
+            </>
+          )}
         </div>
       </main>
     </AppShell>

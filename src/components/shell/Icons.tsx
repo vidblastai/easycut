@@ -88,6 +88,16 @@ export const IconCheck: React.FC<IconProps> = (p) => (
   <Svg {...p}><path d="m5 12.5 4.5 4.5L19 7" /></Svg>
 );
 
+/** Three tracks with a handle on each — the universal sign for "adjust this". */
+export const IconSliders: React.FC<IconProps> = (p) => (
+  <Svg {...p}>
+    <path d="M3 7h18M3 12h18M3 17h18" />
+    <circle cx="8" cy="7" r="2.1" fill="currentColor" stroke="none" />
+    <circle cx="15" cy="12" r="2.1" fill="currentColor" stroke="none" />
+    <circle cx="7" cy="17" r="2.1" fill="currentColor" stroke="none" />
+  </Svg>
+);
+
 /**
  * Upload: a solid arrow over a bar.
  *

@@ -149,6 +149,17 @@ h1, h2, h3 { letter-spacing: -0.03em; text-wrap: balance; }
   .btn-ghost   { @apply btn border border-line text-chalk hover:bg-charcoal2; }
   .btn-quiet   { @apply btn px-3 py-2 text-muted hover:bg-charcoal2 hover:text-chalk; }
 
+  /* The two doors out of the export step: post it, or change it. Both are
+     full-size, because "open the editor" is not a footnote and "export" is not
+     a link in a corner. */
+  .act {
+    @apply flex items-center gap-3 rounded-2xl px-4 py-[15px] text-left
+           text-[15px] font-bold leading-tight transition-colors
+           active:translate-y-px disabled:opacity-40 disabled:pointer-events-none;
+  }
+  .act-go  { @apply act bg-violet text-ink hover:bg-violet-hover; }
+  .act-alt { @apply act border border-line bg-charcoal text-chalk hover:border-violet hover:bg-violet-dim; }
+
   .label    { @apply text-sm font-medium text-muted; }
   .hairline { @apply border-t border-line; }
 

@@ -175,6 +175,9 @@ body.instudio .step .num { width: 18px; height: 18px; font-size: 10px; }
 .grid.wizsolo { grid-template-columns: minmax(0,1fr); }
 .grid.wizsolo .rail { display: none; }
 .grid.wizsolo .wiz { margin-left: 0; }
+/* Step 4 takes the whole width: the finished video is the page. */
+.grid.exmode { grid-template-columns: minmax(0,1fr); }
+.grid.exmode .rail { display: none; }
 @media (max-width: 960px) {
   .grid { grid-template-columns: minmax(0,1fr); gap: 30px; }
   .rail { order: -1; position: static !important; }
@@ -285,6 +288,133 @@ body.instudio .step .num { width: 18px; height: 18px; font-size: 10px; }
 
 .bar { height: 6px; border-radius: 99px; background: var(--raised); overflow: hidden; }
 .bar > i { display: block; height: 100%; background: var(--violet); border-radius: 99px; transition: width .35s cubic-bezier(.4,0,.2,1); }
+
+/* ═════════════════════════════════════════════ step 4 · the export ═══
+   The finished video is the page. Everything else on this screen exists to
+   answer one question — is this right? — and the two buttons are the two
+   answers. Both are full-size: "open the editor" is not a footnote, and
+   "export" is not a link in a corner.
+   ═══════════════════════════════════════════════════════════════════════ */
+.exhero {
+  display: grid; grid-template-columns: minmax(0, 340px) minmax(0, 1fr);
+  gap: 34px; align-items: start;
+  padding-block: 26px 30px;
+}
+/* Long form is a wide picture, so it gets the wide column. */
+.exhero.wide { grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); }
+@media (max-width: 900px) { .exhero { grid-template-columns: minmax(0,1fr); gap: 24px; } }
+
+/* The stage travels here from the rail, so it is sized by its container. */
+.ex-stage { display: grid; gap: 12px; }
+.ex-stage .lane, .ex-stage .tweaks { display: none; }
+.ex-stage .phone { box-shadow: 0 40px 90px -46px rgba(0,0,0,1); }
+
+.ex-side { min-width: 0; padding-top: 4px; }
+.ex-side h1 { font-size: 34px; font-weight: 800; letter-spacing: -.038em; line-height: 1.12; }
+.ex-facts {
+  margin-top: 9px; font-size: 13.5px; color: var(--muted);
+}
+
+.ex-acts { display: grid; grid-template-columns: 1fr 1fr; gap: 11px; margin-top: 22px; }
+@media (max-width: 560px) { .ex-acts { grid-template-columns: 1fr; } }
+.ex-go, .ex-alt {
+  display: flex; align-items: center; gap: 12px; text-align: left;
+  padding: 15px 17px; border-radius: var(--r-lg);
+  font-size: 15px; font-weight: 700; line-height: 1.2;
+  transition: background var(--fast), border-color var(--fast), transform .12s;
+}
+.ex-go svg, .ex-alt svg { flex: none; }
+.ex-go span, .ex-alt span { display: block; min-width: 0; }
+.ex-go i, .ex-alt i {
+  display: block; font-style: normal; margin-top: 3px;
+  font-size: 11.5px; font-weight: 500; letter-spacing: 0;
+}
+.ex-go { background: var(--violet); color: var(--ink); }
+.ex-go:hover { background: var(--violet-hi); }
+.ex-go:active { transform: translateY(1px); }
+.ex-go i { color: rgba(13,13,16,.62); font-family: var(--mono); }
+.ex-alt { border: 1px solid var(--line); background: var(--charcoal); color: var(--chalk); }
+.ex-alt:hover { border-color: var(--violet); background: var(--violet-dim); }
+.ex-alt:active { transform: translateY(1px); }
+.ex-alt svg { color: var(--violet); }
+.ex-alt i { color: var(--muted); }
+
+/* ── what came off the front of it, drawn ─────────────────────────── */
+.ribbon {
+  margin-top: 22px; border: 1px solid var(--line); border-radius: var(--r-lg);
+  background: var(--charcoal); padding: 15px 17px 16px;
+}
+.ribbon .rb-row { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+.ribbon .rb-k {
+  font-size: 10px; font-weight: 700; letter-spacing: .09em; text-transform: uppercase; color: var(--faint);
+}
+.ribbon .rb-v { font-family: var(--mono); font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.ribbon .rb-bar {
+  position: relative; height: 15px; margin: 7px 0 0; border-radius: 5px; overflow: hidden;
+  background: repeating-linear-gradient(135deg, rgba(255,255,255,.045) 0 4px, transparent 4px 9px), var(--ink);
+}
+.ribbon .rb-bar.out { height: 11px; background: var(--ink); }
+.ribbon .rb-keep { position: absolute; top: 0; bottom: 0; background: rgba(155,123,255,.32); border-radius: 3px; }
+.ribbon .rb-keep.hook { background: var(--violet); }
+.ribbon .rb-gap { margin-top: 15px; }
+.ribbon .rb-sum { margin-top: 12px; font-size: 12.5px; color: var(--muted); line-height: 1.55; }
+.ribbon .rb-sum b { color: var(--chalk); font-weight: 700; }
+
+/* ── the report ───────────────────────────────────────────────────── */
+.rep-head {
+  display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+  padding-block: 22px 14px; border-top: 1px solid var(--line-soft);
+}
+.rep-head h2 { font-size: 19px; font-weight: 800; letter-spacing: -.03em; }
+.rep-head p { flex-basis: 100%; font-size: 13px; color: var(--muted); }
+
+.repgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; align-items: start; }
+.repgrid .span2 { grid-column: 1 / -1; }
+@media (max-width: 900px) { .repgrid { grid-template-columns: 1fr; } .repgrid .span2 { grid-column: auto; } }
+/* Inside the report the two rail panels are already cards. */
+#report-extras { padding: 4px 6px 6px; }
+#report-extras .lane { border: 0; background: none; padding: 10px 12px; }
+#report-extras .lane + .lane { border-top: 1px solid var(--line-soft); }
+
+/* An edit is two things: what came out and what went on. Colour says which
+   half you are reading — and a layer nobody asked for fades rather than
+   shouting a zero at the same weight as a real number. */
+.stats .stat.add dd { color: var(--violet); }
+.stats .stat.off dd { color: var(--faint); }
+.stats .stat.off dt { color: #4d4d59; }
+
+/* Beside the video the tiles are a summary, not a table: two rows of four,
+   flush with the ribbon above them and no card of their own. */
+.stats.ex-glance {
+  grid-template-columns: repeat(4, 1fr); gap: 1px; margin-top: 14px;
+  border: 1px solid var(--line); border-radius: var(--r-lg); overflow: hidden;
+}
+@media (max-width: 620px) { .stats.ex-glance { grid-template-columns: repeat(2, 1fr); } }
+.stats.ex-glance .stat { padding: 12px 14px; }
+.stats.ex-glance .stat dd { font-size: 19px; }
+
+/* ── everything we added, in time order ───────────────────────────── */
+.added { display: grid; gap: 1px; }
+.add-row {
+  display: grid; grid-template-columns: 58px 92px minmax(0, 1fr);
+  align-items: baseline; gap: 12px;
+  padding: 8px 0; border-top: 1px solid var(--line-soft);
+}
+.add-row:first-child { border-top: 0; }
+.add-row .at { font-family: var(--mono); font-size: 11.5px; color: var(--faint); font-variant-numeric: tabular-nums; }
+.add-row .kind {
+  font-size: 10px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase;
+  padding: 2px 7px; border-radius: 5px; text-align: center; white-space: nowrap;
+}
+.add-row .what { font-size: 13px; color: var(--chalk); min-width: 0; }
+.add-row .what i { font-style: normal; color: var(--muted); }
+.k-caps  { background: var(--raised); color: var(--muted); }
+.k-broll { background: rgba(91,214,160,.15); color: var(--ok); }
+.k-gfx   { background: rgba(155,123,255,.16); color: var(--violet); }
+.k-sfx   { background: rgba(245,196,83,.14); color: var(--warn); }
+.k-punch { background: rgba(155,123,255,.16); color: var(--violet); }
+.k-music { background: rgba(91,214,160,.15); color: var(--ok); }
+.k-cut   { background: rgba(255,123,123,.13); color: var(--bad); }
 
 /* ──────────────────────────────────────────────────────────── editor ─── */
 .card { border: 1px solid var(--line); border-radius: var(--r-lg); background: var(--charcoal); }
@@ -2360,47 +2490,79 @@ body.instudio { overflow: hidden; }
 
       <!-- ───────────────────────────────────────────── 3 · editor ─── -->
       <section class="panel" id="p2">
-        <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:20px">
-          <div>
-            <h1 style="font-size:30px;font-weight:800;margin-bottom:4px">Most people get pricing backwards</h1>
-            <p style="color:var(--muted);font-size:14px" id="hdr-sub"></p>
-            <p style="color:var(--muted);font-size:12.5px;margin-top:6px">
-              Download it and post it &mdash; or
-              <button data-timeline style="color:var(--violet);font-weight:600;text-decoration:underline;text-underline-offset:2px">adjust
-              it in the editor</button>.</p>
-          </div>
-          <div style="display:flex;align-items:center;gap:10px">
-            <button class="ghost tl-open" data-timeline style="padding:9px 15px">
-              Adjust in the editor &rarr;</button>
-            <button class="ghost" id="dl" style="padding:9px 15px">Download</button>
+
+        <!-- The finished video, and the two things you can do with it.
+             Watching it IS the decision: if it is right, you post it and never
+             open an editor. So the video is the page rather than a thumbnail
+             beside one, and the two doors out of here are the same size as the
+             choice between them. -->
+        <div class="exhero">
+          <div class="ex-stage" id="export-stage"></div>
+
+          <div class="ex-side">
+            <h1 id="ex-title">Most people get pricing backwards</h1>
+            <p class="ex-facts" id="hdr-sub"></p>
+
+            <div class="ex-acts">
+              <button class="ex-go" id="dl">
+                <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                     stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M12 3v12M7 11l5 5 5-5M4 20h16"/></svg>
+                <span>Export video<i id="ex-spec"></i></span>
+              </button>
+              <button class="ex-alt" data-timeline>
+                <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                     stroke-width="1.9" stroke-linecap="round">
+                  <path d="M3 7h18M3 12h18M3 17h18"/><circle cx="8" cy="7" r="2.1" fill="currentColor" stroke="none"/>
+                  <circle cx="15" cy="12" r="2.1" fill="currentColor" stroke="none"/>
+                  <circle cx="7" cy="17" r="2.1" fill="currentColor" stroke="none"/></svg>
+                <span>Open editor<i>Change any cut, caption or clip</i></span>
+              </button>
+            </div>
+
+            <!-- What came off the front of it, drawn. Thirty-three seconds
+                 removed is a number; the same thing as a strip of footage with
+                 the dead air struck out is the edit. -->
+            <div class="ribbon" id="ribbon"></div>
+
+            <dl class="stats ex-glance" id="stats"></dl>
           </div>
         </div>
 
-        <div class="card" style="margin-bottom:14px">
-          <div class="hd"><h3>What we did</h3><span class="chip" id="from-tag"></span></div>
-          <dl class="stats" id="stats"></dl>
+        <div class="rep-head">
+          <h2>The report</h2>
+          <span class="chip" id="from-tag"></span>
+          <p>Every decision the edit made, and what each one cost.</p>
         </div>
 
-        <div class="card" style="margin-bottom:14px">
-          <div class="hd">
-            <h3>The cut</h3>
-            <span style="font-family:var(--mono);font-size:11px;color:var(--faint)">source&nbsp;&rarr;&nbsp;output</span>
+        <div class="repgrid">
+          <div class="card span2">
+            <div class="hd">
+              <h3>The cut</h3>
+              <span style="font-family:var(--mono);font-size:11px;color:var(--faint)">source&nbsp;&rarr;&nbsp;output</span>
+            </div>
+            <div class="bd"><div class="edl-rows" id="edl"></div>
+              <p class="hint" id="hook-note"></p>
+            </div>
           </div>
-          <div class="bd"><div class="edl-rows" id="edl"></div>
-            <p class="hint" id="hook-note"></p>
-          </div>
-        </div>
 
-        <div class="card" style="margin-bottom:14px">
-          <div class="hd"><h3>B-roll we chose</h3></div>
-          <div class="bd"><div class="blist" id="broll-list"></div>
-            <p class="hint">B-roll illustrates the noun, never the vibe. &ldquo;Growth has been incredible&rdquo; gets nothing &mdash; that&rsquo;s a feeling, not an object.</p>
+          <!-- The counts above say six sound effects happened. This says where,
+               and why each one is there — which is the half people actually
+               want when they are deciding whether to open the editor. -->
+          <div class="card span2">
+            <div class="hd"><h3>Everything we added</h3>
+              <span style="font-family:var(--mono);font-size:11px;color:var(--faint)" id="added-count"></span></div>
+            <div class="bd"><div class="added" id="added"></div>
+              <p class="hint">B-roll illustrates the noun, never the vibe. &ldquo;Growth has been incredible&rdquo; gets nothing &mdash; that&rsquo;s a feeling, not an object.</p>
+            </div>
           </div>
-        </div>
 
-        <div class="card">
-          <div class="hd"><h3>What it cost</h3><span class="chip" id="budget-tag"></span></div>
-          <div class="bd"><div class="cost" id="cost"></div><div class="headroom" id="headroom"></div></div>
+          <div class="card" id="report-extras"></div>
+
+          <div class="card">
+            <div class="hd"><h3>What it cost</h3><span class="chip" id="budget-tag"></span></div>
+            <div class="bd"><div class="cost" id="cost"></div><div class="headroom" id="headroom"></div></div>
+          </div>
         </div>
       </section>
     </div>
@@ -2432,6 +2594,7 @@ body.instudio { overflow: hidden; }
       </div>
       </div>
 
+      <div id="rail-extras">
       <div class="lane">
         <h4>Timeline</h4>
         <div class="track" id="tr-video"></div>
@@ -2458,6 +2621,7 @@ body.instudio { overflow: hidden; }
           <input type="range" id="cap-pos" min="40" max="92" step="2">
         </label>
         <p class="hint">Every one of these re-renders from cached analysis &mdash; no transcription, no AI call, no re-upload.</p>
+      </div>
       </div>
     </aside>
   </div>
@@ -3158,25 +3322,102 @@ function layerCounts() {
   };
 }
 
+
+/* ───────────────────────────────────────── the export step's report ─── */
+
+/**
+ * The cut, drawn against the footage it came from.
+ *
+ * "33s removed" is a number. The same fact as a strip of your 47 seconds with
+ * the dead air struck through, and the 14 that survived underneath it, is the
+ * edit — and it is the one picture that tells somebody whether to trust the
+ * thing before they watch it.
+ */
+function paintRibbon() {
+  const src = SOURCE_SEC;
+  const kept = DOC.segments
+    .map((g) => ({ a: g.s0, b: g.s1, why: g.why }))
+    .sort((x, y) => x.a - y.a);
+  const keptSec = kept.reduce((n, g) => n + (g.b - g.a), 0);
+
+  const bar = (items, total, cls) => `<div class="rb-bar ${cls}">${items.map((g) => `
+    <span class="rb-keep ${g.why === 'hook' ? 'hook' : ''}"
+          style="left:${(g.a / total * 100).toFixed(3)}%;width:${((g.b - g.a) / total * 100).toFixed(3)}%"></span>`).join('')}</div>`;
+
+  const out = DOC.segments.map((g) => ({ a: g.o0, b: g.o1, why: g.why }));
+
+  $('ribbon').innerHTML =
+    `<div class="rb-row"><span class="rb-k">You filmed</span><span class="rb-v">${clock(Math.round(src))}</span></div>`
+    + bar(kept, src, 'src')
+    + `<div class="rb-row rb-gap"><span class="rb-k">We kept</span><span class="rb-v">${clock(Math.round(DOC.duration))}</span></div>`
+    + bar(out, DOC.duration, 'out')
+    + `<p class="rb-sum"><b>${Math.round(src - keptSec)}s</b> of pauses, ums and false starts struck out, and the
+       strongest line pulled from <b>${tc(SEGMENTS[0].s[0])}</b> to the front so nobody scrolls past it.</p>`;
+}
+
+/**
+ * Everything the edit put on top, in time order.
+ *
+ * The tiles above say three sound effects happened. This says where each one
+ * is and why — which is the half a person actually needs to decide whether
+ * they want to open an editor at all.
+ */
+function paintAdded() {
+  const s = STYLES[state.style];
+  const rows = [];
+
+  if (state.layers.music && DOC.duration) {
+    rows.push([0, 'music', 'Music', `${s.music} bed, ducked under your voice and lifted between lines`]);
+  }
+  if (state.layers.captions) {
+    rows.push([0, 'caps', 'Captions', `${DOC.captions.length} cards, ${capNow().words} words each, timed to the syllable`]);
+  }
+  for (const t of DOC.transitions) rows.push([t.at, 'cut', 'Cut', 'Splice between two takes']);
+  for (const b of DOC.broll) rows.push([b.a, 'broll', 'B-roll', `<b>${b.q}</b> <i>&mdash; ${b.why}</i>`]);
+  for (const g of DOC.graphics) rows.push([g.a, 'gfx', 'Graphic', `<b>${g.text}</b> <i>&mdash; ${g.sub}</i>`]);
+  for (const f of DOC.sfx) rows.push([f.at, 'sfx', 'Sound', `<i>${f.k}</i>`]);
+  for (const q of DOC.punches) rows.push([q.a, 'punch', 'Punch-in', `Pushes in <i>${q.z.toFixed(2)}×</i> and holds for ${(q.b - q.a).toFixed(1)}s`]);
+
+  rows.sort((a, b) => a[0] - b[0]);
+
+  $('added-count').textContent = `${rows.length} ${rows.length === 1 ? 'thing' : 'things'}`;
+  $('added').innerHTML = rows.length === 0
+    ? '<p class="hint" style="margin:0">Nothing added &mdash; this is your footage, cut.</p>'
+    : rows.map(([at, k, name, what]) => `
+      <div class="add-row">
+        <span class="at">${tc(at)}</span>
+        <span class="kind k-${k}">${name}</span>
+        <span class="what">${what}</span>
+      </div>`).join('');
+}
+
 function render() {
   const s = STYLES[state.style], f = FORMATS[state.fmt], c = layerCounts();
   const removed = (SOURCE_SEC - DOC.duration).toFixed(0);
 
   $('hdr-sub').textContent =
     `${f.label} · ${s.name} · 0:${String(Math.round(DOC.duration)).padStart(2, '0')} · ${f.dims}`;
+  $('ex-spec').textContent = `MP4 · ${f.dims} · ${clock(Math.round(DOC.duration))}`;
   $('from-tag').textContent = state.edited ? 'Re-rendered · no new analysis' : 'First edit';
 
+  // Taken out on the left, put in on the right. Eight tiles of identical
+  // weight is a wall of numbers; an edit is two things, and the colour says
+  // which half you are reading.
   $('stats').innerHTML = [
-    ['Removed', `${removed}s`, 'pauses, ums, retakes'],
-    ['Cuts', DOC.segments.length - 1, 'visible splices'],
-    ['Captions', c.caps, `cards, ${capNow().words} words each`],
-    ['B-roll', c.broll, 'inserts'],
-    ['Graphics', c.gfx, 'stat cards'],
-    ['Sound effects', c.sfx, 'cues'],
-    ['Punch-ins', c.punch, 'second camera'],
-    ['Music', state.layers.music ? '1' : '—', state.layers.music ? s.music : 'turned off'],
-  ].map(([k, v, sub]) => `
-    <div class="stat"><dt>${k}</dt><dd>${v} <small>${sub}</small></dd></div>`).join('');
+    ['', 'Removed', `${removed}s`, 'pauses, ums, retakes'],
+    ['', 'Cuts', DOC.segments.length - 1, 'visible splices'],
+    ['add', 'Captions', c.caps, `cards, ${capNow().words} words each`],
+    ['add', 'B-roll', c.broll, 'inserts'],
+    ['add', 'Graphics', c.gfx, 'stat cards'],
+    ['add', 'Sound effects', c.sfx, 'cues'],
+    ['add', 'Punch-ins', c.punch, 'second camera'],
+    ['add', 'Music', state.layers.music ? '1' : '—', state.layers.music ? s.music : 'turned off'],
+  ].map(([cls, k, v, sub]) => `
+    <div class="stat ${v === 0 || v === '—' || v === '0s' ? 'off' : cls}">
+      <dt>${k}</dt><dd>${v} <small>${sub}</small></dd></div>`).join('');
+
+  paintRibbon();
+  paintAdded();
 
   $('edl').innerHTML = DOC.segments.map((g) => `
     <div class="edl-row">
@@ -3190,11 +3431,6 @@ function render() {
   $('hook-note').innerHTML =
     'The strongest line was buried at <b style="color:var(--chalk);font-family:var(--mono)">41.2s</b>. ' +
     'For short form it gets moved to frame&nbsp;0 and removed from where it was, so nobody hears it twice.';
-
-  $('broll-list').innerHTML = DOC.broll.length === 0
-    ? '<p class="hint" style="margin:0">No B-roll in this edit.</p>'
-    : DOC.broll.map((b) => `<div class="bitem"><span class="tc">${tc(b.a)}</span>
-         <span><span class="q">${b.q}</span> <span class="i">— ${b.why}</span></span></div>`).join('');
 
   const cost = COSTS[state.fmt];
   const lines = [
@@ -4743,7 +4979,25 @@ function moveStage(to) {
   const park = $('stage-park');
   if (to === 'hero') park?.appendChild(unit);
   else if (to === 'studio') $('st-stage').appendChild(unit);
+  else if (to === 'export') $('export-stage').appendChild(unit);
   else document.querySelector('.rail').prepend(unit);
+
+  // The mini timeline and the tweak panel follow the picture. On the export
+  // step the rail is gone entirely — a 384px column holding a thumbnail is
+  // what made the finished video look like a preview of itself.
+  const extras = $('rail-extras');
+  if (to === 'export') $('report-extras').appendChild(extras);
+  else if (to === 'rail') document.querySelector('.rail').appendChild(extras);
+}
+
+/** Step 4 gives the whole width to the video; every other step keeps the rail. */
+function applyExportLayout() {
+  const on = state.route === 'editor' && state.mode !== 'timeline' && state.view === 'app';
+  document.querySelector('.grid').classList.toggle('exmode', on);
+  // A 9:16 short wants a narrow column beside the writing; a 16:9 talk wants
+  // the width. One layout for both means one of them is always wrong.
+  document.querySelector('.exhero')?.classList.toggle('wide', state.fmt === 'long');
+  if (on) moveStage('export');
 }
 
 /* ═══════════════════════════════════════════════════ studio mode ═══
@@ -4757,6 +5011,7 @@ function applyTimelineLayout() {
   document.body.classList.toggle('instudio', on);
   document.querySelector('.mainarea').hidden = on;
   if (state.view === 'app') moveStage(on ? 'studio' : 'rail');
+  applyExportLayout();
 }
 
 function openTimeline() {
