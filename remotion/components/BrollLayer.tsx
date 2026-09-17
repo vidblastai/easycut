@@ -2,6 +2,7 @@ import React from 'react';
 import { AbsoluteFill, Img, OffthreadVideo, Sequence, useCurrentFrame, useVideoConfig } from 'remotion';
 import type { BrollClip, Edl } from '../../src/lib/edl/types';
 import { lifecycleOpacity, ramp } from '../lib/timing';
+import { layoutPlan, regionStyle } from '../../src/lib/styles/layouts';
 
 /**
  * B-roll inserts.
@@ -16,20 +17,31 @@ import { lifecycleOpacity, ramp } from '../lib/timing';
 export const BrollLayer: React.FC<{ edl: Edl; onMediaError?: (message: string) => void }> = ({ edl, onMediaError }) => {
   const { fps } = useVideoConfig();
 
-  return (
-    <>
-      {edl.broll.map((clip) => {
-        if (!clip.url) return null;
-        const from = Math.round(clip.outStartSec * fps);
-        const durationInFrames = Math.max(1, Math.round((clip.outEndSec - clip.outStartSec) * fps));
+  // On a `full` layout B-roll COVERS the frame — an insert in a box reads as a
+  // screen recording rather than an edit. On a split or side layout it has its
+  // own half, which is on screen throughout, so the half gets a backing panel:
+  // a moment of black where one clip ends and the next begins would read as a
+  // dropout rather than a cut.
+  const region = layoutPlan(edl.format.layout).broll;
 
-        return (
-          <Sequence key={clip.id} from={from} durationInFrames={durationInFrames} premountFor={Math.round(fps)}>
-            <BrollInsert clip={clip} durationInFrames={durationInFrames} onMediaError={onMediaError} />
-          </Sequence>
-        );
-      })}
-    </>
+  const inserts = edl.broll.map((clip) => {
+    if (!clip.url) return null;
+    const from = Math.round(clip.outStartSec * fps);
+    const durationInFrames = Math.max(1, Math.round((clip.outEndSec - clip.outStartSec) * fps));
+
+    return (
+      <Sequence key={clip.id} from={from} durationInFrames={durationInFrames} premountFor={Math.round(fps)}>
+        <BrollInsert clip={clip} durationInFrames={durationInFrames} onMediaError={onMediaError} />
+      </Sequence>
+    );
+  });
+
+  if (!region) return <>{inserts}</>;
+
+  return (
+    <AbsoluteFill style={{ ...regionStyle(region), overflow: 'hidden', backgroundColor: '#0D0D10' }}>
+      {inserts}
+    </AbsoluteFill>
   );
 };
 

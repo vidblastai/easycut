@@ -3,6 +3,7 @@ import { AbsoluteFill, OffthreadVideo, Sequence, useCurrentFrame, useVideoConfig
 import type { Edl } from '../../src/lib/edl/types';
 import { cameraFrame, punchScaleAt, sampleTrack } from '../lib/reframe';
 import { ramp } from '../lib/timing';
+import { layoutPlan, regionStyle } from '../../src/lib/styles/layouts';
 
 /**
  * The speaker.
@@ -20,14 +21,23 @@ export const VideoTrack: React.FC<{ edl: Edl; onMediaError?: (message: string) =
   const { fps } = useVideoConfig();
   const outSec = frame / fps;
 
+  // The speaker gets a box rather than the frame: on a split screen it is the
+  // upper half, and the crop has to be computed against THAT shape or the
+  // picture is letterboxed inside its own half.
+  const region = layoutPlan(edl.format.layout).speaker;
+  const viewport = {
+    width: Math.round(edl.format.width * region.w),
+    height: Math.round(edl.format.height * region.h),
+  };
+
   const crop = sampleTrack(edl.reframe, outSec);
   const punch = punchScaleAt(edl.punchIns, outSec, (from, to) =>
     ramp(frame, from * fps, to * fps),
   );
-  const camera = cameraFrame(edl, crop, punch);
+  const camera = cameraFrame(edl, crop, punch, viewport);
 
   return (
-    <AbsoluteFill style={{ backgroundColor: '#000' }}>
+    <AbsoluteFill style={{ ...regionStyle(region), backgroundColor: '#000', overflow: 'hidden' }}>
       {edl.segments.map((segment) => {
         const from = Math.round(segment.outStartSec * fps);
         const durationInFrames = Math.max(1, Math.round((segment.outEndSec - segment.outStartSec) * fps));

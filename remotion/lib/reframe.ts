@@ -65,12 +65,25 @@ export function cameraFrame(
   edl: Edl,
   crop: { cx: number; cy: number; w: number },
   punch: { scale: number; x: number; y: number },
+  /**
+   * The box the picture has to fill, when it is not the whole frame.
+   *
+   * A split screen gives the speaker a little over half the height, which is a
+   * different shape from the output — and a crop computed against the output's
+   * shape leaves a black bar down one side of the half it is actually in.
+   */
+  viewport?: { width: number; height: number },
 ): CameraFrame {
-  const { width: outW, height: outH } = edl.format;
+  const { width: outW, height: outH } = viewport ?? edl.format;
   const { width: srcW, height: srcH } = edl.source;
 
   const cropWidthPx = srcW * crop.w;
-  const baseScale = outW / cropWidthPx;
+  // Never smaller than the box it has to fill. Scaling to the width alone
+  // assumes the crop window is at least as tall as the viewport, which is true
+  // for a narrow vertical crop of a landscape source and false the moment a
+  // layout hands the picture a squarer box — and the failure is a black band
+  // down one edge, the most obvious rendering bug there is.
+  const baseScale = Math.max(outW / cropWidthPx, outH / srcH);
   const scale = baseScale * punch.scale;
 
   const renderedW = srcW * scale;

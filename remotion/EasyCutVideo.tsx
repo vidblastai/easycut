@@ -1,6 +1,7 @@
 import React from 'react';
 import { AbsoluteFill, Audio, Sequence, useVideoConfig } from 'remotion';
 import { sfxDurationSec } from '../src/lib/assets/sfx';
+import { layoutPlan } from '../src/lib/styles/layouts';
 import { FONT_FAMILY } from './lib/fonts';
 import type { Edl } from '../src/lib/edl/types';
 import { BrollLayer } from './components/BrollLayer';
@@ -50,7 +51,7 @@ export const EasyCutVideo: React.FC<EasyCutVideoProps> = ({ edl, previewAudio = 
       <VideoTrack edl={edl} onMediaError={onMediaError} />
       <BrollLayer edl={edl} onMediaError={onMediaError} />
       <Graphics edl={edl} />
-      <Captions edl={edl} />
+      <Captions edl={edl} positionY={layoutPlan(edl.format.layout).captionY} />
       <Transitions edl={edl} />
       <Overlays edl={edl} />
 

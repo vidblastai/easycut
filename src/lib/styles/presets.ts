@@ -1,4 +1,4 @@
-import type { Aspect, CaptionStyle, TransitionType } from '@/lib/edl/types';
+import type { Aspect, CaptionStyle, Layout, TransitionType } from '@/lib/edl/types';
 import { findCaptionPreset } from '@/lib/captions/presets';
 
 /**
@@ -8,7 +8,15 @@ import { findCaptionPreset } from '@/lib/captions/presets';
  * keeps the renderer honest.
  */
 
-export type StyleId = 'clean' | 'punchy' | 'documentary' | 'explainer' | 'podcast' | 'vlog';
+export type StyleId =
+  | 'clean'
+  | 'punchy'
+  | 'split'
+  | 'documentary'
+  | 'explainer'
+  | 'podcast'
+  | 'sidebar'
+  | 'vlog';
 
 export interface PacingProfile {
   /** Seconds between punch-ins. The "second camera" cadence. */
@@ -33,6 +41,20 @@ export interface StylePreset {
   /** Who this is for, in the user's language — shown on the picker card. */
   bestFor: string;
   accent: string;
+  /**
+   * How the frame is divided. The picker draws this and the composition renders
+   * it, from this one value — see src/lib/styles/layouts.ts.
+   */
+  layout: Layout;
+  /**
+   * Which formats this style is offered for.
+   *
+   * A split screen is a short-form shape and a side-by-side is a widescreen
+   * one; offering either in the wrong place is offering something that will
+   * look wrong. The format is detected from the footage, so the list a person
+   * sees is already the list that applies to them.
+   */
+  formats: FormatMode[];
   /**
    * The caption look this style opens with. Pacing and typography are separate
    * decisions — people have opinions about the second long before the first —
@@ -61,6 +83,8 @@ const RAW_PRESETS: Record<StyleId, Omit<StylePreset, 'captionStyle'>> = {
     tagline: 'Let the message carry it.',
     bestFor: 'Founders, coaches, anyone who wants to look credible rather than loud.',
     accent: '#9B7BFF',
+    layout: 'full',
+    formats: ['short', 'long'],
     captionPreset: 'clean-plate',
     transitions: ['cut', 'dissolve'],
     musicMood: 'minimal ambient',
@@ -98,6 +122,8 @@ const RAW_PRESETS: Record<StyleId, Omit<StylePreset, 'captionStyle'>> = {
     tagline: 'Built to stop the scroll.',
     bestFor: 'Short-form creators who need retention in the first two seconds.',
     accent: '#9B7BFF',
+    layout: 'full',
+    formats: ['short', 'long'],
     captionPreset: 'impact',
     transitions: ['cut', 'whip-pan', 'zoom-punch', 'flash', 'glitch'],
     musicMood: 'upbeat energetic',
@@ -130,12 +156,58 @@ const RAW_PRESETS: Record<StyleId, Omit<StylePreset, 'captionStyle'>> = {
       'Prefer graphics that quantify (big numbers, comparisons).',
   },
 
+  /* The shape that made short-form watchable on mute: your face on top, a
+     picture running underneath the whole time, the words on the seam. */
+  split: {
+    id: 'split',
+    name: 'Split screen',
+    tagline: 'Your face on top, something to watch underneath.',
+    bestFor: 'Anything people scroll past on mute — the bottom half is what stops the thumb.',
+    accent: '#5BD6A0',
+    layout: 'split',
+    formats: ['short'],
+    captionPreset: 'bold-pop',
+    transitions: ['cut', 'whip-pan', 'zoom-punch'],
+    musicMood: 'upbeat energetic',
+    musicGainDb: -18,
+    silencePreset: 'aggressive',
+    short: {
+      punchInEverySec: [5, 9],
+      punchInScale: [1.06, 1.14],
+      // The bottom slot is on screen the whole time, so B-roll is not an
+      // occasional insert here — it is the other half of the video. The
+      // pipeline fills whatever this leaves uncovered.
+      brollEverySec: 4,
+      brollDurationSec: [3, 6],
+      graphicEverySec: 16,
+      graphicDurationSec: 2.2,
+      transitionDensity: 0.3,
+      sfxDensity: 0.7,
+    },
+    long: {
+      punchInEverySec: [12, 20],
+      punchInScale: [1.05, 1.12],
+      brollEverySec: 8,
+      brollDurationSec: [4, 8],
+      graphicEverySec: 40,
+      graphicDurationSec: 3,
+      transitionDensity: 0.2,
+      sfxDensity: 0.4,
+    },
+    overlays: { progressBar: true, lowerThird: false, grain: false, vignette: false },
+    directorNotes:
+      'The bottom half of the frame is always showing something, so name a concrete subject often — ' +
+      'every object, place and action in the script is a candidate. Keep graphics rare: the frame ' +
+      'is already carrying two pictures.',
+  },
   documentary: {
     id: 'documentary',
     name: 'Documentary',
     tagline: 'Cinematic, patient, considered.',
     bestFor: 'Storytelling, interviews, brand films.',
     accent: '#E8C89A',
+    layout: 'full',
+    formats: ['short', 'long'],
     captionPreset: 'editorial',
     transitions: ['cut', 'dissolve', 'film-burn'],
     musicMood: 'cinematic emotional',
@@ -173,6 +245,8 @@ const RAW_PRESETS: Record<StyleId, Omit<StylePreset, 'captionStyle'>> = {
     tagline: 'Every idea gets a picture.',
     bestFor: 'Teaching, how-tos, product walkthroughs.',
     accent: '#5BD6A0',
+    layout: 'full',
+    formats: ['short', 'long'],
     captionPreset: 'highlight-box',
     transitions: ['cut', 'slide', 'zoom-punch'],
     musicMood: 'light curious',
@@ -210,6 +284,8 @@ const RAW_PRESETS: Record<StyleId, Omit<StylePreset, 'captionStyle'>> = {
     tagline: 'Long conversations, watchable.',
     bestFor: 'Interviews and long-form talking head.',
     accent: '#9B7BFF',
+    layout: 'full',
+    formats: ['long'],
     captionPreset: 'podcast',
     transitions: ['cut', 'dissolve'],
     musicMood: 'low-key groove',
@@ -241,12 +317,54 @@ const RAW_PRESETS: Record<StyleId, Omit<StylePreset, 'captionStyle'>> = {
       'B-roll sparingly, only when something specific is named.',
   },
 
+  /* The widescreen version of the same idea. Half the frame is you, half is
+     what you are talking about, and neither one ever cuts away. */
+  sidebar: {
+    id: 'sidebar',
+    name: 'Side by side',
+    tagline: 'You on the left, what you mean on the right.',
+    bestFor: 'Walkthroughs, teardowns, anything where the thing matters as much as the talking.',
+    accent: '#7FB4FF',
+    layout: 'side',
+    formats: ['long'],
+    captionPreset: 'subtitle',
+    transitions: ['cut', 'dissolve'],
+    musicMood: 'light curious',
+    musicGainDb: -24,
+    silencePreset: 'balanced',
+    short: {
+      punchInEverySec: [8, 14],
+      punchInScale: [1.05, 1.1],
+      brollEverySec: 5,
+      brollDurationSec: [3, 6],
+      graphicEverySec: 20,
+      graphicDurationSec: 2.4,
+      transitionDensity: 0.15,
+      sfxDensity: 0.2,
+    },
+    long: {
+      punchInEverySec: [20, 34],
+      punchInScale: [1.04, 1.1],
+      brollEverySec: 9,
+      brollDurationSec: [5, 11],
+      graphicEverySec: 36,
+      graphicDurationSec: 3.4,
+      transitionDensity: 0.12,
+      sfxDensity: 0.12,
+    },
+    overlays: { progressBar: true, lowerThird: true, grain: false, vignette: false },
+    directorNotes:
+      'The right half never goes empty, so keep naming what is on screen. Prefer specific nouns over ' +
+      'abstractions, and let a picture stay for a whole thought rather than cutting every two seconds.',
+  },
   vlog: {
     id: 'vlog',
     name: 'Vlog',
     tagline: 'Loose, warm, personal.',
     bestFor: 'Day-in-the-life, updates, casual pieces to camera.',
     accent: '#F5C453',
+    layout: 'full',
+    formats: ['short'],
     captionPreset: 'bold-pop',
     transitions: ['cut', 'whip-pan', 'dissolve', 'slide'],
     musicMood: 'warm lo-fi',
@@ -352,4 +470,16 @@ export const FORMAT_PRESETS: Record<FormatMode, FormatPreset> = {
 
 export function pacingFor(style: StylePreset, mode: FormatMode): PacingProfile {
   return mode === 'short' ? style.short : style.long;
+}
+
+/**
+ * The styles worth showing for a given format.
+ *
+ * The format is detected from the footage, so by the time anybody is choosing a
+ * style the list is already narrowed to the ones that suit their video. A split
+ * screen offered on a widescreen edit is an offer to make something that will
+ * look wrong.
+ */
+export function stylesFor(mode: FormatMode): StylePreset[] {
+  return STYLE_LIST.filter((s) => s.formats.includes(mode));
 }

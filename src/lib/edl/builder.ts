@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import type { DirectorPlan } from '@/lib/director/schema';
 import type { FormatMode, StylePreset } from '@/lib/styles/presets';
 import { pacingFor } from '@/lib/styles/presets';
+import { layoutPlan } from '@/lib/styles/layouts';
 import { TimeMapper } from '@/lib/timeline/time-mapper';
 import type { Transcript } from '@/lib/transcribe/types';
 import { buildCaptions } from './captions';
@@ -67,7 +68,7 @@ export function buildEdl(input: BuildEdlInput): Edl {
 
   /* -------------------------------- b-roll -------------------------------- */
 
-  const broll = placeBroll(plan, mapper, durationSec, pacing.brollDurationSec, captions);
+  const broll = placeBroll(plan, mapper, durationSec, pacing.brollDurationSec, captions, layoutPlan(style.layout).alwaysOn);
 
   /* ------------------------------- graphics ------------------------------- */
 
@@ -98,6 +99,7 @@ export function buildEdl(input: BuildEdlInput): Edl {
       width: dimensions.width,
       height: dimensions.height,
       fps: input.fps,
+      layout: style.layout,
       durationSec,
     },
     source: input.source,
@@ -139,6 +141,15 @@ function placeBroll(
   durationSec: number,
   durationRange: [number, number],
   captions: Edl['captions'],
+  /**
+   * True when the layout gives B-roll its own half of the frame.
+   *
+   * Then it is not an insert at all — it is the other half of the video, on
+   * screen from the first frame to the last. The rules that keep an insert from
+   * covering the speaker stop applying, and any second it does not cover is a
+   * black rectangle beside somebody's face.
+   */
+  alwaysOn: boolean,
 ): BrollClip[] {
   const clips: BrollClip[] = [];
 
@@ -153,11 +164,12 @@ function placeBroll(
     if (overlaps) continue;
 
     // Never start on the first second: the viewer has to see who is talking
-    // before we cut away from them.
-    if (start < 1.2) continue;
+    // before we cut away from them. Not so in a permanent slot, where nothing
+    // is being covered up.
+    if (!alwaysOn && start < 1.2) continue;
 
     // Don't cover the very end — an insert as the video finishes strands the speaker.
-    if (start > durationSec - 1.5) continue;
+    if (!alwaysOn && start > durationSec - 1.5) continue;
 
     // Trim so the insert ends on a caption boundary rather than mid-word.
     const boundary = captions.find((c) => c.endSec >= end && c.startSec <= end);
@@ -179,7 +191,57 @@ function placeBroll(
     });
   }
 
-  return clips.sort((a, b) => a.outStartSec - b.outStartSec);
+  const ordered = clips.sort((a, b) => a.outStartSec - b.outStartSec);
+  return alwaysOn ? fillBrollGaps(ordered, durationSec, durationRange[1]) : ordered;
+}
+
+/**
+ * Leaves no hole in a permanent B-roll slot.
+ *
+ * The director places inserts where the script names something; a slot that is
+ * on screen throughout needs cover everywhere else too. Each gap is filled by
+ * replaying its nearest neighbour from the top — a real clip in the document,
+ * with its own id and its own `clipStartSec`, rather than a renderer trick.
+ * That keeps the timeline honest: what you see in the editor is what plays, and
+ * you can replace any one of them by typing a different query.
+ *
+ * Runs are capped so a twenty-second hole is four clips rather than one stock
+ * shot held until it freezes.
+ */
+function fillBrollGaps(clips: BrollClip[], durationSec: number, maxRunSec: number): BrollClip[] {
+  if (!clips.length) return clips;
+
+  const run = Math.max(2, maxRunSec);
+  const out: BrollClip[] = [];
+  let cursor = 0;
+  let minted = 0;
+
+  /** Whichever placed clip is nearest the hole — the one before it, by preference. */
+  const nearest = (at: number) =>
+    [...clips].sort((a, b) => Math.abs(a.outStartSec - at) - Math.abs(b.outStartSec - at))[0];
+
+  const cover = (from: number, to: number) => {
+    const source = nearest(from);
+    for (let at = from; to - at > 0.4; at += run) {
+      out.push({
+        ...source,
+        id: `broll-fill-${minted++}`,
+        outStartSec: at,
+        outEndSec: Math.min(to, at + run),
+        clipStartSec: 0,
+        intent: `${source.intent} — filling the slot`,
+      });
+    }
+  };
+
+  for (const clip of clips) {
+    if (clip.outStartSec - cursor > 0.4) cover(cursor, clip.outStartSec);
+    out.push(clip);
+    cursor = Math.max(cursor, clip.outEndSec);
+  }
+  if (durationSec - cursor > 0.4) cover(cursor, durationSec);
+
+  return out.sort((a, b) => a.outStartSec - b.outStartSec);
 }
 
 /* -------------------------------------------------------------- graphics */

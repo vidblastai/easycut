@@ -24,12 +24,31 @@ export const ASPECT_DIMENSIONS: Record<Aspect, { width: number; height: number }
 
 /* ------------------------------------------------------------------ format */
 
+/**
+ * How the frame is divided between the speaker and everything else.
+ *
+ *  - `full`  — the speaker fills the frame and B-roll cuts in over the top.
+ *  - `split` — the speaker holds the upper half, B-roll runs underneath for the
+ *              whole video, and the captions sit on the seam. The shape that
+ *              made short-form watchable on mute.
+ *  - `side`  — the widescreen version of the same idea: speaker left, pictures
+ *              right, both on screen throughout.
+ *
+ * This is a property of the DOCUMENT, not of the renderer, because the picker
+ * draws it and the composition executes it from the same number. A style that
+ * advertises a split screen and renders a full frame is a lie, and the only way
+ * to make that impossible is to have one source of truth.
+ */
+export const LAYOUTS = ['full', 'split', 'side'] as const;
+export type Layout = (typeof LAYOUTS)[number];
+
 export const FormatSchema = z.object({
   aspect: z.enum(ASPECTS),
   width: z.number().int().positive(),
   height: z.number().int().positive(),
   fps: z.number().positive().default(30),
   durationSec: z.number().nonnegative(),
+  layout: z.enum(LAYOUTS).default('full'),
 });
 export type Format = z.infer<typeof FormatSchema>;
 

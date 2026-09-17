@@ -14,7 +14,7 @@ export const SAMPLE_EDL: Edl = {
   version: '1.0',
   projectId: 'sample',
   styleId: 'punchy',
-  format: { aspect: '9:16', width: 1080, height: 1920, fps: 30, durationSec: 10 },
+  format: { aspect: '9:16', width: 1080, height: 1920, fps: 30, durationSec: 10, layout: 'full' },
   source: {
     assetId: 'sample',
     url: 'https://remotion-assets.s3.eu-central-1.amazonaws.com/example-videos/bigbuckbunny.mp4',

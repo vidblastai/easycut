@@ -21,7 +21,7 @@ import {
  * how many words are in it, because those come from the cue timing the ASR
  * produced and re-flowing them would desynchronise the whole track.
  */
-export const Captions: React.FC<{ edl: Edl }> = ({ edl }) => {
+export const Captions: React.FC<{ edl: Edl; positionY?: number | null }> = ({ edl, positionY = null }) => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
   const outSec = frame / fps;
@@ -33,7 +33,12 @@ export const Captions: React.FC<{ edl: Edl }> = ({ edl }) => {
   const cue = edl.captions.find((c) => outSec >= c.startSec && outSec < c.endSec);
   if (!cue) return null;
 
-  return <CaptionCard cue={cue} style={edl.captionStyle} fontStack={fontStack} />;
+  // A split screen decides where the words go, not the caption preset: the seam
+  // is the one band that covers neither the face above it nor the picture
+  // below. Everywhere else the preset's own choice stands.
+  const style = positionY === null ? edl.captionStyle : { ...edl.captionStyle, positionY };
+
+  return <CaptionCard cue={cue} style={style} fontStack={fontStack} />;
 };
 
 /* ------------------------------------------------------------------ paint */
