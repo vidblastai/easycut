@@ -24,6 +24,18 @@ model User {
   name      String?
   createdAt DateTime  @default(now())
   projects  Project[]
+
+  // ── subscription ──────────────────────────────────────────────────────
+  // See src/lib/billing/plans.ts. A row written before plans existed reads as
+  // "free", which is the safe direction to be wrong in.
+  plan             String  @default("free")
+  stripeCustomerId String? @unique
+
+  // The meter. `periodStart` rolls forward a month at a time the first time
+  // anybody looks after it has expired — see src/lib/billing/usage.ts — so
+  // there is no cron to forget and no clock skew between two workers.
+  periodStart    DateTime @default(now())
+  minutesUsed    Float    @default(0)
 }
 
 model Project {
@@ -78,6 +90,22 @@ model Project {
   mediaJson        String @default("{}") // JSON: MediaInfo from ffprobe
   cutsJson         String @default("[]") // JSON: Interval[] — mechanical removals
 
+  // ── retention ─────────────────────────────────────────────────────────
+  // The plan the footage was uploaded under, so a later downgrade cannot
+  // retroactively shorten the promise somebody already paid for. The expiry
+  // dates are stored rather than derived: the sweeper wants an index, and a
+  // stored date can be extended for one project without special-casing.
+  planAtUpload     String    @default("free")
+  sourceMinutes    Float     @default(0)
+  sourceExpiresAt  DateTime?
+  sourceDeletedAt  DateTime?
+  renderExpiresAt  DateTime?
+  rendersDeletedAt DateTime?
+
+  // Set once the "your video is ready" email has gone out, so a re-render or a
+  // restarted worker cannot send it twice.
+  readyEmailSentAt DateTime?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -88,6 +116,8 @@ model Project {
 
   @@index([userId, createdAt])
   @@index([status])
+  @@index([sourceExpiresAt])
+  @@index([renderExpiresAt])
 }
 
 model Asset {

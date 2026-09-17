@@ -53,6 +53,9 @@ interface ProjectState {
     socialCaption: string | null;
     hashtags: string[];
     costUsd: number;
+    /** Null until the sweeper has taken the original footage. */
+    sourceDeletedAt: string | null;
+    sourceExpiresAt: string | null;
   };
   job: {
     status: string;
@@ -302,6 +305,21 @@ export function ProjectWorkspace({
   const step: StepKey = project.status === 'ready' ? 'export' : 'apply';
 
   const modeLabel = project.mode === 'short' ? 'Short form' : 'Long form';
+
+  /*
+   * Re-cutting needs the original footage, and retention takes it away.
+   *
+   * Every change in this app — a different style, another aspect ratio, a
+   * dragged caption — replays cached analysis for free but still has to RENDER,
+   * and rendering reads the source file. Once that has been swept, the honest
+   * thing is to close the door visibly rather than let somebody make edits that
+   * will fail at the last step.
+   */
+  const footageGone = Boolean(project.sourceDeletedAt);
+  const footageExpires = project.sourceExpiresAt ? new Date(project.sourceExpiresAt) : null;
+  const daysLeft = footageExpires
+    ? Math.ceil((footageExpires.getTime() - Date.now()) / 86_400_000)
+    : null;
   const styleName = styles.find((s) => s.id === project.styleId)?.name ?? project.styleId;
 
   const commitCaption = async () => {
@@ -571,16 +589,41 @@ export function ProjectWorkspace({
                         </i>
                       </span>
                     </a>
-                    <button type="button" onClick={() => setMode('studio')} disabled={!doc} className="act act-alt">
+                    <button
+                      type="button"
+                      onClick={() => setMode('studio')}
+                      disabled={!doc || footageGone}
+                      title={footageGone ? 'Your original footage has been deleted, so this video can no longer be re-cut.' : undefined}
+                      className="act act-alt"
+                    >
                       <IconSliders className="h-[19px] w-[19px] flex-none text-violet" />
                       <span>
                         Open editor
                         <i className="mt-0.5 block text-[11.5px] font-medium not-italic text-muted">
-                          Change any cut, caption or clip
+                          {footageGone
+                            ? 'Your footage has been deleted'
+                            : 'Change any cut, caption or clip'}
                         </i>
                       </span>
                     </button>
                   </div>
+
+                  {footageGone ? (
+                    <p className="mt-3 rounded-xl border border-line bg-charcoal px-4 py-3 text-[12.5px] leading-relaxed text-muted">
+                      Your original footage has been deleted, so this one is finished — you can still
+                      watch and download it, but it can&rsquo;t be re-cut or exported in another shape.{' '}
+                      <Link href="/pricing" className="font-semibold text-violet hover:underline">
+                        Longer plans keep footage for longer.
+                      </Link>
+                    </p>
+                  ) : daysLeft !== null && daysLeft <= 3 ? (
+                    <p className="mt-3 rounded-xl border border-warn/30 bg-warn/[0.06] px-4 py-3 text-[12.5px] leading-relaxed text-warn">
+                      {daysLeft <= 0
+                        ? 'Your footage is due to be deleted today'
+                        : `Your footage is deleted in ${daysLeft} day${daysLeft === 1 ? '' : 's'}`}
+                      <span className="text-muted"> — after that this video can be watched but not re-cut.</span>
+                    </p>
+                  ) : null}
 
                   {doc ? (
                     <>
@@ -660,7 +703,9 @@ export function ProjectWorkspace({
                     <div className="card p-4">
                       <h3 className="text-sm font-bold">Another shape</h3>
                       <p className="mt-1 text-[12.5px] text-muted">
-                        Re-cut for a different feed. Free — it replays the analysis it already has.
+                        {footageGone
+                          ? 'Not any more — this needs your original footage, which has been deleted.'
+                          : 'Re-cut for a different feed. Free — it replays the analysis it already has.'}
                       </p>
                       <div className="mt-3 flex flex-wrap gap-2">
                         {(['9:16', '1:1', '16:9'] as const)
@@ -669,7 +714,7 @@ export function ProjectWorkspace({
                             <button
                               key={aspect}
                               type="button"
-                              disabled={busy}
+                              disabled={busy || footageGone}
                               onClick={() => void exportAspect(aspect)}
                               className="btn-ghost"
                             >

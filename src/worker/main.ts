@@ -1,6 +1,7 @@
 import '@/lib/config/load-env';
 import { env } from '@/lib/config/env';
 import { db } from '@/lib/db';
+import { sweepExpired } from './sweep';
 import { queue } from '@/lib/queue';
 import { processProject, rerenderProject, type ProcessJobPayload } from './process-project';
 import { selectedProvider } from '@/lib/director';
@@ -98,9 +99,49 @@ export async function main(): Promise<void> {
   process.on('SIGINT', () => void shutdown('SIGINT'));
   process.on('SIGTERM', () => void shutdown('SIGTERM'));
 
+  startSweeper();
+
   await Promise.all(
     Array.from({ length: Math.max(1, env.queue.concurrency) }, (_, i) => loop(i + 1)),
   );
+}
+
+/**
+ * Deletes expired footage and renders on a timer.
+ *
+ * In the worker rather than a separate cron container, because it is the
+ * process that already holds storage credentials and already has to be running
+ * for the product to work at all. An hour is far more often than retention
+ * needs — the shortest window is two days — but frequent small passes keep any
+ * single one short, and a sweeper that runs while somebody is watching is a
+ * sweeper whose bugs are found.
+ *
+ * Failures are logged and swallowed on purpose: a storage hiccup must not take
+ * down the process that renders videos.
+ */
+function startSweeper(): void {
+  const run = async () => {
+    if (shuttingDown) return;
+    try {
+      const result = await sweepExpired();
+      const did = result.sourcesDeleted + result.rendersDeleted;
+      if (did > 0) {
+        console.log(
+          `  swept ${result.sourcesDeleted} source${result.sourcesDeleted === 1 ? '' : 's'}, ` +
+          `${result.rendersDeleted} render set${result.rendersDeleted === 1 ? '' : 's'}, ` +
+          `${(result.bytesFreed / 1e9).toFixed(2)} GB freed`,
+        );
+      }
+      for (const error of result.errors.slice(0, 5)) console.warn(`  sweep: ${error}`);
+    } catch (error) {
+      console.warn(`  sweep failed: ${(error as Error).message}`);
+    }
+  };
+
+  // Not on boot: a worker restarting in a crash loop would sweep on every
+  // start, and the first pass is the one most likely to find a large backlog.
+  const timer = setInterval(() => void run(), env.retention.sweepIntervalMinutes * 60_000);
+  timer.unref();
 }
 
 /**

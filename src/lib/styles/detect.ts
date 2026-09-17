@@ -36,6 +36,16 @@ export interface Detected {
   reason: string;
   /** False when the file told us nothing and this is just the default. */
   confident: boolean;
+  /**
+   * What the browser measured, in seconds.
+   *
+   * Carried through so the wizard can check the job against the account's
+   * remaining allowance BEFORE a gigabyte goes over the wire. It is a claim
+   * from a client, so the server re-measures with ffprobe and meters against
+   * that — but refusing early is the difference between a clear message and a
+   * ten-minute upload that ends in one.
+   */
+  durationSec: number;
 }
 
 /** Landscape footage shorter than this has nothing to cut down from. */
@@ -47,6 +57,7 @@ export function detectFormat(probe: Probe | null): Detected {
       mode: 'short',
       reason: "We couldn't read the file, so we've assumed a short.",
       confident: false,
+      durationSec: 0,
     };
   }
 
@@ -56,6 +67,7 @@ export function detectFormat(probe: Probe | null): Detected {
       mode: 'short',
       reason: `Shot ${probe.height > probe.width ? 'vertical' : 'square'}, so it's a short.`,
       confident: true,
+      durationSec: probe.durationSec,
     };
   }
 
@@ -64,6 +76,7 @@ export function detectFormat(probe: Probe | null): Detected {
       mode: 'short',
       reason: `${formatClock(probe.durationSec)} of widescreen — short enough to cut vertical.`,
       confident: true,
+      durationSec: probe.durationSec,
     };
   }
 
@@ -71,6 +84,7 @@ export function detectFormat(probe: Probe | null): Detected {
     mode: 'long',
     reason: `${formatClock(probe.durationSec)} of widescreen, so it's long form.`,
     confident: probe.durationSec > 0,
+    durationSec: probe.durationSec,
   };
 }
 

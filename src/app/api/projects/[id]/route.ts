@@ -4,6 +4,7 @@ import { healEdl } from '@/lib/edl/operations';
 import { readStageLog } from '@/worker/process-project';
 import { STAGE_LABELS, type Stage } from '@/lib/pipeline/types';
 import { guardProject } from '@/lib/auth';
+import { purgeProject } from '@/worker/sweep';
 
 export const runtime = 'nodejs';
 
@@ -66,6 +67,15 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
       costUsd: project.costUsd,
       costReport: parseJson(project.costReport, {}),
       createdAt: project.createdAt,
+
+      // Retention, so the editor can be honest rather than failing at render
+      // time. Once the footage is swept a video can still be watched and
+      // downloaded; it can no longer be re-cut, because re-rendering needs the
+      // original file.
+      planAtUpload: project.planAtUpload,
+      sourceExpiresAt: project.sourceExpiresAt,
+      sourceDeletedAt: project.sourceDeletedAt,
+      renderExpiresAt: project.renderExpiresAt,
     },
     job: job
       ? {
@@ -107,8 +117,21 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
   });
 }
 
+/**
+ * Deletes a project and everything it owns.
+ *
+ * Two bugs lived here. It never checked WHOSE project it was — every other
+ * route on this path calls `guardProject` and this one did not, so any signed-in
+ * account could delete any other account's work by guessing an id. And it
+ * removed the database row while leaving the files behind: a source video is
+ * ~90 MB a minute, so "delete" quietly meant "hide, and keep paying to store".
+ */
 export async function DELETE(_request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  await db.project.delete({ where: { id } }).catch(() => null);
-  return NextResponse.json({ ok: true });
+
+  const denied = await guardProject(id);
+  if (denied) return denied;
+
+  const bytesFreed = await purgeProject(id);
+  return NextResponse.json({ ok: true, bytesFreed });
 }

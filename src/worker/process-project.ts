@@ -2,6 +2,9 @@ import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { localMusicPath } from '@/lib/assets/music';
 import { parseLayersOff } from '@/lib/edl/layers';
+import { recordUsage } from '@/lib/billing/usage';
+import { readyMail, sendMail } from '@/lib/email';
+import { env } from '@/lib/config/env';
 import { db, parseJson, stringifyJson } from '@/lib/db';
 import { EdlSchema, type Edl } from '@/lib/edl/types';
 import { cleanupWorkDir, runPipeline } from '@/lib/pipeline/run';
@@ -73,6 +76,21 @@ export async function processProject(payload: ProcessJobPayload): Promise<void> 
     );
 
     const edl = EdlSchema.parse(result.edl);
+
+    /*
+     * Meter what was actually processed.
+     *
+     * ffprobe's duration, not the browser's — the browser's figure was only
+     * ever good enough to refuse a job early. Recorded here, after the analysis
+     * stages have run and before the render, because that is the point at which
+     * the money has genuinely been spent: transcription and the director are
+     * ~85 % of the bill and neither can be taken back.
+     */
+    const measuredMinutes = (result.context.media?.durationSec ?? 0) / 60;
+    if (measuredMinutes > 0) {
+      await db.project.update({ where: { id: projectId }, data: { sourceMinutes: measuredMinutes } });
+      await recordUsage(project.userId, measuredMinutes);
+    }
 
     // Cache the two expensive stages so every later tweak is free.
     await db.project.update({
@@ -214,6 +232,8 @@ export async function processProject(payload: ProcessJobPayload): Promise<void> 
       },
     });
 
+    await notifyReady(projectId, edl);
+
     await db.job.update({
       where: { id: jobId },
       data: {
@@ -238,6 +258,71 @@ export async function processProject(payload: ProcessJobPayload): Promise<void> 
     throw error;
   } finally {
     await cleanupWorkDir(projectId);
+  }
+}
+
+/**
+ * "Your video is ready."
+ *
+ * Five minutes is long enough that the tab gets closed, and a finished render
+ * nobody is told about may as well not have happened.
+ *
+ * Three rules, all of them about not making things worse:
+ *
+ *  - It never throws. The video exists; a mail provider having a bad afternoon
+ *    is not a reason to mark the job failed and re-run a job that cost money.
+ *  - It stamps the project before it is sent, so a re-render, a resumed job or
+ *    a restarted worker cannot send a second copy.
+ *  - It says when the video will be deleted, because that is the half of the
+ *    retention promise people need to see without reading a policy page.
+ */
+async function notifyReady(projectId: string, edl: Edl): Promise<void> {
+  try {
+    const project = await db.project.findUnique({
+      where: { id: projectId },
+      select: {
+        title: true,
+        mode: true,
+        readyEmailSentAt: true,
+        renderExpiresAt: true,
+        sourceExpiresAt: true,
+        user: { select: { email: true, name: true } },
+      },
+    });
+
+    if (!project?.user?.email) return;       // signed-out, or auth is switched off
+    if (project.readyEmailSentAt) return;    // already told them
+
+    // Claim it first. Two workers finishing a re-render at the same moment
+    // would otherwise both pass the check above and both send.
+    const claimed = await db.project.updateMany({
+      where: { id: projectId, readyEmailSentAt: null },
+      data: { readyEmailSentAt: new Date() },
+    });
+    if (claimed.count === 0) return;
+
+    const mail = readyMail({
+      to: project.user.email,
+      name: project.user.name?.split(' ')[0] ?? null,
+      projectTitle: edl.deliverable.title || project.title,
+      projectUrl: `${env.appUrl}/projects/${projectId}`,
+      mode: project.mode === 'long' ? 'long' : 'short',
+      durationSec: edl.format.durationSec,
+      cuts: Math.max(0, edl.segments.length - 1),
+      captions: edl.captions.length,
+      brollCount: edl.broll.length,
+      expiresAt: project.renderExpiresAt,
+      sourceExpiresAt: project.sourceExpiresAt,
+    });
+
+    const sent = await sendMail(mail);
+    if (!sent.sent) {
+      // Hand the stamp back so a later re-render can try again.
+      await db.project.update({ where: { id: projectId }, data: { readyEmailSentAt: null } });
+      console.warn(`[email] ready mail not sent for ${projectId}: ${sent.reason}`);
+    }
+  } catch (error) {
+    console.warn(`[email] ready mail failed for ${projectId}: ${(error as Error).message}`);
   }
 }
 

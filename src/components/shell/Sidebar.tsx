@@ -3,7 +3,8 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { clsx } from 'clsx';
-import { IconGrid, IconPlus, IconCaptions, IconSettings, IconHelp } from './Icons';
+import { IconGrid, IconPlus, IconCaptions, IconSettings, IconHelp, IconSparkle } from './Icons';
+import { UsageMeter } from './UsageMeter';
 
 export interface RecentProject {
   id: string;
@@ -20,6 +21,7 @@ const NAV = [
 ];
 
 const NAV_FOOT = [
+  { href: '/pricing', label: 'Plans', Icon: IconSparkle },
   { href: '/settings', label: 'Settings', Icon: IconSettings },
   { href: '/help', label: 'How it works', Icon: IconHelp },
 ];
@@ -81,6 +83,8 @@ export function Sidebar({ recents }: { recents: RecentProject[] }) {
       ) : (
         <div className="hidden flex-1 md:block" />
       )}
+
+      <UsageMeter />
 
       <ul className="mt-1.5 hidden gap-px border-t border-line-soft px-2.5 pt-2 md:flex md:flex-col">
         {NAV_FOOT.map(({ href, label, Icon }) => (

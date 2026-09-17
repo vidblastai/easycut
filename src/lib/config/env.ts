@@ -179,6 +179,28 @@ export const env = {
     framesPerLambda: num('RENDER_FRAMES_PER_LAMBDA', 80),
   },
 
+  /**
+   * Transactional email.
+   *
+   * One message: your video is ready. Without a key the sender logs and reports
+   * failure, which the worker treats as "fine" — a render must never be marked
+   * failed because a notification did not go out.
+   */
+  email: {
+    resendKey: str('RESEND_API_KEY'),
+    from: str('EMAIL_FROM') ?? 'EasyCut <hello@easycut.ai>',
+  },
+
+  /**
+   * Deletion, on a timer.
+   *
+   * The plans promise both halves — "kept for a year", "deleted after seven
+   * days" — and neither is true unless the sweeper runs. See src/worker/sweep.ts.
+   */
+  retention: {
+    sweepIntervalMinutes: num('RETENTION_SWEEP_MINUTES', 60),
+  },
+
   limits: {
     /** Hard budget guard. A job that would exceed this is degraded, not billed. */
     maxCostShortUsd: num('MAX_COST_SHORT_USD', 1),

@@ -3,7 +3,9 @@ import { z } from 'zod';
 import { db } from '@/lib/db';
 import { queue } from '@/lib/queue';
 import { storage } from '@/lib/storage';
-import { guardProject } from '@/lib/auth';
+import { currentUserId, guardProject } from '@/lib/auth';
+import { checkQuota } from '@/lib/billing/usage';
+import { getPlan, renderExpiresAt, sourceExpiresAt } from '@/lib/billing/plans';
 
 export const runtime = 'nodejs';
 
@@ -13,6 +15,14 @@ const StartSchema = z.object({
   filename: z.string().optional(),
   contentType: z.string().optional(),
   sizeBytes: z.number().int().nonnegative().optional(),
+  /**
+   * What the browser measured the footage at.
+   *
+   * Used only to refuse a job that cannot fit the account's allowance before
+   * the work starts. The meter is advanced later by ffprobe's figure, so a
+   * client understating this buys nothing.
+   */
+  sourceDurationSec: z.number().nonnegative().optional(),
 });
 
 /**
@@ -63,6 +73,31 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   if (running) {
     return NextResponse.json({ ok: true, jobId: running.id, alreadyRunning: true });
   }
+
+  /* ------------------------------------------------------------ the meter */
+
+  const userId = await currentUserId();
+  const minutes = (body.sourceDurationSec ?? source.durationSec ?? 0) / 60;
+  const quota = await checkQuota(userId, minutes);
+  if (!quota.ok) {
+    // 402 rather than 403: this is not "you may not", it is "not on this plan".
+    return NextResponse.json({ error: quota.reason, quota: true, plan: quota.usage?.plan.id }, { status: 402 });
+  }
+
+  // The retention clocks start the moment the work does, and they are fixed to
+  // the plan in force NOW — a downgrade next month must not retroactively
+  // shorten a promise somebody has already paid for.
+  const plan = quota.usage?.plan ?? getPlan(null);
+  const uploadedAt = new Date();
+  await db.project.update({
+    where: { id },
+    data: {
+      planAtUpload: plan.id,
+      sourceMinutes: minutes,
+      sourceExpiresAt: sourceExpiresAt(plan, uploadedAt),
+      renderExpiresAt: renderExpiresAt(plan, uploadedAt),
+    },
+  });
 
   const job = await db.job.create({ data: { projectId: id, type: 'pipeline', status: 'queued' } });
   await db.project.update({ where: { id }, data: { status: 'processing', errorMessage: null } });

@@ -209,6 +209,10 @@ export function UploadFlow({ styles, formats }: { styles: StyleOption[]; formats
           storageKey: created.upload.key,
           contentType: file.type || 'video/mp4',
           sizeBytes: file.size,
+          // What the browser measured when it worked out short vs long form.
+          // The server re-measures before it meters anything; this only lets it
+          // refuse an over-allowance job with a straight answer.
+          sourceDurationSec: detected?.durationSec ?? 0,
         }),
       });
 

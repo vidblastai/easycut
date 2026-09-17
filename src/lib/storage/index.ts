@@ -1,6 +1,6 @@
 import { createReadStream } from 'node:fs';
 import { mkdir, readFile, stat, writeFile } from 'node:fs/promises';
-import { dirname, join } from 'node:path';
+import { dirname, isAbsolute, join } from 'node:path';
 import { env } from '@/lib/config/env';
 
 /**
@@ -49,7 +49,11 @@ class LocalStorageDriver implements StorageDriver {
   private readonly root: string;
 
   constructor(root: string) {
-    this.root = join(process.cwd(), root);
+    // An absolute STORAGE_LOCAL_DIR means what it says. `join(cwd, '/mnt/data')`
+    // silently yields `<cwd>/mnt/data`, so pointing this at a mounted volume
+    // quietly wrote into the application directory instead — the kind of bug
+    // that is invisible until the container restarts and the files are gone.
+    this.root = isAbsolute(root) ? root : join(process.cwd(), root);
   }
 
   private path(key: string): string {
