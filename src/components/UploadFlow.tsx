@@ -3,6 +3,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { clsx } from 'clsx';
+import { StylePreview } from '@/components/styles/StylePreview';
+import { detectFormat, probeInBrowser, type Detected } from '@/lib/styles/detect';
+import type { Layout } from '@/lib/edl/types';
 import { IconArrowRight, IconCheck } from '@/components/shell/Icons';
 import { readDefaultCaptionPreset } from '@/lib/captions/default-preset';
 import { takePendingUpload } from '@/lib/ui/pending-upload';
@@ -28,6 +31,8 @@ interface StyleOption {
   tagline: string;
   bestFor: string;
   accent: string;
+  layout: Layout;
+  formats: ('short' | 'long')[];
 }
 
 interface FormatOption {
@@ -41,7 +46,15 @@ interface FormatOption {
 
 type Phase = 'choose' | 'uploading' | 'starting';
 
-const QUESTIONS = ['footage', 'format', 'state', 'look'] as const;
+/**
+ * Three, where there were four.
+ *
+ * "Where is it going?" is gone. It asked about distribution when what it needed
+ * was a fact about the file — nobody shoots vertical for YouTube — and it asked
+ * it before the person had seen anything to choose between. The footage answers
+ * it, and the answer decides which styles are even worth showing.
+ */
+const QUESTIONS = ['footage', 'style', 'state'] as const;
 type Question = (typeof QUESTIONS)[number];
 
 export function UploadFlow({ styles, formats }: { styles: StyleOption[]; formats: FormatOption[] }) {
@@ -50,7 +63,9 @@ export function UploadFlow({ styles, formats }: { styles: StyleOption[]; formats
 
   const [at, setAt] = useState(0);
   const [file, setFile] = useState<File | null>(null);
-  const [mode, setMode] = useState<'short' | 'long'>('short');
+  const [detected, setDetected] = useState<Detected | null>(null);
+  const [override, setOverride] = useState<'short' | 'long' | null>(null);
+  const mode = override ?? detected?.mode ?? 'short';
   const [styleId, setStyleId] = useState(styles[0]?.id ?? 'clean');
   const [inputMode, setInputMode] = useState<'raw' | 'roughcut'>('raw');
   const [note, setNote] = useState('');
@@ -62,8 +77,15 @@ export function UploadFlow({ styles, formats }: { styles: StyleOption[]; formats
 
   const question: Question = QUESTIONS[at];
   const busy = phase !== 'choose';
-  const style = useMemo(() => styles.find((s) => s.id === styleId), [styles, styleId]);
   const format = useMemo(() => formats.find((f) => f.mode === mode), [formats, mode]);
+
+  /* Only the styles that suit this footage. A split screen offered on a
+     widescreen edit is an offer to make something that will look wrong — and
+     when the detection flips, a style that is no longer on the list quietly
+     falls back to one that is, rather than submitting something unbuildable. */
+  const choices = useMemo(() => styles.filter((s) => s.formats.includes(mode)), [styles, mode]);
+  const chosen = choices.some((s) => s.id === styleId) ? styleId : (choices[0]?.id ?? styleId);
+  const style = useMemo(() => styles.find((s) => s.id === chosen), [styles, chosen]);
 
   const pickFile = useCallback((next: File | null) => {
     setError(null);
@@ -73,8 +95,14 @@ export function UploadFlow({ styles, formats }: { styles: StyleOption[]; formats
       return;
     }
     setFile(next);
-    // A very large file is almost certainly meant for long-form; nudge, don't force.
-    if (next.size > 400 * 1024 * 1024) setMode('long');
+    setOverride(null);
+    setDetected(null);
+
+    // Shape and length come out of the file's own header, which is a few
+    // kilobytes — so the verdict lands in the moment the file is chosen rather
+    // than after a round trip on a two-gigabyte upload.
+    void probeInBrowser(next).then((probe) => setDetected(detectFormat(probe)));
+
     // Choosing a file is an answer, so move on rather than making them
     // confirm the thing they just did.
     setAt(1);
@@ -117,7 +145,7 @@ export function UploadFlow({ styles, formats }: { styles: StyleOption[]; formats
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           mode,
-          styleId,
+          styleId: chosen,
           // Whatever this browser last chose in the caption gallery. Absent is
           // fine — the edit style names its own caption look.
           captionPreset: readDefaultCaptionPreset() ?? undefined,
@@ -172,7 +200,7 @@ export function UploadFlow({ styles, formats }: { styles: StyleOption[]; formats
 
   return (
     <div className="pb-4">
-      <Rail at={at} answered={{ footage: Boolean(file), format: true, state: true, look: true }} onGo={setAt} />
+      <Rail at={at} answered={{ footage: Boolean(file), style: true, state: true }} onGo={setAt} />
 
       <div key={question} className="mt-7 animate-rise">
         {question === 'footage' ? (
@@ -230,24 +258,70 @@ export function UploadFlow({ styles, formats }: { styles: StyleOption[]; formats
           </Ask>
         ) : null}
 
-        {question === 'format' ? (
-          <Ask title="Where is it going?" sub="This sets the shape, the pace and how hard we cut.">
-            <div className="grid gap-3 sm:grid-cols-2">
-              {formats.map((f) => (
-                <Choice
-                  key={f.mode}
-                  selected={mode === f.mode}
-                  onClick={() => {
-                    setMode(f.mode);
-                    setAt(2);
-                  }}
-                  title={f.label}
-                  badge={f.aspect}
-                  body={f.description}
-                  tags={f.platforms}
-                />
+        {question === 'style' ? (
+          <Ask
+            title="Pick a style"
+            sub="The shape of the video, and everything that follows from it — captions, B-roll, pacing, sound."
+          >
+            {/* What was decided about the footage, and how to disagree with it.
+                A guess presented as a fact is worse than the question it
+                replaced. */}
+            <div className="mb-5 flex flex-wrap items-center gap-2 rounded-xl border border-line bg-charcoal px-3 py-2.5 text-[12.5px]">
+              <span
+                className="rounded-full px-2 py-0.5 text-[11px] font-bold uppercase tracking-wider"
+                style={{ background: 'rgba(155,123,255,.14)', color: '#B39AFF' }}
+              >
+                {format?.label ?? (mode === 'short' ? 'Short form' : 'Long form')}
+              </span>
+              <span className="text-muted">
+                {override
+                  ? `You've set this one to ${override === 'short' ? 'a short' : 'long form'}.`
+                  : detected
+                    ? detected.reason
+                    : 'Reading your footage…'}
+              </span>
+              <button
+                type="button"
+                onClick={() => setOverride(override ? null : mode === 'short' ? 'long' : 'short')}
+                className="ml-auto font-semibold text-muted underline decoration-line underline-offset-4 hover:text-chalk"
+              >
+                {override ? 'Use what we detected' : `Make it ${mode === 'short' ? 'long form' : 'a short'}`}
+              </button>
+            </div>
+
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {choices.map((s) => (
+                <button
+                  key={s.id}
+                  type="button"
+                  data-style={s.id}
+                  aria-pressed={chosen === s.id}
+                  onClick={() => setStyleId(s.id)}
+                  className={clsx(
+                    'rounded-2xl border p-3 text-left transition-colors',
+                    chosen === s.id
+                      ? 'border-violet bg-violet-dim'
+                      : 'border-line bg-charcoal hover:bg-charcoal2',
+                  )}
+                >
+                  <StylePreview
+                    layout={s.layout}
+                    aspect={mode === 'short' ? '9:16' : '16:9'}
+                    accent={s.accent}
+                    className={mode === 'short' ? 'mx-auto w-[58%]' : 'w-full'}
+                  />
+                  <p className="mt-3 flex items-center gap-2 text-[14px] font-bold">
+                    <span className="h-2 w-2 rounded-full" style={{ background: s.accent }} />
+                    {s.name}
+                  </p>
+                  <p className="mt-1 text-[12.5px] leading-snug text-muted">{s.tagline}</p>
+                </button>
               ))}
             </div>
+
+            <p className="mt-4 text-[12.5px] text-faint">
+              {choices.find((s) => s.id === chosen)?.bestFor}
+            </p>
           </Ask>
         ) : null}
 
@@ -259,40 +333,16 @@ export function UploadFlow({ styles, formats }: { styles: StyleOption[]; formats
             <div className="grid gap-3 sm:grid-cols-2">
               <Choice
                 selected={inputMode === 'raw'}
-                onClick={() => {
-                  setInputMode('raw');
-                  setAt(3);
-                }}
+                onClick={() => setInputMode('raw')}
                 title="Completely raw"
                 body="Straight off the camera. We'll cut the pauses, the ums, the false starts and the takes you redid."
               />
               <Choice
                 selected={inputMode === 'roughcut'}
-                onClick={() => {
-                  setInputMode('roughcut');
-                  setAt(3);
-                }}
+                onClick={() => setInputMode('roughcut')}
                 title="Already trimmed"
                 body="You cut your own mistakes. We'll respect your edit and only add the layers on top."
               />
-            </div>
-          </Ask>
-        ) : null}
-
-        {question === 'look' ? (
-          <Ask title="Pick a look" sub="Captions, B-roll, pacing and sound all follow from this. You can change it later.">
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-              {styles.map((s) => (
-                <Choice
-                  key={s.id}
-                  selected={styleId === s.id}
-                  onClick={() => setStyleId(s.id)}
-                  dot={s.accent}
-                  title={s.name}
-                  body={s.tagline}
-                  foot={s.bestFor}
-                />
-              ))}
             </div>
 
             <div className="mt-6">
@@ -311,6 +361,7 @@ export function UploadFlow({ styles, formats }: { styles: StyleOption[]; formats
             </div>
           </Ask>
         ) : null}
+
       </div>
 
       {error ? (
@@ -344,8 +395,8 @@ export function UploadFlow({ styles, formats }: { styles: StyleOption[]; formats
 
       {at === QUESTIONS.length - 1 && file ? (
         <p className="mt-4 text-[12.5px] text-faint">
-          {file.name} · {format?.label} · {inputMode === 'raw' ? 'Completely raw' : 'Already trimmed'} ·{' '}
-          {style?.name}
+          {file.name} · {format?.label} · {style?.name} ·{' '}
+          {inputMode === 'raw' ? 'Completely raw' : 'Already trimmed'}
         </p>
       ) : null}
     </div>

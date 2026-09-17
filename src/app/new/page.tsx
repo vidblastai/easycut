@@ -53,6 +53,8 @@ export default async function NewProjectPage() {
               tagline: s.tagline,
               bestFor: s.bestFor,
               accent: s.accent,
+              layout: s.layout,
+              formats: s.formats,
             }))}
             formats={[FORMAT_PRESETS.short, FORMAT_PRESETS.long]}
           />
