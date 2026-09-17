@@ -57,10 +57,17 @@ export async function processProject(payload: ProcessJobPayload): Promise<void> 
         sourceKey: source.storageKey,
         resumeFrom: payload.resumeFrom,
       },
-      async (stage, fraction, label) => {
+      async (stage, fraction, label, log) => {
         await db.job.update({
           where: { id: jobId },
-          data: { stage, progress: Math.min(0.95, fraction), progressLabel: label ?? STAGE_LABELS[stage] },
+          data: {
+            stage,
+            progress: Math.min(0.95, fraction),
+            progressLabel: label ?? STAGE_LABELS[stage],
+            // Written as it happens. A log that only lands on success is a log
+            // that is missing from every job you actually need it for.
+            ...(log ? { log: stringifyJson(log) } : {}),
+          },
         });
       },
     );

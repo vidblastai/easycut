@@ -1,4 +1,4 @@
-import { spawn } from 'node:child_process';
+import { supervise } from './supervise';
 
 /**
  * Web server and worker, one container.
@@ -14,23 +14,10 @@ import { spawn } from 'node:child_process';
  * If either process exits, so does this one: a container that is half-alive
  * looks healthy to the host and silently stops rendering.
  */
-const procs = [
+supervise([
   { name: 'web', cmd: 'npm', args: ['run', 'start'] },
   { name: 'worker', cmd: 'npm', args: ['run', 'worker'] },
-].map(({ name, cmd, args }) => {
-  const child = spawn(cmd, args, { stdio: 'inherit', env: process.env });
-  child.on('exit', (code) => {
-    console.error(`[start-all] ${name} exited with ${code} — shutting down`);
-    process.exit(code ?? 1);
-  });
-  return child;
-});
-
-for (const signal of ['SIGINT', 'SIGTERM'] as const) {
-  process.on(signal, () => {
-    for (const child of procs) child.kill(signal);
-  });
-}
+]);
 
 if (process.env.QUEUE_DRIVER === 'memory') {
   console.warn(

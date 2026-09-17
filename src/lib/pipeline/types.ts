@@ -113,4 +113,17 @@ export interface PipelineContext {
   log: StageLogEntry[];
 }
 
-export type ProgressReporter = (stage: Stage, fraction: number, label?: string) => void | Promise<void>;
+/**
+ * Called as each stage starts and finishes.
+ *
+ * `log` carries what has happened so far. It is passed on every report rather
+ * than kept until the end, because the end is exactly when nobody needs it:
+ * the person is watching this screen for ninety seconds NOW, and a job that
+ * crashes used to take its whole log with it.
+ */
+export type ProgressReporter = (
+  stage: Stage,
+  fraction: number,
+  label?: string,
+  log?: readonly StageLogEntry[],
+) => void | Promise<void>;

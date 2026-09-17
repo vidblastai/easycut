@@ -115,7 +115,7 @@ export async function runPipeline(
     }
 
     completedWeight += weight;
-    await report(stage, completedWeight, STAGE_LABELS[stage]);
+    await report(stage, completedWeight, STAGE_LABELS[stage], context.log);
   }
 
   if (!context.edl) throw new Error('Pipeline finished without producing an EDL');

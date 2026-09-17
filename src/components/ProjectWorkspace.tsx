@@ -9,14 +9,16 @@ import { TimelineDock } from '@/components/TimelineDock';
 import { AppShell } from '@/components/shell/AppShell';
 import type { RecentProject } from '@/components/shell/Sidebar';
 import { Stepper, type StepKey } from '@/components/shell/Stepper';
+import { STAGES as PIPELINE_STAGES, STAGE_LABELS } from '@/lib/pipeline/types';
 import { CaptionStudio } from '@/components/captions/CaptionStudio';
 import { CaptionBand } from '@/components/captions/CaptionPreview';
 import { captionPresetFor } from '@/lib/captions/presets';
-import { IconDownload, IconPlus, IconSliders } from '@/components/shell/Icons';
+import { IconCheck, IconDownload, IconPlus, IconSliders } from '@/components/shell/Icons';
 import { AddedList, CutRibbon, Glance, TheCut } from '@/components/export/ExportReport';
 import { CopyButton } from '@/components/CopyButton';
 import type { EdlOperation } from '@/lib/edl/operations';
 import type { CaptionStyle, Edl } from '@/lib/edl/types';
+import { explainFailure } from '@/lib/ui/failure';
 import Link from 'next/link';
 
 /**
@@ -59,6 +61,7 @@ interface ProjectState {
     progress: number;
     progressLabel: string;
     errorMessage: string | null;
+    startedAt: string | null;
     log: Array<{ stage: string; status: string; ms: number; message: string }>;
   } | null;
   edl: { id: string; version: number; document: Edl | null } | null;
@@ -228,6 +231,32 @@ export function ProjectWorkspace({
     [projectId, load],
   );
 
+  /**
+   * Run it again.
+   *
+   * `start` already refuses to stack a second job on a running project, so
+   * this is safe to press twice — and most pipeline failures (a dropped
+   * connection, a rate limit, a provider hiccup) genuinely do pass on the next
+   * attempt. Making somebody re-upload a two-gigabyte file to find that out
+   * was the wrong shape of recovery.
+   */
+  const retry = useCallback(async () => {
+    setBusy(true);
+    setError(null);
+    try {
+      const response = await fetch(`/api/projects/${projectId}/start`, { method: 'POST' });
+      if (!response.ok) {
+        const body = await response.json().catch(() => ({}));
+        throw new Error(body.error ?? 'Could not start it again.');
+      }
+      await load();
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }, [projectId, load]);
+
   const exportAspect = useCallback(
     async (aspect: string) => {
       setBusy(true);
@@ -270,8 +299,7 @@ export function ProjectWorkspace({
    * project, and a second copy of it would be a second thing to keep in sync
    * with a job that is progressing in another process.
    */
-  const step: StepKey =
-    project.status === 'processing' || project.status === 'draft' ? 'apply' : 'export';
+  const step: StepKey = project.status === 'ready' ? 'export' : 'apply';
 
   const modeLabel = project.mode === 'short' ? 'Short form' : 'Long form';
   const styleName = styles.find((s) => s.id === project.styleId)?.name ?? project.styleId;
@@ -461,18 +489,26 @@ export function ProjectWorkspace({
 
       <main className="min-w-0 flex-1 px-4 pb-20 sm:px-8">
         <div className="measure">
-          {project.status === 'failed' ? (
-            <div className="pt-6">
-              <FailureCard message={project.errorMessage ?? job?.errorMessage ?? 'Unknown error'} />
-            </div>
-          ) : null}
-
-          {project.status === 'processing' || !project.previewUrl ? (
+          {project.status !== 'ready' || !project.previewUrl ? (
             <div className="pt-6">
               <h1 className="text-[26px] font-extrabold">{project.title}</h1>
               <p className="mt-1.5 text-[13px] text-muted">{modeLabel} · {styleName}</p>
-              <div className="mt-6">
-                <ProgressPanel job={job} mode={project.mode} />
+
+              {project.status === 'failed' ? (
+                <FailureCard
+                  message={project.errorMessage ?? job?.errorMessage ?? 'Unknown error'}
+                  busy={busy}
+                  onRetry={retry}
+                />
+              ) : null}
+
+              <div className="mt-5">
+                <ProgressPanel
+                  job={job}
+                  mode={project.mode}
+                  styleName={styleName}
+                  failed={project.status === 'failed'}
+                />
               </div>
             </div>
           ) : (
@@ -744,47 +780,196 @@ function LivePreview({
 
 /* ---------------------------------------------------------------- panels */
 
-function ProgressPanel({ job, mode }: { job: ProjectState['job']; mode: 'short' | 'long' }) {
+/**
+ * The Apply step: ninety seconds to five minutes of somebody watching a bar.
+ *
+ * It used to be a spinner, a label and the last five log lines — and the log
+ * was only written when the job finished, so for the whole of the wait it was
+ * a spinner and a label. Which is the screen people close the tab on.
+ *
+ * Every stage is listed instead, so the wait has a shape: what is done, what
+ * is happening, what is left, and how long each piece took. The same list the
+ * pipeline actually runs, from the same constant, so it can never drift into
+ * describing work that is not being done.
+ */
+function ProgressPanel({
+  job,
+  mode,
+  styleName,
+  failed = false,
+}: {
+  job: ProjectState['job'];
+  mode: 'short' | 'long';
+  styleName: string;
+  failed?: boolean;
+}) {
   const progress = job?.progress ?? 0;
   const estimate = mode === 'short' ? '~90 seconds' : '~5 minutes';
 
+  // The stages that get their own row. `done` is the finish line, not a step.
+  const rows = useMemo(() => PIPELINE_STAGES.filter((st) => st !== 'done'), []);
+  const byStage = useMemo(
+    () => new Map((job?.log ?? []).map((e) => [e.stage, e])),
+    [job?.log],
+  );
+  const currentIndex = rows.indexOf((job?.stage ?? 'ingest') as (typeof rows)[number]);
+
+  const elapsed = useElapsed(job?.startedAt ?? null, !failed && job?.status === 'running');
+
   return (
-    <div className="card flex flex-col items-center justify-center p-12 text-center" style={{ minHeight: 360 }}>
-      <div className="relative h-14 w-14">
-        <div className="absolute inset-0 rounded-full border-2 border-line" />
-        <div className="absolute inset-0 animate-spin rounded-full border-2 border-transparent border-t-violet" />
-      </div>
-      <h2 className="mt-6 text-lg font-bold tracking-[-0.02em]">{job?.progressLabel || 'Getting started'}</h2>
-      <p className="mt-2 text-sm text-muted">Usually {estimate} start to finish.</p>
+    <div className="card overflow-hidden">
+      <div className="border-b border-line-soft p-5 sm:p-6">
+        <div className="flex flex-wrap items-baseline justify-between gap-3">
+          <h2 className="text-[19px] font-extrabold tracking-[-.03em]">
+            {failed ? 'Where it stopped' : job?.progressLabel || 'Getting started'}
+          </h2>
+          {elapsed !== null ? (
+            <span className="font-mono text-[12.5px] tabular-nums text-muted">{formatDuration(elapsed)}</span>
+          ) : null}
+        </div>
+        <p className="mt-1.5 text-[13px] text-muted">
+          {failed
+            ? `It stopped here. Everything above this line finished — running it again picks up from the start.`
+            : `Making a ${mode === 'short' ? 'short' : 'long-form'} cut in the ${styleName} style. ` +
+              `Usually ${estimate} start to finish — you can close this tab and come back.`}
+        </p>
 
-      <div className="mt-6 h-2 w-full max-w-sm overflow-hidden rounded-full bg-ink">
-        <div
-          className="h-full rounded-full bg-violet transition-[width] duration-500"
-          style={{ width: `${Math.max(4, progress * 100)}%` }}
-        />
+        <div className="mt-4 h-2 w-full overflow-hidden rounded-full bg-ink">
+          <div
+            className={clsx(
+              'h-full rounded-full transition-[width] duration-500',
+              failed ? 'bg-bad/60' : 'bg-violet',
+            )}
+            style={{ width: `${Math.max(3, progress * 100)}%` }}
+          />
+        </div>
       </div>
 
-      {job?.log.length ? (
-        <ul className="mt-6 w-full max-w-sm space-y-1 text-left text-xs text-muted">
-          {job.log.slice(-5).map((entry, i) => (
-            <li key={i} className="flex items-center justify-between gap-3">
-              <span className={clsx('truncate', entry.status === 'degraded' && 'text-warn')}>
-                {entry.message || entry.stage}
+      <ul className="p-2 sm:p-3">
+        {rows.map((stage, i) => {
+          const entry = byStage.get(stage);
+          // On a dead job the stage it was in is where it died — a spinner
+          // there would promise work that stopped some time ago.
+          const here = i === currentIndex;
+          const state = entry
+            ? entry.status === 'ok'
+              ? 'done'
+              : 'warn'
+            : here
+              ? (failed ? 'dead' : 'now')
+              : 'todo';
+          return (
+            <li
+              key={stage}
+              className={clsx(
+                'grid grid-cols-[18px_minmax(0,1fr)_auto] items-center gap-3 rounded-lg px-3 py-2 transition-colors',
+                state === 'now' && 'bg-violet-dim',
+                state === 'dead' && 'bg-bad/[0.08]',
+              )}
+            >
+              <span
+                className={clsx(
+                  'grid h-4 w-4 place-items-center rounded-full border',
+                  state === 'done' && 'border-ok/45 bg-ok/[0.13] text-ok',
+                  state === 'warn' && 'border-warn/50 bg-warn/[0.12] text-warn',
+                  state === 'now' && 'animate-spin border-violet border-r-transparent',
+                  state === 'dead' && 'border-bad/60 bg-bad/[0.14] text-bad',
+                  state === 'todo' && 'border-line',
+                )}
+              >
+                {state === 'done' ? <IconCheck className="h-2.5 w-2.5" /> : null}
+                {state === 'warn' || state === 'dead' ? (
+                  <span className="text-[10px] font-bold leading-none">!</span>
+                ) : null}
               </span>
-              <span className="shrink-0 tabular-nums text-muted/60">{(entry.ms / 1000).toFixed(1)}s</span>
+
+              <span
+                className={clsx(
+                  'truncate text-[13.5px]',
+                  state === 'now' && 'font-semibold text-chalk',
+                  state === 'done' && 'text-muted',
+                  state === 'warn' && 'text-warn',
+                  state === 'dead' && 'font-semibold text-bad',
+                  state === 'todo' && 'text-faint',
+                )}
+              >
+                {STAGE_LABELS[stage]}
+                {state === 'warn' && entry?.message ? (
+                  <span className="ml-2 text-[12px] text-muted">— {entry.message}</span>
+                ) : null}
+              </span>
+
+              <span className="font-mono text-[11.5px] tabular-nums text-faint">
+                {entry ? `${(entry.ms / 1000).toFixed(1)}s` : ''}
+              </span>
             </li>
-          ))}
-        </ul>
-      ) : null}
+          );
+        })}
+      </ul>
     </div>
   );
 }
 
-function FailureCard({ message }: { message: string }) {
+/** Seconds since the job started, ticking while it runs. */
+function useElapsed(startedAt: string | null, running: boolean): number | null {
+  const [now, setNow] = useState(() => Date.now());
+
+  useEffect(() => {
+    if (!running || !startedAt) return;
+    const id = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, [running, startedAt]);
+
+  if (!startedAt) return null;
+  const started = new Date(startedAt).getTime();
+  return Number.isFinite(started) ? Math.max(0, (now - started) / 1000) : null;
+}
+
+/**
+ * A failure, in words somebody who films themselves would use.
+ *
+ * It used to print the raw error — two absolute paths and "moov atom not
+ * found" — to people who are not editors and are definitely not reading
+ * ffprobe output. Worse, that particular message was usually a lie about
+ * whose fault it was: it meant OUR upload had truncated their file.
+ *
+ * The technical text is still here, one click away, because the person who
+ * does want it wants all of it.
+ */
+function FailureCard({
+  message,
+  busy,
+  onRetry,
+}: {
+  message: string;
+  busy: boolean;
+  onRetry: () => void;
+}) {
+  const { headline, advice, retryable } = useMemo(() => explainFailure(message), [message]);
+
   return (
-    <div className="mt-6 rounded-2xl border border-bad/40 bg-bad/[0.07] p-5">
-      <h2 className="text-sm font-bold text-bad">We couldn&rsquo;t finish this one</h2>
-      <p className="mt-2 text-sm text-muted">{message}</p>
+    <div className="mt-5 rounded-2xl border border-bad/40 bg-bad/[0.07] p-5">
+      <h2 className="text-[15px] font-bold text-bad">{headline}</h2>
+      {advice ? <p className="mt-1.5 text-[13.5px] leading-relaxed text-muted">{advice}</p> : null}
+
+      <div className="mt-4 flex flex-wrap items-center gap-2">
+        {retryable ? (
+          <button type="button" onClick={onRetry} disabled={busy} className="btn-primary">
+            {busy ? 'Starting…' : 'Try again'}
+          </button>
+        ) : null}
+        <Link href="/new" className="btn-ghost">
+          <IconPlus className="h-4 w-4" />
+          Start over with a new file
+        </Link>
+      </div>
+
+      <details className="mt-4 text-[12.5px]">
+        <summary className="cursor-pointer text-faint hover:text-muted">What the machine said</summary>
+        <pre className="mt-2 overflow-x-auto whitespace-pre-wrap break-words rounded-lg bg-ink p-3 font-mono text-[11.5px] leading-relaxed text-muted">
+          {message}
+        </pre>
+      </details>
     </div>
   );
 }

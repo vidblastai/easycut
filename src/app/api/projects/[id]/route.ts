@@ -76,6 +76,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
           progress: job.progress,
           progressLabel: job.progressLabel,
           errorMessage: job.errorMessage,
+          startedAt: job.startedAt,
           log: readStageLog(job.log),
         }
       : null,

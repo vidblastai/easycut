@@ -30,7 +30,20 @@ export default authEnabled
 
 export const config = {
   matcher: [
-    '/((?!_next|[^?]*\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|mp4|webm|wav|mp3)).*)',
-    '/(api|trpc)(.*)',
+    '/((?!_next|api/projects/[^/]+/upload|[^?]*\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|mp4|webm|wav|mp3)).*)',
+    /*
+     * Every API route EXCEPT the source upload.
+     *
+     * Next buffers a request body before handing it to middleware, and caps
+     * that buffer at 10 MB. An upload route behind middleware therefore
+     * receives a SILENTLY TRUNCATED file — 30 MB in, 10 MB out, HTTP 200 —
+     * which on a video app means every real piece of footage arrives broken
+     * and the failure surfaces four stages later as "moov atom not found".
+     *
+     * The route is not unguarded: it calls `guardProject(id)` itself, which is
+     * the same check with the same session, done after the body has streamed
+     * past rather than before it was allowed to exist.
+     */
+    '/(api|trpc)((?!/projects/[^/]+/upload).*)',
   ],
 };

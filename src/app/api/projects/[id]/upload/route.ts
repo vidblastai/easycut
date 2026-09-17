@@ -26,17 +26,46 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   const contentType = request.headers.get('content-type') ?? 'video/mp4';
   const filename = request.headers.get('x-filename') ?? 'source.mp4';
 
-  const buffer = Buffer.from(await request.arrayBuffer());
   const maxBytes = env.limits.maxUploadMb * 1024 * 1024;
-  if (buffer.byteLength > maxBytes) {
+  const declared = Number(request.headers.get('content-length') ?? '');
+  if (Number.isFinite(declared) && declared > maxBytes) {
     return NextResponse.json({ error: `File exceeds the ${env.limits.maxUploadMb} MB limit.` }, { status: 413 });
   }
-  if (buffer.byteLength === 0) {
+  if (!request.body) {
     return NextResponse.json({ error: 'Empty upload.' }, { status: 400 });
   }
 
   const key = assetKey(id, 'source', filename.replace(/[^\w.\-]+/g, '-').slice(-120));
-  const object = await storage().put(key, buffer, contentType);
+
+  // Streamed, not buffered. `await request.arrayBuffer()` held the entire
+  // source file in memory — a gigabyte of RSS per concurrent upload on an app
+  // whose every job begins with exactly that file.
+  const object = await storage().putStream(key, request.body, contentType);
+
+  /*
+   * And then check what actually landed.
+   *
+   * This route used to answer `{ ok: true }` to an upload the runtime had
+   * silently truncated: 30 MB in, 10 MB on disk, HTTP 200. The job then died
+   * four stages later with "moov atom not found", which is ffprobe's way of
+   * saying the file stops in the middle — and the person was told their
+   * FOOTAGE was broken when what was broken was our upload. Bytes in must
+   * equal bytes out, or this is a failed upload and says so.
+   */
+  if (Number.isFinite(declared) && declared > 0 && object.sizeBytes !== declared) {
+    await storage().delete(key).catch(() => {});
+    return NextResponse.json(
+      {
+        error:
+          `The upload was cut short — ${object.sizeBytes.toLocaleString()} of ` +
+          `${declared.toLocaleString()} bytes arrived. Please try again.`,
+      },
+      { status: 502 },
+    );
+  }
+  if (object.sizeBytes === 0) {
+    return NextResponse.json({ error: 'Empty upload.' }, { status: 400 });
+  }
 
   await db.asset.create({
     data: {

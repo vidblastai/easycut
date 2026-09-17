@@ -24,12 +24,22 @@ export interface StorageDriver {
   readonly name: string;
   put(key: string, body: Buffer | Uint8Array, contentType: string): Promise<StoredObject>;
   putFile(key: string, filePath: string, contentType: string): Promise<StoredObject>;
+  /**
+   * Writes a stream without ever holding the whole thing in memory.
+   *
+   * The upload path needs this: buffering a two-gigabyte source file to call
+   * `put` costs two gigabytes of RSS per concurrent upload, and on this app
+   * every single job starts with exactly that file.
+   */
+  putStream(key: string, body: ReadableStream<Uint8Array>, contentType: string): Promise<StoredObject>;
   get(key: string): Promise<Buffer>;
   /** A URL a browser can load directly. */
   publicUrl(key: string): string;
   /** A URL the browser can PUT to, so uploads never touch our server. */
   presignUpload(key: string, contentType: string, expiresSec?: number): Promise<string | null>;
   exists(key: string): Promise<boolean>;
+  /** Removes an object. Missing keys are not an error — the goal is "gone". */
+  delete(key: string): Promise<void>;
 }
 
 /* ------------------------------------------------------------ local driver */
@@ -65,8 +75,63 @@ class LocalStorageDriver implements StorageDriver {
     return { key, url: this.publicUrl(key), sizeBytes: info.size, contentType };
   }
 
+  async putStream(key: string, body: ReadableStream<Uint8Array>, contentType: string): Promise<StoredObject> {
+    const target = this.path(key);
+    await mkdir(dirname(target), { recursive: true });
+    const { createWriteStream } = await import('node:fs');
+
+    // A plain reader loop rather than `Readable.fromWeb`: the bundled route
+    // does not reliably get Node's own `node:stream`, and this needs nothing
+    // from it. Backpressure is honoured through the drain promise.
+    const out = createWriteStream(target);
+    const reader = body.getReader();
+    let sizeBytes = 0;
+
+    // One error handler for the whole write. Adding a fresh `once('error')`
+    // inside the pause below leaks a listener on every drain — thousands of
+    // them on a large file, which Node warns about and then behaves oddly
+    // around.
+    let failure: Error | null = null;
+    out.on('error', (err: Error) => { failure = err; });
+
+    /** Waits for the stream to accept more, and gives up if it has died. */
+    const drained = () =>
+      new Promise<void>((resolve) => {
+        const settle = () => {
+          out.off('drain', settle);
+          out.off('error', settle);
+          resolve();
+        };
+        out.once('drain', settle);
+        out.once('error', settle);
+      });
+
+    try {
+      for (;;) {
+        if (failure) throw failure;
+        const { done, value } = await reader.read();
+        if (done) break;
+        sizeBytes += value.byteLength;
+        if (!out.write(value)) await drained();
+      }
+      await new Promise<void>((resolve) => out.end(resolve));
+      if (failure) throw failure;
+    } catch (error) {
+      out.destroy();
+      await reader.cancel().catch(() => {});
+      throw error;
+    }
+
+    return { key, url: this.publicUrl(key), sizeBytes, contentType };
+  }
+
   async get(key: string): Promise<Buffer> {
     return readFile(this.path(key));
+  }
+
+  async delete(key: string): Promise<void> {
+    const { rm } = await import('node:fs/promises');
+    await rm(this.path(key), { force: true });
   }
 
   publicUrl(key: string): string {
@@ -120,6 +185,34 @@ class S3StorageDriver implements StorageDriver {
     return { key, url: this.publicUrl(key), sizeBytes: body.byteLength, contentType };
   }
 
+  async putStream(key: string, body: ReadableStream<Uint8Array>, contentType: string): Promise<StoredObject> {
+    const { Upload } = await import('@aws-sdk/lib-storage');
+    const client = await this.client();
+
+    // Counted as it passes rather than measured afterwards: a HEAD round trip
+    // to learn the size of something we just wrote is a second request for a
+    // number we already had.
+    let sizeBytes = 0;
+    const counted = body.pipeThrough(
+      new TransformStream<Uint8Array, Uint8Array>({
+        transform(chunk, controller) {
+          sizeBytes += chunk.byteLength;
+          controller.enqueue(chunk);
+        },
+      }),
+    );
+
+    const upload = new Upload({
+      client,
+      params: { Bucket: env.storage.bucket!, Key: key, Body: counted, ContentType: contentType },
+      queueSize: 4,
+      partSize: 16 * 1024 * 1024,
+    });
+    await upload.done();
+
+    return { key, url: this.publicUrl(key), sizeBytes, contentType };
+  }
+
   async putFile(key: string, filePath: string, contentType: string): Promise<StoredObject> {
     // Multipart upload keeps memory flat for multi-gigabyte source files.
     const { Upload } = await import('@aws-sdk/lib-storage').catch(() => ({ Upload: null as any }));
@@ -143,6 +236,12 @@ class S3StorageDriver implements StorageDriver {
       await this.put(key, await readFile(filePath), contentType);
     }
     return { key, url: this.publicUrl(key), sizeBytes: info.size, contentType };
+  }
+
+  async delete(key: string): Promise<void> {
+    const { DeleteObjectCommand } = await import('@aws-sdk/client-s3');
+    const client = await this.client();
+    await client.send(new DeleteObjectCommand({ Bucket: env.storage.bucket!, Key: key }));
   }
 
   async get(key: string): Promise<Buffer> {
