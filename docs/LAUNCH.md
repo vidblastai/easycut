@@ -18,7 +18,7 @@ there and every one of those follows.
 | **Price** | $30 | $74.99 | $190 |
 | **Footage** | 1 hour | 3 hours | 8 hours |
 | ≈ long-form videos | 3 | 9 | 24 |
-| ≈ shorts | 12 | 36 | 96 |
+| ≈ shorts | 6 | 18 | 48 |
 | Longest single upload | 30 min | 90 min | 240 min |
 | **Footage kept** | 7 days | 30 days | 90 days |
 | **Videos kept** | 30 days | 1 year | while subscribed |
@@ -45,8 +45,10 @@ Two things to know about those figures:
 
 1. **They are the worst case, twice over.** They assume the customer burns
    every last minute of the allowance, and that they spend it all on *shorts* —
-   the pattern with the most jobs per minute and therefore the most fixed cost.
-   Real utilisation in this category runs 30–60 %, so expect materially better.
+   the pattern with the most jobs per minute and therefore the most fixed cost
+   (the model keeps its own pessimistic five-minutes-a-job figure rather than
+   the cautious ten the pricing page advertises). Real utilisation in this
+   category runs 30–60 %, so expect materially better.
 2. **They assume Claude Opus as the director.** Switching `LLM_MODEL` to Sonnet
    cuts the biggest line item by about 60 % and pushes every margin past 85 %,
    at some cost in the taste of the hook and B-roll choices.
@@ -60,9 +62,12 @@ You asked for "three videos" at $30 — and that is exactly what Starter is, if 
 long-form video is about twenty minutes of raw footage. But a plan *sold* in
 videos cannot be enforced: nearly everything a job costs scales with footage in,
 not clips out, so "3 videos" would have to either refuse an hour-long podcast or
-lose money on it. So the meter is minutes and the page says both numbers. The
-pricing page explains this in two sentences rather than leaving people to
-discover it at the point of refusal.
+lose money on it. So the meter is minutes and the page says both numbers.
+
+The advertised counts are deliberately pessimistic — ten minutes of footage per
+short, twenty per long-form — so Starter reads "3 long-form videos, or 6
+shorts". Somebody who films tighter gets more than the page promised, which is
+the only direction this error is safe to make.
 
 ### Why footage is deleted before videos
 
