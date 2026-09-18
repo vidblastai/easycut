@@ -85,6 +85,10 @@ There is a warning in the three days before it goes.
 - **Privacy policy** — `/privacy`, retention table generated from the plans.
 - **Pricing page** — `/pricing`, every number from the plans.
 - **Usage meter in the sidebar**, warning at 80 % and again at zero.
+- **Pricing on the homepage** and in the top nav, not only on /pricing.
+- **A real site footer** carrying the privacy policy, the terms and pricing,
+  on every marketing page.
+- **Terms of service** at `/terms`.
 - **Two bugs fixed on the way**: `DELETE /api/projects/[id]` had no ownership
   check (anyone signed in could delete anyone's project) and left every file on
   disk; and an absolute `STORAGE_LOCAL_DIR` was being joined onto the working
@@ -111,21 +115,19 @@ taking the money and setting `user.plan`. Needed:
 
 **Decision needed from you:** free beta first, or paid from day one?
 
-### 2. Terms of service
-
-The privacy policy is done. Terms are not, and Stripe will ask for them. They
-also need a human decision on refunds, acceptable use and what happens to
-content if an account is closed.
-
-### 3. Error reporting
+### 2. Error reporting
 
 If a render breaks for a customer at 2am, nothing tells you. Sentry or similar,
 wired into the worker and the API.
 
-### 4. Both policies need a lawyer's pass
+### 3. Both policies need a lawyer's pass
 
-`/privacy` is an accurate description of what the software does, written in
-plain English. It is not legal advice and has not been reviewed.
+`/privacy` and `/terms` are accurate descriptions of what the software does,
+written in plain English and generated from the live plan data where they quote
+numbers. Neither is legal advice and neither has been reviewed. The commercial
+calls in the terms — no part-month refunds as a rule, a liability cap at last
+month's payment — are the policy the code currently implements, which is the
+honest starting point for that conversation rather than the end of it.
 
 ---
 

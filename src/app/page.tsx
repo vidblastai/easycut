@@ -1,4 +1,6 @@
 import Link from 'next/link';
+import { PricingExplainer, PricingSection } from '@/components/marketing/PricingSection';
+import { SiteFooter } from '@/components/marketing/SiteFooter';
 import { Logo, LogoMark } from '@/components/Logo';
 import { CaptionShowcase } from '@/components/captions/CaptionShowcase';
 import { BeforeAfter } from '@/components/marketing/BeforeAfter';
@@ -57,6 +59,12 @@ export default function HomePage() {
       <header className="relative z-10 mx-auto flex max-w-6xl items-center justify-between px-6 py-6">
         <Logo />
         <nav className="flex items-center gap-2">
+          {/* Pricing in the header as well as the footer. It is the second
+              question everybody has, and making them scroll for it reads as
+              evasion. */}
+          <Link href="/pricing" className="btn-quiet hidden sm:inline-flex">
+            Pricing
+          </Link>
           <Link href="/dashboard" className="btn-ghost">
             My videos
           </Link>
@@ -208,6 +216,19 @@ export default function HomePage() {
         </div>
       </section>
 
+      {/* --------------------------------------------------------- pricing */}
+      {/* On the homepage, not only on /pricing. Somebody deciding whether this
+          is for them asks what it costs before they ask anything else, and a
+          price they have to go hunting for reads as a price being hidden. */}
+      <section id="pricing" className="relative z-10 scroll-mt-16 border-t border-line bg-[#0B0B0E] py-24">
+        <div className="mx-auto max-w-6xl px-6">
+          <PricingSection />
+          <div className="mt-14 border-t border-line pt-10">
+            <PricingExplainer />
+          </div>
+        </div>
+      </section>
+
       {/* ------------------------------------------------------------- cta */}
       <section className="relative z-10 border-t border-line py-24">
         <div className="mx-auto max-w-3xl px-6 text-center">
@@ -224,12 +245,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      <footer className="relative z-10 border-t border-line py-8">
-        <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-4 px-6 text-sm text-muted sm:flex-row">
-          <Logo size={24} />
-          <p>Built for people who would rather be making things than editing them.</p>
-        </div>
-      </footer>
+      <SiteFooter />
     </main>
   );
 }

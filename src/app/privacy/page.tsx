@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { PAID_PLANS, PLANS } from '@/lib/billing/plans';
+import { SiteFooter } from '@/components/marketing/SiteFooter';
 
 export const metadata = {
   title: 'Privacy — EasyCut',
@@ -29,7 +30,8 @@ const UPDATED = '17 September 2026';
 
 export default function PrivacyPage() {
   return (
-    <main className="min-h-screen bg-ink px-5 py-12 sm:px-8">
+    <>
+      <main className="min-h-screen bg-ink px-5 py-12 sm:px-8">
       <div className="mx-auto max-w-[68ch]">
         <Link href="/" className="text-[13px] font-semibold text-violet hover:underline">
           ← EasyCut
@@ -198,7 +200,9 @@ export default function PrivacyPage() {
           long it keeps it.
         </p>
       </div>
-    </main>
+      </main>
+      <SiteFooter />
+    </>
   );
 }
 
