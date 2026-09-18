@@ -71,16 +71,32 @@ export interface Plan {
 }
 
 /**
- * How much footage a person actually films to get one finished video.
+ * How much footage a person films to get one finished video.
  *
  * These two numbers are the entire translation between what we meter and what
  * the pricing page promises, so they are named and visible rather than buried
- * in a template string. They are deliberately generous — if the real ratio
- * turns out worse, the page has been over-promising, and that is the error
- * that costs trust.
+ * in a template string.
+ *
+ * They are deliberately PESSIMISTIC. Somebody who films five minutes for a
+ * sixty-second short gets twelve out of Starter, not six — and being handed
+ * twice what the page promised is a good surprise. The opposite error, where
+ * the page says twelve and the footage only stretches to six, is the one that
+ * costs trust and refunds. So the page under-promises on purpose.
  */
-export const SOURCE_MINUTES_PER_SHORT = 5;
+export const SOURCE_MINUTES_PER_SHORT = 10;
 export const SOURCE_MINUTES_PER_LONG = 20;
+
+/**
+ * The shortest job we plan margins against, in source minutes.
+ *
+ * Deliberately NOT the marketing figure above, because the two numbers answer
+ * opposite questions. The page wants the fewest videos an allowance could
+ * yield, so it never over-promises. The margin model wants the MOST jobs an
+ * allowance could produce — every job pays a fixed toll, so more of them is
+ * the expensive case — and pinning that to a generous marketing number would
+ * quietly flatter every figure in the table.
+ */
+const WORST_CASE_SOURCE_MINUTES_PER_JOB = 5;
 
 export const PLANS: Record<PlanId, Plan> = {
   /*
@@ -251,13 +267,13 @@ export interface PlanEconomics {
 /**
  * What a plan earns if the customer uses every last minute of it.
  *
- * Worst case on purpose, twice over: it assumes the allowance is spent entirely
- * on SHORTS, which is the pattern with the most jobs per minute and therefore
- * the most fixed toll, and it assumes 100 % utilisation, which essentially
- * nobody reaches. A plan that is healthy here is healthy.
+ * Worst case on purpose, twice over: it assumes the allowance is spent on the
+ * shortest jobs anybody plausibly submits — the pattern with the most fixed
+ * toll per minute — and it assumes 100 % utilisation, which essentially nobody
+ * reaches. A plan that is healthy here is healthy.
  */
 export function planEconomics(plan: Plan): PlanEconomics {
-  const jobs = plan.footageMinutes / SOURCE_MINUTES_PER_SHORT;
+  const jobs = plan.footageMinutes / WORST_CASE_SOURCE_MINUTES_PER_JOB;
 
   const pipelineUsd = jobs * COGS_PER_JOB_USD + plan.footageMinutes * COGS_PER_SOURCE_MINUTE_USD;
 

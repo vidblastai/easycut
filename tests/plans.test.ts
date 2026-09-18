@@ -8,6 +8,7 @@ import {
   getPlan,
   planEconomics,
   renderExpiresAt,
+  SOURCE_MINUTES_PER_SHORT,
   sourceExpiresAt,
   videosFor,
 } from '@/lib/billing/plans';
@@ -76,7 +77,13 @@ describe('what a plan promises', () => {
   it('Starter is the three videos it says it is', () => {
     const { shorts, long } = videosFor(PLANS.starter);
     expect(long).toBe(3);
-    expect(shorts).toBe(12);
+    expect(shorts).toBe(6);
+  });
+
+  it('under-promises rather than over-promises', () => {
+    // Being handed more than the page said is a good surprise; the reverse is
+    // a refund. So the advertised count must be the pessimistic one.
+    expect(SOURCE_MINUTES_PER_SHORT).toBeGreaterThanOrEqual(10);
   });
 
   it('each tier is a real step up, not a rounding error', () => {

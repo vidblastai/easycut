@@ -289,6 +289,81 @@ body.instudio .step .num { width: 18px; height: 18px; font-size: 10px; }
 .bar { height: 6px; border-radius: 99px; background: var(--raised); overflow: hidden; }
 .bar > i { display: block; height: 100%; background: var(--violet); border-radius: 99px; transition: width .35s cubic-bezier(.4,0,.2,1); }
 
+/* ═══════════════════════════════════════════ pricing & privacy ═══ */
+.pg-head { padding-block: 30px 6px; max-width: 58ch; }
+.pg-head.narrow { max-width: 62ch; }
+.pg-head h1 { font-size: 34px; font-weight: 800; letter-spacing: -.038em; line-height: 1.12; }
+.pg-head p { margin-top: 11px; font-size: 15px; color: var(--muted); line-height: 1.6; }
+
+.plans { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-top: 28px; }
+@media (max-width: 900px) { .plans { grid-template-columns: 1fr; } }
+.plan {
+  display: flex; flex-direction: column;
+  border: 1px solid var(--line); background: var(--charcoal);
+  border-radius: var(--r-xl); padding: 24px;
+}
+.plan.featured { border-color: var(--violet); background: var(--violet-dim); }
+.plan .plan-top { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+.plan .plan-top h2 { font-size: 17px; font-weight: 700; }
+.plan .tag {
+  font-size: 10.5px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase;
+  background: var(--violet); color: var(--ink); border-radius: 99px; padding: 4px 10px;
+}
+.plan .price { margin-top: 12px; display: flex; align-items: baseline; gap: 6px; }
+.plan .price b { font-size: 34px; font-weight: 800; letter-spacing: -.04em; line-height: 1; }
+.plan .price i { font-style: normal; font-size: 13.5px; color: var(--muted); }
+.plan .best { margin-top: 8px; font-size: 13.5px; color: var(--muted); line-height: 1.5; }
+.plan .allow {
+  margin-top: 20px; border: 1px solid var(--line); border-radius: var(--r);
+  background: rgba(0,0,0,.25); padding: 13px 15px;
+}
+.plan .allow b { display: block; font-size: 15px; font-weight: 700; }
+.plan .allow span { display: block; margin-top: 4px; font-size: 12.5px; color: var(--muted); }
+.plan ul { list-style: none; margin: 20px 0 0; padding: 0; display: grid; gap: 10px; flex: 1; }
+.plan li { display: flex; gap: 10px; font-size: 13.5px; color: var(--muted); line-height: 1.45; }
+.plan li svg { flex: none; margin-top: 2px; color: var(--violet); }
+.plan li b { color: var(--chalk); font-weight: 600; }
+.plan .cta { margin-top: 24px; width: 100%; padding: 13px; border-radius: var(--r-lg); font-size: 14.5px; font-weight: 700; }
+.plan .cta.solid { background: var(--violet); color: var(--ink); }
+.plan .cta.solid:hover { background: var(--violet-hi); }
+.plan .cta.hollow { border: 1px solid var(--line); color: var(--chalk); }
+.plan .cta.hollow:hover { background: var(--raised); }
+
+.freebar {
+  display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
+  margin-top: 14px; border: 1px solid var(--line); background: var(--charcoal);
+  border-radius: var(--r-xl); padding: 16px 20px;
+}
+.freebar b { font-size: 14px; font-weight: 700; }
+.freebar span { flex: 1; min-width: 220px; font-size: 13px; color: var(--muted); }
+
+.pg-why {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 32px;
+  margin-top: 44px; padding-top: 32px; border-top: 1px solid var(--line);
+}
+@media (max-width: 760px) { .pg-why { grid-template-columns: 1fr; gap: 24px; } }
+.pg-why h3 { font-size: 15px; font-weight: 700; }
+.pg-why p { margin-top: 8px; font-size: 14px; color: var(--muted); line-height: 1.65; }
+
+.prose { max-width: 68ch; padding-bottom: 60px; }
+.prose h2 {
+  font-size: 19px; font-weight: 700; letter-spacing: -.025em;
+  margin-top: 36px; padding-top: 26px; border-top: 1px solid var(--line);
+}
+.prose p { margin-top: 12px; font-size: 14.5px; color: var(--muted); line-height: 1.7; }
+.prose p.note { font-size: 14px; }
+.prose p.foot { margin-top: 44px; padding-top: 20px; border-top: 1px solid var(--line); font-size: 12.5px; color: var(--faint); }
+.kv { margin: 14px 0 0; display: grid; gap: 16px; }
+.kv > div { display: grid; grid-template-columns: minmax(0,10.5rem) minmax(0,1fr); gap: 20px; }
+@media (max-width: 620px) { .kv > div { grid-template-columns: 1fr; gap: 3px; } }
+.kv dt { font-size: 13.5px; font-weight: 600; color: var(--chalk); }
+.kv dd { margin: 0; font-size: 14.5px; color: var(--muted); line-height: 1.6; }
+
+.rt { width: 100%; border-collapse: collapse; margin-top: 16px; font-size: 13.5px; text-align: left; }
+.rt th { padding: 8px 16px 8px 0; font-weight: 600; color: var(--faint); border-bottom: 1px solid var(--line); }
+.rt td { padding: 11px 16px 11px 0; color: var(--muted); border-bottom: 1px solid var(--line-soft); }
+.rt td:first-child { color: var(--chalk); font-weight: 600; }
+
 /* ═════════════════════════════════════════════ step 4 · the export ═══
    The finished video is the page. Everything else on this screen exists to
    answer one question — is this right? — and the two buttons are the two
@@ -2456,6 +2531,92 @@ body.instudio { overflow: hidden; }
         </div>
       </section>
 
+      <!-- ═════════════════════════════════════════════════════ pricing ═══ -->
+      <section class="panel" id="p-pricing">
+        <div class="pg-head">
+          <h1>Pay for footage, not for features.</h1>
+          <p>Every plan does the whole edit &mdash; cuts, captions, B-roll, graphics, sound
+             effects, music, punch-ins. What changes is how much footage you can put through
+             it each month, and how long we hold on to it.</p>
+        </div>
+        <div class="plans" id="plan-cards"></div>
+
+        <div class="freebar">
+          <b>Or try it first &mdash; <span id="free-minutes">10</span> minutes, free.</b>
+          <span>One video on your own footage, watermarked, so you can see what it does
+                before you decide.</span>
+          <button class="ghost" data-route="new">Start free</button>
+        </div>
+
+        <div class="pg-why">
+          <div>
+            <h3>Why minutes, and not videos?</h3>
+            <p>Almost everything a video costs us scales with how much footage went in, not
+               with how many clips came out. A plan sold as &ldquo;three videos&rdquo; would
+               have to either refuse your hour-long podcast or lose money on it &mdash; so the
+               meter is minutes, and the number of videos is what that buys. The counts are
+               deliberately cautious: ten minutes of footage per short, twenty per long-form.
+               Film tighter than that and you get more.</p>
+          </div>
+          <div>
+            <h3>Why is my footage deleted before my video?</h3>
+            <p>Your original file is roughly twenty times the size of the finished video, and
+               once the edit exists the only thing it is needed for is re-cutting. So we hold
+               it for the window your plan buys &mdash; long enough to change your mind &mdash;
+               and keep the finished video far longer. After the footage goes you can still
+               watch and download what you made; you just cannot re-render it.</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel" id="p-privacy">
+        <div class="pg-head narrow">
+          <h1>Privacy</h1>
+          <p>You upload footage of yourself talking. That is about as personal as a file gets,
+             so this page says plainly what happens to it &mdash; what we keep, who else sees
+             it, and when it is deleted.</p>
+        </div>
+
+        <div class="prose">
+          <h2>What we collect</h2>
+          <dl class="kv">
+            <div><dt>Your account</dt><dd>Email address, and your name if you gave one. Sign-in is handled by Clerk; we never see or store a password.</dd></div>
+            <div><dt>Your footage</dt><dd>The video file you upload, and the proxy and audio track we derive from it to do the work.</dd></div>
+            <div><dt>What you said</dt><dd>A transcript with word-level timings. It is the thing the whole edit is built from.</dd></div>
+            <div><dt>The edit itself</dt><dd>The finished video, its thumbnail, and the edit decision list, so you can change it later without paying to analyse the footage again.</dd></div>
+            <div><dt>How much you have used</dt><dd>Minutes of footage processed this month, against your plan&rsquo;s allowance.</dd></div>
+            <div><dt>What we do not collect</dt><dd>No advertising identifiers, no cross-site tracking, no third-party analytics.</dd></div>
+          </dl>
+
+          <h2>Who else sees it</h2>
+          <dl class="kv">
+            <div><dt>Transcription</dt><dd>Your audio &mdash; not the video &mdash; goes to a speech-to-text provider to produce the transcript.</dd></div>
+            <div><dt>The AI director</dt><dd>The transcript <em>text</em> decides the hook, the cuts and where B-roll belongs. Your video is never sent &mdash; only the words.</dd></div>
+            <div><dt>B-roll and images</dt><dd>Short search terms derived from what you said. No part of your footage is sent.</dd></div>
+            <div><dt>Storage and payments</dt><dd>Files with Cloudflare R2 or Amazon S3; cards go to Stripe directly and never reach our servers.</dd></div>
+          </dl>
+          <p class="note">We do not sell your data, and we do not use your footage, transcripts
+             or finished videos to train any model of our own.</p>
+
+          <h2>How long we keep it</h2>
+          <p>Two clocks, because the two things are different sizes and have different uses.</p>
+          <table class="rt" id="retention-table"></table>
+          <p class="note">Deletion is automatic and permanent. Once your footage has gone you can
+             still watch and download your finished video, but it can no longer be re-edited or
+             exported in another shape, because re-rendering needs the original. Delete a project
+             yourself and everything belonging to it goes immediately.</p>
+
+          <h2>What you can ask for</h2>
+          <p>A copy of anything you have made, deletion of any project or your whole account,
+             correction of your name and email, and an answer to any question about where your
+             data sits.</p>
+
+          <p class="foot">This page describes how the software behaves today. It is not legal
+             advice and needs a lawyer&rsquo;s pass before launch.</p>
+        </div>
+      </section>
+
+
   <div class="grid">
     <!-- ═══════════════════════════════════════════════════ left column ═══ -->
     <div>
@@ -2489,6 +2650,9 @@ body.instudio { overflow: hidden; }
       </section>
 
       <!-- ───────────────────────────────────────────── 3 · editor ─── -->
+      <!-- ═════════════════════════════════════════════════════ privacy ═══ -->
+
+
       <section class="panel" id="p2">
 
         <!-- The finished video, and the two things you can do with it.
@@ -4787,6 +4951,7 @@ const ICONS = {
   settings: '<circle cx="12" cy="12" r="3.2"/><path d="M12 2.5v2.2M12 19.3v2.2M21.5 12h-2.2M4.7 12H2.5M18.7 5.3l-1.6 1.6M6.9 17.1l-1.6 1.6M18.7 18.7l-1.6-1.6M6.9 6.9 5.3 5.3"/>',
   chat: '<path d="M21 11.5a8.4 8.4 0 0 1-9 8.4 8.4 8.4 0 0 1-3.8-.9L3 20.5l1.5-4.4A8.4 8.4 0 0 1 3.6 12a8.4 8.4 0 0 1 8.4-8.4 8.4 8.4 0 0 1 9 7.9Z"/>',
   book: '<path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2Z"/>',
+  spark: '<path d="M12 3l1.9 5.6L19.5 10l-5.6 1.9L12 17.5l-1.9-5.6L4.5 10l5.6-1.4L12 3Z"/>',
 };
 
 const icon = (k) =>
@@ -4803,9 +4968,34 @@ const NAV = [
 ];
 
 const NAV_FOOT = [
+  { route: 'pricing', label: 'Plans', icon: 'spark' },
+  { route: 'privacy', label: 'Privacy', icon: 'book' },
   { route: 'feedback', label: 'Feedback', icon: 'chat' },
-  { route: 'guides', label: 'Guides', icon: 'book' },
 ];
+
+/* ═══════════════════════════════════════════════════════ the plans ═══
+   Mirrors src/lib/billing/plans.ts — the file the real app meters against,
+   sweeps by, and generates its pricing and privacy pages from. The numbers
+   here are the same numbers; if they ever disagree, that file is right.
+
+   Metered in MINUTES of footage, shown as VIDEOS. Nearly everything a job
+   costs scales with footage in, not clips out, so a plan sold in videos has
+   to either refuse an hour-long podcast or lose money on it. The counts are
+   deliberately pessimistic: ten minutes of footage per short, twenty per
+   long-form, so being handed more than the page promised is the only
+   surprise anybody gets.
+   ══════════════════════════════════════════════════════════════════════ */
+const MIN_PER_SHORT = 10, MIN_PER_LONG = 20;
+
+const PLANS = [
+  { id: 'starter', name: 'Starter', price: 30, best: 'One video a week, posted and done.',
+    minutes: 60, maxUpload: 30, srcDays: 7, vidDays: 30, jobs: 1, k4: false, priority: false },
+  { id: 'creator', name: 'Creator', price: 74.99, best: 'Posting several times a week across more than one channel.',
+    minutes: 180, maxUpload: 90, srcDays: 30, vidDays: 365, jobs: 3, k4: true, priority: true, featured: true },
+  { id: 'studio', name: 'Studio', price: 190, best: 'An agency or a team cutting for several people at once.',
+    minutes: 480, maxUpload: 240, srcDays: 90, vidDays: null, jobs: 10, k4: true, priority: true },
+];
+const FREE_MINUTES = 10;
 
 /* The library the dashboard lists. The first row is the video this prototype
    actually edits; the rest are there so the screen shows what it looks like in
@@ -4896,9 +5086,67 @@ function buildSettings() {
     </div>`).join('');
 }
 
+
+/* ───────────────────────────────────────────── pricing & privacy ─── */
+
+const tickIcon = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+  stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12.5 4.5 4.5L19 7"/></svg>`;
+
+/** "3 long-form videos, or 6 shorts" — the sentence under the allowance. */
+function videosFor(plan) {
+  return { long: Math.floor(plan.minutes / MIN_PER_LONG), shorts: Math.floor(plan.minutes / MIN_PER_SHORT) };
+}
+
+function buildPricing() {
+  $('free-minutes').textContent = FREE_MINUTES;
+  $('plan-cards').innerHTML = PLANS.map((p) => {
+    const v = videosFor(p);
+    const hours = p.minutes / 60;
+    const allowance = Number.isInteger(hours) ? `${hours} hour${hours === 1 ? '' : 's'}` : `${p.minutes} minutes`;
+    const li = (html) => `<li>${tickIcon}<span>${html}</span></li>`;
+
+    return `<div class="plan${p.featured ? ' featured' : ''}">
+      <div class="plan-top">
+        <h2>${p.name}</h2>
+        ${p.featured ? '<span class="tag">Most popular</span>' : ''}
+      </div>
+      <div class="price"><b>$${Number.isInteger(p.price) ? p.price : p.price.toFixed(2)}</b><i>/ month</i></div>
+      <p class="best">${p.best}</p>
+
+      <div class="allow">
+        <b>${allowance} of footage a month</b>
+        <span>About ${v.long} long-form video${v.long === 1 ? '' : 's'}, or ${v.shorts} shorts</span>
+      </div>
+
+      <ul>
+        ${li(`Footage kept <b>${p.srcDays} days</b> — re-cut it as often as you like until then`)}
+        ${li(`Finished videos kept <b>${p.vidDays === null ? 'for as long as you subscribe' : p.vidDays + ' days'}</b>`)}
+        ${li(`Up to ${p.maxUpload} minutes in a single upload`)}
+        ${li(`${p.k4 ? '4K' : '1080p'} export, every aspect ratio`)}
+        ${li(`${p.jobs === 1 ? 'One video at a time' : p.jobs + ' videos at once'}${p.priority ? ', and first in the queue' : ''}`)}
+        ${li('No watermark')}
+      </ul>
+
+      <button class="cta ${p.featured ? 'solid' : 'hollow'}" data-route="new">Start with ${p.name}</button>
+    </div>`;
+  }).join('');
+}
+
+function buildPrivacy() {
+  const rows = [{ name: 'Free', srcDays: 2, vidDays: 7 }, ...PLANS];
+  $('retention-table').innerHTML =
+    `<thead><tr><th>Plan</th><th>Your footage</th><th>Your finished videos</th></tr></thead><tbody>`
+    + rows.map((p) => `<tr>
+        <td>${p.name}</td>
+        <td>${p.srcDays} days</td>
+        <td>${p.vidDays === null ? 'While you are subscribed' : p.vidDays + ' days'}</td>
+      </tr>`).join('')
+    + `</tbody>`;
+}
+
 /* ───────────────────────────────────────────────── routing ─── */
 
-const APP_PANELS = ['p-dash', 'p-media', 'p-settings', 'p0', 'p1', 'p2'];
+const APP_PANELS = ['p-dash', 'p-media', 'p-settings', 'p-pricing', 'p-privacy', 'p0', 'p1', 'p2'];
 
 function go(route, opts) {
   state.route = route;
@@ -4921,12 +5169,15 @@ function go(route, opts) {
   applyTimelineLayout();
 
   const panel = { dashboard: 'p-dash', myvideos: 'p-dash', media: 'p-media', settings: 'p-settings',
+                  pricing: 'p-pricing', privacy: 'p-privacy',
                   new: 'p0', processing: 'p1', editor: 'p2', timeline: 'p2' }[route];
 
   APP_PANELS.forEach((id) => $(id).classList.toggle('on', id === panel));
 
   if (route === 'dashboard' || route === 'myvideos') buildDashboard();
   if (route === 'settings') buildSettings();
+  if (route === 'pricing') buildPricing();
+  if (route === 'privacy') buildPrivacy();
   // `startAt` is how a dropped file skips the question it already answered.
   // Without it `go('new')` would helpfully reset the wizard to "Your footage"
   // and ask for the file the person just gave us.
