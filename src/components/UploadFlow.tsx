@@ -6,6 +6,7 @@ import { clsx } from 'clsx';
 import { StylePreview } from '@/components/styles/StylePreview';
 import { detectFormat, probeInBrowser, type Detected } from '@/lib/styles/detect';
 import type { Layout } from '@/lib/edl/types';
+import { layoutPlan } from '@/lib/styles/layouts';
 import { IconArrowRight, IconCheck } from '@/components/shell/Icons';
 import { Stepper, type StepKey } from '@/components/shell/Stepper';
 import { readDefaultCaptionPreset } from '@/lib/captions/default-preset';
@@ -117,6 +118,27 @@ export function UploadFlow({ styles, formats }: { styles: StyleOption[]; formats
      falls back to one that is, rather than submitting something unbuildable. */
   const choices = useMemo(() => styles.filter((s) => s.formats.includes(mode)), [styles, mode]);
   const chosen = choices.some((s) => s.id === styleId) ? styleId : (choices[0]?.id ?? styleId);
+
+  /*
+   * Some layouts ARE the B-roll: a split screen with the insert switched off
+   * renders a black half, and a reaction cut with nothing to react to is just a
+   * talking head. Rather than refuse the toggle — it is the customer's video —
+   * say plainly what they will get, so the finished render is not the first
+   * time they find out.
+   */
+  const brollWarning = useMemo(() => {
+    if (layers.broll) return null;
+    const style = choices.find((s) => s.id === chosen);
+    if (!style) return null;
+    const plan = layoutPlan(style.layout);
+    if (plan.alwaysOn) {
+      return `${style.name} keeps a picture on screen beside you the whole way through. With B-roll off, that half of the frame stays empty — pick Clean or Punchy instead if you want a full-frame video.`;
+    }
+    if (plan.speakerWithBroll) {
+      return `${style.name} is you reacting to something. With B-roll off there is nothing to cut to, so it will come out as a plain full-frame edit.`;
+    }
+    return null;
+  }, [layers.broll, choices, chosen]);
   const style = useMemo(() => styles.find((s) => s.id === chosen), [styles, chosen]);
 
   /** What they have declined, for the line that summarises the whole thing. */
@@ -398,6 +420,12 @@ export function UploadFlow({ styles, formats }: { styles: StyleOption[]; formats
                 </button>
               ))}
             </div>
+
+            {brollWarning ? (
+              <p className="mt-3 rounded-xl border border-warn/40 bg-warn/10 px-3.5 py-2.5 text-[12.5px] leading-relaxed text-chalk/90">
+                {brollWarning}
+              </p>
+            ) : null}
 
             <h3 className="mt-7 text-[13px] font-bold">How finished is the footage?</h3>
             <div className="mt-2 grid gap-3 sm:grid-cols-2">

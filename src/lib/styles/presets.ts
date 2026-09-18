@@ -11,6 +11,7 @@ import { findCaptionPreset } from '@/lib/captions/presets';
 export type StyleId =
   | 'clean'
   | 'punchy'
+  | 'reaction'
   | 'split'
   | 'documentary'
   | 'explainer'
@@ -154,6 +155,61 @@ const RAW_PRESETS: Record<StyleId, Omit<StylePreset, 'captionStyle'>> = {
       'High energy. The hook is everything — find the single most arresting sentence and open on it, ' +
       'even if it comes from the middle. Emphasise numbers, contradictions and stakes. ' +
       'Prefer graphics that quantify (big numbers, comparisons).',
+  },
+
+  reaction: {
+    /*
+     * The reaction cut.
+     *
+     * Its numbers say the format out loud: B-roll every six seconds rather
+     * than every twelve, and inserts held three to six seconds, because the
+     * SWITCHING is the style. Cut too often and the speaker is a blur of
+     * shrinking and growing; cut too rarely and it is just a talking head with
+     * occasional pictures.
+     *
+     * Punch-ins are turned right down for the same reason — the speaker
+     * already changes size constantly, and a punch on top of that reads as the
+     * camera being knocked.
+     */
+    id: 'reaction',
+    name: 'Reaction',
+    tagline: 'Full frame while you talk, in the corner while they look.',
+    bestFor: 'Commentary, hot takes, reacting to something — anything where the point is you responding to it.',
+    accent: '#F5C453',
+    layout: 'reaction',
+    formats: ['short', 'long'],
+    captionPreset: 'bold-pop',
+    transitions: ['cut', 'zoom-punch', 'flash'],
+    musicMood: 'upbeat energetic',
+    musicGainDb: -19,
+    silencePreset: 'aggressive',
+    short: {
+      punchInEverySec: [14, 22],
+      punchInScale: [1.04, 1.09],
+      brollEverySec: 6,
+      brollDurationSec: [3, 6],
+      graphicEverySec: 20,
+      graphicDurationSec: 2,
+      transitionDensity: 0.35,
+      sfxDensity: 0.8,
+    },
+    long: {
+      punchInEverySec: [25, 40],
+      punchInScale: [1.04, 1.08],
+      brollEverySec: 14,
+      brollDurationSec: [5, 10],
+      graphicEverySec: 45,
+      graphicDurationSec: 3,
+      transitionDensity: 0.22,
+      sfxDensity: 0.5,
+    },
+    overlays: { progressBar: false, lowerThird: false, grain: false, vignette: false },
+    directorNotes:
+      'This is a reaction edit: the speaker is full frame until a picture comes up, then shrinks ' +
+      'into the corner while it plays. So every B-roll cue is a moment the viewer is looking at ' +
+      'something INSTEAD of at the speaker — choose them where the script names a specific thing ' +
+      'worth seeing, and give each one long enough to be read. Prefer fewer, longer, more concrete ' +
+      'inserts over a scatter of short ones.',
   },
 
   /* The shape that made short-form watchable on mute: your face on top, a

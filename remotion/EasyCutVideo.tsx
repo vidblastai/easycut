@@ -38,6 +38,9 @@ export interface EasyCutVideoProps {
  *
  *   1. speaker            — the thing the viewer came for
  *   2. B-roll             — covers the speaker when it plays
+ *                           (on a reaction cut these two swap: the picture
+ *                           takes the frame and the speaker rides on top of
+ *                           it, shrunk into the corner)
  *   3. graphics           — sit on top of both
  *   4. captions           — must never be covered, so they go above graphics
  *   5. transitions        — flash across everything at a cut
@@ -46,12 +49,27 @@ export interface EasyCutVideoProps {
 export const EasyCutVideo: React.FC<EasyCutVideoProps> = ({ edl, previewAudio = false, onMediaError }) => {
   const { fps } = useVideoConfig();
 
+  const plan = layoutPlan(edl.format.layout, edl.format);
+
+  /*
+   * A reaction cut inverts the two bottom layers.
+   *
+   * Everywhere else the speaker is the base and B-roll covers them. Here the
+   * picture is the base and the speaker sits on it in a corner box — which is
+   * the whole point of the format, and is achieved by ordering rather than by
+   * a second copy of the video: `VideoTrack` shrinks itself to the inset over
+   * exactly the frames the insert is up, so one decode serves both states.
+   */
+  const speakerOnTop = plan.speakerWithBroll !== null;
+  const speaker = <VideoTrack edl={edl} onMediaError={onMediaError} />;
+  const broll = <BrollLayer edl={edl} onMediaError={onMediaError} />;
+
   return (
     <AbsoluteFill style={{ backgroundColor: '#0D0D10', fontFamily: FONT_FAMILY }}>
-      <VideoTrack edl={edl} onMediaError={onMediaError} />
-      <BrollLayer edl={edl} onMediaError={onMediaError} />
+      {speakerOnTop ? broll : speaker}
+      {speakerOnTop ? speaker : broll}
       <Graphics edl={edl} />
-      <Captions edl={edl} positionY={layoutPlan(edl.format.layout).captionY} />
+      <Captions edl={edl} positionY={plan.captionY} />
       <Transitions edl={edl} />
       <Overlays edl={edl} />
 

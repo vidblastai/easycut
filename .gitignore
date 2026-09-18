@@ -34,3 +34,6 @@ public/fonts/
 # (npm run music). Output, like the sound effects.
 public/audio/music/
 content/music/generated.json
+
+# Screenshots dropped in the working directory by the browser harnesses.
+/*.png

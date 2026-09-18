@@ -1336,18 +1336,33 @@ body.instudio { overflow: hidden; }
 @media (max-width: 600px) { .newvid .in b { font-size: 22px; } }
 
 /* ── layouts: the preview takes the shape the style promises ───────── */
-.phone.lay-split .room,
-.phone.lay-split .figure,
-.phone.lay-split .vig { bottom: 46%; }
-/* Clipped to its own half. The punch-in scales the figure, and without this it
-   grows straight over the picture below — which is exactly what the renderer's
-   `overflow: hidden` on the speaker's region prevents. */
-.phone.lay-split .figure, .phone.lay-side .figure { overflow: hidden; }
+/* One box holds the room, the figure and the vignette, so a layout moves the
+   speaker by moving a single element. Clipped, because the punch-in scales the
+   figure and without this it grows straight over the picture beside it — which
+   is exactly what the renderer's `overflow: hidden` on the speaker's region
+   prevents. */
+.cam { position: absolute; inset: 0; overflow: hidden; }
+.phone.lay-split .cam { bottom: 46%; }
 .phone.lay-split .broll { top: 54%; opacity: 1 !important; }
-.phone.lay-side .room,
-.phone.lay-side .figure,
-.phone.lay-side .vig { right: 50%; }
+.phone.lay-side .cam { right: 50%; }
 .phone.lay-side .broll { left: 50%; opacity: 1 !important; }
+/* The reaction cut draws the speaker OVER the picture, and its geometry is set
+   frame by frame in the tick rather than here — this is only the stacking.
+   The speaker is lifted above the insert, and everything that belongs above
+   BOTH of them is lifted again: the phone is a `container-type` element and so
+   its own stacking context, which means dropping the insert to z-index -1
+   would put it behind the phone's background rather than behind the speaker. */
+.phone.lay-reaction .cam { z-index: 1; }
+.phone.lay-reaction .gfx,
+.phone.lay-reaction .caps,
+.phone.lay-reaction .flash,
+.phone.lay-reaction .prog { z-index: 2; }
+
+/* A layer the chosen style depends on, switched off. */
+.warnline {
+  margin: 10px 0 0; border: 1px solid rgba(245,196,83,.4); background: rgba(245,196,83,.1);
+  border-radius: var(--r); padding: 9px 12px; font-size: 12.5px; line-height: 1.5; color: var(--chalk);
+}
 
 /* ── what the footage turned out to be ─────────────────────────────── */
 .verdict {
@@ -1380,6 +1395,13 @@ body.instudio { overflow: hidden; }
 }
 .sh-cam svg { position: absolute; bottom: 0; left: 50%; height: 82%; transform: translateX(-50%); }
 .sh-broll { position: absolute; overflow: hidden; }
+/* A reaction cut's picture has the whole frame, and the speaker sits on top of
+   it in their corner box. */
+.sh-full { position: absolute; inset: 0; }
+.sh-inset {
+  border-radius: 3px;
+  box-shadow: 0 4px 10px -3px rgba(0,0,0,.9), inset 0 0 0 1px rgba(255,255,255,.22);
+}
 .sh-insert {
   position: absolute; left: 8%; top: 11%; width: 40%; aspect-ratio: 16/10;
   border-radius: 5px; box-shadow: 0 4px 12px -4px rgba(0,0,0,.9), inset 0 0 0 1px rgba(255,255,255,.14);
@@ -2834,12 +2856,14 @@ body.instudio { overflow: hidden; }
       <div id="stage-unit">
       <div class="phone" id="phone">
         <span class="badge-fmt" id="fmt-badge">9:16 · 1080×1920</span>
-        <div class="room"></div>
-        <div class="figure" id="figure">
-          <div class="head"></div>
-          <div class="torso"></div>
+        <div class="cam" id="cam">
+          <div class="room"></div>
+          <div class="figure" id="figure">
+            <div class="head"></div>
+            <div class="torso"></div>
+          </div>
+          <div class="vig"></div>
         </div>
-        <div class="vig"></div>
         <div class="broll" id="broll"><div class="grain"></div><span class="q" id="broll-q"></span></div>
         <div class="gfx" id="gfx"><div class="n">3&times;</div><div class="c">what we raised prices</div></div>
         <div class="caps" id="caps"></div>
@@ -3154,11 +3178,44 @@ const CAP_BY_ID = Object.fromEntries(CAPS.map((c) => [c.id, c]));
    from them. Split that knowledge up and the picker eventually advertises a
    shape the renderer does not produce. */
 const LAYOUTS = {
-  full:  { speaker: [0, 0, 1, 1],       broll: null,              capY: null },
-  split: { speaker: [0, 0, 1, .54],     broll: [0, .54, 1, .46],  capY: .485 },
-  side:  { speaker: [0, 0, .5, 1],      broll: [.5, 0, .5, 1],    capY: .88 },
+  full:     { speaker: [0, 0, 1, 1],   inset: null,   broll: null,             capY: null },
+  /* The one layout whose geometry is a function of TIME rather than a constant:
+     full frame while you talk, a corner box the moment there is something to
+     look at, and back again. `inset` is where the speaker goes while a picture
+     is up; everything else here stays where it was put. */
+  reaction: { speaker: [0, 0, 1, 1],   inset: 'corner', broll: null,           capY: null },
+  split:    { speaker: [0, 0, 1, .54], inset: null,   broll: [0, .54, 1, .46], capY: .485 },
+  side:     { speaker: [0, 0, .5, 1],  inset: null,   broll: [.5, 0, .5, 1],   capY: .88 },
 };
 const box = ([x, y, w, h]) => `left:${x * 100}%;top:${y * 100}%;width:${w * 100}%;height:${h * 100}%`;
+
+/* The corner box a reaction cut puts the speaker in, for a frame this shape.
+   Sized against the SHORT side so it comes out square and the same physical
+   size either way up — a fraction of width alone gives a squat letterbox on a
+   vertical and a tall slab on a widescreen. Top-right: the bottom belongs to
+   the captions and the bottom-left is where every platform puts its own
+   chrome. The same numbers as src/lib/styles/layouts.ts. */
+const INSET_SIDE = .3, INSET_MARGIN = .04;
+function reactionInset(w, h) {
+  const short = Math.min(w, h), side = short * INSET_SIDE, margin = short * INSET_MARGIN;
+  return [(w - margin - side) / w, margin / h, side / w, side / h];
+}
+const lerpBox = (a, b, t) => a.map((v, i) => (1 - t) * v + t * b[i]);
+
+/* How much of the frame an insert is claiming right now, 0..1 — ramped at both
+   ends so the speaker is already moving when the picture arrives. Short clips
+   are capped, so a flash is a glance rather than a full second of travel. */
+function brollCoverage(clips, t, ease = .22) {
+  let best = 0;
+  for (const c of clips) {
+    if (t <= c.a - ease || t >= c.b + ease) continue;
+    const commit = Math.min(1, (c.b - c.a) / (2 * ease));
+    const here = Math.max(0, Math.min(commit, (t - (c.a - ease)) / ease, ((c.b + ease) - t) / ease));
+    if (here > best) best = here;
+  }
+  return best;
+}
+const easeInOut = (t) => t * t * (3 - 2 * t);
 
 const STYLES = {
   clean: {
@@ -3171,6 +3228,12 @@ const STYLES = {
     name: 'Punchy', tagline: 'Built to stop the scroll.', accent: '#9B7BFF',
     layout: 'full', formats: ['short', 'long'],
     short: { broll: 7, gfx: 9, punch: 4.5, sfx: .8, trans: .65 },
+    progress: true, music: 'upbeat energetic',
+  },
+  reaction: {
+    name: 'Reaction', tagline: 'You react, the picture takes the screen, you shrink into the corner.', accent: '#F5C453',
+    layout: 'reaction', formats: ['short', 'long'],
+    short: { broll: 6, gfx: 12, punch: 5, sfx: .7, trans: .4 },
     progress: true, music: 'upbeat energetic',
   },
   split: {
@@ -3281,11 +3344,15 @@ const state = {
                 capPreset: null, capFam: 'all' };
 
 /* The caption look in force: the user's pick, or the one the edit style names. */
-const STYLE_CAP_DEFAULT = { clean: 'clean-plate', punchy: 'bold-pop', split: 'bold-pop',
-                            documentary: 'editorial', explainer: 'highlight-box', podcast: 'podcast',
-                            sidebar: 'subtitle', vlog: 'cartoon' };
+const STYLE_CAP_DEFAULT = { clean: 'clean-plate', punchy: 'bold-pop', reaction: 'bold-pop',
+                            split: 'bold-pop', documentary: 'editorial', explainer: 'highlight-box',
+                            podcast: 'podcast', sidebar: 'subtitle', vlog: 'cartoon' };
+/* Every style's caption preset, and a fallback for one that has not been given
+   one yet — adding a style used to take the homepage's whole style section down
+   with it, because this map was read without a guard. */
+const capFor = (style) => CAP_BY_ID[STYLE_CAP_DEFAULT[style]] ?? CAPS[0];
 function capNow() {
-  return CAP_BY_ID[state.capPreset ?? STYLE_CAP_DEFAULT[state.style]] ?? CAPS[0];
+  return CAP_BY_ID[state.capPreset] ?? capFor(state.style);
 }
 
 const $ = (id) => document.getElementById(id);
@@ -3297,7 +3364,7 @@ function buildHomeLooks() {
     <button class="look" data-style="${k}" data-route="new">
       <span class="t"><i class="dot" style="background:${s.accent}"></i>${s.name}</span>
       <span class="l">${s.tagline}</span>
-      <span class="b">${CAP_BY_ID[STYLE_CAP_DEFAULT[k]].name} captions · ${s.music}</span>
+      <span class="b">${capFor(k).name} captions · ${s.music}</span>
     </button>`).join('');
 }
 
@@ -3343,6 +3410,20 @@ function clock(sec) {
   return m ? `${m}:${String(n % 60).padStart(2, '0')}` : `${n}s`;
 }
 
+/* Some layouts ARE the B-roll: a split screen with the insert switched off
+   renders a black half, and a reaction cut with nothing to react to is just a
+   talking head. The toggle stays — it is their video — but they hear about it
+   here rather than on the finished render. */
+function brollWarning() {
+  if (state.layers.broll) return '';
+  const st = STYLES[styleNow()];
+  if (!st) return '';
+  const L = LAYOUTS[st.layout] ?? LAYOUTS.full;
+  if (L.broll) return `${st.name} keeps a picture on screen beside you the whole way through. With B-roll off, that half of the frame stays empty — pick Clean or Punchy instead if you want a full-frame video.`;
+  if (L.inset) return `${st.name} is you reacting to something. With B-roll off there is nothing to cut to, so it will come out as a plain full-frame edit.`;
+  return '';
+}
+
 /* A style's shape, drawn — from the same numbers the renderer lays out from. */
 function styleShape(style, mode) {
   const L = LAYOUTS[style.layout] ?? LAYOUTS.full;
@@ -3351,17 +3432,25 @@ function styleShape(style, mode) {
     + 'radial-gradient(16% 24% at 44% 84%, rgba(120,200,255,.55), transparent 70%),'
     + `radial-gradient(24% 34% at 74% 68%, rgba(180,130,255,.5), transparent 70%),`
     + 'linear-gradient(140deg, rgba(23,32,58,.9), rgba(14,21,38,.95))';
+  /* A reaction cut is drawn mid-insert, which is the only frame that tells you
+     anything: full frame with a face in it is what every other style also looks
+     like half the time. */
+  const ar = mode === 'short' ? [9, 16] : [16, 9];
+  const inset = L.inset ? reactionInset(ar[0], ar[1]) : null;
   const broll = L.broll
     ? `<span class="sh-broll" style="${box(L.broll)};${pics}"></span>`
-    : `<span class="sh-insert" style="${pics}"></span>`;
+    : inset
+      ? `<span class="sh-full" style="${pics}"></span>`
+      : `<span class="sh-insert" style="${pics}"></span>`;
   return `<span class="shape" style="aspect-ratio:${mode === 'short' ? '9/16' : '16/9'}">
-      <span class="sh-cam" style="${box(L.speaker)}">
+      ${inset ? broll : ''}
+      <span class="sh-cam${inset ? ' sh-inset' : ''}" style="${box(inset || L.speaker)}">
         <svg viewBox="0 0 150 150" preserveAspectRatio="xMidYMax meet">
           <path d="M14 150 L17 100 C20 74, 38 63, 58 62 L92 62 C112 63, 130 74, 133 100 L136 150 Z" fill="#3B3555"/>
           <ellipse cx="75" cy="34" rx="20" ry="25" fill="#D9B68B"/>
         </svg>
       </span>
-      ${broll}
+      ${inset ? '' : broll}
       <span class="sh-caps" style="top:${capY * 100}%">
         <i style="width:68%;background:var(--chalk)"></i><i style="width:42%;background:${style.accent}"></i>
       </span>
@@ -3400,6 +3489,7 @@ function buildWizard() {
           <span class="box">${state.layers[k] ? '&#10003;' : ''}</span>
           <span class="txt"><b>${name}</b><i>${body}</i></span>
         </button>`).join('')}</div>
+      ${brollWarning() ? `<p class="warnline">${brollWarning()}</p>` : ''}
 
       <h3 class="wizsec">How finished is the footage?</h3>
       <div class="pair">${Object.entries(INPUT_MODES).map(([k, m]) => `
@@ -3916,8 +4006,14 @@ function applyLayout() {
   const ph = $('phone');
   if (!ph) return;
   const layout = (STYLES[styleNow()] || {}).layout || 'full';
-  ph.classList.remove('lay-full', 'lay-split', 'lay-side');
+  ph.classList.remove('lay-full', 'lay-reaction', 'lay-split', 'lay-side');
   ph.classList.add('lay-' + layout);
+  // The reaction cut writes the box's geometry on every frame; every other
+  // layout takes it from the stylesheet, so hand it back.
+  const cam = $('cam');
+  if (cam && layout !== 'reaction') {
+    for (const k of ['left', 'top', 'width', 'height', 'borderRadius', 'boxShadow']) cam.style[k] = '';
+  }
 }
 
 /** Shape and length, read off the file by a <video> element. */
@@ -4075,6 +4171,24 @@ function paintPreview() {
   /* B-roll ---------------------------------------------------------------- */
   const active = DOC.broll.find((c) => t >= c.a && t <= c.b);
   const br = $('broll'), on = state.layers.broll && !!active;
+
+  /* A reaction cut moves the speaker into the corner as the picture arrives and
+     brings them back when it goes — the same interpolation the renderer does,
+     off the same numbers, so the preview is not a separate opinion. */
+  const cam = $('cam');
+  if (cam && (STYLES[styleNow()] || {}).layout === 'reaction') {
+    const ar = state.fmt === 'short' ? [9, 16] : [16, 9];
+    const cov = state.layers.broll ? easeInOut(brollCoverage(DOC.broll, t)) : 0;
+    const R = lerpBox([0, 0, 1, 1], reactionInset(ar[0], ar[1]), cov);
+    cam.style.left = (R[0] * 100).toFixed(3) + '%';
+    cam.style.top = (R[1] * 100).toFixed(3) + '%';
+    cam.style.width = (R[2] * 100).toFixed(3) + '%';
+    cam.style.height = (R[3] * 100).toFixed(3) + '%';
+    cam.style.borderRadius = (cov * 2.2).toFixed(2) + '%';
+    cam.style.boxShadow = cov > .001
+      ? `0 ${(cov * 2.4).toFixed(2)}cqw ${(cov * 6).toFixed(2)}cqw -1cqw rgba(0,0,0,${(cov * .75).toFixed(3)}), inset 0 0 0 1px rgba(255,255,255,${(cov * .22).toFixed(3)})`
+      : 'none';
+  }
   const k = on ? (t - active.a) / Math.max(.01, active.b - active.a) : 0;
   br.style.opacity = on ? String(Math.min(1, Math.min(t - active.a, active.b - t) / .14)) : '0';
   br.style.transform = `scale(${(1.04 + k * .09).toFixed(3)})`;
