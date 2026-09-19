@@ -64,12 +64,26 @@ async function keyframesBetween(videoPath: string, fromSec: number, toSec: numbe
  *
  * Snapping backwards only ever redraws more than was asked for, which is safe.
  */
-export async function keyframeAtOrBefore(videoPath: string, sec: number): Promise<number> {
+export async function keyframeAtOrBefore(
+  videoPath: string,
+  sec: number,
+  searchSec = 12,
+): Promise<number> {
   if (sec <= 0) return 0;
-  const times = await keyframesBetween(videoPath, 0, sec + 0.5);
-  let best = 0;
-  for (const t of times) if (t <= sec + 1e-6 && t > best) best = t;
-  return best;
+
+  // Backwards in a window, widening only if it comes up empty. Reading from
+  // the start of the file instead costs twelve seconds on a ten-minute video
+  // for an edit at the four-minute mark — and gets worse the later the edit
+  // is, which is the opposite of how this should behave. Renders put a
+  // keyframe every second, so the first window all but always has one.
+  for (const width of [searchSec, searchSec * 8, sec + 0.5]) {
+    const times = await keyframesBetween(videoPath, sec - width, sec + 0.5);
+    let best = -1;
+    for (const t of times) if (t <= sec + 1e-6 && t > best) best = t;
+    if (best >= 0) return best;
+    if (width >= sec) break;
+  }
+  return 0;
 }
 
 /**
@@ -97,9 +111,30 @@ export async function keyframeAtOrAfter(
   return null;
 }
 
-/** How many frames a file has, counted rather than derived from its duration. */
+/**
+ * How many frames a file has.
+ *
+ * From the container header when it has one, which for MP4 is not an estimate
+ * — the muxer writes the number of samples it actually wrote. Counting them
+ * instead means decoding the whole file: 25 seconds on a ten-minute render,
+ * and this is called four times per splice, which was most of the cost of an
+ * incremental render before it was measured.
+ *
+ * Falls back to counting when the header has nothing, so a stream without one
+ * still gets a real answer rather than a zero.
+ */
 export async function frameCount(videoPath: string): Promise<number> {
-  const { stdout } = await ffprobe([
+  const header = await ffprobe([
+    '-v', 'error',
+    '-select_streams', 'v:0',
+    '-show_entries', 'stream=nb_frames',
+    '-of', 'csv=p=0',
+    videoPath,
+  ]);
+  const fromHeader = Number(header.stdout.trim().split('\n')[0]);
+  if (Number.isFinite(fromHeader) && fromHeader > 0) return fromHeader;
+
+  const counted = await ffprobe([
     '-v', 'error',
     '-select_streams', 'v:0',
     '-count_frames',
@@ -107,7 +142,7 @@ export async function frameCount(videoPath: string): Promise<number> {
     '-of', 'csv=p=0',
     videoPath,
   ]);
-  const n = Number(stdout.trim().split('\n')[0]);
+  const n = Number(counted.stdout.trim().split('\n')[0]);
   return Number.isFinite(n) ? n : 0;
 }
 

@@ -84,19 +84,37 @@ thousand frames, half an hour for a keystroke.
 
 It now redraws the stretch that changed and copies the rest.
 
-| | |
-| --- | --- |
-| 13s fixture, one caption edited (2.7s of 13.1s) | 39.7s → **12.7s**, 3.1× (measured) |
-| 10-minute edit, one caption edited (~3s of 517s) | ~30 min → **~1 min** (projected) |
+| | full | amended | |
+| --- | --- | --- | --- |
+| 13s fixture, one caption (2.7s of 13.1s) | 39.7s | 12.7s | 3.1× |
+| **10-min edit, one caption (3.9s of 507s)** | **25.9 min** | **19.7s** | **79×** |
 
-The second row is arithmetic, not a stopwatch: the change spans about 0.6% of
-the frames, so what is left is the fixed cost — bundling the composition,
-probing for keyframes, and the splice itself. The short fixture is the
-measured one, and it understates the win badly, because three seconds of change
-is a fifth of a thirteen-second video and a hundredth of a ten-minute one. The
-longer the video, the bigger the saving.
+Both measured, end to end, with the frame count of the result checked against
+the original. `npm run bench:incremental` reproduces them; pass an existing
+render as a third argument to skip the half hour.
 
-Three pieces:
+The short fixture understates the win badly, and that is the shape of the
+thing: three seconds of change is a fifth of a thirteen-second video and less
+than one per cent of a ten-minute one. The longer the video, the more there is
+to not redraw.
+
+### Getting from 105 seconds to 20
+
+The first working version took 105s, and 85 of those were ffprobe rather than
+rendering — worth writing down, because neither cost is visible in the code
+that pays it:
+
+- **`-count_frames` decodes the entire file.** 25 seconds on a ten-minute
+  render, and a splice asks four times. The container header already holds the
+  answer, and for MP4 it is not an estimate: the muxer writes the number of
+  samples it wrote. 25s → 19ms, with counting kept as the fallback for a
+  stream that has no header.
+- **Searching backwards for a keyframe read from frame zero.** 12.7 seconds for
+  an edit four minutes in, and worse the later the edit — exactly backwards.
+  It now searches a window and widens only if that comes up empty. 12.7s →
+  0.7s.
+
+Three pieces:Three pieces:
 
 - **`src/lib/render/diff.ts`** decides what changed. It answers "all" unless it
   is certain, because being conservative costs a render that would have
