@@ -31,17 +31,32 @@ model User {
   plan             String  @default("free")
   stripeCustomerId String? @unique
 
+  // The live subscription, when there is one. Kept so the account page can
+  // say what happens next without a round trip to Stripe on every page load,
+  // and so a webhook arriving out of order can be recognised as stale.
+  stripeSubscriptionId String?   @unique
+  // "active" | "trialing" | "past_due" | "canceled" | null when never paid.
+  planStatus           String?
+  // When the current period ends: the renewal date, or — when cancelAtPeriodEnd
+  // is true — the day the account drops back to free.
+  planRenewsAt         DateTime?
+  cancelAtPeriodEnd    Boolean   @default(false)
+  // Stripe's own timestamp for the event that last wrote these columns.
+  // Webhooks are delivered at least once and not necessarily in order, so an
+  // older event must never overwrite a newer one.
+  planUpdatedAt        DateTime?
+
   // The meter. `periodStart` rolls forward a month at a time the first time
   // anybody looks after it has expired — see src/lib/billing/usage.ts — so
   // there is no cron to forget and no clock skew between two workers.
-  periodStart    DateTime @default(now())
-  minutesUsed    Float    @default(0)
+  periodStart DateTime @default(now())
+  minutesUsed Float    @default(0)
 }
 
 model Project {
-  id     String @id @default(uuid())
+  id     String  @id @default(uuid())
   userId String?
-  user   User?  @relation(fields: [userId], references: [id], onDelete: SetNull)
+  user   User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
 
   title String @default("Untitled")
 
@@ -64,15 +79,15 @@ model Project {
   // absence did not.
   layersOff String @default("[]")
 
-  status       String   @default("draft") // draft | processing | ready | failed
+  status       String  @default("draft") // draft | processing | ready | failed
   errorMessage String?
 
   // Denormalised so the dashboard never has to join to render a card.
-  durationSec     Float?
-  thumbnailUrl    String?
-  previewUrl      String?
-  socialCaption   String?
-  hashtags        String   @default("[]") // JSON array
+  durationSec   Float?
+  thumbnailUrl  String?
+  previewUrl    String?
+  socialCaption String?
+  hashtags      String  @default("[]") // JSON array
 
   // Accumulated real spend, so unit economics are observable per project.
   costUsd    Float  @default(0)
@@ -121,7 +136,7 @@ model Project {
 }
 
 model Asset {
-  id        String @id @default(uuid())
+  id        String  @id @default(uuid())
   projectId String
   project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
 
@@ -147,23 +162,23 @@ model Asset {
 }
 
 model Job {
-  id        String @id @default(uuid())
+  id        String  @id @default(uuid())
   projectId String
   project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
 
   type   String @default("pipeline") // pipeline | rerender | patch
-  status String @default("queued")   // queued | running | succeeded | failed | cancelled
+  status String @default("queued") // queued | running | succeeded | failed | cancelled
 
   // The pipeline is resumable: this is the last stage that completed.
-  stage         String  @default("ingest")
-  progress      Float   @default(0) // 0..1
-  progressLabel String  @default("")
+  stage         String @default("ingest")
+  progress      Float  @default(0) // 0..1
+  progressLabel String @default("")
 
   // Per-stage timings and messages, appended as the job runs.
   log String @default("[]") // JSON: Array<{stage, status, ms, message}>
 
   errorMessage String?
-  attempts     Int      @default(0)
+  attempts     Int     @default(0)
 
   queuedAt   DateTime  @default(now())
   startedAt  DateTime?
@@ -174,11 +189,11 @@ model Job {
 }
 
 model Edl {
-  id        String @id @default(uuid())
+  id        String  @id @default(uuid())
   projectId String
   project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
 
-  version Int    @default(1)
+  version  Int    @default(1)
   // The full EDL document. Kept as JSON rather than normalised: it is read and
   // written whole, always, and normalising it would buy nothing but joins.
   document String
@@ -195,7 +210,7 @@ model Edl {
 }
 
 model Render {
-  id        String @id @default(uuid())
+  id        String  @id @default(uuid())
   projectId String
   project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
   edlId     String
@@ -229,15 +244,18 @@ model Render {
 /// row only if it is still queued — so two workers racing for the same job
 /// means one of them gets zero rows back and moves on.
 model QueueMessage {
-  id          String   @id @default(uuid())
+  id          String    @id @default(uuid())
   type        String
-  payload     String   @default("{}")
-  status      String   @default("queued") // queued | running | dead
-  attempts    Int      @default(0)
-  maxAttempts Int      @default(3)
-  enqueuedAt  DateTime @default(now())
+  payload     String    @default("{}")
+  status      String    @default("queued") // queued | running | dead
+  attempts    Int       @default(0)
+  maxAttempts Int       @default(3)
+  enqueuedAt  DateTime  @default(now())
   reservedAt  DateTime?
   lastError   String?
+  // Higher goes first — see src/lib/queue/index.ts. 0 for everybody, 1 for a
+  // plan that paid to jump the queue.
+  priority    Int       @default(0)
 
-  @@index([status, enqueuedAt])
+  @@index([status, priority, enqueuedAt])
 }

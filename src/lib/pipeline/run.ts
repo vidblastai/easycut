@@ -344,6 +344,7 @@ async function stageTimeline(ctx: PipelineContext): Promise<void> {
     version: '1.0',
     projectId: ctx.request.projectId,
     styleId: ctx.style.id,
+    watermark: false,
     format: { aspect: '16:9', width: 1920, height: 1080, fps: 30, durationSec: 0, layout: 'full' },
     source: {
       assetId: ctx.request.sourceKey,

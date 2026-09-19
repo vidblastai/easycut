@@ -62,7 +62,16 @@ export interface Plan {
 
   /** Jobs this account may have in flight at once. */
   concurrentJobs: number;
-  /** Tallest render. 1080 = Full HD, 2160 = 4K. */
+  /**
+   * Tallest render. 1080 = Full HD, 2160 = 4K.
+   *
+   * Every plan is 1080 today, because 1080 is everything the renderer
+   * produces. The field is not decoration: it is read by
+   * `src/lib/billing/entitlements.ts` at render time, so the day 4K ships it is
+   * one number here and nothing else. Until then nothing on the pricing page
+   * may claim it — see docs/LAUNCH.md for what 4K would cost in render time
+   * and in margin.
+   */
   maxRenderHeight: 1080 | 2160;
   /** Whether finished videos carry an EasyCut mark. */
   watermark: boolean;
@@ -148,7 +157,7 @@ export const PLANS: Record<PlanId, Plan> = {
     sourceRetentionDays: 30,
     renderRetentionDays: 365,
     concurrentJobs: 3,
-    maxRenderHeight: 2160,
+    maxRenderHeight: 1080,
     watermark: false,
     priorityQueue: true,
   },
@@ -164,7 +173,7 @@ export const PLANS: Record<PlanId, Plan> = {
     sourceRetentionDays: 90,
     renderRetentionDays: null,
     concurrentJobs: 10,
-    maxRenderHeight: 2160,
+    maxRenderHeight: 1080,
     watermark: false,
     priorityQueue: true,
   },

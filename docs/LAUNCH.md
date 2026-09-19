@@ -23,7 +23,7 @@ there and every one of those follows.
 | **Footage kept** | 7 days | 30 days | 90 days |
 | **Videos kept** | 30 days | 1 year | while subscribed |
 | At once | 1 | 3 | 10 |
-| Export | 1080p | 4K | 4K |
+| Export | 1080p | 1080p | 1080p |
 
 Plus a **Free** tier — 10 minutes, watermarked, gone in a week. Not one of the
 three you asked for; it is the state an account is in before it pays, which has
@@ -80,7 +80,25 @@ There is a warning in the three days before it goes.
 
 ---
 
-## Built in this pass
+## Built since
+
+- **Payments** — `src/lib/billing/stripe.ts`, `subscription.ts`, and the three
+  routes under `/api/billing`. 26 tests, including forged webhooks.
+- **The watermark** — the free tier's mark now actually renders
+  (`remotion/components/Watermark.tsx`), applied at render time from
+  `planAtUpload` rather than from the EDL, so it cannot be deleted in the
+  browser editor.
+- **Priority queue** — "first in the queue" is now a real thing the queue does,
+  on all three drivers.
+- **A bug that would have cost sign-ups**: `/pricing`, `/privacy` and `/terms`
+  were behind the sign-in gate. A pricing page you need an account to read
+  cannot do its job, and a privacy policy behind a login wall is worse than
+  that.
+- **A test that catches this class of bug**: every plan feature is now checked
+  against the code that enforces it, which is what caught both the 4K claim and
+  the priority one.
+
+## Built in the pass before
 
 - **Plans, allowances and retention** — `src/lib/billing/plans.ts`
 - **The meter** — `src/lib/billing/usage.ts`. Lazy monthly period (no cron),
@@ -104,21 +122,66 @@ There is a warning in the three days before it goes.
 
 ## Still to build
 
-### 1. Stripe — the plans do not charge anyone yet
+### 1. Stripe — built; needs your account
 
-Everything a subscription *does* is built and enforced; what is missing is
-taking the money and setting `user.plan`. Needed:
+Checkout, the customer portal and the webhook are all in, and so is everything
+they feed: `user.plan` moves only through the webhook, and the plan is what the
+meter, the sweeper, the queue and the renderer read.
 
-- Products and prices in Stripe, ids into the `Plan` records
-- Checkout session route, and a customer portal link in settings
-- Webhook handler for `checkout.session.completed`,
-  `customer.subscription.updated` and `.deleted` → write `plan`
-- What happens on downgrade or lapse. My recommendation: drop to `free`
-  immediately for *new* work, but leave existing projects' retention dates
-  alone — they were bought under the old plan and the code already stores
-  `planAtUpload` so this is a one-line policy, not a migration.
+What is left is yours, and it is about twenty minutes in the Stripe dashboard:
 
-**Decision needed from you:** free beta first, or paid from day one?
+1. Three recurring monthly **products and prices** — $30, $74.99, $190.
+2. Put the ids in `.env`: `STRIPE_SECRET_KEY`, `STRIPE_PRICE_STARTER`,
+   `STRIPE_PRICE_CREATOR`, `STRIPE_PRICE_STUDIO`.
+3. A **webhook endpoint** at `https://your-domain/api/billing/webhook`,
+   subscribed to `checkout.session.completed`,
+   `customer.subscription.created`, `.updated` and `.deleted`. Its signing
+   secret goes in `STRIPE_WEBHOOK_SECRET`.
+4. Turn the **customer portal** on, once, at
+   dashboard.stripe.com/settings/billing/portal. Without it the "Manage
+   subscription" button opens nothing.
+
+Settings tells you which of those four is missing, in words, on the page.
+
+**Free beta is now a setting, not a decision.** With no Stripe keys the plans
+are still enforced and simply cannot be bought — set somebody's `plan` column
+by hand and everything behaves as if they had paid. So you can launch either
+way and change your mind without a deploy.
+
+Three policy calls the code has already made, so you can overrule them:
+
+- **A failed card does not lock anyone out.** `past_due` keeps the plan;
+  Stripe dunning usually collects within a few days, and cutting somebody off
+  at the first decline loses the customer as well as the money. Only an actual
+  cancellation drops them to free.
+- **A downgrade does not reach backwards.** Retention dates are stamped at
+  upload from `planAtUpload`, so work bought on Studio keeps Studio's
+  retention, and a video made on the free tier keeps its watermark even after
+  an upgrade unless it is re-rendered.
+- **An unrecognised Stripe price changes nothing.** A legacy price, or one
+  created in the dashboard and never put in the environment, is logged and
+  ignored rather than silently downgrading a paying customer to free.
+
+### 1b. 4K — a priced decision, not a missing feature
+
+The pricing page used to say Creator and Studio export in 4K. Nothing produced
+it: every composition is laid out at 1080 and there is no path that scales
+them. The page now says 1080p, which is what the software does.
+
+Shipping 4K is not hard — Remotion's `renderMedia` takes a `scale`, so the
+compositions need no layout changes at all — but it costs:
+
+- **Render time roughly 3–4×.** A ten-minute video renders in ~27 minutes on
+  four cores today; at 4K that is an hour and a half. On Lambda it is money
+  instead of time, at about the same multiple.
+- **Margin.** Rendering is 11–20 % of pipeline cost, so 4× on that line takes
+  Studio from ~75 % to about 68 % if everyone uses it.
+
+My recommendation: ship it as an **opt-in export** on Creator and Studio rather
+than the default, with the wait stated on the button. Then the multiple is paid
+only on the videos that need it, which is a small minority of them. Say the
+word and it is a day's work — `maxRenderHeight` in `plans.ts` is already read at
+render time, so the plumbing is waiting for it.
 
 ### 2. Error reporting
 
@@ -144,6 +207,7 @@ honest starting point for that conversation rather than the end of it.
 | **Cloudflare R2** | Storage | Files sit on local disk; a second worker cannot see them. |
 | **Clerk** | Accounts | The app runs open — every visitor sees every video, and nothing is metered. |
 | **Resend** | Email | The ready email logs instead of sending. |
+| **Stripe** | Payments | Plans are enforced but cannot be bought — a free beta. |
 | Anthropic or Gemini | AI director | Falls back to the rule-based director. Works, less clever. |
 | Pexels | B-roll | Generated images and graphics only. |
 | Remotion Lambda | Rendering | Renders locally: ~27 min for a 10-minute video instead of ~2.5. |

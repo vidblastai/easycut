@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { entitlementsFor } from '@/lib/billing/entitlements';
 import { z } from 'zod';
 import { db, parseJson, stringifyJson } from '@/lib/db';
 import { ASPECT_DIMENSIONS, ASPECTS, EdlSchema, type Edl } from '@/lib/edl/types';
@@ -95,7 +96,11 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   }
 
   await db.project.update({ where: { id }, data: { status: 'processing' } });
-  await queue().enqueue('rerender', { projectId: id, edlId });
+  await queue().enqueue(
+    'rerender',
+    { projectId: id, edlId },
+    { priority: (await entitlementsFor(id)).priority },
+  );
 
   return NextResponse.json({
     ok: true,

@@ -111,4 +111,52 @@ describe('db queue', () => {
     const q = await freshQueue();
     expect(await q.reserve(300)).toBeNull();
   });
+
+  /*
+   * "First in the queue" is a thing the pricing page sells, so it has to be a
+   * thing the queue does. The second test is the one that matters: a priority
+   * queue that is not stable within a band quietly reorders everybody else
+   * every time it is polled, which is worse than having no priority at all.
+   */
+  describe('priority', () => {
+    it('serves a priority job before ordinary ones already waiting', async () => {
+      const q = await freshQueue();
+      await q.enqueue('pipeline', { n: 'first' });
+      await q.enqueue('pipeline', { n: 'second' });
+      await q.enqueue('pipeline', { n: 'paid' }, { priority: 1 });
+
+      const order: string[] = [];
+      for (let i = 0; i < 3; i++) {
+        const job = (await q.reserve(1000))!;
+        order.push((job.payload as { n: string }).n);
+        await q.complete(job);
+      }
+      expect(order).toEqual(['paid', 'first', 'second']);
+    });
+
+    it('keeps arrival order inside one priority band', async () => {
+      const q = await freshQueue();
+      for (const n of ['a', 'b', 'c']) await q.enqueue('pipeline', { n });
+
+      const order: string[] = [];
+      for (let i = 0; i < 3; i++) {
+        const job = (await q.reserve(1000))!;
+        order.push((job.payload as { n: string }).n);
+        await q.complete(job);
+      }
+      expect(order).toEqual(['a', 'b', 'c']);
+    });
+
+    it('carries the priority through to the reserved job', async () => {
+      const q = await freshQueue();
+      await q.enqueue('pipeline', { n: 1 }, { priority: 1 });
+      expect((await q.reserve(1000))!.priority).toBe(1);
+    });
+
+    it('defaults to no priority, so nothing overtakes by accident', async () => {
+      const q = await freshQueue();
+      await q.enqueue('pipeline', { n: 1 });
+      expect((await q.reserve(1000))!.priority).toBe(0);
+    });
+  });
 });

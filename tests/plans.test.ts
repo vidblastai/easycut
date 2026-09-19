@@ -148,3 +148,48 @@ describe('getPlan', () => {
     expect(getPlan('STARTER').priceUsd).toBe(0);
   });
 });
+
+/**
+ * A plan is a set of promises. These check the software can keep each one.
+ *
+ * Written after finding two it could not: the pricing page advertised 4K
+ * exports that no code path produced, and "first in the queue" on a queue with
+ * no notion of priority. Both had been true-looking for weeks, because nothing
+ * connected the claim on the page to the behaviour underneath.
+ */
+describe('every plan feature is one the software actually enforces', () => {
+  it('never advertises a resolution the renderer cannot produce', async () => {
+    const { ASPECT_DIMENSIONS } = await import('@/lib/edl/types');
+    // The compositions are laid out at these sizes; nothing scales them up yet.
+    const tallest = Math.max(...Object.values(ASPECT_DIMENSIONS).map((d) => Math.max(d.width, d.height)));
+    for (const plan of [PLANS.free, ...PAID_PLANS]) {
+      expect(plan.maxRenderHeight, `${plan.name} claims ${plan.maxRenderHeight}p`).toBeLessThanOrEqual(tallest);
+    }
+  });
+
+  it('turns a priority plan into a queue priority, and an ordinary one into none', async () => {
+    const { entitlementsOf } = await import('@/lib/billing/entitlements');
+    for (const plan of [PLANS.free, ...PAID_PLANS]) {
+      expect(entitlementsOf(plan.id).priority > 0).toBe(plan.priorityQueue);
+      expect(entitlementsOf(plan.id).watermark).toBe(plan.watermark);
+    }
+  });
+
+  it('watermarks the free tier and nothing that was paid for', () => {
+    expect(PLANS.free.watermark).toBe(true);
+    for (const plan of PAID_PLANS) expect(plan.watermark).toBe(false);
+  });
+
+  it('gives every paid plan something the one below it does not have', () => {
+    // A ladder where a rung adds nothing is a rung nobody climbs to.
+    for (let i = 1; i < PAID_PLANS.length; i++) {
+      const below = PAID_PLANS[i - 1];
+      const above = PAID_PLANS[i];
+      expect(above.priceUsd).toBeGreaterThan(below.priceUsd);
+      expect(above.footageMinutes).toBeGreaterThan(below.footageMinutes);
+      expect(above.maxMinutesPerUpload).toBeGreaterThan(below.maxMinutesPerUpload);
+      expect(above.sourceRetentionDays).toBeGreaterThan(below.sourceRetentionDays);
+      expect(above.concurrentJobs).toBeGreaterThan(below.concurrentJobs);
+    }
+  });
+});

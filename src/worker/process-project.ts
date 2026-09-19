@@ -1,5 +1,6 @@
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
+import { entitlementsFor } from '@/lib/billing/entitlements';
 import { localMusicPath } from '@/lib/assets/music';
 import { parseLayersOff } from '@/lib/edl/layers';
 import { recordUsage } from '@/lib/billing/usage';
@@ -143,6 +144,7 @@ export async function processProject(payload: ProcessJobPayload): Promise<void> 
     const outputDir = renderWorkDir(projectId, render.id);
     const rendered = await renderVideo({
       edl,
+      watermark: (await entitlementsFor(projectId)).watermark,
       sourceVideoPath: result.context.sourcePath,
       sourceAudioPath: result.context.mixAudioPath!,
       musicPath: edl.music ? localMusicPath(edl.music.url) : null,
@@ -379,6 +381,7 @@ export async function rerenderProject(projectId: string, edlId: string): Promise
 
     const rendered = await renderVideo({
       edl,
+      watermark: (await entitlementsFor(projectId)).watermark,
       sourceVideoPath: sourcePath,
       sourceAudioPath: audioPath,
       musicPath: edl.music ? localMusicPath(edl.music.url) : null,

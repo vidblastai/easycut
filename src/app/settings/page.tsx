@@ -6,6 +6,7 @@ import { isAuthEnabled } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { recentsFor } from '@/lib/ui/recents';
 import { clsx } from 'clsx';
+import { BillingPanel } from '@/components/billing/BillingPanel';
 
 export const dynamic = 'force-dynamic';
 
@@ -20,7 +21,14 @@ export const metadata = { title: 'Settings — EasyCut' };
  * fallback text is the same string /api/health and the setup banner read, so
  * there is one answer to "why doesn't my video have captions".
  */
-export default async function SettingsPage() {
+export default async function SettingsPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  // Stripe sends people back here after checkout. Saying so is the difference
+  // between "did that work?" and knowing it did.
+  const justPaid = (await searchParams).checkout === 'done';
   const caps = capabilities();
   const projects = await db.project.findMany({ orderBy: { createdAt: 'desc' }, take: 8 }).catch(() => []);
 
@@ -42,6 +50,8 @@ export default async function SettingsPage() {
             loses when something is off.
           </p>
         </div>
+
+        <BillingPanel justPaid={justPaid} />
 
         <h2 className="mt-8 text-[15px] font-bold">Features</h2>
         <ul className="mt-3 grid gap-px overflow-hidden rounded-[14px] bg-line-soft">

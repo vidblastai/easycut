@@ -1,4 +1,5 @@
 import '@/lib/config/load-env';
+import { entitlementsFor } from '@/lib/billing/entitlements';
 import { env } from '@/lib/config/env';
 import { db } from '@/lib/db';
 import { sweepExpired } from './sweep';
@@ -84,11 +85,14 @@ export async function main(): Promise<void> {
   });
   for (const job of stale) {
     console.log(`  requeueing stale job ${job.id} from stage ${job.stage}`);
-    await queue().enqueue('pipeline', {
-      projectId: job.projectId,
-      jobId: job.id,
-      resumeFrom: job.stage as never,
-    });
+    await queue().enqueue(
+      'pipeline',
+      { projectId: job.projectId, jobId: job.id, resumeFrom: job.stage as never },
+      // A job the last worker dropped keeps the priority it was accepted with:
+      // it has already waited once, and it should not now wait behind
+      // everything that arrived while the worker was down.
+      { priority: (await entitlementsFor(job.projectId)).priority },
+    );
   }
 
   const shutdown = async (signal: string) => {

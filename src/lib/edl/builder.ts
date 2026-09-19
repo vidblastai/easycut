@@ -47,6 +47,14 @@ export interface BuildEdlInput {
   reframe: Edl['reframe'];
   /** Layers skipped because a provider was missing. */
   degraded: string[];
+  /**
+   * Whether the finished video carries the EasyCut mark.
+   *
+   * Comes from the plan the footage was uploaded under, not from the style or
+   * the director — it is a commercial fact about the account, so it is passed
+   * in rather than decided here.
+   */
+  watermark?: boolean;
 }
 
 export function buildEdl(input: BuildEdlInput): Edl {
@@ -94,6 +102,7 @@ export function buildEdl(input: BuildEdlInput): Edl {
     version: '1.0',
     projectId: input.projectId,
     styleId: style.id,
+    watermark: input.watermark ?? false,
     format: {
       aspect: input.aspect,
       width: dimensions.width,

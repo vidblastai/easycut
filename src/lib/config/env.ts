@@ -192,6 +192,24 @@ export const env = {
   },
 
   /**
+   * Payment.
+   *
+   * Optional like everything else: with no key the plans still exist and are
+   * still enforced, they simply cannot be bought, which is also how a free
+   * beta looks. The price ids are per-Stripe-account and per-mode, so they
+   * live here rather than in the plan definitions.
+   */
+  stripe: {
+    secretKey: str('STRIPE_SECRET_KEY'),
+    webhookSecret: str('STRIPE_WEBHOOK_SECRET'),
+    prices: {
+      starter: str('STRIPE_PRICE_STARTER'),
+      creator: str('STRIPE_PRICE_CREATOR'),
+      studio: str('STRIPE_PRICE_STUDIO'),
+    },
+  },
+
+  /**
    * Deletion, on a timer.
    *
    * The plans promise both halves — "kept for a year", "deleted after seven
@@ -278,6 +296,14 @@ export function capabilities(): Capability[] {
       fallback: 'Renders on this machine. Correct, but a ten-minute video takes ~27 min on four cores instead of ~2.5.',
       envVars: ['REMOTION_LAMBDA_FUNCTION', 'REMOTION_SERVE_URL', 'AWS_ACCESS_KEY_ID'],
       signupUrl: 'https://www.remotion.dev/docs/lambda/setup',
+    },
+    {
+      key: 'billing',
+      label: 'Payments',
+      configured: Boolean(env.stripe.secretKey && env.stripe.webhookSecret),
+      fallback: 'Plans are enforced but cannot be bought — everyone stays on whatever plan their account says. That is a free beta, if you want one.',
+      envVars: ['STRIPE_SECRET_KEY', 'STRIPE_WEBHOOK_SECRET', 'STRIPE_PRICE_STARTER'],
+      signupUrl: 'https://dashboard.stripe.com/apikeys',
     },
     {
       key: 'queue',

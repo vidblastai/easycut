@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { entitlementsFor } from '@/lib/billing/entitlements';
 import { z } from 'zod';
 import { db, parseJson, stringifyJson } from '@/lib/db';
 import { ASPECTS, CaptionStyleSchema, EdlSchema, type Edl } from '@/lib/edl/types';
@@ -294,7 +295,11 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
 
   if (patch.render) {
     await db.project.update({ where: { id }, data: { status: 'processing' } });
-    await queue().enqueue('rerender', { projectId: id, edlId: row.id });
+    await queue().enqueue(
+      'rerender',
+      { projectId: id, edlId: row.id },
+      { priority: (await entitlementsFor(id)).priority },
+    );
   }
 
   return NextResponse.json({

@@ -18,6 +18,26 @@ const isPublic = createRouteMatcher([
   '/api/health',
   '/sign-in(.*)',
   '/sign-up(.*)',
+  /*
+   * The marketing pages, which is not a nicety.
+   *
+   * These three are linked from the footer of the homepage and from the app's
+   * sidebar, and every one of them is for somebody who has NOT signed up yet:
+   * a pricing page you must have an account to read cannot do its job, and a
+   * privacy policy behind a login wall is worse than that — people are
+   * entitled to read what happens to their footage before handing any over.
+   */
+  '/pricing',
+  '/privacy',
+  '/terms',
+  /*
+   * Stripe's webhook, which arrives from Stripe's servers with no session and
+   * would be redirected to the sign-in page by the gate below — the redirect
+   * is a 3xx, Stripe reads it as a failure, and the account never upgrades.
+   * The route is not unguarded: it verifies Stripe's signature over the raw
+   * body, which is a stronger check than a session cookie.
+   */
+  '/api/billing/webhook',
 ]);
 
 const authEnabled = Boolean(process.env.CLERK_SECRET_KEY);
@@ -43,7 +63,11 @@ export const config = {
      * The route is not unguarded: it calls `guardProject(id)` itself, which is
      * the same check with the same session, done after the body has streamed
      * past rather than before it was allowed to exist.
+     *
+     * The Stripe webhook is out for a related reason: its signature is computed
+     * over the exact bytes Stripe sent, so nothing between the socket and the
+     * route may touch the body.
      */
-    '/(api|trpc)((?!/projects/[^/]+/upload).*)',
+    '/(api|trpc)((?!/projects/[^/]+/upload|/billing/webhook).*)',
   ],
 };

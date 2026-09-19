@@ -9,6 +9,7 @@ import { Captions } from './components/Captions';
 import { Graphics } from './components/Graphics';
 import { Overlays } from './components/Overlays';
 import { Transitions } from './components/Transitions';
+import { Watermark } from './components/Watermark';
 import { VideoTrack } from './components/VideoTrack';
 
 export interface EasyCutVideoProps {
@@ -45,6 +46,8 @@ export interface EasyCutVideoProps {
  *   4. captions           — must never be covered, so they go above graphics
  *   5. transitions        — flash across everything at a cut
  *   6. overlays           — the video's own chrome, above all of it
+ *   7. watermark          — the free tier's mark, above even that, because a
+ *                           watermark something else can cover is not one
  */
 export const EasyCutVideo: React.FC<EasyCutVideoProps> = ({ edl, previewAudio = false, onMediaError }) => {
   const { fps } = useVideoConfig();
@@ -72,6 +75,7 @@ export const EasyCutVideo: React.FC<EasyCutVideoProps> = ({ edl, previewAudio = 
       <Captions edl={edl} positionY={plan.captionY} />
       <Transitions edl={edl} />
       <Overlays edl={edl} />
+      {edl.watermark ? <Watermark /> : null}
 
       {previewAudio ? <PreviewAudio edl={edl} fps={fps} /> : null}
     </AbsoluteFill>

@@ -39,6 +39,15 @@ export interface RenderOptions {
   musicPath?: string | null;
   outputDir: string;
   onProgress?: (fraction: number, label: string) => void;
+  /**
+   * Whether the finished video carries the EasyCut mark.
+   *
+   * Applied here, over whatever the EDL says, because this is the single point
+   * every render goes through. The document itself round-trips through the
+   * browser editor, so a watermark that lived only in the document could be
+   * removed with the developer tools — see src/lib/billing/entitlements.ts.
+   */
+  watermark?: boolean;
 }
 
 export interface RenderResult {
@@ -56,7 +65,9 @@ export async function renderVideo(options: RenderOptions): Promise<RenderResult>
   // Serve the source locally for the duration of the render, if we have it on
   // disk. With object storage the EDL's URL is already public and this is a no-op.
   let assetServer: AssetServer | null = null;
-  let edl = options.edl;
+  let edl = options.watermark === undefined
+    ? options.edl
+    : { ...options.edl, watermark: options.watermark };
 
   if (options.sourceVideoPath) {
     assetServer = await startAssetServer(dirname(options.sourceVideoPath));

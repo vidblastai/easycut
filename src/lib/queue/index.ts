@@ -21,13 +21,27 @@ export interface QueuedJob<T = unknown> {
   attempts: number;
   maxAttempts: number;
   enqueuedAt: number;
+  /**
+   * Higher goes first. 0 is everybody; 1 is a plan that paid to jump the queue.
+   *
+   * Deliberately a small integer rather than a plan id: the queue should not
+   * have to know what a plan is, and a number keeps "first in the queue" a
+   * property of the job rather than a lookup at the moment of reserving.
+   */
+  priority: number;
 }
 
 export type JobHandler<T = any> = (job: QueuedJob<T>) => Promise<void>;
 
+export interface EnqueueOptions {
+  maxAttempts?: number;
+  /** Higher goes first. See `QueuedJob.priority`. */
+  priority?: number;
+}
+
 export interface QueueDriver {
   readonly name: string;
-  enqueue<T>(type: string, payload: T, options?: { maxAttempts?: number }): Promise<string>;
+  enqueue<T>(type: string, payload: T, options?: EnqueueOptions): Promise<string>;
   /** Blocks until a job is available or the timeout elapses. */
   reserve(timeoutMs: number): Promise<QueuedJob | null>;
   complete(job: QueuedJob): Promise<void>;
@@ -42,7 +56,7 @@ class MemoryQueueDriver implements QueueDriver {
   private readonly pending: QueuedJob[] = [];
   private readonly waiters: Array<(job: QueuedJob | null) => void> = [];
 
-  async enqueue<T>(type: string, payload: T, options: { maxAttempts?: number } = {}): Promise<string> {
+  async enqueue<T>(type: string, payload: T, options: EnqueueOptions = {}): Promise<string> {
     const job: QueuedJob<T> = {
       id: randomUUID(),
       type,
@@ -50,11 +64,23 @@ class MemoryQueueDriver implements QueueDriver {
       attempts: 0,
       maxAttempts: options.maxAttempts ?? 3,
       enqueuedAt: Date.now(),
+      priority: options.priority ?? 0,
     };
 
     const waiter = this.waiters.shift();
-    if (waiter) waiter(job as QueuedJob);
-    else this.pending.push(job as QueuedJob);
+    if (waiter) {
+      // Somebody is already blocked waiting. Priority cannot help here —
+      // there is nothing queued to go in front of.
+      waiter(job as QueuedJob);
+    } else {
+      // Insert before the first job of lower priority, which keeps jobs of
+      // EQUAL priority in arrival order. A plain sort would not: it is only
+      // stable if the comparator never claims two jobs are equal, and the
+      // whole point of the fallback is that many of them are.
+      const at = this.pending.findIndex((p) => p.priority < job.priority);
+      if (at === -1) this.pending.push(job as QueuedJob);
+      else this.pending.splice(at, 0, job as QueuedJob);
+    }
 
     return job.id;
   }
@@ -94,7 +120,16 @@ class MemoryQueueDriver implements QueueDriver {
 
 class RedisQueueDriver implements QueueDriver {
   readonly name = 'redis';
+  /*
+   * Two lists rather than a sorted set.
+   *
+   * A Redis list is what gives `blMove` its atomic reserve — a worker that dies
+   * holding a job leaves it recoverable in the processing list rather than
+   * losing it — and that is worth far more than arbitrary priorities. Two
+   * levels is all the product sells, so two lists is all it needs.
+   */
   private readonly key = 'easycut:jobs';
+  private readonly fastKey = 'easycut:jobs:fast';
   private readonly processingKey = 'easycut:jobs:processing';
   private client: any = null;
 
@@ -118,7 +153,7 @@ class RedisQueueDriver implements QueueDriver {
     return this.client;
   }
 
-  async enqueue<T>(type: string, payload: T, options: { maxAttempts?: number } = {}): Promise<string> {
+  async enqueue<T>(type: string, payload: T, options: EnqueueOptions = {}): Promise<string> {
     const client = await this.connect();
     const job: QueuedJob<T> = {
       id: randomUUID(),
@@ -127,13 +162,27 @@ class RedisQueueDriver implements QueueDriver {
       attempts: 0,
       maxAttempts: options.maxAttempts ?? 3,
       enqueuedAt: Date.now(),
+      priority: options.priority ?? 0,
     };
-    await client.lPush(this.key, JSON.stringify(job));
+    await client.lPush(this.listFor(job), JSON.stringify(job));
     return job.id;
+  }
+
+  private listFor(job: { priority: number }): string {
+    return job.priority > 0 ? this.fastKey : this.key;
   }
 
   async reserve(timeoutMs: number): Promise<QueuedJob | null> {
     const client = await this.connect();
+
+    // Priority first, without blocking: `blMove` takes one source, so the fast
+    // list is drained with a non-blocking move and only then does the worker
+    // park on the ordinary one. The cost is that a priority job arriving while
+    // a worker is parked waits out the remaining reserve timeout — seconds, on
+    // a queue whose jobs take minutes.
+    const fast = await client.lMove(this.fastKey, this.processingKey, 'RIGHT', 'LEFT');
+    if (fast) return JSON.parse(fast) as QueuedJob;
+
     // Atomic move to the processing list: a worker that dies mid-job leaves the
     // job recoverable instead of losing it.
     const raw = await client.blMove(this.key, this.processingKey, 'RIGHT', 'LEFT', timeoutMs / 1000);
@@ -149,7 +198,8 @@ class RedisQueueDriver implements QueueDriver {
     const client = await this.connect();
     await client.lRem(this.processingKey, 1, JSON.stringify(job));
     if (job.attempts + 1 < job.maxAttempts) {
-      await client.lPush(this.key, JSON.stringify({ ...job, attempts: job.attempts + 1 }));
+      const retry = { ...job, attempts: job.attempts + 1 };
+      await client.lPush(this.listFor(retry), JSON.stringify(retry));
     } else {
       await client.lPush('easycut:jobs:dead', JSON.stringify(job));
     }
@@ -157,7 +207,8 @@ class RedisQueueDriver implements QueueDriver {
 
   async size(): Promise<number> {
     const client = await this.connect();
-    return client.lLen(this.key);
+    const [fast, normal] = await Promise.all([client.lLen(this.fastKey), client.lLen(this.key)]);
+    return fast + normal;
   }
 }
 
@@ -180,9 +231,14 @@ class RedisQueueDriver implements QueueDriver {
 class DbQueueDriver implements QueueDriver {
   readonly name = 'db';
 
-  async enqueue<T>(type: string, payload: T, options: { maxAttempts?: number } = {}): Promise<string> {
+  async enqueue<T>(type: string, payload: T, options: EnqueueOptions = {}): Promise<string> {
     const row = await db.queueMessage.create({
-      data: { type, payload: JSON.stringify(payload), maxAttempts: options.maxAttempts ?? 3 },
+      data: {
+        type,
+        payload: JSON.stringify(payload),
+        maxAttempts: options.maxAttempts ?? 3,
+        priority: options.priority ?? 0,
+      },
     });
     return row.id;
   }
@@ -193,7 +249,9 @@ class DbQueueDriver implements QueueDriver {
     while (Date.now() < deadline) {
       const candidate = await db.queueMessage.findFirst({
         where: { status: 'queued' },
-        orderBy: { enqueuedAt: 'asc' },
+        // Priority first, then arrival. Both, always: ordering by priority
+        // alone would shuffle everything inside a priority band on every poll.
+        orderBy: [{ priority: 'desc' }, { enqueuedAt: 'asc' }],
       });
 
       if (candidate) {
@@ -210,6 +268,7 @@ class DbQueueDriver implements QueueDriver {
             attempts: candidate.attempts,
             maxAttempts: candidate.maxAttempts,
             enqueuedAt: candidate.enqueuedAt.getTime(),
+            priority: candidate.priority,
           };
         }
         continue;

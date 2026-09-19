@@ -2,7 +2,7 @@
   "name": "easycut",
   "version": "0.1.0",
   "private": true,
-  "description": "EasyCut AI \u2014 upload your footage, get a finished video.",
+  "description": "EasyCut AI — upload your footage, get a finished video.",
   "scripts": {
     "dev": "tsx scripts/dev-all.ts",
     "build": "prisma generate && next build",
@@ -47,6 +47,7 @@
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "remotion": "^4.0.240",
+    "stripe": "^18.5.0",
     "tailwind-merge": "^2.6.0",
     "zod": "^3.25.76"
   },

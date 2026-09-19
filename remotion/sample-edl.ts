@@ -14,6 +14,7 @@ export const SAMPLE_EDL: Edl = {
   version: '1.0',
   projectId: 'sample',
   styleId: 'punchy',
+  watermark: false,
   format: { aspect: '9:16', width: 1080, height: 1920, fps: 30, durationSec: 10, layout: 'full' },
   source: {
     assetId: 'sample',

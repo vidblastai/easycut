@@ -386,6 +386,17 @@ export const EdlSchema = z.object({
   version: z.literal('1.0'),
   projectId: z.string(),
   styleId: z.string(),
+  /**
+   * Whether the finished video carries the EasyCut mark.
+   *
+   * Deliberately a property of the EDL's root rather than an entry in
+   * `overlays`: an overlay is something the director chose and the customer
+   * may delete in the editor, and a watermark you can delete is not a
+   * watermark. This is set from the plan when the edit is built, defaults to
+   * false so a self-hosted clone is unmarked, and the editor never offers it
+   * as a layer.
+   */
+  watermark: z.boolean().default(false),
   format: FormatSchema,
   source: SourceSchema,
   segments: z.array(SegmentSchema),

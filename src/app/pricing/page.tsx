@@ -1,6 +1,11 @@
 import Link from 'next/link';
 import { PricingExplainer, PricingSection } from '@/components/marketing/PricingSection';
 import { SiteFooter } from '@/components/marketing/SiteFooter';
+import { currentUserId } from '@/lib/auth';
+import { db } from '@/lib/db';
+
+// Reads the signed-in user's plan, so it cannot be baked at build time.
+export const dynamic = 'force-dynamic';
 
 export const metadata = {
   title: 'Pricing — EasyCut',
@@ -20,7 +25,13 @@ export const metadata = {
  * what people count. Both are stated, so nobody discovers the unit at the point
  * of being refused.
  */
-export default function PricingPage() {
+export default async function PricingPage() {
+  // Whose plan to mark as theirs. A signed-out visitor gets no query at all.
+  const userId = await currentUserId();
+  const me = userId
+    ? await db.user.findUnique({ where: { id: userId }, select: { plan: true } }).catch(() => null)
+    : null;
+
   return (
     <>
       <main className="min-h-screen bg-ink px-5 py-12 sm:px-8">
@@ -40,7 +51,7 @@ export default function PricingPage() {
             </p>
           </header>
 
-          <PricingSection heading={false} className="mt-9" />
+          <PricingSection heading={false} className="mt-9" currentPlan={me?.plan ?? null} />
 
           <div className="mt-12 border-t border-line pt-9">
             <PricingExplainer />

@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { entitlementsOf } from '@/lib/billing/entitlements';
 import { z } from 'zod';
 import { db } from '@/lib/db';
 import { queue } from '@/lib/queue';
@@ -102,7 +103,14 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   const job = await db.job.create({ data: { projectId: id, type: 'pipeline', status: 'queued' } });
   await db.project.update({ where: { id }, data: { status: 'processing', errorMessage: null } });
 
-  await queue().enqueue('pipeline', { projectId: id, jobId: job.id });
+  // Priority is fixed at the moment of queueing, from the plan this footage
+  // was accepted under — not looked up when a worker picks the job up, which
+  // would let somebody upgrade to overtake jobs already waiting behind them.
+  await queue().enqueue(
+    'pipeline',
+    { projectId: id, jobId: job.id },
+    { priority: entitlementsOf(plan.id).priority },
+  );
 
   return NextResponse.json({ ok: true, jobId: job.id });
 }

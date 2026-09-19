@@ -2,6 +2,8 @@ import Link from 'next/link';
 import { clsx } from 'clsx';
 import { PAID_PLANS, PLANS, videosFor, type Plan } from '@/lib/billing/plans';
 import { IconCheck } from '@/components/shell/Icons';
+import { PlanButton } from '@/components/marketing/PlanButton';
+import { canBuy } from '@/lib/billing/stripe';
 
 /**
  * The plans, as a section rather than a page.
@@ -20,10 +22,13 @@ import { IconCheck } from '@/components/shell/Icons';
 export function PricingSection({
   heading = true,
   className,
+  currentPlan,
 }: {
   /** The homepage supplies its own section heading; /pricing uses this one. */
   heading?: boolean;
   className?: string;
+  /** The signed-in visitor's plan, so their own card says so. */
+  currentPlan?: string | null;
 }) {
   return (
     <div className={className}>
@@ -42,7 +47,12 @@ export function PricingSection({
 
       <div className={clsx('grid gap-4 lg:grid-cols-3', heading && 'mt-10')}>
         {PAID_PLANS.map((plan) => (
-          <PlanCard key={plan.id} plan={plan} featured={plan.id === 'creator'} />
+          <PlanCard
+            key={plan.id}
+            plan={plan}
+            featured={plan.id === 'creator'}
+            current={currentPlan === plan.id}
+          />
         ))}
       </div>
 
@@ -62,20 +72,36 @@ export function PricingSection({
   );
 }
 
-function PlanCard({ plan, featured }: { plan: Plan; featured: boolean }) {
+function PlanCard({ plan, featured, current }: { plan: Plan; featured: boolean; current?: boolean }) {
   const { shorts, long } = videosFor(plan);
   const hours = plan.footageMinutes / 60;
+
+  /*
+   * Whether this card can actually take money — a Stripe key, a price for THIS
+   * plan, and accounts to attach the subscription to. When any of the three is
+   * missing the card keeps its call to action and sends people to start a
+   * video instead, which is the right thing during a free beta.
+   */
+  const buyable = canBuy(plan.id);
 
   return (
     <div
       className={clsx(
         'flex h-full flex-col rounded-2xl border p-6 text-left',
-        featured ? 'border-violet bg-violet-dim' : 'border-line bg-charcoal',
+        current
+          ? 'border-ok bg-charcoal'
+          : featured
+            ? 'border-violet bg-violet-dim'
+            : 'border-line bg-charcoal',
       )}
     >
       <div className="flex items-baseline justify-between gap-3">
         <h3 className="text-[17px] font-bold">{plan.name}</h3>
-        {featured ? (
+        {current ? (
+          <span className="rounded-full bg-ok px-2.5 py-1 text-[10.5px] font-bold uppercase tracking-wider text-ink">
+            Your plan
+          </span>
+        ) : featured ? (
           <span className="rounded-full bg-violet px-2.5 py-1 text-[10.5px] font-bold uppercase tracking-wider text-ink">
             Most popular
           </span>
@@ -113,7 +139,10 @@ function PlanCard({ plan, featured }: { plan: Plan; featured: boolean }) {
           </strong>
         </Feature>
         <Feature>Up to {plan.maxMinutesPerUpload} minutes in a single upload</Feature>
-        <Feature>{plan.maxRenderHeight === 2160 ? '4K export' : '1080p export'}, every aspect ratio</Feature>
+        <Feature>
+          {plan.maxRenderHeight === 2160 ? '4K' : '1080p'} export, and every aspect ratio from one
+          edit — vertical, square and widescreen
+        </Feature>
         <Feature>
           {plan.concurrentJobs === 1 ? 'One video at a time' : `${plan.concurrentJobs} videos at once`}
           {plan.priorityQueue ? ', and first in the queue' : ''}
@@ -121,12 +150,19 @@ function PlanCard({ plan, featured }: { plan: Plan; featured: boolean }) {
         {plan.watermark ? null : <Feature>No watermark</Feature>}
       </ul>
 
-      <Link
-        href="/new"
-        className={clsx('mt-6 w-full justify-center', featured ? 'btn-primary' : 'btn-ghost')}
-      >
-        Start with {plan.name}
-      </Link>
+      {current ? (
+        <Link href="/settings" className="btn-ghost mt-6 w-full justify-center">
+          Manage your plan
+        </Link>
+      ) : (
+        <PlanButton
+          plan={plan.id}
+          label={buyable ? `Get ${plan.name}` : `Start with ${plan.name}`}
+          featured={featured}
+          buyable={buyable}
+          className="mt-6"
+        />
+      )}
     </div>
   );
 }
