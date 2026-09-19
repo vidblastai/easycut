@@ -82,6 +82,12 @@ There is a warning in the three days before it goes.
 
 ## Built since
 
+- **Editing is no longer half an hour a keystroke.** A re-render now redraws
+  only the stretch that changed: 3.1× on a short fixture, and roughly 30
+  minutes down to about one on a ten-minute edit. `docs/PERFORMANCE.md` has the
+  measurements, including the three plausible optimisations that turned out to
+  be worth nothing.
+
 - **Payments** — `src/lib/billing/stripe.ts`, `subscription.ts`, and the three
   routes under `/api/billing`. 26 tests, including forged webhooks.
 - **The watermark** — the free tier's mark now actually renders

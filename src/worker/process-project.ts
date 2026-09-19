@@ -1,6 +1,7 @@
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { entitlementsFor } from '@/lib/billing/entitlements';
+import { renderDelta, worthSplicing } from '@/lib/render/diff';
 import { localMusicPath } from '@/lib/assets/music';
 import { parseLayersOff } from '@/lib/edl/layers';
 import { recordUsage } from '@/lib/billing/usage';
@@ -331,6 +332,90 @@ async function notifyReady(projectId: string, edl: Edl): Promise<void> {
 /* --------------------------------------------------------- re-render path */
 
 /**
+ * Whether the last render can be amended instead of redone, and where.
+ *
+ * Everything here is best-effort and returns null the moment anything is not
+ * exactly as expected — a missing file, a render of a different shape, a
+ * change that touches every frame. Null means "render it properly", which is
+ * what this code path did for its whole life before today, so there is no
+ * failure mode worse than the status quo.
+ *
+ * The audio is what makes this safe. `renderDelta` only ever reports a span
+ * when nothing audible changed, so the previous render's audio track is
+ * carried over untouched and there is no mix to get out of step.
+ */
+async function planIncremental(
+  projectId: string,
+  next: Edl,
+  workDir: string,
+): Promise<{ previousVideoPath: string; fromSec: number; toSec: number } | null> {
+  try {
+    const previous = await db.render.findFirst({
+      where: { projectId, status: 'succeeded', url: { not: null } },
+      orderBy: { createdAt: 'desc' },
+      select: { url: true, width: true, height: true, fps: true, edl: { select: { document: true } } },
+    });
+    if (!previous?.url || !previous.edl) return null;
+
+    // A different shape is a different composition, whatever the documents say.
+    if (
+      previous.width !== next.format.width ||
+      previous.height !== next.format.height ||
+      Math.abs(previous.fps - next.format.fps) > 0.01
+    ) {
+      return null;
+    }
+
+    const before = EdlSchema.safeParse(parseJson<Edl>(previous.edl.document, {} as Edl));
+    if (!before.success) return null;
+
+    const delta = renderDelta(before.data, next);
+    if (delta.kind === 'all') {
+      console.log(`[render] full render: ${delta.reason}`);
+      return null;
+    }
+    if (delta.kind === 'none') {
+      // Nothing on screen moved. Still worth re-rendering rather than
+      // returning the old file, because "nothing changed" is a claim about
+      // this diff and the customer asked for a render — but there is no point
+      // pretending it is incremental.
+      return null;
+    }
+    if (!worthSplicing(delta, next.format.durationSec)) {
+      console.log(`[render] full render: ${delta.reason}, but it spans most of the video`);
+      return null;
+    }
+
+    // Bring the previous file down next to the new one.
+    const { localPathFor } = await import('@/lib/storage');
+    const key = storageKeyOf(previous.url);
+    let path = key ? localPathFor(key) : null;
+    if (!path && key) {
+      const { writeFile } = await import('node:fs/promises');
+      path = join(workDir, 'previous.mp4');
+      await writeFile(path, await storage().get(key));
+    }
+    if (!path) return null;
+
+    console.log(
+      `[render] amending the last render: ${delta.reason} ` +
+        `(${delta.fromSec.toFixed(1)}s–${delta.toSec.toFixed(1)}s of ${next.format.durationSec.toFixed(1)}s)`,
+    );
+    return { previousVideoPath: path, fromSec: delta.fromSec, toSec: delta.toSec };
+  } catch (error) {
+    console.warn('[render] could not plan an incremental render:', (error as Error).message);
+    return null;
+  }
+}
+
+/** The storage key inside a render URL we wrote ourselves. */
+function storageKeyOf(url: string): string | null {
+  const match = url.match(/projects\/[^/]+\/render\/[^/?#]+/);
+  return match ? match[0] : null;
+}
+
+
+/**
  * Re-renders an existing EDL without re-running any analysis.
  *
  * This is what makes every tweak in the editor cheap: swapping a style, nudging
@@ -362,6 +447,9 @@ export async function rerenderProject(projectId: string, edlId: string): Promise
   const { mkdir, rm, writeFile } = await import('node:fs/promises');
   await mkdir(workDir, { recursive: true });
 
+  // Can this be an amendment to the last render rather than a new one?
+  const incremental = await planIncremental(projectId, edl, workDir);
+
   // A re-render is the cheap path — change a style, change a caption look, and
   // it replays without touching an API. Which is exactly why its scratch space
   // has to be swept up: a ten-minute video's uncompressed mix is 110 MB, and
@@ -386,6 +474,7 @@ export async function rerenderProject(projectId: string, edlId: string): Promise
       sourceAudioPath: audioPath,
       musicPath: edl.music ? localMusicPath(edl.music.url) : null,
       outputDir: workDir,
+      incremental: incremental ?? undefined,
       onProgress: async (fraction) => {
         await db.render.update({ where: { id: render.id }, data: { progress: fraction } }).catch(() => {});
       },

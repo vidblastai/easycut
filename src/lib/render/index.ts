@@ -48,6 +48,24 @@ export interface RenderOptions {
    * removed with the developer tools — see src/lib/billing/entitlements.ts.
    */
   watermark?: boolean;
+  /**
+   * Amend an existing render instead of drawing the whole thing again.
+   *
+   * Set only when `renderDelta` says the change is confined to one stretch of
+   * output time and nothing audible moved. The frames outside that stretch,
+   * and the whole audio track, are copied from the previous file — so a
+   * one-word caption fix costs about as long as that caption lasts rather than
+   * as long as the video lasts.
+   *
+   * Always optional, and never load-bearing: if anything about it does not add
+   * up the renderer draws the whole video, which is what it would have done
+   * anyway.
+   */
+  incremental?: {
+    previousVideoPath: string;
+    fromSec: number;
+    toSec: number;
+  };
 }
 
 export interface RenderResult {
@@ -92,6 +110,13 @@ async function renderWithSource(
   const finalPath = join(options.outputDir, 'final.mp4');
   const thumbnailPath = join(options.outputDir, 'thumbnail.jpg');
 
+  if (options.incremental) {
+    const patched = await renderIncrementally(edl, options, startedAt, finalPath, thumbnailPath);
+    if (patched) return patched;
+    // Fell through: whatever did not add up is already logged, and a full
+    // render is the correct answer to all of it.
+  }
+
   options.onProgress?.(0.02, 'Starting render');
 
   // The two halves, in parallel — this is the main speed win in the pipeline.
@@ -128,23 +153,136 @@ async function renderWithSource(
   };
 }
 
+/* ------------------------------------------------------------ incremental */
+
+/**
+ * Draw only what changed, and copy the rest.
+ *
+ * Returns null rather than throwing whenever the amendment cannot be made
+ * safely. Every one of those exits is a fast path back to a normal render, so
+ * the worst case of this whole feature is the behaviour it replaced.
+ *
+ * The frame count of the result is checked against the original before it is
+ * accepted. The failures this can have — a join that eats a frame, a copy that
+ * lands a frame late — are all silent and all show up in that one number, so
+ * it is the difference between an optimisation and a liability.
+ */
+async function renderIncrementally(
+  edl: Edl,
+  options: RenderOptions,
+  startedAt: number,
+  finalPath: string,
+  thumbnailPath: string,
+): Promise<RenderResult | null> {
+  const plan = options.incremental;
+  if (!plan) return null;
+
+  const { existsSync } = await import('node:fs');
+  if (!existsSync(plan.previousVideoPath)) {
+    console.warn('[render] previous file is gone; rendering in full');
+    return null;
+  }
+
+  const { keyframeAtOrBefore, keyframeAtOrAfter, frameCount, spliceVideo } = await import('./splice');
+  const { fps } = edl.format;
+
+  const previousFrames = await frameCount(plan.previousVideoPath);
+  const expected = Math.round(edl.format.durationSec * fps);
+
+  // A previous render of a different length is a previous render of a
+  // different video, whatever the diff thought.
+  if (Math.abs(previousFrames - expected) > 1 || previousFrames === 0) {
+    console.warn(`[render] previous render is ${previousFrames} frames, this edit is ${expected}; rendering in full`);
+    return null;
+  }
+
+  /*
+   * Both ends of the chunk have to sit on keyframes of the OLD file, because
+   * both neighbours are stream copies and a copy can only begin at one.
+   *
+   * The head ends at the keyframe at or before the change; the tail begins at
+   * the keyframe at or after it. Both snap outwards, so the only cost is
+   * drawing a few frames that did not need it — at most one keyframe interval
+   * at each end, which is a second apiece at the interval the renderer uses.
+   * Snapping the tail INWARDS is the bug this replaced: ffmpeg would silently
+   * start the copy at the keyframe before and emit the overlap twice.
+   */
+  const startSec = await keyframeAtOrBefore(plan.previousVideoPath, Math.max(0, plan.fromSec));
+  const fromFrame = Math.max(0, Math.floor(startSec * fps + 1e-6));
+
+  const endSec = await keyframeAtOrAfter(plan.previousVideoPath, plan.toSec);
+  // No keyframe left means the change runs into the last GOP: draw to the end
+  // and there is no tail to copy.
+  const toFrame = endSec === null ? previousFrames : Math.min(previousFrames, Math.round(endSec * fps));
+  if (toFrame <= fromFrame) return null;
+
+  options.onProgress?.(0.05, 'Re-rendering what changed');
+
+  const chunkPath = join(options.outputDir, 'chunk.mp4');
+  await renderFrames(
+    edl,
+    chunkPath,
+    (f) => options.onProgress?.(0.05 + f * 0.75, 'Re-rendering what changed'),
+    [fromFrame, toFrame - 1],
+  );
+
+  options.onProgress?.(0.85, 'Stitching it back together');
+  const { frames } = await spliceVideo({
+    previousPath: plan.previousVideoPath,
+    chunkPath,
+    fromFrame,
+    workDir: options.outputDir,
+    outputPath: finalPath,
+  });
+
+  if (Math.abs(frames - previousFrames) > 0) {
+    console.warn(`[render] splice produced ${frames} frames, expected ${previousFrames}; rendering in full`);
+    return null;
+  }
+
+  options.onProgress?.(0.95, 'Making thumbnail');
+  await extractFrame(finalPath, edl.deliverable.thumbnailAtSec, thumbnailPath, Math.min(1080, edl.format.width))
+    .catch(() => extractFrame(finalPath, 0.5, thumbnailPath));
+
+  options.onProgress?.(1, 'Done');
+  console.log(
+    `[render] amended ${((toFrame - fromFrame) / fps).toFixed(1)}s of ${edl.format.durationSec.toFixed(1)}s ` +
+      `(${(((toFrame - fromFrame) / previousFrames) * 100).toFixed(0)}% of the frames)`,
+  );
+
+  return {
+    videoPath: finalPath,
+    thumbnailPath,
+    durationSec: edl.format.durationSec,
+    renderMs: Date.now() - startedAt,
+    driver: env.render.driver,
+  };
+}
+
 /* ----------------------------------------------------------------- frames */
 
 async function renderFrames(
   edl: Edl,
   outputPath: string,
   onProgress: (fraction: number) => void,
+  /** Only these frames, for an incremental render. Inclusive at both ends. */
+  frameRange?: [number, number],
 ): Promise<void> {
   if (env.render.driver === 'lambda' && env.render.lambdaFunctionName && env.render.lambdaServeUrl) {
+    // Lambda splits a render across functions by frame and has its own notion
+    // of a range; amending one there is a different design, so it draws the
+    // whole video as it always has.
+    if (frameRange) return renderLocally(edl, outputPath, onProgress, frameRange);
     return renderOnLambda(edl, outputPath, onProgress);
   }
-  return renderLocally(edl, outputPath, onProgress);
+  return renderLocally(edl, outputPath, onProgress, frameRange);
 }
 
 async function renderLocally(
   edl: Edl,
   outputPath: string,
   onProgress: (fraction: number) => void,
+  frameRange?: [number, number],
 ): Promise<void> {
   const { bundle } = await import('@remotion/bundler');
   const { renderMedia, selectComposition } = await import('@remotion/renderer');
@@ -175,6 +313,19 @@ async function renderLocally(
     // CRF 21 at 1080p is visually transparent for talking-head content and
     // roughly a third the size of CRF 17.
     crf: 21,
+    ...(frameRange ? { frameRange } : {}),
+    /*
+     * A keyframe every second.
+     *
+     * Left to itself x264 puts them where the picture changes, which on a
+     * talking head is every three to five seconds and nowhere predictable.
+     * An incremental render can only copy up to a keyframe, so those gaps are
+     * frames it has to redraw for no reason — and on a static shot the gap can
+     * be the whole video, which turns every amendment into a full render.
+     * One second costs a few per cent of file size and buys a cut point
+     * wherever an edit happens to land.
+     */
+    gopSize: edl.format.fps,
     onProgress: ({ progress }) => onProgress(progress),
     browserExecutable: env.render.browserExecutable,
     // Pinned rather than derived from the host's free memory. Remotion's own
