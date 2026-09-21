@@ -606,10 +606,16 @@ input[type=range] { width: 100%; accent-color: var(--violet); }
 
 /* B-roll insert */
 .broll {
-  position: absolute; inset: 0; opacity: 0;
-  background: linear-gradient(135deg, #1d3a4d, #3d5a4a 55%, #6b5a3a);
+  position: absolute; inset: 0; opacity: 0; overflow: hidden;
   display: grid; place-items: end start; padding: 7%;
-  will-change: transform, opacity;
+  will-change: opacity;
+}
+/* The picture itself. Separate from the slot so the push can scale without
+   escaping it. */
+.broll .shot {
+  position: absolute; inset: 0;
+  background: linear-gradient(135deg, #1d3a4d, #3d5a4a 55%, #6b5a3a);
+  will-change: transform;
 }
 .broll .q {
   font-family: var(--mono); font-size: 3.2cqw; color: rgba(255,255,255,.72);
@@ -1364,11 +1370,15 @@ body.instudio { overflow: hidden; }
 .phone.lay-headline .broll { left: 5%; top: 20%; width: 90%; height: 58%; border-radius: 3.2%; }
 /* A commentary bubble is a circle that never moves; its geometry is written
    frame by frame in the tick, like a reaction cut's. */
-.phone.lay-bubble .cam { z-index: 1; overflow: hidden; }
-.phone.lay-bubble .gfx,
-.phone.lay-bubble .caps,
-.phone.lay-bubble .flash,
-.phone.lay-bubble .prog { z-index: 2; }
+.phone.lay-bubble .cam,
+.phone.lay-screencast .cam { z-index: 1; overflow: hidden; }
+.phone.lay-bubble .gfx, .phone.lay-bubble .caps, .phone.lay-bubble .flash, .phone.lay-bubble .prog,
+.phone.lay-screencast .gfx, .phone.lay-screencast .caps,
+.phone.lay-screencast .flash, .phone.lay-screencast .prog { z-index: 2; }
+/* The essay's letterbox. B-roll covers the box, never the bars — a picture
+   that spills into them destroys the only effect the layout has. */
+.phone.lay-cinema .cam { overflow: hidden; }
+.phone.lay-cinema .broll { top: 12.76%; height: 74.48%; }
 
 /* The reaction cut draws the speaker OVER the picture, and its geometry is set
    frame by frame in the tick rather than here — this is only the stacking.
@@ -2902,7 +2912,10 @@ body.instudio { overflow: hidden; }
           </div>
           <div class="vig"></div>
         </div>
-        <div class="broll" id="broll"><div class="grain"></div><span class="q" id="broll-q"></span></div>
+        <!-- The picture is on an inner layer so the Ken Burns push is CLIPPED by
+             the slot rather than growing out of it — which is what the real
+             renderer does, and what keeps an essay's letterbox bars unbroken. -->
+        <div class="broll" id="broll"><div class="shot" id="broll-shot"><div class="grain"></div></div><span class="q" id="broll-q"></span></div>
         <!-- A bulletin's headline. Hidden for every other layout. -->
         <div class="band" id="band" hidden><span class="kick">The story</span><h4>Why we put the price up</h4></div>
         <div class="gfx" id="gfx"><div class="n">3&times;</div><div class="c">what we raised prices</div></div>
@@ -3231,6 +3244,12 @@ const LAYOUTS = {
      B-roll drops into that same frame rather than covering the screen, so the
      headline stays readable through an insert. */
   headline: { speaker: [.05, .2, .9, .58], inset: null, broll: [.05, .2, .9, .58], capY: .8, over: false, radius: 3.2, band: true },
+  /* The screencast: the screen is the content, you are the narrator in the
+     corner of it. Same stack as a bubble, deliberately a different shape. */
+  screencast: { speaker: 'cam', inset: null, broll: null,               capY: null,  over: true, alwaysOn: true, radius: 1.4 },
+  /* The cinematic essay: a 2.39:1 letterbox with the captions in the lower
+     bar. B-roll covers the letterbox, never the bars. */
+  cinema:   { speaker: 'cinema',       inset: null,   broll: 'cinema',         capY: .88,  over: false },
   split:    { speaker: [0, 0, 1, .54], inset: null,   broll: [0, .54, 1, .46], capY: .485, over: false, alwaysOn: true },
   side:     { speaker: [0, 0, .5, 1],  inset: null,   broll: [.5, 0, .5, 1],   capY: .88,  over: false, alwaysOn: true },
 };
@@ -3260,11 +3279,30 @@ function bubbleInset(w, h) {
   return [margin / w, Math.max(margin / h, BUBBLE_BOTTOM - bh), side / w, bh];
 }
 
-/* A layout's speaker box for a frame this shape — the two round-cornered
-   insets are the only ones that need to know. */
-function speakerBox(L, ar) {
-  return L.speaker === 'bubble' ? bubbleInset(ar[0], ar[1]) : L.speaker;
+/* The rectangular corner camera a screencast puts you in — 16:9, because that
+   is the shape a webcam actually produces, and bottom-right because a screen
+   recording's own content lives on the left and top. */
+const CAM_WIDTH = .26, CAM_MARGIN = .035;
+function screencastCam(w, h) {
+  const short = Math.min(w, h), cw = short * CAM_WIDTH, ch = cw * 9 / 16, m = short * CAM_MARGIN;
+  return [(w - m - cw) / w, (h - m - ch) / h, cw / w, ch / h];
 }
+
+/* The 2.39:1 letterbox an essay sits in, centred, with a bar above and below. */
+function cinemaBox(w, h) {
+  const bh = Math.min(h, w / 2.39);
+  return [0, (h - bh) / 2 / h, 1, bh / h];
+}
+
+/* A layout's boxes for a frame this shape — the insets are the only ones that
+   need to know what shape the frame is. */
+function shaped(spec, ar) {
+  if (spec === 'bubble') return bubbleInset(ar[0], ar[1]);
+  if (spec === 'cam') return screencastCam(ar[0], ar[1]);
+  if (spec === 'cinema') return cinemaBox(ar[0], ar[1]);
+  return spec;
+}
+const speakerBox = (L, ar) => shaped(L.speaker, ar);
 
 /* How much of the frame an insert is claiming right now, 0..1 — ramped at both
    ends so the speaker is already moving when the picture arrives. Short clips
@@ -3317,6 +3355,18 @@ const STYLES = {
     layout: 'full', formats: ['short'],
     short: { broll: 8, gfx: 6, punch: 11, sfx: .7, trans: .8 },
     progress: true, music: 'upbeat energetic',
+  },
+  tutorial: {
+    name: 'Screencast', tagline: 'The screen fills the frame. You narrate from the corner.', accent: '#7FC8FF',
+    layout: 'screencast', formats: ['long', 'short'],
+    short: { broll: 5, gfx: 14, punch: 0, sfx: .2, trans: .15 },
+    progress: true, music: 'none',
+  },
+  essay: {
+    name: 'Essay', tagline: 'Letterboxed, unhurried, the words in the bar underneath.', accent: '#E8C89A',
+    layout: 'cinema', formats: ['long'],
+    short: { broll: 10, gfx: 30, punch: 0, sfx: .1, trans: .12 },
+    progress: true, music: 'cinematic emotional',
   },
   split: {
     name: 'Split screen', tagline: 'Your face on top, something to watch underneath.', accent: '#5BD6A0',
@@ -3431,6 +3481,7 @@ const state = {
 /* The caption look in force: the user's pick, or the one the edit style names. */
 const STYLE_CAP_DEFAULT = { clean: 'clean-plate', punchy: 'bold-pop', reaction: 'bold-pop',
                             commentary: 'bold-pop', news: 'subtitle', stacked: 'bold-pop',
+                            tutorial: 'subtitle', essay: 'editorial',
                             split: 'bold-pop', documentary: 'editorial', explainer: 'highlight-box',
                             podcast: 'podcast', sidebar: 'subtitle', vlog: 'cartoon' };
 /* Every style's caption preset, and a fallback for one that has not been given
@@ -3527,9 +3578,11 @@ function styleShape(style, mode) {
   const cam = inset || speakerBox(L, ar);
   const over = !!L.over;
   const radius = L.round ? 'border-radius:50%;' : L.radius ? `border-radius:${L.radius}%;` : '';
+  const cinema = L.speaker === 'cinema';
 
-  const pictures = L.broll
-    ? `<span class="sh-broll" style="${box(L.broll)};${L.radius ? `border-radius:${L.radius}%;` : ''}${pics}"></span>`
+  const brollBox = L.broll ? shaped(L.broll, ar) : null;
+  const pictures = brollBox
+    ? `<span class="sh-broll" style="${box(brollBox)};${L.radius ? `border-radius:${L.radius}%;` : ''}${pics}"></span>`
     : over
       ? `<span class="sh-full" style="${pics}"></span>`
       : `<span class="sh-insert" style="${pics}"></span>`;
@@ -4121,12 +4174,13 @@ function applyLayout() {
   const ph = $('phone');
   if (!ph) return;
   const layout = (STYLES[styleNow()] || {}).layout || 'full';
-  ph.classList.remove('lay-full', 'lay-reaction', 'lay-bubble', 'lay-headline', 'lay-split', 'lay-side');
+  ph.classList.remove('lay-full', 'lay-reaction', 'lay-bubble', 'lay-headline',
+                      'lay-screencast', 'lay-cinema', 'lay-split', 'lay-side');
   ph.classList.add('lay-' + layout);
   // The reaction cut writes the box's geometry on every frame; every other
   // layout takes it from the stylesheet, so hand it back.
   const cam = $('cam');
-  const stacked = layout === 'reaction' || layout === 'bubble';
+  const stacked = layout === 'reaction' || layout === 'bubble' || layout === 'screencast' || layout === 'cinema';
   if (cam && !stacked) {
     for (const k of ['left', 'top', 'width', 'height', 'borderRadius', 'boxShadow']) cam.style[k] = '';
   }
@@ -4308,15 +4362,25 @@ function paintPreview() {
     cam.style.boxShadow = cov > .001
       ? `0 ${(cov * 2.4).toFixed(2)}cqw ${(cov * 6).toFixed(2)}cqw -1cqw rgba(0,0,0,${(cov * .75).toFixed(3)}), inset 0 0 0 1px rgba(255,255,255,${(cov * .22).toFixed(3)})`
       : 'none';
-  } else if (cam && LNow.speaker === 'bubble') {
+  } else if (cam && (LNow.speaker === 'bubble' || LNow.speaker === 'cam')) {
     // A commentary bubble: the same stacking, but it never moves.
-    const R = bubbleInset(ar[0], ar[1]);
+    const R = shaped(LNow.speaker, ar);
     cam.style.left = (R[0] * 100).toFixed(3) + '%';
     cam.style.top = (R[1] * 100).toFixed(3) + '%';
     cam.style.width = (R[2] * 100).toFixed(3) + '%';
     cam.style.height = (R[3] * 100).toFixed(3) + '%';
-    cam.style.borderRadius = '50%';
+    cam.style.borderRadius = LNow.speaker === 'bubble' ? '50%' : '1.4%';
     cam.style.boxShadow = '0 1.2cqw 3cqw -0.6cqw rgba(0,0,0,.6), inset 0 0 0 1px rgba(255,255,255,.18)';
+  } else if (cam && LNow.speaker === 'cinema') {
+    // The letterbox. Written here rather than in the stylesheet because it is
+    // computed from the frame's own shape, like the insets above it.
+    const R = cinemaBox(ar[0], ar[1]);
+    cam.style.left = '0%';
+    cam.style.top = (R[1] * 100).toFixed(3) + '%';
+    cam.style.width = '100%';
+    cam.style.height = (R[3] * 100).toFixed(3) + '%';
+    cam.style.borderRadius = '';
+    cam.style.boxShadow = 'none';
   }
 
   // The bulletin's headline, which is the video's own title.
@@ -4332,7 +4396,8 @@ function paintPreview() {
   }
   const k = on ? (t - active.a) / Math.max(.01, active.b - active.a) : 0;
   br.style.opacity = on ? String(Math.min(1, Math.min(t - active.a, active.b - t) / .14)) : '0';
-  br.style.transform = `scale(${(1.04 + k * .09).toFixed(3)})`;
+  const shot = $('broll-shot');
+  if (shot) shot.style.transform = `scale(${(1.04 + k * .09).toFixed(3)})`;
   if (active) $('broll-q').textContent = active.q;
 
   /* Stat card ------------------------------------------------------------- */

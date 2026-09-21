@@ -168,6 +168,55 @@ function headlineFrame(): Region {
   return { x: 0.05, y: HEADLINE_BAND, w: 0.9, h: 0.58 };
 }
 
+/**
+ * The corner camera a screencast puts you in.
+ *
+ * Rectangular and 16:9, because that is the shape a webcam actually produces
+ * and a tutorial is the one format where pretending otherwise looks wrong —
+ * a circle crops the sides off a screen-share setup where you are usually
+ * sitting back from the camera.
+ *
+ * Bottom-RIGHT, and smaller than a commentary bubble: on a screencast the
+ * screen is the content and you are the narrator, so the cam is there to keep
+ * a face in the video rather than to be looked at. Bottom-right because a
+ * screen recording's own content — toolbars, sidebars, the thing being
+ * pointed at — lives on the left and top.
+ */
+const CAM_WIDTH = 0.26;
+const CAM_MARGIN = 0.035;
+
+function screencastCam(width: number, height: number): Region {
+  const short = Math.min(width, height);
+  const w = short * CAM_WIDTH;
+  const h = (w * 9) / 16;
+  const margin = short * CAM_MARGIN;
+  return {
+    x: (width - margin - w) / width,
+    y: (height - margin - h) / height,
+    w: w / width,
+    h: h / height,
+  };
+}
+
+/**
+ * The letterbox a cinematic essay sits in.
+ *
+ * 2.39:1 — the anamorphic ratio — centred, with a bar above and below. The
+ * bars are not decoration: they are what makes a video read as considered
+ * rather than recorded, and they give the captions a band of their own where
+ * nothing has to be covered to make room for them.
+ *
+ * Only ever worth it on a widescreen frame. On a vertical video the same
+ * arithmetic leaves a letterbox the shape of a bookmark, which is why the
+ * style that uses this is long-form only.
+ */
+const CINEMA_RATIO = 2.39;
+
+function cinemaBox(width: number, height: number): Region {
+  const boxHeight = Math.min(height, width / CINEMA_RATIO);
+  return { x: 0, y: (height - boxHeight) / 2 / height, w: 1, h: boxHeight / height };
+}
+
 const PLANS: Record<Layout, LayoutPlan> = {
   full: {
     speaker: { x: 0, y: 0, w: 1, h: 1 },
@@ -229,6 +278,53 @@ const PLANS: Record<Layout, LayoutPlan> = {
     frameRadius: 0,
     headline: false,
     captionY: null,
+  },
+
+  /*
+   * The screencast.
+   *
+   * The screen is the content and you are the narrator in the corner of it.
+   * Every tutorial, every walkthrough, every "let me show you" video ever
+   * made. Structurally the same stack as a commentary bubble and deliberately
+   * a different shape: rectangular, smaller, and in the opposite corner,
+   * because here the cam is there to keep a face in the video rather than to
+   * be looked at.
+   */
+  screencast: {
+    speaker: screencastCam(1920, 1080),
+    speakerWithBroll: null,
+    broll: null,
+    alwaysOn: true,
+    stack: 'over',
+    speakerShape: 'rect',
+    frameRadius: 0,
+    headline: false,
+    captionY: null,
+  },
+
+  /*
+   * The cinematic essay.
+   *
+   * A 2.39:1 letterbox with a bar above and below, and the captions living in
+   * the lower bar rather than over the picture. It is the one layout here
+   * that is about restraint: nothing moves, nothing shrinks, nothing flashes,
+   * and the bars do all the work of saying "this was made on purpose".
+   *
+   * B-roll covers the letterbox rather than the frame, so the bars stay
+   * unbroken through an insert — a picture that spills into them destroys the
+   * only effect the layout has.
+   */
+  cinema: {
+    speaker: cinemaBox(1920, 1080),
+    speakerWithBroll: null,
+    broll: cinemaBox(1920, 1080),
+    alwaysOn: false,
+    stack: 'beside',
+    speakerShape: 'rect',
+    frameRadius: 0,
+    headline: false,
+    // In the lower bar, which is the point of having one.
+    captionY: 0.88,
   },
 
   /*
@@ -301,6 +397,13 @@ export function layoutPlan(layout: Layout, frame?: { width: number; height: numb
   }
   if (plan.speakerShape === 'circle') {
     return { ...plan, speaker: bubbleInset(frame.width, frame.height) };
+  }
+  if (layout === 'screencast') {
+    return { ...plan, speaker: screencastCam(frame.width, frame.height) };
+  }
+  if (layout === 'cinema') {
+    const box = cinemaBox(frame.width, frame.height);
+    return { ...plan, speaker: box, broll: box };
   }
   return plan;
 }

@@ -363,3 +363,99 @@ describe('every style is distinguishable from the picker', () => {
     }
   });
 });
+
+/**
+ * The two long-form shapes.
+ *
+ * Both were rendered through the real compositor and measured before anything
+ * was built on them — the letterbox came out at exactly 12.8% bars, which is
+ * the 2.39:1 arithmetic — and these are the invariants that keep them there.
+ */
+describe('the screencast', () => {
+  const wide = layoutPlan('screencast', { width: 1920, height: 1080 });
+
+  it('puts a small camera in the bottom-right', () => {
+    const cam = wide.speaker;
+    expect(cam.x + cam.w).toBeLessThanOrEqual(1);
+    expect(cam.y + cam.h).toBeLessThanOrEqual(1);
+    expect(cam.x).toBeGreaterThan(0.6);
+    expect(cam.y).toBeGreaterThan(0.6);
+  });
+
+  it('shapes it like a webcam, not like a bubble', () => {
+    // 16:9, because that is what a webcam produces, and a circle crops the
+    // sides off somebody sitting back from one.
+    const ratio = (wide.speaker.w * 1920) / (wide.speaker.h * 1080);
+    expect(ratio).toBeCloseTo(16 / 9, 1);
+    expect(wide.speakerShape).toBe('rect');
+  });
+
+  it('is smaller than a commentary bubble, because the screen is the content', () => {
+    const bubble = layoutPlan('bubble', { width: 1920, height: 1080 });
+    expect(wide.speaker.w * wide.speaker.h).toBeLessThan(bubble.speaker.w * bubble.speaker.h);
+  });
+
+  it('keeps its screen filled, or it is a cam on a black screen', () => {
+    expect(wide.alwaysOn).toBe(true);
+    expect(wide.stack).toBe('over');
+  });
+
+  it('sits in the opposite corner to the bubble, on purpose', () => {
+    const bubble = layoutPlan('bubble', { width: 1920, height: 1080 });
+    expect(wide.speaker.x).toBeGreaterThan(bubble.speaker.x);
+  });
+});
+
+describe('the cinematic letterbox', () => {
+  const wide = layoutPlan('cinema', { width: 1920, height: 1080 });
+
+  it('is 2.39:1, centred, with equal bars', () => {
+    const ratio = (wide.speaker.w * 1920) / (wide.speaker.h * 1080);
+    expect(ratio).toBeCloseTo(2.39, 2);
+    const top = wide.speaker.y;
+    const bottom = 1 - (wide.speaker.y + wide.speaker.h);
+    expect(top).toBeCloseTo(bottom, 6);
+    // The number the rendered still measured at.
+    expect(top).toBeCloseTo(0.128, 3);
+  });
+
+  it('runs the full width, so the bars are the only framing', () => {
+    expect(wide.speaker.x).toBe(0);
+    expect(wide.speaker.w).toBe(1);
+  });
+
+  it('keeps B-roll inside the letterbox rather than over the bars', () => {
+    // A picture that spills into them destroys the only effect the layout has.
+    expect(wide.broll).toEqual(wide.speaker);
+  });
+
+  it('puts the captions in the lower bar, which is why it has one', () => {
+    expect(wide.captionY).toBeGreaterThan(wide.speaker.y + wide.speaker.h - 0.02);
+  });
+
+  it('is offered on long form only', () => {
+    // On a vertical frame the same arithmetic gives a slot, not a letterbox.
+    const style = STYLE_LIST.find((s) => s.layout === 'cinema');
+    expect(style?.formats).toEqual(['long']);
+  });
+
+  it('would still be a sane box if somebody rendered it vertical anyway', () => {
+    const tall = layoutPlan('cinema', { width: 1080, height: 1920 });
+    expect(tall.speaker.h).toBeGreaterThan(0);
+    expect(tall.speaker.y).toBeGreaterThan(0);
+    expect(tall.speaker.y + tall.speaker.h).toBeLessThanOrEqual(1);
+  });
+});
+
+describe('long form has real choices, not one shape repeated', () => {
+  it('offers several genuinely different layouts', () => {
+    const shapes = new Set(stylesFor('long').map((s) => s.layout));
+    expect(shapes.size).toBeGreaterThanOrEqual(5);
+  });
+
+  it('offers as many looks as short form does', () => {
+    // Long form used to be the poor relation: eight options, six of them the
+    // same full-frame shape.
+    expect(stylesFor('long').length).toBeGreaterThanOrEqual(8);
+  });
+});

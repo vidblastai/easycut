@@ -15,6 +15,8 @@ export type StyleId =
   | 'commentary'
   | 'news'
   | 'stacked'
+  | 'tutorial'
+  | 'essay'
   | 'split'
   | 'documentary'
   | 'explainer'
@@ -375,6 +377,119 @@ const RAW_PRESETS: Record<StyleId, Omit<StylePreset, 'captionStyle'>> = {
       'words, not a sentence. The cards are the spine of this edit: a viewer should be able to ' +
       'follow the whole thing from them alone with the sound off. Cut hard between beats; no ' +
       'dissolves.',
+  },
+
+  /*
+   * The screencast.
+   *
+   * The one style here where the SOURCE of the B-roll is different in kind:
+   * a tutorial's screen is not stock footage, it is the thing being
+   * demonstrated. Until a screen recording can be uploaded as a second track
+   * this leans on generated stills and stock, and the director note says so
+   * plainly so the cues at least land on the right moments.
+   *
+   * Long form first. A walkthrough that fits in sixty seconds is a tip, and a
+   * tip does not need a screen.
+   */
+  tutorial: {
+    id: 'tutorial',
+    name: 'Screencast',
+    tagline: 'The screen fills the frame. You narrate from the corner.',
+    bestFor: 'Walkthroughs, demos and how-tos — anything where the thing on screen is the lesson.',
+    accent: '#7FC8FF',
+    layout: 'screencast',
+    formats: ['long', 'short'],
+    captionPreset: 'subtitle',
+    transitions: ['cut', 'dissolve'],
+    musicMood: '',
+    musicGainDb: -26,
+    silencePreset: 'balanced',
+    short: {
+      punchInEverySec: [0, 0],
+      punchInScale: [1, 1],
+      brollEverySec: 5,
+      brollDurationSec: [5, 10],
+      graphicEverySec: 14,
+      graphicDurationSec: 2.5,
+      transitionDensity: 0.15,
+      sfxDensity: 0.2,
+    },
+    long: {
+      punchInEverySec: [0, 0],
+      punchInScale: [1, 1],
+      // Long holds. A tutorial where the picture changes every few seconds is
+      // one nobody can follow, and the viewer is reading the screen.
+      brollEverySec: 11,
+      brollDurationSec: [10, 20],
+      graphicEverySec: 45,
+      graphicDurationSec: 3.5,
+      transitionDensity: 0.1,
+      sfxDensity: 0.12,
+    },
+    overlays: { progressBar: true, lowerThird: true, grain: false, vignette: false },
+    directorNotes:
+      'This is a screencast: whatever is being demonstrated fills the frame and the speaker is a ' +
+      'small camera in the corner. There must be something on screen at every moment. Place a cue ' +
+      'wherever the script moves to a new step, screen, menu or file, and describe what would be ' +
+      'ON THE SCREEN at that point rather than a mood — "a spreadsheet with a formula bar", not ' +
+      '"productivity". Hold each one for the whole step; a tutorial whose picture changes every ' +
+      'few seconds is one nobody can follow. Use lower thirds to number the steps.',
+  },
+
+  /*
+   * The cinematic essay.
+   *
+   * Everything here is turned DOWN. No punch-ins, the slowest silence preset,
+   * the fewest transitions, the quietest sound — because the letterbox is
+   * making the argument that this was considered, and an edit that fidgets
+   * inside it contradicts that on every cut.
+   *
+   * Long form only. The bars take a fifth of a widescreen frame and nearly
+   * two thirds of a vertical one, which is not a letterbox, it is a slot.
+   */
+  essay: {
+    id: 'essay',
+    name: 'Essay',
+    tagline: 'Letterboxed, unhurried, the words in the bar underneath.',
+    bestFor: 'Long arguments and deep dives — where the point is the thinking, not the pace.',
+    accent: '#E8C89A',
+    layout: 'cinema',
+    formats: ['long'],
+    captionPreset: 'editorial',
+    transitions: ['cut', 'dissolve'],
+    musicMood: 'cinematic emotional',
+    musicGainDb: -23,
+    silencePreset: 'gentle',
+    short: {
+      punchInEverySec: [0, 0],
+      punchInScale: [1, 1],
+      brollEverySec: 10,
+      brollDurationSec: [4, 8],
+      graphicEverySec: 30,
+      graphicDurationSec: 3,
+      transitionDensity: 0.12,
+      sfxDensity: 0.1,
+    },
+    long: {
+      punchInEverySec: [0, 0],
+      punchInScale: [1, 1],
+      brollEverySec: 16,
+      brollDurationSec: [6, 14],
+      // A chapter card at each turn in the argument — what makes a long video
+      // navigable, and what YouTube reads to build its own chapter list.
+      graphicEverySec: 70,
+      graphicDurationSec: 4,
+      transitionDensity: 0.1,
+      sfxDensity: 0.08,
+    },
+    overlays: { progressBar: true, lowerThird: false, grain: true, vignette: true },
+    directorNotes:
+      'A long-form essay, letterboxed and unhurried. Structure it: find the three to six points the ' +
+      'argument actually turns on and mark each with a short chapter card — those are the ' +
+      'signposts a viewer navigates by and the ones YouTube reads for its chapter list. B-roll ' +
+      'should be atmospheric and slow rather than literal, and held long; a picture that changes ' +
+      'every few seconds fights the format. Never cut for energy here — cut only when the subject ' +
+      'moves on.',
   },
 
   /* The shape that made short-form watchable on mute: your face on top, a
