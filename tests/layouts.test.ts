@@ -158,12 +158,22 @@ describe('styles', () => {
     for (const style of STYLE_LIST) expect(LAYOUTS).toContain(style.layout);
   });
 
-  it('gives a permanent slot enough B-roll to fill it', () => {
+  /*
+   * Coverage is NOT what this checks — the gap filler guarantees that, and
+   * tests/edl.test.ts proves it. What a cadence buys is VARIETY: a permanent
+   * slot filled by replaying two clips for a minute is covered and
+   * unwatchable. So the bar is "enough distinct things to show", which is a
+   * much looser number than the one that used to be here, and looser in the
+   * direction that lets a style deliberately hold a shot for longer.
+   */
+  it('gives a permanent slot enough different things to show', () => {
     for (const style of STYLE_LIST) {
       if (!layoutPlan(style.layout).alwaysOn) continue;
-      // One insert every few seconds, not every dozen: the slot is the video.
-      expect(style.short.brollEverySec).toBeLessThanOrEqual(6);
-      expect(style.long.brollEverySec).toBeLessThanOrEqual(12);
+      for (const [mode, seconds] of [['short', 60], ['long', 600]] as const) {
+        if (!style.formats.includes(mode)) continue;
+        const distinct = seconds / style[mode].brollEverySec;
+        expect(distinct, `${style.name} ${mode}`).toBeGreaterThanOrEqual(5);
+      }
     }
   });
 

@@ -395,11 +395,19 @@ const RAW_PRESETS: Record<StyleId, Omit<StylePreset, 'captionStyle'>> = {
     short: {
       punchInEverySec: [5, 9],
       punchInScale: [1.06, 1.14],
-      // The bottom slot is on screen the whole time, so B-roll is not an
-      // occasional insert here — it is the other half of the video. The
-      // pipeline fills whatever this leaves uncovered.
-      brollEverySec: 4,
-      brollDurationSec: [3, 6],
+      /*
+       * The bottom slot is on screen the whole time, so B-roll is not an
+       * occasional insert here — it is the other half of the video. The
+       * pipeline fills whatever this leaves uncovered.
+       *
+       * FEWER and LONGER, deliberately. A lower half that cuts every three
+       * seconds is two videos competing, and the format works precisely
+       * because there is calm continuous motion to rest on while somebody
+       * talks. It also halves the number of stock clips a single video has to
+       * fetch, which is the other thing this slot is expensive for.
+       */
+      brollEverySec: 8,
+      brollDurationSec: [6, 12],
       graphicEverySec: 16,
       graphicDurationSec: 2.2,
       transitionDensity: 0.3,
@@ -408,8 +416,8 @@ const RAW_PRESETS: Record<StyleId, Omit<StylePreset, 'captionStyle'>> = {
     long: {
       punchInEverySec: [12, 20],
       punchInScale: [1.05, 1.12],
-      brollEverySec: 8,
-      brollDurationSec: [4, 8],
+      brollEverySec: 12,
+      brollDurationSec: [8, 16],
       graphicEverySec: 40,
       graphicDurationSec: 3,
       transitionDensity: 0.2,
@@ -417,9 +425,13 @@ const RAW_PRESETS: Record<StyleId, Omit<StylePreset, 'captionStyle'>> = {
     },
     overlays: { progressBar: true, lowerThird: false, grain: false, vignette: false },
     directorNotes:
-      'The bottom half of the frame is always showing something, so name a concrete subject often — ' +
-      'every object, place and action in the script is a candidate. Keep graphics rare: the frame ' +
-      'is already carrying two pictures.',
+      'The bottom half of the frame is always showing something. Its job is to HOLD THE EYE, not ' +
+      'to illustrate every noun: the format works because there is continuous calm motion to look ' +
+      'at while somebody talks, and it stops working when the lower half cuts as often as the ' +
+      'script changes subject. So prefer long, slow, loopable footage — hands doing something, a ' +
+      'process running, water, machinery, a road — over a literal picture of each thing named, and ' +
+      'let one clip run for several sentences. Cut it only where the subject genuinely changes. ' +
+      'Keep graphics rare: the frame is already carrying two pictures.',
   },
   documentary: {
     id: 'documentary',

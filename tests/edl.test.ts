@@ -28,10 +28,13 @@ function makeTranscript(): Transcript {
 
 const segments = layoutSegments([{ sourceStartSec: 0, sourceEndSec: 30 }]);
 
-function build(planOverrides: Parameters<typeof DirectorPlanSchema.parse>[0]) {
+function build(
+  planOverrides: Parameters<typeof DirectorPlanSchema.parse>[0],
+  styleId = 'punchy',
+) {
   return buildEdl({
     projectId: 'test',
-    style: getStyle('punchy'),
+    style: getStyle(styleId),
     mode: 'short',
     aspect: '9:16',
     fps: 30,
@@ -124,5 +127,68 @@ describe('EDL builder', () => {
     });
     expect(edl.punchIns).toHaveLength(1);
     expect(edl.punchIns[0].outStartSec).toBe(18);
+  });
+});
+
+/**
+ * A permanent B-roll slot that is ever empty is a black half of the screen.
+ *
+ * This is the invariant `alwaysOn` exists for, and it was untested — the only
+ * check anywhere was a proxy in the style tests asserting a fast enough
+ * B-roll cadence, which is not what guarantees coverage. The filler is: it
+ * replays the nearest placed clip across every gap. So the cadence controls
+ * VARIETY and the filler controls COVERAGE, and conflating the two meant
+ * slowing a style down to something that looks better would have "failed" a
+ * test for a reason that was never real.
+ */
+describe('a layout whose B-roll slot is on screen throughout', () => {
+  /** The largest hole in the B-roll track, in seconds. */
+  const biggestGap = (edl: ReturnType<typeof build>) => {
+    const clips = [...edl.broll].sort((a, b) => a.outStartSec - b.outStartSec);
+    let worst = 0;
+    let covered = 0;
+    for (const clip of clips) {
+      worst = Math.max(worst, clip.outStartSec - covered);
+      covered = Math.max(covered, clip.outEndSec);
+    }
+    return Math.max(worst, edl.format.durationSec - covered);
+  };
+
+  const withCues = (n: number) => ({
+    broll: Array.from({ length: n }, (_, i) => ({
+      atSec: 2 + i * 7,
+      query: `thing ${i}`,
+      intent: 'illustrating',
+    })),
+  });
+
+  for (const styleId of ['split', 'commentary', 'sidebar']) {
+    it(`leaves no hole for ${styleId}`, () => {
+      const edl = build(withCues(3), styleId);
+      expect(edl.broll.length).toBeGreaterThan(3);
+      // A frame or two of slack for rounding; anything more is visible.
+      expect(biggestGap(edl), `${styleId} gap`).toBeLessThan(0.5);
+    });
+  }
+
+  it('covers the whole video from a single director cue', () => {
+    // The worst realistic case: the director named one thing, and the rest of
+    // the video still has a half of the screen to fill.
+    const edl = build(withCues(1), 'split');
+    expect(biggestGap(edl)).toBeLessThan(0.5);
+  });
+
+  it('does not fill anything on a layout that has no permanent slot', () => {
+    // On a full-frame layout an empty moment is the speaker, which is correct.
+    const edl = build(withCues(1), 'punchy');
+    expect(edl.broll.length).toBe(1);
+  });
+
+  it('still gives a permanent slot several different clips to show', () => {
+    // Coverage is not enough on its own: one stock shot replayed for a whole
+    // video is covered and unwatchable.
+    const edl = build(withCues(3), 'split');
+    const runs = edl.broll.length;
+    expect(runs).toBeGreaterThanOrEqual(4);
   });
 });

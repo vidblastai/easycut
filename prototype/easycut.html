@@ -3321,7 +3321,10 @@ const STYLES = {
   split: {
     name: 'Split screen', tagline: 'Your face on top, something to watch underneath.', accent: '#5BD6A0',
     layout: 'split', formats: ['short'],
-    short: { broll: 4, gfx: 16, punch: 6, sfx: .7, trans: .3 },
+    /* Fewer and longer than it looks like it should be: the lower half is
+       there to hold the eye with calm continuous motion, and one that cuts
+       every three seconds is two videos competing. */
+    short: { broll: 8, gfx: 16, punch: 6, sfx: .7, trans: .3 },
     progress: true, music: 'upbeat energetic',
   },
   documentary: {
