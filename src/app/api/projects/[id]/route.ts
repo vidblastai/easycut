@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { stalledJob, stalledProject } from '@/lib/pipeline/stalled';
 import { db, parseJson } from '@/lib/db';
 import { healEdl } from '@/lib/edl/operations';
 import { readStageLog } from '@/worker/process-project';
@@ -87,9 +88,20 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
           progressLabel: job.progressLabel,
           errorMessage: job.errorMessage,
           startedAt: job.startedAt,
+          queuedAt: job.queuedAt,
+          // Null unless nothing has moved for long enough to be worth saying.
+          // See src/lib/pipeline/stalled.ts for why the thresholds are long.
+          stalled: stalledJob(job),
           log: readStageLog(job.log),
         }
-      : null,
+      : // No job row at all, but the project says it is working. There is
+        // nothing to resume and nothing in any queue — which is worth saying
+        // out loud rather than spinning forever.
+        stalledProject(project, false)
+        ? { status: 'queued', stage: 'ingest', stageLabel: STAGE_LABELS.ingest, progress: 0,
+            progressLabel: '', errorMessage: null, startedAt: null, queuedAt: null,
+            stalled: stalledProject(project, false), log: [] }
+        : null,
     edl: edl
       ? {
           id: edl.id,

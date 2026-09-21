@@ -65,6 +65,9 @@ interface ProjectState {
     progressLabel: string;
     errorMessage: string | null;
     startedAt: string | null;
+    queuedAt: string | null;
+    /** Set once nothing has moved for long enough to be worth saying so. */
+    stalled: { reason: 'never-started' | 'no-progress'; forSec: number; selfHosted: boolean } | null;
     log: Array<{ stage: string; status: string; ms: number; message: string }>;
   } | null;
   edl: { id: string; version: number; document: Edl | null } | null;
@@ -879,6 +882,8 @@ function ProgressPanel({
               `Usually ${estimate} start to finish — you can close this tab and come back.`}
         </p>
 
+        {!failed && job?.stalled ? <Stalled stalled={job.stalled} /> : null}
+
         <div className="mt-4 h-2 w-full overflow-hidden rounded-full bg-ink">
           <div
             className={clsx(
@@ -956,6 +961,72 @@ function ProgressPanel({
 }
 
 /** Seconds since the job started, ticking while it runs. */
+/**
+ * "This should have moved by now."
+ *
+ * A spinner that never stops is the one failure a product can have that gives
+ * the person watching it nothing at all — not an error, not a retry, not even
+ * a reason to give up. This says which of the two things went wrong and, when
+ * it is something the person running the app can fix, what fixes it.
+ *
+ * Deliberately not an error: nothing is lost, the pipeline is resumable, and
+ * the job does continue when a worker comes back. It is a warning about the
+ * WAIT, not about the video.
+ */
+function Stalled({ stalled }: { stalled: NonNullable<ProjectState['job']>['stalled'] }) {
+  if (!stalled) return null;
+  const waited = howLong(stalled.forSec);
+
+  return (
+    <div
+      role="status"
+      className="mt-4 rounded-xl border border-warn/40 bg-warn/10 px-3.5 py-3 text-[12.5px] leading-relaxed text-chalk/90"
+    >
+      <b className="font-bold">
+        {stalled.reason === 'never-started'
+          ? `This has been waiting ${waited} without starting.`
+          : `Nothing has moved for ${waited}.`}
+      </b>{' '}
+      {stalled.reason === 'never-started' ? (
+        stalled.selfHosted ? (
+          <>
+            Nothing is taking jobs off the queue. The worker runs in its own terminal —{' '}
+            <code className="rounded bg-ink px-1.5 py-0.5 font-mono text-[11.5px]">npm run worker</code> — and
+            if it is already running, check it is not on{' '}
+            <code className="rounded bg-ink px-1.5 py-0.5 font-mono text-[11.5px]">QUEUE_DRIVER=memory</code>,
+            which gives it a private queue the app never writes to.
+          </>
+        ) : (
+          <>We are busier than usual. Your place in the queue is kept and nothing is lost — leave this and come back.</>
+        )
+      ) : (
+        <>
+          Whatever was working on this stopped. Nothing is lost: the edit picks up from the last finished
+          stage as soon as a worker takes it again{stalled.selfHosted ? ', which happens when you restart it' : ''}.
+        </>
+      )}
+    </div>
+  );
+}
+
+/**
+ * How long, in words somebody would actually say.
+ *
+ * "9203 minutes" is true and useless — a project abandoned six days ago reads
+ * as a rounding error rather than as something long dead. The unit has to
+ * grow with the number or the sentence stops meaning anything.
+ */
+function howLong(seconds: number): string {
+  const minutes = Math.max(1, Math.round(seconds / 60));
+  if (minutes < 60) return `${minutes} minute${minutes === 1 ? '' : 's'}`;
+
+  const hours = Math.round(minutes / 60);
+  if (hours < 36) return `${hours} hour${hours === 1 ? '' : 's'}`;
+
+  const days = Math.round(hours / 24);
+  return `${days} day${days === 1 ? '' : 's'}`;
+}
+
 function useElapsed(startedAt: string | null, running: boolean): number | null {
   const [now, setNow] = useState(() => Date.now());
 

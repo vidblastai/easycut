@@ -78,22 +78,9 @@ export async function main(): Promise<void> {
     );
   }
 
-  // Jobs left "running" by a crashed worker are re-queued once on boot.
-  const stale = await db.job.findMany({
-    where: { status: 'running', attempts: { lt: 3 } },
-    select: { id: true, projectId: true, stage: true },
-  });
-  for (const job of stale) {
-    console.log(`  requeueing stale job ${job.id} from stage ${job.stage}`);
-    await queue().enqueue(
-      'pipeline',
-      { projectId: job.projectId, jobId: job.id, resumeFrom: job.stage as never },
-      // A job the last worker dropped keeps the priority it was accepted with:
-      // it has already waited once, and it should not now wait behind
-      // everything that arrived while the worker was down.
-      { priority: (await entitlementsFor(job.projectId)).priority },
-    );
-  }
+  // Jobs left "running" by a crashed worker are re-queued on boot, and then
+  // on a timer — see `startRescuer`.
+  await rescueStaleJobs({ boot: true });
 
   const shutdown = async (signal: string) => {
     console.log(`\n${signal} received, finishing current job...`);
@@ -104,10 +91,78 @@ export async function main(): Promise<void> {
   process.on('SIGTERM', () => void shutdown('SIGTERM'));
 
   startSweeper();
+  startRescuer();
 
   await Promise.all(
     Array.from({ length: Math.max(1, env.queue.concurrency) }, (_, i) => loop(i + 1)),
   );
+}
+
+/**
+ * How long a `running` job may go without its row moving before this worker
+ * assumes nobody is working on it.
+ *
+ * Longer than the longest stage that reports no intermediate progress:
+ * transcription is one network call and can legitimately sit silent for
+ * minutes on a long upload. Re-queueing a job that is merely slow is not
+ * harmful — the pipeline resumes from the last finished stage — but it is
+ * wasted work, so the bar is set where a real stall is the likelier
+ * explanation.
+ */
+const STALE_AFTER_MS = 15 * 60_000;
+
+/**
+ * Picks up jobs whose worker died.
+ *
+ * On boot this catches everything left behind by the process that crashed.
+ * On a timer it catches the harder case: a worker in a POOL that died while
+ * its siblings kept running, where nothing ever restarts and the job simply
+ * sits at 40% until somebody notices. Without this, the only cure was a
+ * deploy.
+ *
+ * `attempts < 3` is what stops a job that crashes the worker every time from
+ * being resurrected forever — it fails honestly instead, which the progress
+ * screen can show and the customer can retry.
+ */
+async function rescueStaleJobs({ boot = false } = {}): Promise<void> {
+  const cutoff = new Date(Date.now() - STALE_AFTER_MS);
+  const stale = await db.job
+    .findMany({
+      where: {
+        status: 'running',
+        attempts: { lt: 3 },
+        // On boot, everything still marked running belongs to the process that
+        // is no longer here, however recently it was touched.
+        ...(boot ? {} : { updatedAt: { lt: cutoff } }),
+      },
+      select: { id: true, projectId: true, stage: true, updatedAt: true },
+    })
+    .catch(() => []);
+
+  for (const job of stale) {
+    const idleMin = Math.round((Date.now() - job.updatedAt.getTime()) / 60_000);
+    console.log(
+      `  requeueing stale job ${job.id} from stage ${job.stage}${boot ? '' : ` (idle ${idleMin}m)`}`,
+    );
+    await queue().enqueue(
+      'pipeline',
+      { projectId: job.projectId, jobId: job.id, resumeFrom: job.stage as never },
+      // A job the last worker dropped keeps the priority it was accepted with:
+      // it has already waited once, and it should not now wait behind
+      // everything that arrived while the worker was down.
+      { priority: (await entitlementsFor(job.projectId)).priority },
+    );
+  }
+}
+
+function startRescuer(): void {
+  const every = Math.max(1, env.retention.sweepIntervalMinutes) * 60_000;
+  const tick = () => {
+    void rescueStaleJobs().catch((error) =>
+      console.error('[rescue] failed:', (error as Error).message),
+    );
+  };
+  setInterval(tick, Math.min(every, 5 * 60_000)).unref();
 }
 
 /**

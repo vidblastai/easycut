@@ -183,9 +183,14 @@ model Job {
   queuedAt   DateTime  @default(now())
   startedAt  DateTime?
   finishedAt DateTime?
+  // Touched on every progress write, which is what makes "stuck" a thing the
+  // app can see: a job whose row has not moved in minutes is one nobody is
+  // working on, whatever its status column says.
+  updatedAt  DateTime  @default(now()) @updatedAt
 
   @@index([projectId, queuedAt])
   @@index([status])
+  @@index([status, updatedAt])
 }
 
 model Edl {
