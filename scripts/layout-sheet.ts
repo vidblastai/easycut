@@ -71,7 +71,14 @@ function edlFor(layout: Layout) {
     sfx: [],
     transitions: [],
     music: null,
-    deliverable: { ...SAMPLE_EDL.deliverable, durationSec: 10 },
+    deliverable: {
+      ...SAMPLE_EDL.deliverable,
+      durationSec: 10,
+      // The bulletin layout prints this across the top, so the sheet has to
+      // carry a real one or that layout renders half of itself.
+      title: 'The pricing change nobody noticed',
+      hashtags: ['#business'],
+    },
   });
 }
 
@@ -85,7 +92,7 @@ const MOMENTS: Array<{ name: string; sec: number }> = [
 async function main() {
   await mkdir(OUT, { recursive: true });
   const named = process.argv.slice(4).filter((a) => !a.startsWith('--'));
-  const layouts = (named.length ? named : ['full', 'reaction', 'split', 'side']) as Layout[];
+  const layouts = (named.length ? named : ['full', 'reaction', 'bubble', 'headline', 'split', 'side']) as Layout[];
 
   const assets = await startAssetServer(process.cwd());
   SOURCE = assets.urlFor(resolve(SOURCE_FILE)) ?? '';

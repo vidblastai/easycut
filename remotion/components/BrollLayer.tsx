@@ -22,7 +22,8 @@ export const BrollLayer: React.FC<{ edl: Edl; onMediaError?: (message: string) =
   // own half, which is on screen throughout, so the half gets a backing panel:
   // a moment of black where one clip ends and the next begins would read as a
   // dropout rather than a cut.
-  const region = layoutPlan(edl.format.layout).broll;
+  const plan = layoutPlan(edl.format.layout, edl.format);
+  const region = plan.broll;
 
   const inserts = edl.broll.map((clip) => {
     if (!clip.url) return null;
@@ -39,7 +40,23 @@ export const BrollLayer: React.FC<{ edl: Edl; onMediaError?: (message: string) =
   if (!region) return <>{inserts}</>;
 
   return (
-    <AbsoluteFill style={{ ...regionStyle(region), overflow: 'hidden', backgroundColor: '#0D0D10' }}>
+    <AbsoluteFill
+      style={{
+        ...regionStyle(region),
+        overflow: 'hidden',
+        /*
+         * A backing panel only where the slot is PERMANENT.
+         *
+         * On a split screen the half is on screen throughout, so a moment of
+         * black between two clips reads as a dropout and the panel covers it.
+         * A headline layout has a region for its inserts but the speaker is
+         * what lives in that frame the rest of the time — painting a panel
+         * there would black the speaker out whenever no insert was playing.
+         */
+        backgroundColor: plan.alwaysOn ? '#0D0D10' : 'transparent',
+        borderRadius: plan.frameRadius ? `${plan.frameRadius}%` : undefined,
+      }}
+    >
       {inserts}
     </AbsoluteFill>
   );

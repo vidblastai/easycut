@@ -41,6 +41,21 @@ export const VideoTrack: React.FC<{ edl: Edl; onMediaError?: (message: string) =
     : plan.speaker;
   const inset = coverage > 0.001;
 
+  /*
+   * A circular bubble, or a framed rectangle, or neither.
+   *
+   * `50%` on a square region is a circle; on a non-square one it is an
+   * ellipse, which is why `bubbleInset` measures against the frame's short
+   * side. The framed radius is a percentage of WIDTH so the corners come out
+   * equal on both axes rather than stretching with the box.
+   */
+  const shaped =
+    plan.speakerShape === 'circle'
+      ? { borderRadius: '50%', boxShadow: '0 1.2% 3% rgba(0,0,0,.55)' }
+      : plan.frameRadius
+        ? { borderRadius: `${plan.frameRadius}%` }
+        : null;
+
   const viewport = {
     width: Math.max(2, Math.round(edl.format.width * region.w)),
     height: Math.max(2, Math.round(edl.format.height * region.h)),
@@ -64,6 +79,7 @@ export const VideoTrack: React.FC<{ edl: Edl; onMediaError?: (message: string) =
          * them a square of face in the corner looks like a rendering fault.
          * Both scale with the coverage so they arrive with the box.
          */
+        ...shaped,
         ...(inset
           ? {
               borderRadius: `${(coverage * 2.2).toFixed(2)}%`,

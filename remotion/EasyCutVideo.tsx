@@ -9,6 +9,7 @@ import { Captions } from './components/Captions';
 import { Graphics } from './components/Graphics';
 import { Overlays } from './components/Overlays';
 import { Transitions } from './components/Transitions';
+import { Headline } from './components/Headline';
 import { Watermark } from './components/Watermark';
 import { VideoTrack } from './components/VideoTrack';
 
@@ -42,11 +43,12 @@ export interface EasyCutVideoProps {
  *                           (on a reaction cut these two swap: the picture
  *                           takes the frame and the speaker rides on top of
  *                           it, shrunk into the corner)
- *   3. graphics           — sit on top of both
- *   4. captions           — must never be covered, so they go above graphics
- *   5. transitions        — flash across everything at a cut
- *   6. overlays           — the video's own chrome, above all of it
- *   7. watermark          — the free tier's mark, above even that, because a
+ *   3. headline           — the band a bulletin layout reserves at the top
+ *   4. graphics           — sit on top of both
+ *   5. captions           — must never be covered, so they go above graphics
+ *   6. transitions        — flash across everything at a cut
+ *   7. overlays           — the video's own chrome, above all of it
+ *   8. watermark          — the free tier's mark, above even that, because a
  *                           watermark something else can cover is not one
  */
 export const EasyCutVideo: React.FC<EasyCutVideoProps> = ({ edl, previewAudio = false, onMediaError }) => {
@@ -55,7 +57,7 @@ export const EasyCutVideo: React.FC<EasyCutVideoProps> = ({ edl, previewAudio = 
   const plan = layoutPlan(edl.format.layout, edl.format);
 
   /*
-   * A reaction cut inverts the two bottom layers.
+   * A reaction cut and a commentary bubble invert the two bottom layers.
    *
    * Everywhere else the speaker is the base and B-roll covers them. Here the
    * picture is the base and the speaker sits on it in a corner box — which is
@@ -63,7 +65,7 @@ export const EasyCutVideo: React.FC<EasyCutVideoProps> = ({ edl, previewAudio = 
    * a second copy of the video: `VideoTrack` shrinks itself to the inset over
    * exactly the frames the insert is up, so one decode serves both states.
    */
-  const speakerOnTop = plan.speakerWithBroll !== null;
+  const speakerOnTop = plan.stack === 'over';
   const speaker = <VideoTrack edl={edl} onMediaError={onMediaError} />;
   const broll = <BrollLayer edl={edl} onMediaError={onMediaError} />;
 
@@ -71,6 +73,7 @@ export const EasyCutVideo: React.FC<EasyCutVideoProps> = ({ edl, previewAudio = 
     <AbsoluteFill style={{ backgroundColor: '#0D0D10', fontFamily: FONT_FAMILY }}>
       {speakerOnTop ? broll : speaker}
       {speakerOnTop ? speaker : broll}
+      {plan.headline ? <Headline edl={edl} /> : null}
       <Graphics edl={edl} />
       <Captions edl={edl} positionY={plan.captionY} />
       <Transitions edl={edl} />

@@ -1,6 +1,6 @@
 import { AppShell, ShellMain } from '@/components/shell/AppShell';
 import { UploadFlow } from '@/components/UploadFlow';
-import { STYLE_LIST, FORMAT_PRESETS } from '@/lib/styles/presets';
+import { STYLE_LIST, FORMAT_PRESETS, leadsWithCards } from '@/lib/styles/presets';
 import { capabilities } from '@/lib/config/env';
 import { db } from '@/lib/db';
 import { recentsFor } from '@/lib/ui/recents';
@@ -46,6 +46,10 @@ export default async function NewProjectPage() {
               accent: s.accent,
               layout: s.layout,
               formats: s.formats,
+              // Computed here, where the whole preset is in hand: the card is
+              // a client component and should not have to carry the pacing
+              // tables across the wire to work out what to draw.
+              chapterCards: { short: leadsWithCards(s, 'short'), long: leadsWithCards(s, 'long') },
             }))}
             formats={[FORMAT_PRESETS.short, FORMAT_PRESETS.long]}
           />

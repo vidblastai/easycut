@@ -1346,6 +1346,30 @@ body.instudio { overflow: hidden; }
 .phone.lay-split .broll { top: 54%; opacity: 1 !important; }
 .phone.lay-side .cam { right: 50%; }
 .phone.lay-side .broll { left: 50%; opacity: 1 !important; }
+/* The bulletin's headline band, and the frame the video sits in below it. */
+.band {
+  position: absolute; left: 5.5%; right: 5.5%; top: 0; height: 20%; z-index: 3;
+  display: flex; flex-direction: column; justify-content: center; gap: 2cqw;
+}
+.band .kick {
+  display: flex; align-items: center; gap: 1.6cqw;
+  font-size: 2.6cqw; font-weight: 800; letter-spacing: .14em; text-transform: uppercase; color: var(--muted);
+}
+.band .kick::before { content: ''; width: 1.2cqw; height: 1.2cqw; border-radius: 50%; background: #FF4D4D; }
+.band h4 {
+  margin: 0; font-size: 7.4cqw; font-weight: 800; letter-spacing: -.035em; line-height: 1.06;
+  color: var(--chalk); text-wrap: balance;
+}
+.phone.lay-headline .cam { left: 5%; top: 20%; width: 90%; height: 58%; border-radius: 3.2%; overflow: hidden; }
+.phone.lay-headline .broll { left: 5%; top: 20%; width: 90%; height: 58%; border-radius: 3.2%; }
+/* A commentary bubble is a circle that never moves; its geometry is written
+   frame by frame in the tick, like a reaction cut's. */
+.phone.lay-bubble .cam { z-index: 1; overflow: hidden; }
+.phone.lay-bubble .gfx,
+.phone.lay-bubble .caps,
+.phone.lay-bubble .flash,
+.phone.lay-bubble .prog { z-index: 2; }
+
 /* The reaction cut draws the speaker OVER the picture, and its geometry is set
    frame by frame in the tick rather than here — this is only the stacking.
    The speaker is lifted above the insert, and everything that belongs above
@@ -1398,6 +1422,20 @@ body.instudio { overflow: hidden; }
 /* A reaction cut's picture has the whole frame, and the speaker sits on top of
    it in their corner box. */
 .sh-full { position: absolute; inset: 0; }
+/* The headline band a bulletin card leads with. */
+.sh-band {
+  position: absolute; left: 5%; right: 5%; top: 0; height: 20%;
+  display: flex; flex-direction: column; justify-content: center; gap: 3px;
+}
+.sh-band i { display: block; height: 5px; border-radius: 2px; }
+/* A title card, at the size it actually appears, for the styles whose
+   signature is how often one turns up. */
+.sh-card {
+  position: absolute; left: 50%; top: 16%; transform: translateX(-50%); z-index: 3;
+  display: flex; flex-direction: column; align-items: center; gap: 4px;
+  padding: 5% 9%; border-radius: 6px; background: rgba(13,13,16,.88); outline: 1.5px solid;
+}
+.sh-card i { display: block; height: 6px; border-radius: 2px; }
 .sh-inset {
   border-radius: 3px;
   box-shadow: 0 4px 10px -3px rgba(0,0,0,.9), inset 0 0 0 1px rgba(255,255,255,.22);
@@ -2865,6 +2903,8 @@ body.instudio { overflow: hidden; }
           <div class="vig"></div>
         </div>
         <div class="broll" id="broll"><div class="grain"></div><span class="q" id="broll-q"></span></div>
+        <!-- A bulletin's headline. Hidden for every other layout. -->
+        <div class="band" id="band" hidden><span class="kick">The story</span><h4>Why we put the price up</h4></div>
         <div class="gfx" id="gfx"><div class="n">3&times;</div><div class="c">what we raised prices</div></div>
         <div class="caps" id="caps"></div>
         <div class="flash" id="flash"></div>
@@ -3178,14 +3218,21 @@ const CAP_BY_ID = Object.fromEntries(CAPS.map((c) => [c.id, c]));
    from them. Split that knowledge up and the picker eventually advertises a
    shape the renderer does not produce. */
 const LAYOUTS = {
-  full:     { speaker: [0, 0, 1, 1],   inset: null,   broll: null,             capY: null },
+  full:     { speaker: [0, 0, 1, 1],   inset: null,   broll: null,             capY: null,  over: false },
   /* The one layout whose geometry is a function of TIME rather than a constant:
      full frame while you talk, a corner box the moment there is something to
      look at, and back again. `inset` is where the speaker goes while a picture
      is up; everything else here stays where it was put. */
-  reaction: { speaker: [0, 0, 1, 1],   inset: 'corner', broll: null,           capY: null },
-  split:    { speaker: [0, 0, 1, .54], inset: null,   broll: [0, .54, 1, .46], capY: .485 },
-  side:     { speaker: [0, 0, .5, 1],  inset: null,   broll: [.5, 0, .5, 1],   capY: .88 },
+  reaction: { speaker: [0, 0, 1, 1],   inset: 'corner', broll: null,           capY: null,  over: true },
+  /* The commentary bubble: the same stacking as a reaction cut, except the
+     arrangement never changes and the picture is on screen throughout. */
+  bubble:   { speaker: 'bubble',       inset: null,   broll: null,             capY: null,  over: true, round: true, alwaysOn: true },
+  /* The bulletin: a headline band across the top, the video framed under it.
+     B-roll drops into that same frame rather than covering the screen, so the
+     headline stays readable through an insert. */
+  headline: { speaker: [.05, .2, .9, .58], inset: null, broll: [.05, .2, .9, .58], capY: .8, over: false, radius: 3.2, band: true },
+  split:    { speaker: [0, 0, 1, .54], inset: null,   broll: [0, .54, 1, .46], capY: .485, over: false, alwaysOn: true },
+  side:     { speaker: [0, 0, .5, 1],  inset: null,   broll: [.5, 0, .5, 1],   capY: .88,  over: false, alwaysOn: true },
 };
 const box = ([x, y, w, h]) => `left:${x * 100}%;top:${y * 100}%;width:${w * 100}%;height:${h * 100}%`;
 
@@ -3201,6 +3248,23 @@ function reactionInset(w, h) {
   return [(w - margin - side) / w, margin / h, side / w, side / h];
 }
 const lerpBox = (a, b, t) => a.map((v, i) => (1 - t) * v + t * b[i]);
+
+/* The circle a commentary clip puts the speaker in. Bigger than a reaction
+   cut's corner box because it is on screen for the whole video rather than for
+   the few seconds a picture is up, and pinned to its BOTTOM edge so it clears
+   the captions underneath it. Same numbers as src/lib/styles/layouts.ts. */
+const BUBBLE_SIDE = .42, BUBBLE_MARGIN = .05, BUBBLE_BOTTOM = .7;
+function bubbleInset(w, h) {
+  const short = Math.min(w, h), side = short * BUBBLE_SIDE, margin = short * BUBBLE_MARGIN;
+  const bh = side / h;
+  return [margin / w, Math.max(margin / h, BUBBLE_BOTTOM - bh), side / w, bh];
+}
+
+/* A layout's speaker box for a frame this shape — the two round-cornered
+   insets are the only ones that need to know. */
+function speakerBox(L, ar) {
+  return L.speaker === 'bubble' ? bubbleInset(ar[0], ar[1]) : L.speaker;
+}
 
 /* How much of the frame an insert is claiming right now, 0..1 — ramped at both
    ends so the speaker is already moving when the picture arrives. Short clips
@@ -3234,6 +3298,24 @@ const STYLES = {
     name: 'Reaction', tagline: 'You react, the picture takes the screen, you shrink into the corner.', accent: '#F5C453',
     layout: 'reaction', formats: ['short', 'long'],
     short: { broll: 6, gfx: 12, punch: 5, sfx: .7, trans: .4 },
+    progress: true, music: 'upbeat energetic',
+  },
+  commentary: {
+    name: 'Commentary', tagline: 'The thing you are talking about fills the screen. You watch from the corner.', accent: '#5BD6A0',
+    layout: 'bubble', formats: ['short', 'long'],
+    short: { broll: 4, gfx: 18, punch: 0, sfx: .45, trans: .25 },
+    progress: true, music: 'low-key groove',
+  },
+  news: {
+    name: 'Bulletin', tagline: 'A headline across the top, the story underneath.', accent: '#FF6B6B',
+    layout: 'headline', formats: ['short'],
+    short: { broll: 7, gfx: 12, punch: 0, sfx: .2, trans: .3 },
+    progress: true, music: 'none',
+  },
+  stacked: {
+    name: 'Chaptered', tagline: 'A title card every few seconds, so it never feels long.', accent: '#9B7BFF',
+    layout: 'full', formats: ['short'],
+    short: { broll: 8, gfx: 6, punch: 11, sfx: .7, trans: .8 },
     progress: true, music: 'upbeat energetic',
   },
   split: {
@@ -3345,6 +3427,7 @@ const state = {
 
 /* The caption look in force: the user's pick, or the one the edit style names. */
 const STYLE_CAP_DEFAULT = { clean: 'clean-plate', punchy: 'bold-pop', reaction: 'bold-pop',
+                            commentary: 'bold-pop', news: 'subtitle', stacked: 'bold-pop',
                             split: 'bold-pop', documentary: 'editorial', explainer: 'highlight-box',
                             podcast: 'podcast', sidebar: 'subtitle', vlog: 'cartoon' };
 /* Every style's caption preset, and a fallback for one that has not been given
@@ -3419,6 +3502,7 @@ function brollWarning() {
   const st = STYLES[styleNow()];
   if (!st) return '';
   const L = LAYOUTS[st.layout] ?? LAYOUTS.full;
+  if (L.alwaysOn && L.over) return `${st.name} puts the picture on the whole screen with you in a circle on top of it. With B-roll off there is no picture, so it would come out as a circle of you on a black screen — pick Clean or Punchy instead.`;
   if (L.broll) return `${st.name} keeps a picture on screen beside you the whole way through. With B-roll off, that half of the frame stays empty — pick Clean or Punchy instead if you want a full-frame video.`;
   if (L.inset) return `${st.name} is you reacting to something. With B-roll off there is nothing to cut to, so it will come out as a plain full-frame edit.`;
   return '';
@@ -3432,25 +3516,53 @@ function styleShape(style, mode) {
     + 'radial-gradient(16% 24% at 44% 84%, rgba(120,200,255,.55), transparent 70%),'
     + `radial-gradient(24% 34% at 74% 68%, rgba(180,130,255,.5), transparent 70%),`
     + 'linear-gradient(140deg, rgba(23,32,58,.9), rgba(14,21,38,.95))';
-  /* A reaction cut is drawn mid-insert, which is the only frame that tells you
-     anything: full frame with a face in it is what every other style also looks
-     like half the time. */
+  /* Each card is drawn at the moment that distinguishes its layout. For a
+     reaction cut that has to be mid-insert: full frame with a face in it is
+     what every other style also looks like half the time. */
   const ar = mode === 'short' ? [9, 16] : [16, 9];
   const inset = L.inset ? reactionInset(ar[0], ar[1]) : null;
-  const broll = L.broll
-    ? `<span class="sh-broll" style="${box(L.broll)};${pics}"></span>`
-    : inset
+  const cam = inset || speakerBox(L, ar);
+  const over = !!L.over;
+  const radius = L.round ? 'border-radius:50%;' : L.radius ? `border-radius:${L.radius}%;` : '';
+
+  const pictures = L.broll
+    ? `<span class="sh-broll" style="${box(L.broll)};${L.radius ? `border-radius:${L.radius}%;` : ''}${pics}"></span>`
+    : over
       ? `<span class="sh-full" style="${pics}"></span>`
       : `<span class="sh-insert" style="${pics}"></span>`;
-  return `<span class="shape" style="aspect-ratio:${mode === 'short' ? '9/16' : '16/9'}">
-      ${inset ? broll : ''}
-      <span class="sh-cam${inset ? ' sh-inset' : ''}" style="${box(inset || L.speaker)}">
+
+  const speaker = `<span class="sh-cam${over ? ' sh-inset' : ''}" style="${box(cam)};${radius}">
         <svg viewBox="0 0 150 150" preserveAspectRatio="xMidYMax meet">
           <path d="M14 150 L17 100 C20 74, 38 63, 58 62 L92 62 C112 63, 130 74, 133 100 L136 150 Z" fill="#3B3555"/>
           <ellipse cx="75" cy="34" rx="20" ry="25" fill="#D9B68B"/>
         </svg>
-      </span>
-      ${inset ? '' : broll}
+      </span>`;
+
+  /* A bulletin is text first — that is the format — so the card leads with the
+     band rather than looking like a small video with a gap above it. */
+  const band = L.band
+    ? `<span class="sh-band">
+         <i style="width:28%;height:3px;background:${style.accent}"></i>
+         <i style="width:100%;background:var(--chalk)"></i>
+         <i style="width:64%;background:var(--chalk)"></i>
+       </span>`
+    : '';
+
+  /* Some styles differ by CADENCE rather than by shape — a chaptered edit is a
+     full-frame video with a title card every few seconds — so those cards draw
+     one, or they look like duplicates of Clean. Read off the pacing, the same
+     way the app does, rather than hand-set. */
+  const cards = (style.short.gfx ?? 99) <= 8
+    ? `<span class="sh-card" style="outline-color:${style.accent}">
+         <i style="width:16px;height:3px;background:${style.accent}"></i>
+         <i style="width:34px;background:var(--chalk)"></i>
+       </span>`
+    : '';
+
+  return `<span class="shape" style="aspect-ratio:${mode === 'short' ? '9/16' : '16/9'}">
+      ${band}
+      ${over ? pictures + speaker : speaker + pictures}
+      ${cards}
       <span class="sh-caps" style="top:${capY * 100}%">
         <i style="width:68%;background:var(--chalk)"></i><i style="width:42%;background:${style.accent}"></i>
       </span>
@@ -4006,12 +4118,13 @@ function applyLayout() {
   const ph = $('phone');
   if (!ph) return;
   const layout = (STYLES[styleNow()] || {}).layout || 'full';
-  ph.classList.remove('lay-full', 'lay-reaction', 'lay-split', 'lay-side');
+  ph.classList.remove('lay-full', 'lay-reaction', 'lay-bubble', 'lay-headline', 'lay-split', 'lay-side');
   ph.classList.add('lay-' + layout);
   // The reaction cut writes the box's geometry on every frame; every other
   // layout takes it from the stylesheet, so hand it back.
   const cam = $('cam');
-  if (cam && layout !== 'reaction') {
+  const stacked = layout === 'reaction' || layout === 'bubble';
+  if (cam && !stacked) {
     for (const k of ['left', 'top', 'width', 'height', 'borderRadius', 'boxShadow']) cam.style[k] = '';
   }
 }
@@ -4176,8 +4289,12 @@ function paintPreview() {
      brings them back when it goes — the same interpolation the renderer does,
      off the same numbers, so the preview is not a separate opinion. */
   const cam = $('cam');
-  if (cam && (STYLES[styleNow()] || {}).layout === 'reaction') {
-    const ar = state.fmt === 'short' ? [9, 16] : [16, 9];
+  const LNow = LAYOUTS[(STYLES[styleNow()] || {}).layout] ?? LAYOUTS.full;
+  const ar = state.fmt === 'short' ? [9, 16] : [16, 9];
+
+  if (cam && LNow.inset) {
+    // A reaction cut, whose geometry is a function of time. The same
+    // interpolation the renderer does, off the same numbers.
     const cov = state.layers.broll ? easeInOut(brollCoverage(DOC.broll, t)) : 0;
     const R = lerpBox([0, 0, 1, 1], reactionInset(ar[0], ar[1]), cov);
     cam.style.left = (R[0] * 100).toFixed(3) + '%';
@@ -4188,6 +4305,27 @@ function paintPreview() {
     cam.style.boxShadow = cov > .001
       ? `0 ${(cov * 2.4).toFixed(2)}cqw ${(cov * 6).toFixed(2)}cqw -1cqw rgba(0,0,0,${(cov * .75).toFixed(3)}), inset 0 0 0 1px rgba(255,255,255,${(cov * .22).toFixed(3)})`
       : 'none';
+  } else if (cam && LNow.speaker === 'bubble') {
+    // A commentary bubble: the same stacking, but it never moves.
+    const R = bubbleInset(ar[0], ar[1]);
+    cam.style.left = (R[0] * 100).toFixed(3) + '%';
+    cam.style.top = (R[1] * 100).toFixed(3) + '%';
+    cam.style.width = (R[2] * 100).toFixed(3) + '%';
+    cam.style.height = (R[3] * 100).toFixed(3) + '%';
+    cam.style.borderRadius = '50%';
+    cam.style.boxShadow = '0 1.2cqw 3cqw -0.6cqw rgba(0,0,0,.6), inset 0 0 0 1px rgba(255,255,255,.18)';
+  }
+
+  // The bulletin's headline, which is the video's own title.
+  const band = $('band');
+  if (band) {
+    band.hidden = !LNow.band;
+    if (LNow.band) {
+      const kicker = band.querySelector('.kick');
+      const head = band.querySelector('h4');
+      if (kicker) kicker.textContent = 'The story';
+      if (head) head.textContent = DOC.title || 'Why we put the price up';
+    }
   }
   const k = on ? (t - active.a) / Math.max(.01, active.b - active.a) : 0;
   br.style.opacity = on ? String(Math.min(1, Math.min(t - active.a, active.b - t) / .14)) : '0';

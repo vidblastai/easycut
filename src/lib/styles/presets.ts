@@ -12,6 +12,9 @@ export type StyleId =
   | 'clean'
   | 'punchy'
   | 'reaction'
+  | 'commentary'
+  | 'news'
+  | 'stacked'
   | 'split'
   | 'documentary'
   | 'explainer'
@@ -210,6 +213,168 @@ const RAW_PRESETS: Record<StyleId, Omit<StylePreset, 'captionStyle'>> = {
       'something INSTEAD of at the speaker — choose them where the script names a specific thing ' +
       'worth seeing, and give each one long enough to be read. Prefer fewer, longer, more concrete ' +
       'inserts over a scatter of short ones.',
+  },
+
+  /*
+   * The commentary bubble.
+   *
+   * Different from a reaction cut in exactly one way that changes everything:
+   * the picture never leaves. That makes the B-roll track the video rather
+   * than an ornament on it, which is why `brollEverySec` here is the tightest
+   * number in this file and why `alwaysOn` on the layout makes the pipeline
+   * fill every gap. A bubble layout with a hole in its B-roll is a circle of
+   * face on a black screen.
+   *
+   * Punch-ins are off. The speaker is a fixed circle; scaling the footage
+   * inside it moves the face around behind a hole it cannot leave, which reads
+   * as a mistake rather than as a second camera.
+   */
+  commentary: {
+    id: 'commentary',
+    name: 'Commentary',
+    tagline: 'The thing you are talking about fills the screen. You watch from the corner.',
+    bestFor: 'Reacting to an article, a clip or a screenshot — where what you are discussing is worth looking at the whole time.',
+    accent: '#5BD6A0',
+    layout: 'bubble',
+    formats: ['short', 'long'],
+    captionPreset: 'bold-pop',
+    transitions: ['cut', 'dissolve'],
+    musicMood: 'low-key groove',
+    musicGainDb: -21,
+    silencePreset: 'balanced',
+    short: {
+      punchInEverySec: [0, 0],
+      punchInScale: [1, 1],
+      brollEverySec: 4,
+      brollDurationSec: [4, 8],
+      graphicEverySec: 18,
+      graphicDurationSec: 2.2,
+      transitionDensity: 0.25,
+      sfxDensity: 0.45,
+    },
+    long: {
+      punchInEverySec: [0, 0],
+      punchInScale: [1, 1],
+      brollEverySec: 8,
+      brollDurationSec: [6, 12],
+      graphicEverySec: 40,
+      graphicDurationSec: 3,
+      transitionDensity: 0.18,
+      sfxDensity: 0.3,
+    },
+    overlays: { progressBar: true, lowerThird: false, grain: false, vignette: true },
+    directorNotes:
+      'The viewer is looking at the PICTURE for this entire video; the speaker is a small circle ' +
+      'in the corner. So there must be something worth showing at every moment — never leave a ' +
+      'gap. Prefer literal, specific images of whatever is being discussed over mood footage, and ' +
+      'hold each one long enough to actually read it.',
+  },
+
+  /*
+   * The bulletin.
+   *
+   * Built for the feed rather than for the viewer who has already decided to
+   * watch: a headline across the top that does its work on mute, in a
+   * thumbnail, before any audio plays. That is also why the silence preset is
+   * the aggressive one and the hook matters more here than anywhere else —
+   * the format promises news, and news that takes four seconds to start is not
+   * news.
+   *
+   * No music by default. A bulletin scored like a trailer reads as a hoax, and
+   * this is the one style where being believed is the whole product.
+   */
+  news: {
+    id: 'news',
+    name: 'Bulletin',
+    tagline: 'A headline across the top, the story underneath.',
+    bestFor: 'Explaining something that happened — announcements, updates, anything where the headline IS the hook.',
+    accent: '#FF6B6B',
+    layout: 'headline',
+    formats: ['short'],
+    captionPreset: 'subtitle',
+    transitions: ['cut', 'slide'],
+    musicMood: '',
+    musicGainDb: -26,
+    silencePreset: 'aggressive',
+    short: {
+      punchInEverySec: [0, 0],
+      punchInScale: [1, 1],
+      brollEverySec: 7,
+      brollDurationSec: [2.5, 5],
+      graphicEverySec: 12,
+      graphicDurationSec: 2.5,
+      transitionDensity: 0.3,
+      sfxDensity: 0.2,
+    },
+    long: {
+      punchInEverySec: [0, 0],
+      punchInScale: [1, 1],
+      brollEverySec: 12,
+      brollDurationSec: [4, 8],
+      graphicEverySec: 30,
+      graphicDurationSec: 3,
+      transitionDensity: 0.2,
+      sfxDensity: 0.15,
+    },
+    overlays: { progressBar: true, lowerThird: true, grain: false, vignette: false },
+    directorNotes:
+      'This is a news bulletin. The TITLE is the headline printed across the top of every frame, ' +
+      'so write it as a headline and not as a caption: specific, under twelve words, the fact ' +
+      'first. Graphics should be numbers, dates and names rather than mood. Keep the hook to one ' +
+      'sentence — the format has already told the viewer what this is about.',
+  },
+
+  /*
+   * Rapid-fire story stacking.
+   *
+   * The retention trick of a series without asking anyone to come back: a
+   * chapter card every few seconds resets the viewer\'s sense of how far in
+   * they are, so a two-minute video feels like six short ones. The graphics
+   * cadence here is the style — everything else is ordinary.
+   *
+   * Long form is deliberately absent. Past about ninety seconds the cards stop
+   * reading as chapters and start reading as an edit that will not sit still.
+   */
+  stacked: {
+    id: 'stacked',
+    name: 'Chaptered',
+    tagline: 'A title card every few seconds, so it never feels long.',
+    bestFor: 'Lists, steps and multi-part stories — anything with more than one beat to get through.',
+    accent: '#9B7BFF',
+    layout: 'full',
+    formats: ['short'],
+    captionPreset: 'bold-pop',
+    transitions: ['cut', 'whip-pan', 'slide'],
+    musicMood: 'upbeat energetic',
+    musicGainDb: -18,
+    silencePreset: 'aggressive',
+    short: {
+      punchInEverySec: [9, 14],
+      punchInScale: [1.05, 1.1],
+      brollEverySec: 8,
+      brollDurationSec: [2, 4],
+      // The whole style: a card roughly every six seconds.
+      graphicEverySec: 6,
+      graphicDurationSec: 1.8,
+      transitionDensity: 0.8,
+      sfxDensity: 0.7,
+    },
+    long: {
+      punchInEverySec: [18, 28],
+      punchInScale: [1.04, 1.08],
+      brollEverySec: 12,
+      brollDurationSec: [3, 6],
+      graphicEverySec: 20,
+      graphicDurationSec: 2.5,
+      transitionDensity: 0.4,
+      sfxDensity: 0.4,
+    },
+    overlays: { progressBar: true, lowerThird: false, grain: false, vignette: false },
+    directorNotes:
+      'Break the script into numbered beats and give every one a short title card — three or four ' +
+      'words, not a sentence. The cards are the spine of this edit: a viewer should be able to ' +
+      'follow the whole thing from them alone with the sound off. Cut hard between beats; no ' +
+      'dissolves.',
   },
 
   /* The shape that made short-form watchable on mute: your face on top, a
@@ -468,6 +633,18 @@ export const STYLE_PRESETS: Record<StyleId, StylePreset> = Object.fromEntries(
 ) as Record<StyleId, StylePreset>;
 
 export const STYLE_LIST = Object.values(STYLE_PRESETS);
+
+/**
+ * Whether a style's signature is the CADENCE of its title cards.
+ *
+ * Read off the pacing rather than set by hand, so it cannot disagree with what
+ * the renderer does: a card every few seconds is a chaptered edit whatever the
+ * style is called, and a style that slows its cards down stops claiming to be
+ * one on the same edit.
+ */
+export function leadsWithCards(style: StylePreset, mode: FormatMode = 'short'): boolean {
+  return style[mode].graphicEverySec <= 8;
+}
 
 export function getStyle(id: string): StylePreset {
   return STYLE_PRESETS[id as StyleId] ?? STYLE_PRESETS.clean;

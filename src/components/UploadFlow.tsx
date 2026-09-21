@@ -35,6 +35,8 @@ interface StyleOption {
   accent: string;
   layout: Layout;
   formats: ('short' | 'long')[];
+  /** Whether the preview should draw a title card — see `leadsWithCards`. */
+  chapterCards?: { short: boolean; long: boolean };
 }
 
 interface FormatOption {
@@ -369,6 +371,7 @@ export function UploadFlow({ styles, formats }: { styles: StyleOption[]; formats
                     aspect={mode === 'short' ? '9:16' : '16:9'}
                     accent={s.accent}
                     className={mode === 'short' ? 'mx-auto w-[58%]' : 'w-full'}
+                    chapterCards={s.chapterCards?.[mode] ?? false}
                   />
                   <p className="mt-3 flex items-center gap-2 text-[14px] font-bold">
                     <span className="h-2 w-2 rounded-full" style={{ background: s.accent }} />

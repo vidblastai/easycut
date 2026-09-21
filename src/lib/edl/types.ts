@@ -39,7 +39,7 @@ export const ASPECT_DIMENSIONS: Record<Aspect, { width: number; height: number }
  * advertises a split screen and renders a full frame is a lie, and the only way
  * to make that impossible is to have one source of truth.
  */
-export const LAYOUTS = ['full', 'split', 'side', 'reaction'] as const;
+export const LAYOUTS = ['full', 'split', 'side', 'reaction', 'bubble', 'headline'] as const;
 export type Layout = (typeof LAYOUTS)[number];
 
 export const FormatSchema = z.object({
