@@ -7,7 +7,8 @@ import { BeforeAfter } from '@/components/marketing/BeforeAfter';
 import { EditReel } from '@/components/marketing/EditReel';
 import { LayerDemos } from '@/components/marketing/LayerDemos';
 import { MarketingStyles } from '@/components/marketing/styles';
-import { STYLE_LIST } from '@/lib/styles/presets';
+import { STYLE_LIST, leadsWithCards } from '@/lib/styles/presets';
+import { StylePreview } from '@/components/styles/StylePreview';
 
 /**
  * The marketing page.
@@ -201,15 +202,34 @@ export default function HomePage() {
             happens on screen. You can switch after the edit and re-render for free.
           </p>
 
+          {/*
+            * Drawn, not described.
+            *
+            * This section used to be twelve paragraphs, which is the one thing
+            * a style picker must never be: "Punchy" and "Split screen" carry
+            * exactly the same amount of information until you have seen one.
+            * The preview is the same component the app's own picker uses and
+            * reads from the same layout plan the renderer executes, so the
+            * homepage cannot advertise a shape the product does not make.
+            */}
           <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {STYLE_LIST.map((style) => (
-              <div key={style.id} className="card p-6">
-                <div className="flex items-center gap-2.5">
-                  <span className="h-2.5 w-2.5 rounded-full" style={{ background: style.accent }} />
-                  <h3 className="text-base font-bold tracking-[-0.02em]">{style.name}</h3>
+              <div key={style.id} className="card flex gap-4 p-5">
+                <StylePreview
+                  layout={style.layout}
+                  aspect="9:16"
+                  accent={style.accent}
+                  chapterCards={leadsWithCards(style, 'short')}
+                  className="w-[74px] flex-none self-start"
+                />
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2.5">
+                    <span className="h-2.5 w-2.5 flex-none rounded-full" style={{ background: style.accent }} />
+                    <h3 className="text-base font-bold tracking-[-0.02em]">{style.name}</h3>
+                  </div>
+                  <p className="mt-1.5 text-[13.5px] font-medium leading-snug text-chalk/80">{style.tagline}</p>
+                  <p className="mt-2 text-[13px] leading-relaxed text-muted">{style.bestFor}</p>
                 </div>
-                <p className="mt-2 text-sm font-medium text-chalk/80">{style.tagline}</p>
-                <p className="mt-2 text-sm leading-relaxed text-muted">{style.bestFor}</p>
               </div>
             ))}
           </div>
