@@ -1398,6 +1398,71 @@ body.instudio { overflow: hidden; }
   border-radius: var(--r); padding: 9px 12px; font-size: 12.5px; line-height: 1.5; color: var(--chalk);
 }
 
+/* ── who it's for ───────────────────────────────────────────────────── */
+.whofor { display: grid; gap: 14px; grid-template-columns: repeat(2, minmax(0, 1fr)); margin-top: 26px; }
+@media (max-width: 760px) { .whofor { grid-template-columns: 1fr; } }
+.whofor article {
+  border: 1px solid var(--line); background: var(--charcoal);
+  border-radius: var(--r-lg); padding: 22px;
+}
+.whofor h3 { margin: 0; font-size: 17px; font-weight: 700; letter-spacing: -.02em; }
+.whofor p { margin: 8px 0 0; font-size: 13.5px; line-height: 1.6; color: var(--muted); }
+.whofor .proof {
+  display: block; margin-top: 14px; font-size: 11.5px; font-weight: 700;
+  letter-spacing: .12em; text-transform: uppercase; color: var(--violet);
+}
+
+/* ── what it replaces ───────────────────────────────────────────────── */
+.cmp-wrap { margin-top: 26px; overflow-x: auto; }
+.cmp { width: 100%; min-width: 620px; border-collapse: collapse; text-align: left; }
+.cmp thead th {
+  padding: 10px 16px 10px 0; font-size: 11.5px; font-weight: 700;
+  letter-spacing: .12em; text-transform: uppercase; color: var(--faint);
+}
+.cmp thead th.ours {
+  padding: 12px 20px; color: var(--violet);
+  border: 1px solid var(--violet); border-bottom: 0; background: var(--violet-dim);
+  border-radius: var(--r-lg) var(--r-lg) 0 0;
+}
+.cmp tbody tr { border-top: 1px solid var(--line-soft); }
+.cmp th[scope="row"] { padding: 15px 16px 15px 0; font-size: 13px; font-weight: 600; color: var(--faint); vertical-align: top; }
+.cmp td { padding: 15px 16px 15px 0; font-size: 14.5px; color: var(--muted); vertical-align: top; }
+.cmp td.ours {
+  padding: 15px 20px; color: var(--chalk); font-weight: 600;
+  border-left: 1px solid var(--violet); border-right: 1px solid var(--violet);
+  background: var(--violet-dim);
+}
+.cmp tbody tr:last-child td.ours { border-bottom: 1px solid var(--violet); border-radius: 0 0 var(--r-lg) var(--r-lg); }
+.cmp-foot { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; margin-top: 26px; }
+.cmp-foot span { font-size: 13px; color: var(--muted); }
+
+/* ── the questions ──────────────────────────────────────────────────── */
+.faq-sec { display: grid; gap: 40px; grid-template-columns: minmax(0, 20rem) minmax(0, 1fr); align-items: start; }
+@media (max-width: 860px) { .faq-sec { grid-template-columns: 1fr; gap: 24px; } }
+.faq-rail h2 { margin: 0; }
+.faq-rail .sub { max-width: 34ch; }
+.faq-rail button { margin-top: 20px; }
+.faq-tabs { display: inline-flex; gap: 2px; padding: 4px; border: 1px solid var(--line); background: var(--charcoal); border-radius: 99px; }
+.faq-tabs button {
+  border: 0; border-radius: 99px; padding: 8px 16px; cursor: pointer;
+  font: inherit; font-size: 13px; font-weight: 700; color: var(--muted); background: transparent;
+}
+.faq-tabs button[aria-selected="true"] { background: var(--chalk); color: var(--ink); }
+.faq-list { margin-top: 22px; border-top: 1px solid var(--line-soft); }
+.faq-list details { border-bottom: 1px solid var(--line-soft); padding: 18px 0; }
+.faq-list summary {
+  display: flex; align-items: center; justify-content: space-between; gap: 16px;
+  cursor: pointer; list-style: none; font-size: 15.5px; font-weight: 700; letter-spacing: -.01em;
+}
+.faq-list summary::-webkit-details-marker { display: none; }
+.faq-list summary i {
+  flex: none; display: grid; place-items: center; width: 24px; height: 24px;
+  border: 1px solid var(--line); border-radius: 99px; color: var(--muted);
+  font-style: normal; font-size: 15px; line-height: 1; transition: transform var(--fast);
+}
+.faq-list details[open] summary i { transform: rotate(45deg); }
+.faq-list p { margin: 12px 0 0; max-width: 64ch; font-size: 14.5px; line-height: 1.65; color: var(--muted); }
+
 /* ── what the footage turned out to be ─────────────────────────────── */
 .verdict {
   display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
@@ -2489,6 +2554,16 @@ body.instudio { overflow: hidden; }
       </div>
     </div>
 
+    <!-- Who this is for. The section a landing page needs most and usually
+         skips: somebody two seconds in is not asking what it does, they are
+         asking whether it is for them. -->
+    <div class="home-sec">
+      <h2>Made for people who talk to a camera.</h2>
+      <p class="sub"><span id="home-style-count">14</span> styles and 4 aspect ratios, all out of the same edit.
+         If your video is somebody explaining something, it is for you.</p>
+      <div class="whofor" id="home-whofor"></div>
+    </div>
+
     <div class="home-sec">
       <h2>Pick a look.</h2>
       <p class="sub">Each one changes the pacing, the captions, the sound design and how much happens on screen. Switch after the edit and re-render for free.</p>
@@ -2505,6 +2580,28 @@ body.instudio { overflow: hidden; }
       </dl>
     </div>
 
+    <!-- What this is instead of. A table rather than three cards, because the
+         whole point is reading ACROSS a row. Compared against the two things
+         people actually do rather than against named competitors: that is the
+         real decision, and a table of claims about somebody else's product
+         goes stale silently and cannot be checked. -->
+    <div class="home-sec">
+      <h2>The edit is the reason you post less than you meant to.</h2>
+      <p class="sub">Not the filming &mdash; filming takes ten minutes. Here is what the other part costs.</p>
+      <div class="cmp-wrap">
+        <table class="cmp">
+          <thead>
+            <tr><th></th><th>Edit it yourself</th><th>Hire an editor</th><th class="ours">EasyCut</th></tr>
+          </thead>
+          <tbody id="home-cmp"></tbody>
+        </table>
+      </div>
+      <div class="cmp-foot">
+        <button class="cta-primary" data-route="new">Try it free</button>
+        <span><span id="home-free-min2">10</span> minutes on your own footage, no card.</span>
+      </div>
+    </div>
+
     <!-- Pricing on the homepage, not only on its own page. What it costs is
          the second question everybody has, and a price you have to go looking
          for reads as a price being hidden. -->
@@ -2517,6 +2614,22 @@ body.instudio { overflow: hidden; }
         <b>Or try it first &mdash; <span id="home-free-minutes">10</span> minutes, free.</b>
         <span>One video on your own footage, watermarked, so you can see what it does before you decide.</span>
         <button class="ghost" data-route="new">Start free</button>
+      </div>
+    </div>
+
+    <!-- The questions people actually ask before paying, in three groups —
+         the three things somebody is weighing are different in kind, and a
+         flat list makes you read all of the first to reach the third. -->
+    <div class="home-sec faq-sec">
+      <div class="faq-rail">
+        <h2>Still have questions?</h2>
+        <p class="sub">Anything not answered here, ask &mdash; including the awkward ones about
+           what happens to your footage.</p>
+        <button class="ghost" data-route="privacy">Read the privacy policy</button>
+      </div>
+      <div class="faq-body">
+        <div class="faq-tabs" id="home-faq-tabs"></div>
+        <div class="faq-list" id="home-faq"></div>
       </div>
     </div>
 
@@ -5602,6 +5715,124 @@ function buildHomePricing() {
   $('home-plan-cards').innerHTML = planCardsHtml();
 }
 
+/* ══════════════════════════════════════════ the rest of the homepage ═══ */
+
+/**
+ * Who this is for.
+ *
+ * Every line names styles that actually exist, and the count in the heading is
+ * read off STYLES rather than typed — so adding a style updates the claim.
+ */
+const AUDIENCES = [
+  ['Founders and consultants',
+   'One take, straight off a phone, into something that looks like you paid for it. The ums and the false starts come out; you do not have to do a second take.',
+   'Clean · Punchy · Bulletin'],
+  ['Podcasters',
+   'Drop in the full episode and take the shorts out of it. The long cut keeps its chapters; the clips get vertical framing that follows whoever is talking.',
+   'Podcast · Essay · Commentary'],
+  ['Course creators and teachers',
+   'Walkthroughs where the screen is the lesson and you narrate from the corner, with the steps numbered on screen so nobody has to scrub back.',
+   'Screencast · Explainer'],
+  ['Agencies and social teams',
+   'Several videos at once, a house caption look applied to all of them, and every aspect ratio out of one edit rather than one export per platform.',
+   'Every style, 10 at a time'],
+];
+
+function buildWhoItsFor() {
+  $('home-style-count').textContent = Object.keys(STYLES).length;
+  $('home-whofor').innerHTML = AUDIENCES.map(([title, body, proof]) => `
+    <article>
+      <h3>${title}</h3>
+      <p>${body}</p>
+      <span class="proof">${proof}</span>
+    </article>`).join('');
+}
+
+/**
+ * What this is instead of.
+ *
+ * Our column comes from the plan data, so the table cannot quote a price the
+ * rest of the page does not. The other two describe what people report, which
+ * the footnote on the app's version says out loud.
+ */
+function buildComparison() {
+  const starter = PLANS[0];
+  const ROWS = [
+    ['Cost per month', '$0 — and your evenings', 'Per video, every video', `From $${starter.price}`],
+    ['Your time per video', 'Hours on the timeline', 'Briefs and revision notes', 'One upload'],
+    ['Turnaround', 'Whenever you get to it', 'Somebody else’s calendar', 'Minutes'],
+    ['Changing your mind', 'Re-export everything', 'Another round of notes', 'Re-renders only what changed'],
+    ['Every aspect ratio', 'One export per platform', 'Usually charged as extra', 'From the same edit'],
+  ];
+  $('home-free-min2').textContent = FREE_MINUTES;
+  $('home-cmp').innerHTML = ROWS.map(([label, diy, hired, ours]) => `
+    <tr>
+      <th scope="row">${label}</th>
+      <td>${diy}</td>
+      <td>${hired}</td>
+      <td class="ours">${ours}</td>
+    </tr>`).join('');
+}
+
+/**
+ * The questions, in three groups.
+ *
+ * `<details>` rather than more state: it opens without any script, it is
+ * keyboard accessible for free, and the answers are readable by anything that
+ * does not run JavaScript.
+ */
+const FAQ = [
+  ['edit', 'The edit', [
+    ['Do I need to know how to edit?',
+     'No. You pick a style, drop the file in, and the edit is made — cuts, captions, B-roll, graphics, sound effects and music. There is a full timeline editor if you want to change something, but nothing needs you to open it.'],
+    ['What does it actually do to my video?',
+     'It removes the silences, the ums, the false starts and the takes you redid, then builds an edit on top: word-by-word captions timed to your speech, B-roll where you name something concrete, graphics for the numbers you say, punch-ins, transitions and a music bed that ducks under your voice.'],
+    ['Can I change something afterwards?',
+     'Yes, and it is the cheap path. Every layer is editable in the timeline, and re-rendering after a change only redraws the part that changed rather than the whole video — so fixing one caption takes seconds, not another full render.'],
+    ['What if I pick the wrong style?',
+     'Switch it and re-render. Changing between styles costs nothing — it replays the edit against the same analysis rather than starting over.'],
+    ['Which aspect ratios do I get?',
+     'All four — 9:16, 1:1, 16:9 and 4:5 — out of the same edit, so you are not exporting once per platform. The framing follows the speaker rather than cropping the middle out.'],
+  ]],
+  ['app', 'The app', [
+    ['How long does it take?',
+     'Analysis is a couple of minutes. The render depends on length — a short is quick, a ten-minute video takes longer. You can close the tab; it emails you when it is done.'],
+    ['How long can my video be?',
+     'Up to 30 minutes in a single upload on Starter, and up to 240 on the top plan. That is a separate limit from the monthly allowance, so one long file cannot eat your whole month in a single click.'],
+    ['Is there a watermark?',
+     'Only on the free tier. Every paid plan exports clean, at 1080p, in every aspect ratio.'],
+    ['What happens to my footage?',
+     'It is deleted on a schedule your plan sets — 7 days on Starter — and the finished videos are kept far longer. Deletion is automatic and permanent. Once the footage has gone you can still watch and download what you made; you just cannot re-render it.'],
+    ['Is my video used to train anything?',
+     'No. Your footage, transcripts and finished videos are never used to train any model of ours, and we do not sell your data. Your video itself never goes to the AI — only the words you said.'],
+  ]],
+  ['billing', 'Billing', [
+    ['Can I try it before paying?',
+     'Yes — 10 minutes free, on your own footage, watermarked. That is a whole video, not a preview of one.'],
+    ['Why is it measured in minutes rather than videos?',
+     'Because almost everything a video costs scales with how much footage went in, not with how many clips came out. A plan sold as “three videos” would have to either refuse your hour-long podcast or lose money on it. The page shows both numbers, and the video counts are deliberately cautious.'],
+    ['What happens if I go over?',
+     'You are told before the upload starts, not after. The meter is checked against the file you are about to send, so nothing gets halfway through and then fails.'],
+    ['Can I cancel?',
+     'Any time, from your account settings. You keep the plan until the end of the month you have paid for, and your finished videos stay for as long as the plan you made them on promised.'],
+    ['What if a video comes out badly?',
+     'Open it in the editor and fix the bit that is wrong, or switch style and re-render — both are free and neither re-runs the analysis. If it failed outright, it says where it stopped and everything before that point is kept.'],
+  ]],
+];
+
+let faqTab = 'edit';
+
+function buildFaq() {
+  $('home-faq-tabs').innerHTML = FAQ.map(([id, label]) => `
+    <button type="button" role="tab" data-faq="${id}" aria-selected="${id === faqTab}">${label}</button>`).join('');
+  const group = FAQ.find(([id]) => id === faqTab) ?? FAQ[0];
+  $('home-faq').innerHTML = group[2].map(([q, a]) => `
+    <details>
+      <summary>${q}<i>+</i></summary>
+      <p>${a}</p>
+    </details>`).join('');
+}
+
 function buildPrivacy() {
   const rows = [{ name: 'Free', srcDays: 2, vidDays: 7 }, ...PLANS];
   $('retention-table').innerHTML =
@@ -5675,6 +5906,14 @@ document.addEventListener('input', (e) => {
 });
 
 document.addEventListener('click', (e) => {
+  // The FAQ's topic tabs. Before the route handler, because these buttons are
+  // not navigation and must not fall through to it.
+  const tab = e.target.closest('[data-faq]');
+  if (tab) {
+    faqTab = tab.dataset.faq;
+    return buildFaq();
+  }
+
   const nav = e.target.closest('[data-route]');
   if (nav) {
     const r = nav.dataset.route;
@@ -5805,6 +6044,9 @@ window.addEventListener('resize', measureTopbar);
 // should never open on "Reading your footage…" for a file it already has.
 adoptFormat({ w: 1920, h: 1080, d: 47 });
 buildHomeLooks();
+buildWhoItsFor();
+buildComparison();
+buildFaq();
 buildHomePricing();
 buildWizard();
 buildNav();
