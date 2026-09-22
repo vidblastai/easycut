@@ -96,6 +96,48 @@ export const SOURCE_MINUTES_PER_SHORT = 10;
 export const SOURCE_MINUTES_PER_LONG = 20;
 
 /**
+ * Billing interval, and what committing to a year is worth.
+ *
+ * A fifth off, which is the discount the card shows and the one the annual
+ * Stripe Price has to be created at. The two are not connected by anything but
+ * this constant and whoever sets the price up — Stripe is the authority on what
+ * is charged — so `annualTotal` below is what the page is allowed to claim and
+ * the number to type into Stripe, not a number we compute from a live price.
+ */
+export const BILLING_INTERVALS = ['monthly', 'annual'] as const;
+export type BillingInterval = (typeof BILLING_INTERVALS)[number];
+export const ANNUAL_DISCOUNT = 0.2;
+
+/** What a year on this plan works out at per month, rounded to the cent. */
+export function annualMonthly(plan: Plan): number {
+  return Math.round(plan.priceUsd * (1 - ANNUAL_DISCOUNT) * 100) / 100;
+}
+
+/**
+ * What the customer is actually charged, once, for a year.
+ *
+ * Derived from the rounded monthly figure rather than from the list price, so
+ * the two numbers on the card agree with each other: a card that says
+ * "$59.99 / month" and "$719.90 billed once a year" is out by two cents and
+ * somebody will notice.
+ */
+export function annualTotal(plan: Plan): number {
+  return Math.round(annualMonthly(plan) * 12 * 100) / 100;
+}
+
+/** The figure the big number on a card shows, for the interval on screen. */
+export function priceFor(plan: Plan, interval: BillingInterval): number {
+  return interval === 'annual' ? annualMonthly(plan) : plan.priceUsd;
+}
+
+/** `$24`, `$59.99`, `$1,824` — no trailing `.00`, thousands grouped. */
+export function usd(amount: number): string {
+  return `$${Number.isInteger(amount)
+    ? amount.toLocaleString('en-US')
+    : amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+}
+
+/**
  * The shortest job we plan margins against, in source minutes.
  *
  * Deliberately NOT the marketing figure above, because the two numbers answer

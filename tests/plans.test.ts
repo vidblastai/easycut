@@ -4,12 +4,16 @@ import {
   COGS_PER_SOURCE_MINUTE_USD,
   PAID_PLANS,
   PLANS,
+  annualMonthly,
+  annualTotal,
   canReEdit,
   getPlan,
   planEconomics,
   renderExpiresAt,
   SOURCE_MINUTES_PER_SHORT,
+  priceFor,
   sourceExpiresAt,
+  usd,
   videosFor,
 } from '@/lib/billing/plans';
 
@@ -191,5 +195,43 @@ describe('every plan feature is one the software actually enforces', () => {
       expect(above.sourceRetentionDays).toBeGreaterThan(below.sourceRetentionDays);
       expect(above.concurrentJobs).toBeGreaterThan(below.concurrentJobs);
     }
+  });
+});
+
+describe('paying by the year', () => {
+  it('takes a fifth off, to the cent', () => {
+    for (const plan of PAID_PLANS) {
+      expect(annualMonthly(plan)).toBeCloseTo(plan.priceUsd * 0.8, 2);
+      // Rounded to a real price, not a fraction of a cent.
+      expect(Math.round(annualMonthly(plan) * 100)).toBe(annualMonthly(plan) * 100);
+    }
+  });
+
+  it('charges exactly twelve of the monthly figure it printed', () => {
+    // The two numbers sit on the same card. A total derived from the LIST
+    // price instead of the rounded monthly one is out by a couple of cents on
+    // Creator, and somebody does that multiplication.
+    for (const plan of PAID_PLANS) {
+      expect(annualTotal(plan)).toBeCloseTo(annualMonthly(plan) * 12, 2);
+    }
+  });
+
+  it('is cheaper over a year than paying monthly, on every plan', () => {
+    for (const plan of PAID_PLANS) {
+      expect(annualTotal(plan)).toBeLessThan(plan.priceUsd * 12);
+    }
+  });
+
+  it('shows the monthly figure for the interval on screen', () => {
+    const creator = getPlan('creator');
+    expect(priceFor(creator, 'monthly')).toBe(creator.priceUsd);
+    expect(priceFor(creator, 'annual')).toBe(annualMonthly(creator));
+  });
+
+  it('formats money without trailing zeros, and groups thousands', () => {
+    expect(usd(24)).toBe('$24');
+    expect(usd(59.99)).toBe('$59.99');
+    expect(usd(1824)).toBe('$1,824');
+    expect(usd(719.88)).toBe('$719.88');
   });
 });

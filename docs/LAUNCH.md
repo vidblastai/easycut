@@ -139,6 +139,15 @@ What is left is yours, and it is about twenty minutes in the Stripe dashboard:
 1. Three recurring monthly **products and prices** — $30, $74.99, $190.
 2. Put the ids in `.env`: `STRIPE_SECRET_KEY`, `STRIPE_PRICE_STARTER`,
    `STRIPE_PRICE_CREATOR`, `STRIPE_PRICE_STUDIO`.
+   *Optional, and the pricing page already offers it:* a second, **yearly**
+   price on each of those same three products — $288, $719.88 and $1,824,
+   which is the 20% the Annual toggle advertises — into
+   `STRIPE_PRICE_STARTER_ANNUAL`, `STRIPE_PRICE_CREATOR_ANNUAL` and
+   `STRIPE_PRICE_STUDIO_ANNUAL`. Until they are set the toggle still shows the
+   annual prices, but each card says paying by the year is not switched on yet
+   rather than quietly billing monthly. A yearly price on a *new* product
+   would work for checkout and then break renewals, because the webhook maps a
+   price back to a plan.
 3. A **webhook endpoint** at `https://your-domain/api/billing/webhook`,
    subscribed to `checkout.session.completed`,
    `customer.subscription.created`, `.updated` and `.deleted`. Its signing

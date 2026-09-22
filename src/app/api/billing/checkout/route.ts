@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { ensureUser, isAuthEnabled } from '@/lib/auth';
 import { env } from '@/lib/config/env';
-import { getPlan } from '@/lib/billing/plans';
+import { getPlan, type BillingInterval } from '@/lib/billing/plans';
 import { billingBlocker, priceIdFor, stripe } from '@/lib/billing/stripe';
 import { customerFor, readPlanId } from '@/lib/billing/subscription';
 
@@ -38,16 +38,23 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Sign in first, so the plan has an account to land on.' }, { status: 401 });
   }
 
-  const body = (await request.json().catch(() => ({}))) as { plan?: unknown };
+  const body = (await request.json().catch(() => ({}))) as { plan?: unknown; interval?: unknown };
   const planId = readPlanId(body.plan);
+  // Anything but the exact string is monthly. A typo must not become a
+  // year-long commitment somebody did not choose.
+  const interval: BillingInterval = body.interval === 'annual' ? 'annual' : 'monthly';
   if (!planId || planId === 'free') {
     return NextResponse.json({ error: 'Pick one of the paid plans.' }, { status: 400 });
   }
 
-  const price = priceIdFor(planId);
+  const price = priceIdFor(planId, interval);
   if (!price) {
     return NextResponse.json(
-      { error: `${getPlan(planId).name} has no Stripe price configured yet.` },
+      {
+        error: interval === 'annual'
+          ? `${getPlan(planId).name} has no annual Stripe price configured yet, so it can only be bought monthly.`
+          : `${getPlan(planId).name} has no Stripe price configured yet.`,
+      },
       { status: 503 },
     );
   }
@@ -64,8 +71,8 @@ export async function POST(request: Request) {
     // The id has to be ON THE SUBSCRIPTION, not only on the session: the
     // session is gone by the time `customer.subscription.updated` arrives
     // months later, and that event is how a renewal or a cancellation is heard.
-    subscription_data: { metadata: { userId, plan: planId } },
-    metadata: { userId, plan: planId },
+    subscription_data: { metadata: { userId, plan: planId, interval } },
+    metadata: { userId, plan: planId, interval },
     allow_promotion_codes: true,
     // `{CHECKOUT_SESSION_ID}` is substituted by Stripe. The landing page uses it
     // to tell "just paid" from "wandered onto this URL".

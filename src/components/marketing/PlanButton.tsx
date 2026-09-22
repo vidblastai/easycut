@@ -18,6 +18,7 @@ import { clsx } from 'clsx';
  */
 export function PlanButton({
   plan,
+  interval = 'monthly',
   label,
   featured,
   /** False when there is no Stripe key — then this is an ordinary sign-up link. */
@@ -25,6 +26,8 @@ export function PlanButton({
   className,
 }: {
   plan: string;
+  /** Which price to buy. The server checks it again; this is what was shown. */
+  interval?: 'monthly' | 'annual';
   label: string;
   featured?: boolean;
   buyable: boolean;
@@ -40,7 +43,7 @@ export function PlanButton({
       const response = await fetch('/api/billing/checkout', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ plan }),
+        body: JSON.stringify({ plan, interval }),
       });
       const body = (await response.json().catch(() => ({}))) as { url?: string; error?: string };
 
@@ -54,7 +57,7 @@ export function PlanButton({
         // auth provider mounted it throws, and the button dies mid-click with
         // the spinner still on it.
         setBusy(false);
-        window.location.href = `/sign-in?redirect_url=${encodeURIComponent(`/pricing?plan=${plan}`)}`;
+        window.location.href = `/sign-in?redirect_url=${encodeURIComponent(`/pricing?plan=${plan}&interval=${interval}`)}`;
         return;
       }
       if (!response.ok || !body.url) {
@@ -85,6 +88,7 @@ export function PlanButton({
         onClick={start}
         disabled={busy}
         data-plan={plan}
+        data-interval={interval}
         className={clsx(featured ? 'btn-primary' : 'btn-ghost', 'w-full justify-center')}
       >
         {busy ? 'Opening checkout…' : label}

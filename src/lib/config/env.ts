@@ -207,6 +207,17 @@ export const env = {
       creator: str('STRIPE_PRICE_CREATOR'),
       studio: str('STRIPE_PRICE_STUDIO'),
     },
+    /*
+     * The same three plans billed once a year, which in Stripe is a separate
+     * Price on the same Product. Optional: a deployment with none of these set
+     * sells monthly only, the annual toggle says so on the card, and nothing
+     * charges the wrong interval because it could not find a price.
+     */
+    annualPrices: {
+      starter: str('STRIPE_PRICE_STARTER_ANNUAL'),
+      creator: str('STRIPE_PRICE_CREATOR_ANNUAL'),
+      studio: str('STRIPE_PRICE_STUDIO_ANNUAL'),
+    },
   },
 
   /**

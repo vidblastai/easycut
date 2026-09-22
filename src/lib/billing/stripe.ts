@@ -1,7 +1,7 @@
 import Stripe from 'stripe';
 import { env } from '@/lib/config/env';
 import { isAuthEnabled } from '@/lib/auth';
-import { PAID_PLANS, type PlanId } from './plans';
+import { PAID_PLANS, type BillingInterval, type PlanId } from './plans';
 
 /**
  * Taking the money.
@@ -52,9 +52,18 @@ export function stripe(): Stripe | null {
   return client;
 }
 
-/** The Stripe price for a plan, or undefined when that plan has no price set. */
-export function priceIdFor(plan: PlanId): string | undefined {
-  return env.stripe.prices[plan as keyof typeof env.stripe.prices];
+/**
+ * The Stripe price for a plan at one interval, or undefined when that plan has
+ * no price set for it.
+ *
+ * Monthly and annual are two separate Prices in Stripe, and a deployment may
+ * legitimately have only the monthly ones. Returning undefined rather than
+ * falling back to the other interval is deliberate: a fallback here would
+ * charge somebody monthly on a card that said annual.
+ */
+export function priceIdFor(plan: PlanId, interval: BillingInterval = 'monthly'): string | undefined {
+  const table = interval === 'annual' ? env.stripe.annualPrices : env.stripe.prices;
+  return table[plan as keyof typeof table];
 }
 
 /**
@@ -68,7 +77,10 @@ export function priceIdFor(plan: PlanId): string | undefined {
 export function planForPrice(priceId: string | null | undefined): PlanId | null {
   if (!priceId) return null;
   for (const plan of PAID_PLANS) {
-    if (priceIdFor(plan.id) === priceId) return plan.id;
+    // Either interval maps to the same plan — an annual subscriber is on
+    // Creator exactly as much as a monthly one, and a webhook that only
+    // recognised monthly prices would quietly downgrade every annual account.
+    if (priceIdFor(plan.id) === priceId || priceIdFor(plan.id, 'annual') === priceId) return plan.id;
   }
   return null;
 }
@@ -82,8 +94,20 @@ export function planForPrice(priceId: string | null | undefined): PlanId | null 
  * cannot sell one. Without this check the button opens, the route answers
  * "sign in first", and there is no sign-in page to send them to.
  */
-export function canBuy(planId: PlanId): boolean {
-  return billingEnabled() && isAuthEnabled() && Boolean(priceIdFor(planId));
+export function canBuy(planId: PlanId, interval: BillingInterval = 'monthly'): boolean {
+  return billingEnabled() && isAuthEnabled() && Boolean(priceIdFor(planId, interval));
+}
+
+/**
+ * Whether a year can be bought at all on this deployment.
+ *
+ * The annual toggle is a display choice — the prices on the card are read off
+ * `plans.ts` and are true whether or not Stripe has been set up — but the
+ * BUTTON has to tell the truth, so the card falls back to saying annual is not
+ * available yet rather than opening a checkout for the wrong interval.
+ */
+export function annualAvailable(): boolean {
+  return PAID_PLANS.every((p) => Boolean(priceIdFor(p.id, 'annual')));
 }
 
 /** Plans that can actually be bought right now: priced, and with a price id. */
