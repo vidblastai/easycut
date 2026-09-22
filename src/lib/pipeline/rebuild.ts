@@ -14,11 +14,18 @@ import type { Transcript } from '@/lib/transcribe/types';
  *
  * Transcription and the director are the only stages that cost money. Because
  * their outputs are stored on the project, everything that *feels* like a
- * re-edit — a different style, a different aspect ratio, a shorter cut, even
- * "make me a vertical short out of this ten-minute video" — is really just this
- * function plus a render. No ASR call, no LLM call, no re-upload.
+ * re-edit — a different style, a shorter cut, a different aspect exported by
+ * hand — is really just this function plus a render. No ASR call, no LLM call,
+ * no re-upload.
  *
  * That is why the editor can offer free, unlimited tweaks.
+ *
+ * Note what `aspect` is and is not. The default path never sets it: the format
+ * is chosen from the shape of the footage (see src/lib/styles/detect.ts) and
+ * the output keeps that shape, because EasyCut edits the video you filmed
+ * rather than converting it into the other format. This override exists for
+ * the "Export 1:1" button in the editor — somebody asking, in as many words,
+ * for a reframed copy — and for nothing else.
  */
 
 export interface RebuildInput {

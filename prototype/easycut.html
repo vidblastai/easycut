@@ -1479,9 +1479,9 @@ body.instudio { overflow: hidden; }
 /* Fixed column counts, not auto-fit: six cards into an auto-fit grid lands
    five on the first row and one orphan on the second, which reads as a
    broken page rather than a gallery. */
-.reel { display: grid; gap: 14px; margin-top: 34px; grid-template-columns: repeat(6, minmax(0, 1fr)); }
-@media (max-width: 1040px) { .reel { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
-@media (max-width: 560px) { .reel { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; } }
+.reel { display: grid; gap: 14px; margin-top: 34px; grid-template-columns: repeat(4, minmax(0, 1fr)); }
+@media (max-width: 860px) { .reel { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 520px) { .reel { gap: 10px; } }
 .reel-card {
   position: relative; display: block; width: 100%; padding: 0; text-align: left;
   border: 1px solid var(--line); border-radius: var(--r-lg); overflow: hidden;
@@ -1533,8 +1533,8 @@ body.instudio { overflow: hidden; }
 .reel-split span { font-size: 11px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: var(--faint); }
 /* The line that makes a still read as something playing. */
 .reel-card .prog { position: absolute; left: 0; bottom: 0; z-index: 5; height: 2px; width: 0; background: var(--violet); }
-.reel.wide { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-@media (max-width: 860px) { .reel.wide { grid-template-columns: 1fr; } }
+.reel.wide { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+@media (max-width: 720px) { .reel.wide { grid-template-columns: 1fr; } }
 
 /* ── the review wall ───────────────────────────────────────────────── */
 .rev-score {
@@ -2593,11 +2593,12 @@ body.instudio { overflow: hidden; }
       <div class="mid-head">
         <span class="eyebrow"><i></i>The showreel</span>
         <h2>These cuts came out of EasyCut.</h2>
-        <p class="sub">One upload each, no editor, no timeline. Tap one to start from that
-           style with your own footage.</p>
+        <p class="sub">Vertical for Reels and Shorts, widescreen for YouTube &mdash; you upload the
+           footage for the one you are making. One upload each, no editor, no timeline.
+           Tap one to start from that style with your own footage.</p>
       </div>
       <div class="reel" id="home-reel"></div>
-      <div class="reel-split"><span>Long form, from the same upload</span></div>
+      <div class="reel-split"><span>Long form, the same editor</span></div>
       <div class="reel wide" id="home-reel-long"></div>
       <div class="reel-foot">
         <button class="cta-primary" data-route="new">Cut mine like this</button>
@@ -2721,8 +2722,9 @@ body.instudio { overflow: hidden; }
          asking whether it is for them. -->
     <div class="home-sec">
       <h2>Made for people who talk to a camera.</h2>
-      <p class="sub"><span id="home-style-count">14</span> styles and 4 aspect ratios, all out of the same edit.
-         If your video is somebody explaining something, it is for you.</p>
+      <p class="sub"><span id="home-style-count">14</span> styles, across both formats &mdash; vertical
+         for Reels and Shorts, widescreen for YouTube. If your video is somebody explaining
+         something, it is for you.</p>
       <div class="whofor" id="home-whofor"></div>
     </div>
 
@@ -3775,7 +3777,7 @@ const SFX = [
 /* ═══════════════════════════════════════════════════ state ═══ */
 const state = {
   view: 'home', route: 'home', mode: 'simple', wiz: 0,
-  file: { name: 'pricing-talk-take3.mov', meta: '0:47 · 1920×1080 · 412 MB' },
+  file: { name: 'pricing-talk-take3.mov', meta: '0:47 · 1080×1920 · 412 MB' },
   note: 'Keep the bit about raising prices.',
   /* `fmt` is DETECTED from the footage now, never asked. `fmtWhy` is the
      sentence that says so, and `fmtOverride` records a person disagreeing. */
@@ -3842,14 +3844,22 @@ const LAYER_CARDS = [
   ['music', 'Music', 'A bed that ducks under your voice and lifts between lines.'],
 ];
 
-/* Which format a piece of footage is, read off the footage. Vertical or square
-   is a short; widescreen under three minutes is a short too, because there is
-   nothing to cut a long piece down from. Everything else is long form. */
+/* Which of the two pipelines the footage goes down, read off the file.
+
+   This is not a repurposing tool. It is two editors in one app — a vertical
+   one for Reels and Shorts, a widescreen one for YouTube — so the shape of the
+   picture is the whole rule. Vertical in, vertical out; widescreen in,
+   widescreen out, whatever it runs. The same rule as src/lib/styles/detect.ts.
+
+   Length used to be a second rule, and it turned a two-minute widescreen clip
+   into a cropped vertical short. That is somebody's footage reframed into a
+   format they never asked for. */
 function detectFormat(probe) {
-  if (!probe || !probe.w || !probe.h) return { mode: 'short', why: "We couldn't read the file, so we've assumed a short." };
-  if (probe.h >= probe.w) return { mode: 'short', why: `Shot ${probe.h > probe.w ? 'vertical' : 'square'}, so it's a short.` };
-  if (probe.d > 0 && probe.d < 180) return { mode: 'short', why: `${clock(probe.d)} of widescreen — short enough to cut vertical.` };
-  return { mode: 'long', why: `${clock(probe.d)} of widescreen, so it's long form.` };
+  if (!probe || !probe.w || !probe.h) return { mode: 'short', why: "We couldn't read the file, so we've assumed a vertical short." };
+  if (probe.h >= probe.w) return { mode: 'short', why: `Shot ${probe.h > probe.w ? 'vertical' : 'square'}, so it's a short — and it stays vertical.` };
+  return { mode: 'long', why: probe.d > 0
+    ? `${clock(probe.d)} of widescreen, so it's long form — and it stays widescreen.`
+    : "Shot widescreen, so it's long form — and it stays widescreen." };
 }
 function clock(sec) {
   if (!sec) return 'Widescreen';
@@ -4045,9 +4055,10 @@ document.addEventListener('click', (e) => {
 
   if (b.dataset.wiz === 'clear') { state.file = null; buildWizard(); render(); return; }
   if (b.dataset.wiz === 'pick') {
-    state.file = { name: 'pricing-talk-take3.mov', meta: '0:47 · 1920×1080 · 412 MB' };
-    // The sample is 47 seconds of 1920×1080 — short enough to cut vertical.
-    adoptFormat({ w: 1920, h: 1080, d: 47 });
+    state.file = { name: 'pricing-talk-take3.mov', meta: '0:47 · 1080×1920 · 412 MB' };
+    // The sample is 47 seconds shot vertical, so it goes down the short-form
+    // pipeline and comes out vertical. Nothing is reframed.
+    adoptFormat({ w: 1080, h: 1920, d: 47 });
     buildWizard();
     return;
   }
@@ -4110,7 +4121,7 @@ const STAGES = [
 ];
 
 const STAGE_DETAIL = {
-  ingest: '1920×1080 · 47.0s · proxy + audio extracted',
+  ingest: '1080×1920 · 47.0s · proxy + audio extracted',
   transcribe: '118 words · deepgram nova-3',
   silence: '11 gaps · 24.3s of dead air',
   cleanup: '6 fillers · 1 stammer · 2 retakes',
@@ -5939,7 +5950,7 @@ function planCardsHtml() {
         ${li(`Footage kept <b>${p.srcDays} days</b> — re-cut it as often as you like until then`)}
         ${li(`Finished videos kept <b>${p.vidDays === null ? 'for as long as you subscribe' : p.vidDays + ' days'}</b>`)}
         ${li(`Up to ${p.maxUpload} minutes in a single upload`)}
-        ${li(`${p.k4 ? '4K' : '1080p'} export, and every aspect ratio from one edit`)}
+        ${li(`${p.k4 ? '4K' : '1080p'} export, in the shape you shot in — vertical or widescreen`)}
         ${li(`${p.jobs === 1 ? 'One video at a time' : p.jobs + ' videos at once'}${p.priority ? ', and first in the queue' : ''}`)}
         ${li('No watermark')}
       </ul>
@@ -5981,15 +5992,12 @@ function buildHomePricing() {
 const SHOWREEL = [
   { title: 'Pricing, backwards',         style: 'punchy',     mode: 'short', len: '0:34' },
   { title: 'Reacting to my own ad',      style: 'reaction',   mode: 'short', len: '0:48' },
-  { title: 'Cold email, line by line',   style: 'split',      mode: 'short', len: '0:41' },
-  { title: 'Shipped this week',          style: 'news',       mode: 'short', len: '0:29' },
   { title: 'The comment that started it',style: 'commentary', mode: 'short', len: '1:02' },
   { title: 'One day, one launch',        style: 'vlog',       mode: 'short', len: '0:57' },
 ];
 const SHOWREEL_LONG = [
   { title: 'Setting the whole thing up', style: 'tutorial', mode: 'long', len: '6:12' },
   { title: 'Q4 numbers, explained',      style: 'sidebar',  mode: 'long', len: '11:40' },
-  { title: 'Why nobody finishes things', style: 'essay',    mode: 'long', len: '8:55' },
 ];
 
 /* The beats every card plays, in seconds. One loop is deliberately longer
@@ -6115,8 +6123,8 @@ const REVIEWS = [
   { stars: 4, title: 'Reaction style sold it',
     body: 'Full frame while I talk, corner box the second a picture comes up, back again. That is the edit I was paying somebody two hundred a video for, and it does it on the first pass.',
     role: 'Creator, short-form' },
-  { stars: 5, title: 'One upload, every aspect ratio',
-    body: 'The vertical and the widescreen come out of the same edit, so the podcast clip and the full episode are one job instead of two. That alone is the subscription.',
+  { stars: 5, title: 'Both formats without two tools',
+    body: 'The YouTube edit and the vertical clips are the same app and the same subscription. I upload each one as what it is and get it back cut properly for where it is going.',
     role: 'Podcast producer' },
   { stars: 5, title: 'The ums are gone and I did not ask',
     body: 'I stopped doing second takes. It cuts the pauses and the false starts, and the captions stay in time afterwards, which is the bit every other tool gets wrong.',
@@ -6164,13 +6172,13 @@ const AUDIENCES = [
    'One take, straight off a phone, into something that looks like you paid for it. The ums and the false starts come out; you do not have to do a second take.',
    'Clean · Punchy · Bulletin'],
   ['Podcasters',
-   'Drop in the full episode and take the shorts out of it. The long cut keeps its chapters; the clips get vertical framing that follows whoever is talking.',
+   'Drop in the full episode and get the long cut back chaptered, with the names on screen and the dead air gone. Filmed a vertical clip for the feed as well? That goes through as its own short.',
    'Podcast · Essay · Commentary'],
   ['Course creators and teachers',
    'Walkthroughs where the screen is the lesson and you narrate from the corner, with the steps numbered on screen so nobody has to scrub back.',
    'Screencast · Explainer'],
   ['Agencies and social teams',
-   'Several videos at once, a house caption look applied to all of them, and every aspect ratio out of one edit rather than one export per platform.',
+   'Several videos at once, a house caption look applied to all of them, and both formats in one place — the YouTube cut and the vertical clips, without two tools and two subscriptions.',
    'Every style, 10 at a time'],
 ];
 
@@ -6198,7 +6206,7 @@ function buildComparison() {
     ['Your time per video', 'Hours on the timeline', 'Briefs and revision notes', 'One upload'],
     ['Turnaround', 'Whenever you get to it', 'Somebody else’s calendar', 'Minutes'],
     ['Changing your mind', 'Re-export everything', 'Another round of notes', 'Re-renders only what changed'],
-    ['Every aspect ratio', 'One export per platform', 'Usually charged as extra', 'From the same edit'],
+    ['Both formats', 'Two projects, two timelines', 'Usually two briefs, two invoices', 'One app, one subscription'],
   ];
   $('home-free-min2').textContent = FREE_MINUTES;
   $('home-cmp').innerHTML = ROWS.map(([label, diy, hired, ours]) => `
@@ -6227,8 +6235,8 @@ const FAQ = [
      'Yes, and it is the cheap path. Every layer is editable in the timeline, and re-rendering after a change only redraws the part that changed rather than the whole video — so fixing one caption takes seconds, not another full render.'],
     ['What if I pick the wrong style?',
      'Switch it and re-render. Changing between styles costs nothing — it replays the edit against the same analysis rather than starting over.'],
-    ['Which aspect ratios do I get?',
-     'All four — 9:16, 1:1, 16:9 and 4:5 — out of the same edit, so you are not exporting once per platform. The framing follows the speaker rather than cropping the middle out.'],
+    ['What shape does my video come out?',
+     'The shape you shot it in. Vertical footage is edited vertical for Reels, TikTok and Shorts; widescreen footage is edited widescreen for YouTube. We do not crop your picture into a format you did not ask for. If you do want another ratio — 1:1 or 4:5 for a feed post — you can export one from the editor, as a decision you made rather than a guess we made.'],
   ]],
   ['app', 'The app', [
     ['How long does it take?',
@@ -6236,7 +6244,7 @@ const FAQ = [
     ['How long can my video be?',
      'Up to 30 minutes in a single upload on Starter, and up to 240 on the top plan. That is a separate limit from the monthly allowance, so one long file cannot eat your whole month in a single click.'],
     ['Is there a watermark?',
-     'Only on the free tier. Every paid plan exports clean, at 1080p, in every aspect ratio.'],
+     'Only on the free tier. Every paid plan exports clean, at 1080p, in both formats.'],
     ['What happens to my footage?',
      'It is deleted on a schedule your plan sets — 7 days on Starter — and the finished videos are kept far longer. Deletion is automatic and permanent. Once the footage has gone you can still watch and download what you made; you just cannot re-render it.'],
     ['Is my video used to train anything?',
@@ -6482,7 +6490,7 @@ window.addEventListener('resize', measureTopbar);
 /* ═══════════════════════════════════════════════════ boot ═══ */
 // The sample file is already loaded, so the verdict on it is too — the wizard
 // should never open on "Reading your footage…" for a file it already has.
-adoptFormat({ w: 1920, h: 1080, d: 47 });
+adoptFormat({ w: 1080, h: 1920, d: 47 });
 buildHomeLooks();
 buildWhoItsFor();
 buildComparison();

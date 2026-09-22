@@ -1,4 +1,3 @@
-import { ASPECTS } from '@/lib/edl/types';
 import { STYLE_LIST } from '@/lib/styles/presets';
 
 /**
@@ -21,8 +20,9 @@ const AUDIENCES = [
   {
     title: 'Podcasters',
     body:
-      'Drop in the full episode and take the shorts out of it. The long cut keeps its ' +
-      'chapters; the clips get vertical framing that follows whoever is talking.',
+      'Drop in the full episode and get the long cut back chaptered, with the names on ' +
+      'screen and the dead air gone. Filmed a vertical clip for the feed as well? That ' +
+      'goes through as its own short.',
     proof: 'Podcast · Essay · Commentary',
   },
   {
@@ -35,8 +35,9 @@ const AUDIENCES = [
   {
     title: 'Agencies and social teams',
     body:
-      'Several videos at once, a house caption look applied to all of them, and every ' +
-      'aspect ratio out of one edit rather than one export per platform.',
+      'Several videos at once, a house caption look applied to all of them, and both ' +
+      'formats in one place — the YouTube cut and the vertical clips, without two ' +
+      'tools and two subscriptions.',
     proof: 'Every style, 10 at a time',
   },
 ] as const;
@@ -49,8 +50,8 @@ export function WhoItsFor() {
           Made for people who talk to a camera.
         </h2>
         <p className="mt-4 max-w-xl text-muted">
-          {STYLE_LIST.length} styles and {ASPECTS.length} aspect ratios, all out of the same edit.
-          If your video is somebody explaining something, it is for you.
+          {STYLE_LIST.length} styles, across both formats — vertical for Reels and Shorts,
+          widescreen for YouTube. If your video is somebody explaining something, it is for you.
         </p>
 
         <div className="mt-10 grid gap-4 sm:grid-cols-2">

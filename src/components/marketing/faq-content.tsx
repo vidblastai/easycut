@@ -1,5 +1,4 @@
 import Link from 'next/link';
-import { ASPECTS } from '@/lib/edl/types';
 import { PAID_PLANS, PLANS } from '@/lib/billing/plans';
 import { STYLE_LIST } from '@/lib/styles/presets';
 import type { FaqGroup } from './Faq';
@@ -61,12 +60,14 @@ export const FAQ_GROUPS: FaqGroup[] = [
         ),
       },
       {
-        q: 'Which aspect ratios do I get?',
+        q: 'What shape does my video come out?',
         a: (
           <>
-            All {ASPECTS.length} — {ASPECTS.join(', ')} — out of the same edit, so you are not
-            exporting once per platform. The framing follows the speaker rather than cropping the
-            middle out.
+            The shape you shot it in. Vertical footage is edited vertical for Reels, TikTok and
+            Shorts; widescreen footage is edited widescreen for YouTube. We do not crop your
+            picture into a format you did not ask for. If you do want another ratio — 1:1 or 4:5
+            for a feed post — you can export one from the editor, as a decision you made rather
+            than a guess we made.
           </>
         ),
       },
@@ -100,7 +101,7 @@ export const FAQ_GROUPS: FaqGroup[] = [
         q: 'Is there a watermark?',
         a: (
           <>
-            Only on the free tier. Every paid plan exports clean, at 1080p, in every aspect ratio.
+            Only on the free tier. Every paid plan exports clean, at 1080p, in both formats.
           </>
         ),
       },

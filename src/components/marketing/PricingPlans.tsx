@@ -191,8 +191,8 @@ function PlanCard({
         </Feature>
         <Feature>Up to {plan.maxMinutesPerUpload} minutes in a single upload</Feature>
         <Feature>
-          {plan.maxRenderHeight === 2160 ? '4K' : '1080p'} export, and every aspect ratio from one
-          edit — vertical, square and widescreen
+          {plan.maxRenderHeight === 2160 ? '4K' : '1080p'} export, in the shape you shot in —
+          vertical or widescreen
         </Feature>
         <Feature>
           {plan.concurrentJobs === 1 ? 'One video at a time' : `${plan.concurrentJobs} videos at once`}

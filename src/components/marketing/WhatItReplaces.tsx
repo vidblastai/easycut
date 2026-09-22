@@ -46,10 +46,10 @@ export function WhatItReplaces() {
       ours: 'Re-renders only what changed',
     },
     {
-      label: 'Every aspect ratio',
-      diy: 'One export per platform',
-      hired: 'Usually charged as extra',
-      ours: 'From the same edit',
+      label: 'Both formats',
+      diy: 'Two projects, two timelines',
+      hired: 'Usually two briefs, two invoices',
+      ours: 'One app, one subscription',
     },
   ];
 

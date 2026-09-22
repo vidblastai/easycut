@@ -1,24 +1,30 @@
 import type { FormatMode } from '@/lib/styles/presets';
 
 /**
- * Which format a piece of footage is, read off the footage.
+ * Which of the two pipelines a piece of footage goes down, read off the file.
  *
- * This used to be a question — "where is it going?" — and it was the wrong one
- * twice over. It asked about distribution when what it needed was a fact about
- * the file, and it asked it before the person had any idea what they were
- * choosing between. The answer is in the video: nobody shoots vertical for
- * YouTube, and nobody makes a ten-minute piece out of forty seconds of footage.
+ * EasyCut is not a repurposing tool. It is two editors in one app: a vertical
+ * one for Reels, TikTok and Shorts, and a widescreen one for YouTube. You
+ * bring the footage for the thing you are making, and it is edited as that
+ * thing. Nothing is turned into the other format behind your back.
  *
- * Two signals, in order:
+ * So there is exactly one signal, and it is the shape of the picture:
  *
- *  1. **Shape.** Portrait or square footage is short form. That is what the
- *     phone was held sideways for, and reframing it to widescreen would mean
- *     throwing away most of the picture.
- *  2. **Length.** Landscape footage under three minutes cannot become a long
- *     piece — there is nothing to cut. It becomes a vertical short, reframed,
- *     which is what people record a two-minute landscape clip for.
+ *  - **Portrait or square** footage is the short-form pipeline. Vertical in,
+ *    vertical out.
+ *  - **Landscape** footage is the long-form pipeline. Widescreen in,
+ *    widescreen out.
  *
- * Everything else is long form.
+ * Length used to be a second rule — landscape under three minutes became a
+ * vertical short, reframed. That was reframing somebody's footage into a
+ * format they had not asked for, and it made the product look like a
+ * repurposer. A two-minute widescreen clip is a short widescreen video, and it
+ * comes out widescreen.
+ *
+ * This also means nothing is cropped on the default path: the output aspect is
+ * the input aspect, every time. Exporting a different aspect is still possible
+ * from the editor, where it is a deliberate choice somebody made rather than a
+ * guess we made for them.
  *
  * The verdict is shown with its reason and can be overridden in one click. A
  * guess presented as a fact is worse than the question it replaced.
@@ -48,14 +54,13 @@ export interface Detected {
   durationSec: number;
 }
 
-/** Landscape footage shorter than this has nothing to cut down from. */
-export const LONG_FORM_MIN_SEC = 180;
-
 export function detectFormat(probe: Probe | null): Detected {
   if (!probe || !probe.width || !probe.height) {
+    // Vertical is the commoner upload here, and the override is one click, so
+    // a guess that has to be made is made the way that is wrong least often.
     return {
       mode: 'short',
-      reason: "We couldn't read the file, so we've assumed a short.",
+      reason: "We couldn't read the file, so we've assumed a vertical short.",
       confident: false,
       durationSec: 0,
     };
@@ -65,25 +70,20 @@ export function detectFormat(probe: Probe | null): Detected {
   if (portrait) {
     return {
       mode: 'short',
-      reason: `Shot ${probe.height > probe.width ? 'vertical' : 'square'}, so it's a short.`,
+      reason: `Shot ${probe.height > probe.width ? 'vertical' : 'square'}, so it's a short — and it stays vertical.`,
       confident: true,
       durationSec: probe.durationSec,
     };
   }
 
-  if (probe.durationSec > 0 && probe.durationSec < LONG_FORM_MIN_SEC) {
-    return {
-      mode: 'short',
-      reason: `${formatClock(probe.durationSec)} of widescreen — short enough to cut vertical.`,
-      confident: true,
-      durationSec: probe.durationSec,
-    };
-  }
-
+  // Landscape is long form whatever it runs. A short widescreen clip is a
+  // short WIDESCREEN clip; it does not become a vertical one.
   return {
     mode: 'long',
-    reason: `${formatClock(probe.durationSec)} of widescreen, so it's long form.`,
-    confident: probe.durationSec > 0,
+    reason: probe.durationSec > 0
+      ? `${formatClock(probe.durationSec)} of widescreen, so it's long form — and it stays widescreen.`
+      : "Shot widescreen, so it's long form — and it stays widescreen.",
+    confident: true,
     durationSec: probe.durationSec,
   };
 }
