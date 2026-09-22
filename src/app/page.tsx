@@ -12,7 +12,9 @@ import { StylePreview } from '@/components/styles/StylePreview';
 import { WhoItsFor } from '@/components/marketing/WhoItsFor';
 import { WhatItReplaces } from '@/components/marketing/WhatItReplaces';
 import { Testimonials } from '@/components/marketing/Testimonials';
+import { Showcase } from '@/components/marketing/Showcase';
 import { Faq } from '@/components/marketing/Faq';
+import { FAQ_GROUPS } from '@/components/marketing/faq-content';
 
 /**
  * The marketing page.
@@ -64,11 +66,18 @@ export default function HomePage() {
       <header className="relative z-10 mx-auto flex max-w-6xl items-center justify-between px-6 py-6">
         <Logo />
         <nav className="flex items-center gap-2">
-          {/* Pricing in the header as well as the footer. It is the second
-              question everybody has, and making them scroll for it reads as
-              evasion. */}
+          {/* Pricing and the questions in the header as well as further down.
+              They are the second and third things everybody wants, and making
+              somebody scroll for either reads as evasion. Hidden on a phone,
+              where the whole page is a scroll away anyway. */}
+          <Link href="#styles" className="btn-quiet hidden md:inline-flex">
+            Styles
+          </Link>
           <Link href="/pricing" className="btn-quiet hidden sm:inline-flex">
             Pricing
+          </Link>
+          <Link href="#faq" className="btn-quiet hidden md:inline-flex">
+            FAQ
           </Link>
           <Link href="/dashboard" className="btn-ghost">
             My videos
@@ -151,6 +160,11 @@ export default function HomePage() {
         </div>
       </section>
 
+      {/* -------------------------------------------------------- showcase */}
+      {/* Renders nothing until src/content/showcase.ts has real exports in it
+          — see the note at the top of that file. */}
+      <Showcase />
+
       {/* ----------------------------------------------------------- steps */}
       <section className="relative z-10 mx-auto max-w-6xl px-6 py-24">
         <div className="grid gap-4 sm:grid-cols-3">
@@ -201,7 +215,7 @@ export default function HomePage() {
       </section>
 
       {/* ---------------------------------------------------------- styles */}
-      <section className="relative z-10 border-t border-line py-24">
+      <section id="styles" className="relative z-10 scroll-mt-16 border-t border-line py-24">
         <div className="mx-auto max-w-6xl px-6">
           <h2 className="text-3xl font-extrabold tracking-[-0.03em] sm:text-[40px]">Pick a look.</h2>
           <p className="mt-4 max-w-xl text-muted">
@@ -265,7 +279,9 @@ export default function HomePage() {
       </section>
 
       {/* ------------------------------------------------------------- faq */}
-      <Faq />
+      <div id="faq" className="scroll-mt-16">
+        <Faq groups={FAQ_GROUPS} />
+      </div>
 
       {/* ------------------------------------------------------------- cta */}
       <section className="relative z-10 border-t border-line py-24">

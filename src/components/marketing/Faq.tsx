@@ -1,152 +1,103 @@
+'use client';
+
+import { useState } from 'react';
 import Link from 'next/link';
-import { ASPECTS } from '@/lib/edl/types';
-import { PAID_PLANS, PLANS } from '@/lib/billing/plans';
-import { STYLE_LIST } from '@/lib/styles/presets';
+import { clsx } from 'clsx';
 
 /**
- * The questions people actually ask before paying.
+ * The questions people actually ask before paying, in three groups.
  *
- * Every answer here is checked against what the code does, and the numbers are
- * read from the plan definitions rather than typed in — a FAQ is the part of a
- * site people quote back at you, so it is the worst possible place for a
- * number that used to be true.
+ * Grouped rather than one list of ten, because the three things somebody is
+ * weighing are different in kind — will it make a good video, will I be able
+ * to use it, and what is this going to cost me — and a flat list makes you
+ * read all of the first to find out whether the third is answered.
  *
- * `<details>` rather than JavaScript: it is open-able before hydration, it is
- * keyboard accessible for free, and search engines read the answers.
+ * Every answer is checked against what the code actually does, and the numbers
+ * are passed in from the plan definitions rather than typed here: a FAQ is the
+ * part of a site people quote back at you, so it is the worst possible place
+ * for a figure that used to be true.
  */
 
-const STARTER = PAID_PLANS[0];
+export interface FaqGroup {
+  id: string;
+  label: string;
+  items: Array<{ q: string; a: React.ReactNode }>;
+}
 
-const FAQS: Array<{ q: string; a: React.ReactNode }> = [
-  {
-    q: 'Do I need to know how to edit?',
-    a: (
-      <>
-        No. You pick a style, drop the file in, and the edit is made — cuts, captions, B-roll,
-        graphics, sound effects and music. There is a full timeline editor if you want to change
-        something, but nothing needs you to open it.
-      </>
-    ),
-  },
-  {
-    q: 'What does it actually do to my video?',
-    a: (
-      <>
-        It removes the silences, the ums, the false starts and the takes you redid, then builds an
-        edit on top: word-by-word captions timed to your speech, B-roll where you name something
-        concrete, graphics for the numbers you say, punch-ins, transitions and a music bed that
-        ducks under your voice.
-      </>
-    ),
-  },
-  {
-    q: 'How long does it take?',
-    a: (
-      <>
-        Analysis is a couple of minutes. The render depends on length — a short is quick, a
-        ten-minute video takes longer. You can close the tab; it emails you when it is done.
-      </>
-    ),
-  },
-  {
-    q: 'Can I change something afterwards?',
-    a: (
-      <>
-        Yes, and it is the cheap path. Every layer is editable in the timeline, and re-rendering
-        after a change only redraws the part that changed rather than the whole video — so fixing
-        one caption takes seconds, not another full render.
-      </>
-    ),
-  },
-  {
-    q: 'Which aspect ratios do I get?',
-    a: (
-      <>
-        All {ASPECTS.length} — {ASPECTS.join(', ')} — out of the same edit, so you are not
-        exporting once per platform. The framing follows the speaker rather than cropping the
-        middle out.
-      </>
-    ),
-  },
-  {
-    q: 'What happens to my footage?',
-    a: (
-      <>
-        It is deleted on a schedule your plan sets — {STARTER.sourceRetentionDays} days on{' '}
-        {STARTER.name} — and the finished videos are kept far longer. Deletion is automatic and
-        permanent.{' '}
-        <Link href="/privacy" className="font-semibold text-violet hover:underline">
-          The full schedule is in the privacy policy.
-        </Link>
-      </>
-    ),
-  },
-  {
-    q: 'Is my video used to train anything?',
-    a: (
-      <>
-        No. Your footage, transcripts and finished videos are never used to train any model of
-        ours, and we do not sell your data. Making the video means sending parts of it to
-        specialist services — the audio to a transcription provider, the transcript text to the AI
-        director — and each one gets the least it needs.
-      </>
-    ),
-  },
-  {
-    q: 'Can I try it before paying?',
-    a: (
-      <>
-        Yes — {PLANS.free.footageMinutes} minutes free, on your own footage, watermarked. That is
-        a whole video, not a preview of one.
-      </>
-    ),
-  },
-  {
-    q: 'What if I pick the wrong style?',
-    a: (
-      <>
-        Switch it and re-render. There are {STYLE_LIST.length} styles and changing between them
-        costs nothing — it replays the edit against the same analysis rather than starting over.
-      </>
-    ),
-  },
-  {
-    q: 'Can I cancel?',
-    a: (
-      <>
-        Any time, from your account settings. You keep the plan until the end of the month you
-        have paid for, and your finished videos stay for as long as the plan you made them on
-        promised.
-      </>
-    ),
-  },
-];
+export function Faq({ groups }: { groups: FaqGroup[] }) {
+  const [active, setActive] = useState(groups[0]?.id ?? '');
+  const shown = groups.find((g) => g.id === active) ?? groups[0];
+  if (!shown) return null;
 
-export function Faq() {
   return (
     <section className="relative z-10 border-t border-line py-24">
-      <div className="mx-auto max-w-3xl px-6">
-        <h2 className="text-3xl font-extrabold tracking-[-0.03em] sm:text-[40px]">
-          Questions.
-        </h2>
+      <div className="mx-auto grid max-w-6xl gap-10 px-6 lg:grid-cols-[minmax(0,22rem)_minmax(0,1fr)] lg:gap-16">
+        <div>
+          <h2 className="text-3xl font-extrabold leading-[1.1] tracking-[-0.03em] sm:text-[40px]">
+            Still have questions?
+          </h2>
+          <p className="mt-4 max-w-[34ch] text-muted">
+            Anything not answered here, ask — including the awkward ones about what happens to
+            your footage.
+          </p>
+          <a href="mailto:hello@easycut.ai" className="btn-ghost mt-6 inline-flex">
+            Contact us
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden>
+              <path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </a>
+        </div>
 
-        <div className="mt-10 divide-y divide-line-soft border-y border-line-soft">
-          {FAQS.map((item) => (
-            <details key={item.q} className="group py-5">
-              <summary className="flex cursor-pointer list-none items-center justify-between gap-4 text-[15.5px] font-bold tracking-[-0.01em] marker:hidden">
-                {item.q}
-                <span
-                  aria-hidden
-                  className="grid h-6 w-6 flex-none place-items-center rounded-full border border-line text-muted transition-transform group-open:rotate-45"
-                >
-                  <svg width="11" height="11" viewBox="0 0 12 12" fill="none" aria-hidden>
-                    <path d="M6 1v10M1 6h10" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
-                  </svg>
-                </span>
-              </summary>
-              <p className="mt-3 max-w-[62ch] text-[14.5px] leading-relaxed text-muted">{item.a}</p>
-            </details>
-          ))}
+        <div>
+          <div role="tablist" aria-label="Question topics" className="inline-flex rounded-full border border-line bg-charcoal p-1">
+            {groups.map((group) => (
+              <button
+                key={group.id}
+                type="button"
+                role="tab"
+                aria-selected={group.id === shown.id}
+                data-faq-tab={group.id}
+                onClick={() => setActive(group.id)}
+                className={clsx(
+                  'rounded-full px-4 py-2 text-[13px] font-bold transition-colors',
+                  group.id === shown.id ? 'bg-chalk text-ink' : 'text-muted hover:text-chalk',
+                )}
+              >
+                {group.label}
+              </button>
+            ))}
+          </div>
+
+          <div className="mt-6 border-t border-line-soft">
+            {shown.items.map((item) => (
+              /* `<details>` rather than more state: it opens before hydration,
+                 it is keyboard accessible for free, and search engines read
+                 the answers. `key` includes the group so switching tabs
+                 collapses what was open rather than leaving a stray row. */
+              <details key={`${shown.id}-${item.q}`} className="group border-b border-line-soft py-5">
+                <summary className="flex cursor-pointer list-none items-center justify-between gap-4 text-[15.5px] font-bold tracking-[-0.01em] marker:hidden">
+                  {item.q}
+                  <span
+                    aria-hidden
+                    className="grid h-6 w-6 flex-none place-items-center rounded-full border border-line text-muted transition-transform group-open:rotate-45"
+                  >
+                    <svg width="11" height="11" viewBox="0 0 12 12" fill="none" aria-hidden>
+                      <path d="M6 1v10M1 6h10" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+                    </svg>
+                  </span>
+                </summary>
+                <p className="mt-3 max-w-[64ch] text-[14.5px] leading-relaxed text-muted">{item.a}</p>
+              </details>
+            ))}
+          </div>
+
+          <p className="mt-6 text-[13px] text-faint">
+            The full detail on retention and sub-processors is in the{' '}
+            <Link href="/privacy" className="font-semibold text-violet hover:underline">
+              privacy policy
+            </Link>
+            .
+          </p>
         </div>
       </div>
     </section>
