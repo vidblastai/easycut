@@ -1463,6 +1463,148 @@ body.instudio { overflow: hidden; }
 .faq-list details[open] summary i { transform: rotate(45deg); }
 .faq-list p { margin: 12px 0 0; max-width: 64ch; font-size: 14.5px; line-height: 1.65; color: var(--muted); }
 
+/* ── the reel: what comes out the other end ────────────────────────── */
+/* Wide, centred headers for the two sections that are meant to stop you —
+   the rest of the page is left-aligned and reads as a document, which is
+   right for an argument and wrong for a gallery. */
+.mid-head { text-align: center; max-width: 760px; margin: 0 auto; }
+.mid-head h2 {
+  margin-top: 14px; font-size: clamp(28px, 4.6vw, 46px); font-weight: 800;
+  letter-spacing: -.04em; line-height: 1.04; text-wrap: balance;
+}
+.mid-head .sub {
+  margin: 14px auto 0; max-width: 54ch; font-size: 15px; line-height: 1.6; color: var(--muted);
+}
+
+/* Fixed column counts, not auto-fit: six cards into an auto-fit grid lands
+   five on the first row and one orphan on the second, which reads as a
+   broken page rather than a gallery. */
+.reel { display: grid; gap: 14px; margin-top: 34px; grid-template-columns: repeat(6, minmax(0, 1fr)); }
+@media (max-width: 1040px) { .reel { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (max-width: 560px) { .reel { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; } }
+.reel-card {
+  position: relative; display: block; width: 100%; padding: 0; text-align: left;
+  border: 1px solid var(--line); border-radius: var(--r-lg); overflow: hidden;
+  background: var(--charcoal); cursor: pointer;
+  transition: border-color var(--fast), transform var(--fast);
+}
+.reel-card:hover { border-color: var(--violet); transform: translateY(-3px); }
+/* The poster fills the card edge to edge — a gallery of videos with a frame
+   drawn around each one reads as a settings screen, not a showreel. */
+.reel-card .shape { max-width: none; margin: 0; border-radius: 0; }
+/* The poster's own frame, so the badge and the progress line sit on the
+   picture and the label sits under it. Named `reel-shot` and not `shot`:
+   `.shot` is already the B-roll picture inside a slot, and it is absolutely
+   positioned — borrowing the name collapsed every card to nothing. */
+.reel-card .reel-shot { position: relative; display: block; }
+/* The label is a strip UNDER the poster rather than a gradient over it. These
+   posters put things in the bottom corners — a screencast's camera, an
+   essay's captions in the lower letterbox bar — and an overlay covers exactly
+   the detail the card exists to show. */
+.reel-card .cap {
+  display: block; padding: 10px 11px 11px;
+  font-size: 11.5px; font-weight: 700; line-height: 1.35;
+  letter-spacing: .01em; text-transform: uppercase;
+}
+.reel-card .cap i {
+  font-style: normal; color: var(--muted); font-variant-numeric: tabular-nums;
+}
+/* The style this cut used, top-left, because "which one is this?" is the only
+   question a gallery of look-alike thumbnails ever raises. */
+.reel-card .who {
+  position: absolute; left: 10px; top: 10px; z-index: 4;
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 4px 9px; border-radius: 99px; font-size: 10.5px; font-weight: 700;
+  background: rgba(13,13,16,.72); backdrop-filter: blur(6px);
+  border: 1px solid rgba(255,255,255,.12);
+}
+.reel-card .who i { width: 5px; height: 5px; border-radius: 99px; }
+.reel-foot {
+  display: flex; align-items: center; justify-content: center; gap: 16px;
+  flex-wrap: wrap; margin-top: 26px; text-align: center;
+}
+.reel-foot span { font-size: 13px; color: var(--muted); }
+/* Widescreen cuts sit in their own row rather than mixed into the vertical
+   grid — two aspect ratios in one auto-fit grid makes a ragged wall of
+   different-height cards and reads as a bug. */
+.reel.wide { margin-top: 14px; }
+.reel-split { display: flex; align-items: center; gap: 14px; margin-top: 26px; }
+.reel-split::before, .reel-split::after { content: ''; flex: 1; height: 1px; background: var(--line-soft); }
+.reel-split span { font-size: 11px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: var(--faint); }
+/* The line that makes a still read as something playing. */
+.reel-card .prog { position: absolute; left: 0; bottom: 0; z-index: 5; height: 2px; width: 0; background: var(--violet); }
+.reel.wide { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+@media (max-width: 860px) { .reel.wide { grid-template-columns: 1fr; } }
+
+/* ── the review wall ───────────────────────────────────────────────── */
+.rev-score {
+  display: flex; align-items: center; justify-content: center; gap: 10px;
+  margin-top: 18px; flex-wrap: wrap;
+}
+.rev-score b { font-size: 26px; font-weight: 800; letter-spacing: -.03em; }
+.rev-score .stars { display: inline-flex; gap: 3px; color: var(--violet); }
+.rev-score .stars svg { width: 17px; height: 17px; }
+.rev-score .count { font-size: 12px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--faint); }
+
+.reviews {
+  display: grid; gap: 14px; margin-top: 30px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  align-items: start;
+}
+@media (max-width: 940px) { .reviews { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 620px) { .reviews { grid-template-columns: 1fr; } }
+.review {
+  display: flex; flex-direction: column; gap: 10px;
+  border: 1px solid var(--line); background: var(--charcoal);
+  border-radius: var(--r-lg); padding: 20px;
+}
+.review .top { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.review .stars { display: inline-flex; gap: 2px; color: var(--violet); }
+.review .mark {
+  flex: none; font-size: 9.5px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase;
+  color: var(--faint); border: 1px solid var(--line); border-radius: 99px; padding: 2px 7px;
+}
+.review h3 { margin: 0; font-size: 15px; font-weight: 700; letter-spacing: -.015em; }
+.review p { margin: 0; font-size: 13.5px; line-height: 1.6; color: var(--muted); }
+.review footer { margin-top: 2px; font-size: 12px; color: var(--faint); }
+/* A wall of quotes nobody has said yet is a lie unless it says so. This is the
+   label that makes it a layout instead. */
+.sample-note {
+  display: flex; align-items: center; gap: 10px; justify-content: center;
+  margin-top: 22px; font-size: 12.5px; color: var(--faint); text-align: center;
+}
+.sample-note b {
+  flex: none; font-size: 10px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase;
+  color: var(--warn); border: 1px solid rgba(245,196,83,.4); background: rgba(245,196,83,.1);
+  border-radius: 99px; padding: 3px 9px;
+}
+
+/* ── monthly / annual ──────────────────────────────────────────────── */
+.bill-row { display: flex; justify-content: center; margin-top: 24px; }
+.bill {
+  display: inline-flex; gap: 2px; padding: 4px;
+  border: 1px solid var(--line); background: var(--charcoal); border-radius: 99px;
+}
+.bill button {
+  display: inline-flex; align-items: center; gap: 7px;
+  border: 0; border-radius: 99px; padding: 9px 18px; cursor: pointer;
+  font: inherit; font-size: 13.5px; font-weight: 700; color: var(--muted); background: transparent;
+  transition: background var(--fast), color var(--fast);
+}
+.bill button[aria-selected="true"] { background: var(--chalk); color: var(--ink); }
+.bill button em {
+  font-style: normal; font-size: 10.5px; font-weight: 700; letter-spacing: .04em;
+  border-radius: 99px; padding: 2px 7px;
+  background: var(--violet-dim); color: var(--violet);
+}
+.bill button[aria-selected="true"] em { background: var(--violet); color: var(--ink); }
+/* The line under the price that says what is actually charged. Reserved
+   whether or not it has anything in it, so the three cards' buttons stay on
+   one line when you flip the toggle. */
+.plan .billed { margin-top: 6px; min-height: 17px; font-size: 12.5px; color: var(--violet); }
+.plan .was { font-size: 13.5px; color: var(--faint); text-decoration: line-through; }
+.plan .billed.plain { color: var(--faint); }
+
 /* ── what the footage turned out to be ─────────────────────────────── */
 .verdict {
   display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
@@ -2442,6 +2584,26 @@ body.instudio { overflow: hidden; }
       </dl>
     </div>
 
+    <!-- The showreel. Every card is drawn from the same layout numbers the
+         renderer lays out from, and plays the same beats — the cut, the
+         insert, the caption, the card — so it is a simulation of the edit
+         rather than a photograph of somebody else's. Real exports drop in
+         here as soon as there are ones we are allowed to show. -->
+    <div class="home-sec">
+      <div class="mid-head">
+        <span class="eyebrow"><i></i>The showreel</span>
+        <h2>These cuts came out of EasyCut.</h2>
+        <p class="sub">One upload each, no editor, no timeline. Tap one to start from that
+           style with your own footage.</p>
+      </div>
+      <div class="reel" id="home-reel"></div>
+      <div class="reel-split"><span>Long form, from the same upload</span></div>
+      <div class="reel wide" id="home-reel-long"></div>
+      <div class="reel-foot">
+        <button class="cta-primary" data-route="new">Cut mine like this</button>
+        <span>Every style re-renders for free, so picking one is never a one-way door.</span>
+      </div>
+    </div>
     <div class="home-sec">
       <h2>Everything a good editor would add.</h2>
       <p class="sub">Not filters on top of your video &mdash; an actual edit, built from what you said.</p>
@@ -2605,10 +2767,42 @@ body.instudio { overflow: hidden; }
     <!-- Pricing on the homepage, not only on its own page. What it costs is
          the second question everybody has, and a price you have to go looking
          for reads as a price being hidden. -->
+    <!-- The review wall. Laid out, and labelled as a layout: the quotes below
+         are written by us to size the design, and the section says so rather
+         than putting words in a customer's mouth. They come out the moment
+         there are real ones to put in. -->
+    <div class="home-sec">
+      <div class="mid-head">
+        <span class="eyebrow"><i></i>Reviews</span>
+        <h2>What people say once they stop editing.</h2>
+        <div class="rev-score">
+          <span class="stars" id="rev-stars" aria-hidden="true"></span>
+          <b id="rev-avg">5.0</b>
+          <span class="count" id="rev-count">0 ratings</span>
+        </div>
+      </div>
+      <div class="reviews" id="home-reviews"></div>
+      <p class="sample-note">
+        <b>Sample</b>
+        <span>These are placeholder reviews showing the layout. Real ones replace them at
+              launch &mdash; we are not going to invent customers.</span>
+      </p>
+    </div>
+    <!-- The price, with a title that says what the three plans are for. The
+         monthly/annual switch is here rather than only on the pricing page:
+         the discount is the answer to "is this worth committing to", and a
+         discount you only meet after clicking through is a discount nobody
+         factored in. -->
     <div class="home-sec" id="home-pricing">
-      <h2>Pay for footage, not for features.</h2>
-      <p class="sub">Every plan does the whole edit. What changes is how much footage you can put
-         through it each month, and how long we hold on to it.</p>
+      <div class="mid-head">
+        <span class="eyebrow"><i></i>Pricing</span>
+        <h2>Three plans. Each one is cheaper than one edit.</h2>
+        <p class="sub">Every plan does the whole edit. What changes is how much footage you can
+           put through it each month, and how long we hold on to it.</p>
+      </div>
+      <div class="bill-row">
+        <div class="bill" id="home-bill" role="tablist" aria-label="Billing period"></div>
+      </div>
       <div class="plans" id="home-plan-cards"></div>
       <div class="freebar">
         <b>Or try it first &mdash; <span id="home-free-minutes">10</span> minutes, free.</b>
@@ -2764,6 +2958,9 @@ body.instudio { overflow: hidden; }
           <p>Every plan does the whole edit &mdash; cuts, captions, B-roll, graphics, sound
              effects, music, punch-ins. What changes is how much footage you can put through
              it each month, and how long we hold on to it.</p>
+        </div>
+        <div class="bill-row" style="justify-content:flex-start">
+          <div class="bill" id="page-bill" role="tablist" aria-label="Billing period"></div>
         </div>
         <div class="plans" id="plan-cards"></div>
 
@@ -4581,6 +4778,7 @@ function frame(now) {
   last = now;
   if (playing) { tl.head += dt * (tl.rate ?? 1); if (tl.head > DOC.duration) tl.head = 0; }
   paintPreview();
+  if (!reduced) paintReel(now);
   // Only the playhead moves every frame; rebuilding the whole timeline 60
   // times a second would be wasteful and would fight any open input.
   movePlayhead();
@@ -5563,6 +5761,46 @@ const PLANS = [
 ];
 const FREE_MINUTES = 10;
 
+/* ── monthly or annual ──────────────────────────────────────────────
+   Annual is a fifth off, and what the card shows is the MONTHLY equivalent,
+   because that is the number the three plans are being compared on. The
+   yearly total goes on the line under it, where it cannot be mistaken for
+   what gets charged each month — a card that swaps $30 for $288 without
+   saying which is which is how people end up surprised by a receipt.
+   ─────────────────────────────────────────────────────────────────── */
+const ANNUAL_OFF = .2;
+let billing = 'monthly';
+const annualMonthly = (price) => Math.round(price * (1 - ANNUAL_OFF) * 100) / 100;
+/** $24, $59.99, $1,824 — no trailing .00, and thousands grouped. */
+const money = (n) => '$' + (Number.isInteger(n) ? n.toLocaleString('en-US')
+  : n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
+
+const BILL_TABS = [
+  ['monthly', 'Monthly', ''],
+  ['annual', 'Annual', `Save ${ANNUAL_OFF * 100}%`],
+];
+
+/** The pill toggle, in both places it appears. */
+function buildBill() {
+  const html = BILL_TABS.map(([k, label, badge]) => `
+    <button role="tab" data-bill="${k}" aria-selected="${billing === k}">
+      ${label}${badge ? `<em>${badge}</em>` : ''}
+    </button>`).join('');
+  for (const id of ['home-bill', 'page-bill']) {
+    const el = $(id);
+    if (el) el.innerHTML = html;
+  }
+}
+
+/** Flipping it re-prices every card on both surfaces at once. */
+function setBilling(next) {
+  if (billing === next) return;
+  billing = next;
+  buildBill();
+  buildPricing();
+  buildHomePricing();
+}
+
 /* The library the dashboard lists. The first row is the video this prototype
    actually edits; the rest are there so the screen shows what it looks like in
    use rather than an empty state nobody ever sees twice. */
@@ -5671,12 +5909,25 @@ function planCardsHtml() {
     const allowance = Number.isInteger(hours) ? `${hours} hour${hours === 1 ? '' : 's'}` : `${p.minutes} minutes`;
     const li = (html) => `<li>${tickIcon}<span>${html}</span></li>`;
 
+    // On annual the big number is the monthly equivalent, the old monthly
+    // price is struck through beside it, and the line underneath says what
+    // actually leaves the account and when.
+    const annual = billing === 'annual';
+    const shown = annual ? annualMonthly(p.price) : p.price;
+    const billed = annual
+      ? `<p class="billed">${money(annualMonthly(p.price) * 12)} billed once a year</p>`
+      : '<p class="billed plain">Billed monthly. Cancel any time.</p>';
+
     return `<div class="plan${p.featured ? ' featured' : ''}">
       <div class="plan-top">
         <h2>${p.name}</h2>
         ${p.featured ? '<span class="tag">Most popular</span>' : ''}
       </div>
-      <div class="price"><b>$${Number.isInteger(p.price) ? p.price : p.price.toFixed(2)}</b><i>/ month</i></div>
+      <div class="price">
+        <b>${money(shown)}</b><i>/ month</i>
+        ${annual ? `<span class="was">${money(p.price)}</span>` : ''}
+      </div>
+      ${billed}
       <p class="best">${p.best}</p>
 
       <div class="allow">
@@ -5713,6 +5964,191 @@ function buildPricing() {
 function buildHomePricing() {
   $('home-free-minutes').textContent = FREE_MINUTES;
   $('home-plan-cards').innerHTML = planCardsHtml();
+}
+
+
+/* ══════════════════════════════════════════════════ the showreel ═══
+   A gallery of finished cuts, on a page selling finished cuts.
+
+   Every poster here is DRAWN, from the same LAYOUTS numbers the renderer lays
+   out from — the same `styleShape` the style picker uses — and then played:
+   the insert arrives and leaves, the captions turn over, the title card
+   lands, a progress line runs. So it is a simulation of the edit rather than
+   somebody else's video with our name on it, and it cannot advertise a shape
+   the renderer will not produce. Real exports replace the posters the moment
+   there are ones we have permission to show.
+   ══════════════════════════════════════════════════════════════════ */
+const SHOWREEL = [
+  { title: 'Pricing, backwards',         style: 'punchy',     mode: 'short', len: '0:34' },
+  { title: 'Reacting to my own ad',      style: 'reaction',   mode: 'short', len: '0:48' },
+  { title: 'Cold email, line by line',   style: 'split',      mode: 'short', len: '0:41' },
+  { title: 'Shipped this week',          style: 'news',       mode: 'short', len: '0:29' },
+  { title: 'The comment that started it',style: 'commentary', mode: 'short', len: '1:02' },
+  { title: 'One day, one launch',        style: 'vlog',       mode: 'short', len: '0:57' },
+];
+const SHOWREEL_LONG = [
+  { title: 'Setting the whole thing up', style: 'tutorial', mode: 'long', len: '6:12' },
+  { title: 'Q4 numbers, explained',      style: 'sidebar',  mode: 'long', len: '11:40' },
+  { title: 'Why nobody finishes things', style: 'essay',    mode: 'long', len: '8:55' },
+];
+
+/* The beats every card plays, in seconds. One loop is deliberately longer
+   than it takes to read the caption under it, so the grid is moving without
+   ever being the thing you are watching. */
+const REEL_LOOP = 5.6;
+const REEL_INSERT = [{ a: 1.35, b: 3.05 }];
+const REEL_CARD = [3.5, 4.55];
+/* The caption bars turn over on the beat a spoken line does — roughly every
+   half-second at the pace these edits run. */
+const REEL_WORDS = [[68, 42], [54, 60], [76, 34], [46, 52], [62, 38], [72, 46]];
+
+/** Everything `paintReel` needs, resolved once instead of re-queried per frame. */
+let reelCards = [];
+
+function buildShowreel() {
+  // Filtered first, so the DOM order below and this list stay the same length
+  // — the per-frame table pairs them up by index.
+  const shorts = SHOWREEL.filter((v) => STYLES[v.style]);
+  const longs = SHOWREEL_LONG.filter((v) => STYLES[v.style]);
+
+  const cardHtml = (v) => {
+    const st = STYLES[v.style];
+    // A style that does not do this format would be a claim the app refuses,
+    // so the card follows the style rather than the wish.
+    const mode = st.formats.includes(v.mode) ? v.mode : st.formats[0];
+    return `<button class="reel-card" data-style="${v.style}" data-route="new"
+                    aria-label="${v.title} — cut in the ${st.name} style">
+      <span class="reel-shot">
+        ${styleShape(st, mode)}
+        <span class="who"><i style="background:${st.accent}"></i>${st.name}</span>
+        <span class="prog"></span>
+      </span>
+      <span class="cap">${v.title} <i>&middot; ${v.len}</i></span>
+    </button>`;
+  };
+
+  $('home-reel').innerHTML = shorts.map(cardHtml).join('');
+  $('home-reel-long').innerHTML = longs.map(cardHtml).join('');
+
+  const specs = [...shorts, ...longs];
+
+  // Offsets are spread across the loop so the wall does not pulse in unison —
+  // nine cards hitting the same beat reads as one animation, not nine videos.
+  reelCards = [...document.querySelectorAll('.reel-card')].map((el, i) => {
+    const spec = specs[i];
+    const st = STYLES[spec.style];
+    const L = LAYOUTS[st.layout] ?? LAYOUTS.full;
+    const mode = st.formats.includes(spec.mode) ? spec.mode : st.formats[0];
+    const ar = mode === 'short' ? [9, 16] : [16, 9];
+    return {
+      el,
+      cam: el.querySelector('.sh-cam'),
+      insert: el.querySelector('.sh-insert'),
+      card: el.querySelector('.sh-card'),
+      caps: [...el.querySelectorAll('.sh-caps i')],
+      prog: el.querySelector('.prog'),
+      // A reaction cut is the only one whose geometry moves; the rest hold
+      // their arrangement and play the captions and the card.
+      from: L.inset ? speakerBox(L, ar) : null,
+      to: L.inset ? reactionInset(ar[0], ar[1]) : null,
+      offset: (i * REEL_LOOP) / specs.length,
+    };
+  });
+
+  if (reduced) paintReel(0);
+}
+
+/**
+ * One frame of every card, off the page's single clock.
+ *
+ * Called from `frame`, so there is one requestAnimationFrame for the whole
+ * page rather than one per card. Cards that have scrolled away still get
+ * their styles written — a handful of elements is nothing, and an
+ * IntersectionObserver here would cost more to maintain than it saves.
+ */
+function paintReel(now) {
+  if (!reelCards.length) return;
+  for (const c of reelCards) {
+    // Still frames when the viewer has asked for less motion: mid-insert,
+    // which is the moment that distinguishes the layouts from each other.
+    const t = reduced ? 2.2 : (now / 1000 + c.offset) % REEL_LOOP;
+    const cover = easeInOut(brollCoverage(REEL_INSERT, t));
+
+    if (c.from && c.cam) {
+      const b = lerpBox(c.from, c.to, cover);
+      c.cam.style.left = b[0] * 100 + '%';
+      c.cam.style.top = b[1] * 100 + '%';
+      c.cam.style.width = b[2] * 100 + '%';
+      c.cam.style.height = b[3] * 100 + '%';
+    }
+    if (c.insert) {
+      c.insert.style.opacity = cover;
+      c.insert.style.transform = `scale(${0.88 + 0.12 * cover})`;
+    }
+    if (c.card) c.card.style.opacity = t >= REEL_CARD[0] && t <= REEL_CARD[1] ? 1 : 0;
+
+    const w = REEL_WORDS[Math.floor(t / 0.52) % REEL_WORDS.length];
+    if (c.caps[0]) c.caps[0].style.width = w[0] + '%';
+    if (c.caps[1]) c.caps[1].style.width = w[1] + '%';
+
+    if (c.prog) c.prog.style.width = reduced ? '0' : (t / REEL_LOOP) * 100 + '%';
+  }
+}
+
+/* ═══════════════════════════════════════════════════ the reviews ═══
+   Placeholder copy, and the section says so on the page.
+
+   We are not going to write a customer's words for them: every quote below is
+   ours, written to size the layout. Each card is marked, and the note under
+   the wall says it again in full. There are no invented names — the line at
+   the foot of a card is the KIND of person a review will come from, which is
+   the shape a review form will hand us, so nothing here has to be rebuilt
+   when the real ones arrive.
+   ══════════════════════════════════════════════════════════════════ */
+const REVIEWS = [
+  { stars: 5, title: 'The part I always skipped',
+    body: 'I have four months of footage sitting on a drive because editing it was the tax on posting. First upload came back cut, captioned and scored in about eight minutes. That drive is nearly empty now.',
+    role: 'Founder, B2B software' },
+  { stars: 5, title: 'It found the B-roll I would have looked for',
+    body: 'I said "the calculator you use to price things" and it put a shot of exactly that on the line where I said it. I did not brief it. I did not pick from a library. It just knew what the sentence was about.',
+    role: 'Marketing lead, agency' },
+  { stars: 4, title: 'Reaction style sold it',
+    body: 'Full frame while I talk, corner box the second a picture comes up, back again. That is the edit I was paying somebody two hundred a video for, and it does it on the first pass.',
+    role: 'Creator, short-form' },
+  { stars: 5, title: 'One upload, every aspect ratio',
+    body: 'The vertical and the widescreen come out of the same edit, so the podcast clip and the full episode are one job instead of two. That alone is the subscription.',
+    role: 'Podcast producer' },
+  { stars: 5, title: 'The ums are gone and I did not ask',
+    body: 'I stopped doing second takes. It cuts the pauses and the false starts, and the captions stay in time afterwards, which is the bit every other tool gets wrong.',
+    role: 'Consultant' },
+  { stars: 4, title: 'Re-cutting is free, so I actually experiment',
+    body: 'Picking a style is not a decision I have to get right. I have run the same talk through four looks in an afternoon and kept the one that landed.',
+    role: 'Course creator' },
+];
+
+const starIcon = `<svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+  <path d="M12 2.6l2.9 5.9 6.5.9-4.7 4.6 1.1 6.5-5.8-3-5.8 3 1.1-6.5L2.6 9.4l6.5-.9z"/></svg>`;
+const starsHtml = (n) => Array.from({ length: 5 }, (_, i) =>
+  `<span style="${i < n ? '' : 'opacity:.22'}">${starIcon}</span>`).join('');
+
+function buildReviews() {
+  $('home-reviews').innerHTML = REVIEWS.map((r) => `
+    <article class="review">
+      <span class="top">
+        <span class="stars" aria-label="${r.stars} out of 5">${starsHtml(r.stars)}</span>
+        <span class="mark">Sample</span>
+      </span>
+      <h3>${r.title}</h3>
+      <p>${r.body}</p>
+      <footer>${r.role}</footer>
+    </article>`).join('');
+
+  // The headline figures are READ OFF the wall rather than typed, so the
+  // average can never drift from the reviews underneath it.
+  const avg = REVIEWS.reduce((a, r) => a + r.stars, 0) / REVIEWS.length;
+  $('rev-stars').innerHTML = starsHtml(Math.round(avg));
+  $('rev-avg').textContent = avg.toFixed(1);
+  $('rev-count').textContent = `${REVIEWS.length} sample ${REVIEWS.length === 1 ? 'entry' : 'entries'}`;
 }
 
 /* ══════════════════════════════════════════ the rest of the homepage ═══ */
@@ -5906,6 +6342,10 @@ document.addEventListener('input', (e) => {
 });
 
 document.addEventListener('click', (e) => {
+  // Monthly / annual. Before the route handler, same reason as the FAQ tabs.
+  const bill = e.target.closest('[data-bill]');
+  if (bill) return setBilling(bill.dataset.bill);
+
   // The FAQ's topic tabs. Before the route handler, because these buttons are
   // not navigation and must not fall through to it.
   const tab = e.target.closest('[data-faq]');
@@ -6046,7 +6486,10 @@ adoptFormat({ w: 1920, h: 1080, d: 47 });
 buildHomeLooks();
 buildWhoItsFor();
 buildComparison();
+buildShowreel();
+buildReviews();
 buildFaq();
+buildBill();
 buildHomePricing();
 buildWizard();
 buildNav();
