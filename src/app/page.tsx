@@ -9,6 +9,10 @@ import { LayerDemos } from '@/components/marketing/LayerDemos';
 import { MarketingStyles } from '@/components/marketing/styles';
 import { STYLE_LIST, leadsWithCards } from '@/lib/styles/presets';
 import { StylePreview } from '@/components/styles/StylePreview';
+import { WhoItsFor } from '@/components/marketing/WhoItsFor';
+import { WhatItReplaces } from '@/components/marketing/WhatItReplaces';
+import { Testimonials } from '@/components/marketing/Testimonials';
+import { Faq } from '@/components/marketing/Faq';
 
 /**
  * The marketing page.
@@ -160,6 +164,9 @@ export default function HomePage() {
         </div>
       </section>
 
+      {/* ---------------------------------------------------- who it's for */}
+      <WhoItsFor />
+
       {/* ---------------------------------------------------------- layers */}
       <section className="relative z-10 border-t border-line bg-[#0B0B0E] py-24">
         <div className="mx-auto max-w-6xl px-6">
@@ -236,6 +243,14 @@ export default function HomePage() {
         </div>
       </section>
 
+      {/* ------------------------------------------------- what it replaces */}
+      <WhatItReplaces />
+
+      {/* ---------------------------------------------------- testimonials */}
+      {/* Renders nothing until src/content/testimonials.ts has real quotes in
+          it — see the note at the top of that file. */}
+      <Testimonials />
+
       {/* --------------------------------------------------------- pricing */}
       {/* On the homepage, not only on /pricing. Somebody deciding whether this
           is for them asks what it costs before they ask anything else, and a
@@ -248,6 +263,9 @@ export default function HomePage() {
           </div>
         </div>
       </section>
+
+      {/* ------------------------------------------------------------- faq */}
+      <Faq />
 
       {/* ------------------------------------------------------------- cta */}
       <section className="relative z-10 border-t border-line py-24">
