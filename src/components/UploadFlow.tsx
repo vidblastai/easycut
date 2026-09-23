@@ -96,8 +96,16 @@ export function UploadFlow({ styles, formats }: { styles: StyleOption[]; formats
   const [at, setAt] = useState(0);
   const [file, setFile] = useState<File | null>(null);
   const [detected, setDetected] = useState<Detected | null>(null);
-  const [override, setOverride] = useState<'short' | 'long' | null>(null);
-  const mode = override ?? detected?.mode ?? 'short';
+  /*
+   * Read off the file, never chosen.
+   *
+   * Vertical footage is edited vertical for Reels, TikTok and Shorts;
+   * widescreen footage is edited widescreen for YouTube. Two pipelines, and a
+   * file belongs to exactly one of them — so there is no override here. The
+   * value below is still only this browser's guess: the server re-measures
+   * with ffprobe in `stageIngest` and that measurement is what gets built.
+   */
+  const mode = detected?.mode ?? 'short';
   const [styleId, setStyleId] = useState(styles[0]?.id ?? 'clean');
   const [inputMode, setInputMode] = useState<'raw' | 'roughcut'>('raw');
   const [layers, setLayers] = useState<Record<LayerKey, boolean>>(
@@ -154,7 +162,6 @@ export function UploadFlow({ styles, formats }: { styles: StyleOption[]; formats
       return;
     }
     setFile(next);
-    setOverride(null);
     setDetected(null);
 
     // Shape and length come out of the file's own header, which is a few
@@ -325,9 +332,12 @@ export function UploadFlow({ styles, formats }: { styles: StyleOption[]; formats
               )}
             </div>
 
-            {/* What was decided about the footage, and how to disagree with it.
-                A guess presented as a fact is worse than the question it
-                replaced. */}
+            {/* Which pipeline this file is on. A statement, not a question and
+                not a choice: the format follows the shape of the footage, and
+                there is no path from one to the other. Offering to "make it
+                long form" would be offering to crop somebody's vertical video
+                into a shape they did not film — and the server settles this
+                from ffprobe anyway, so the control would have been a lie. */}
             <div className="mb-5 flex flex-wrap items-center gap-2 rounded-xl border border-line bg-charcoal px-3 py-2.5 text-[12.5px]">
               <span
                 className="rounded-full px-2 py-0.5 text-[11px] font-bold uppercase tracking-wider"
@@ -336,19 +346,11 @@ export function UploadFlow({ styles, formats }: { styles: StyleOption[]; formats
                 {format?.label ?? (mode === 'short' ? 'Short form' : 'Long form')}
               </span>
               <span className="text-muted">
-                {override
-                  ? `You've set this one to ${override === 'short' ? 'a short' : 'long form'}.`
-                  : detected
-                    ? detected.reason
-                    : 'Reading your footage…'}
+                {detected ? detected.reason : 'Reading your footage…'}
               </span>
-              <button
-                type="button"
-                onClick={() => setOverride(override ? null : mode === 'short' ? 'long' : 'short')}
-                className="ml-auto font-semibold text-muted underline decoration-line underline-offset-4 hover:text-chalk"
-              >
-                {override ? 'Use what we detected' : `Make it ${mode === 'short' ? 'long form' : 'a short'}`}
-              </button>
+              <span className="ml-auto text-faint">
+                {format ? format.platforms.join(' · ') : ''}
+              </span>
             </div>
 
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">

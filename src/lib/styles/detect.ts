@@ -54,20 +54,39 @@ export interface Detected {
   durationSec: number;
 }
 
+/**
+ * The rule itself, as one function, so the browser and the server cannot
+ * disagree about which pipeline a file belongs to.
+ *
+ * Takes the DISPLAYED dimensions. Phone footage is routinely stored 1920×1080
+ * with a 90° rotation tag, and the stored shape is the opposite of the shape
+ * the viewer sees — `probe()` in src/lib/media/ffmpeg.ts already transposes for
+ * that, and `videoWidth`/`videoHeight` in the browser are post-rotation too.
+ * Handing this raw stream dimensions would send every rotated phone video down
+ * the widescreen pipeline.
+ */
+export function formatForShape(width: number, height: number): FormatMode {
+  return height >= width ? 'short' : 'long';
+}
+
 export function detectFormat(probe: Probe | null): Detected {
   if (!probe || !probe.width || !probe.height) {
-    // Vertical is the commoner upload here, and the override is one click, so
-    // a guess that has to be made is made the way that is wrong least often.
+    /*
+     * The browser could not decode this one — an unusual codec, or a file
+     * whose index sits at the end. Not a problem: this reading only exists to
+     * fill the screen before the upload, and the server settles the format
+     * from ffprobe once it has the bytes. Say so, rather than presenting a
+     * fallback as a decision.
+     */
     return {
       mode: 'short',
-      reason: "We couldn't read the file, so we've assumed a vertical short.",
+      reason: "We couldn't read this file in the browser — we'll set the format from the file itself when it uploads.",
       confident: false,
       durationSec: 0,
     };
   }
 
-  const portrait = probe.height >= probe.width;
-  if (portrait) {
+  if (formatForShape(probe.width, probe.height) === 'short') {
     return {
       mode: 'short',
       reason: `Shot ${probe.height > probe.width ? 'vertical' : 'square'}, so it's a short — and it stays vertical.`,

@@ -99,6 +99,15 @@ export interface PipelineContext {
   asrAudioPath?: string;
   mixAudioPath?: string;
   media?: MediaInfo;
+  /**
+   * The pipeline this job is actually on, decided from the file itself.
+   *
+   * `request.mode` is only ever a CLAIM — the browser's guess before the upload,
+   * or whatever an API caller typed. This is set in `stageIngest` from ffprobe's
+   * dimensions and is what every stage after it reads, so a vertical file cannot
+   * be pushed down the widescreen pipeline and cropped.
+   */
+  mode: FormatMode;
 
   transcript?: Transcript;
   acousticSilence?: Interval[];

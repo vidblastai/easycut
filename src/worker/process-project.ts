@@ -94,6 +94,19 @@ export async function processProject(payload: ProcessJobPayload): Promise<void> 
       await recordUsage(project.userId, measuredMinutes);
     }
 
+    /*
+     * The format the file turned out to be.
+     *
+     * The row was created from the browser's guess, before the bytes existed
+     * server-side. ffprobe settled it in `stageIngest`, and if the two differ
+     * the row is the one that is wrong — the video has already been built as
+     * the format below, so leaving the row alone would have the dashboard and
+     * the editor describing a video that does not exist.
+     */
+    if (result.context.mode !== project.mode) {
+      await db.project.update({ where: { id: projectId }, data: { mode: result.context.mode } });
+    }
+
     // Cache the two expensive stages so every later tweak is free.
     await db.project.update({
       where: { id: projectId },

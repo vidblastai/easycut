@@ -1616,11 +1616,9 @@ body.instudio { overflow: hidden; }
   color: var(--violet); background: var(--violet-dim); border-radius: 99px; padding: 3px 9px;
 }
 .verdict .why { color: var(--muted); }
-.verdict button {
-  margin-left: auto; font-size: 12.5px; font-weight: 600; color: var(--muted);
-  text-decoration: underline; text-underline-offset: 4px; text-decoration-color: var(--line);
-}
-.verdict button:hover { color: var(--chalk); }
+/* Where this format is going, in the corner the override used to sit in. It
+   is the useful thing to say once the format is not up for negotiation. */
+.verdict .where { margin-left: auto; color: var(--faint); font-size: 11.5px; }
 
 /* ── a style, drawn ────────────────────────────────────────────────────
    Names and taglines are how a style picker usually works and they are close
@@ -3779,9 +3777,10 @@ const state = {
   view: 'home', route: 'home', mode: 'simple', wiz: 0,
   file: { name: 'pricing-talk-take3.mov', meta: '0:47 · 1080×1920 · 412 MB' },
   note: 'Keep the bit about raising prices.',
-  /* `fmt` is DETECTED from the footage now, never asked. `fmtWhy` is the
-     sentence that says so, and `fmtOverride` records a person disagreeing. */
-  fmt: 'short', fmtWhy: '', fmtOverride: false,
+  /* `fmt` is READ OFF the footage — never asked, and not changeable. A
+     vertical file is a short and a widescreen file is long form; there is no
+     path between the two. `fmtWhy` is the sentence that says which and why. */
+  fmt: 'short', fmtWhy: '',
   style: 'punchy', inmode: 'raw', step: 0,
                 layers: { captions: true, broll: true, graphics: true, sfx: true, punchIns: true, music: true },
                 capScale: 1, capPos: null, edited: false,
@@ -3855,7 +3854,7 @@ const LAYER_CARDS = [
    into a cropped vertical short. That is somebody's footage reframed into a
    format they never asked for. */
 function detectFormat(probe) {
-  if (!probe || !probe.w || !probe.h) return { mode: 'short', why: "We couldn't read the file, so we've assumed a vertical short." };
+  if (!probe || !probe.w || !probe.h) return { mode: 'short', why: "We couldn't read this file in the browser \u2014 we'll set the format from the file itself when it uploads." };
   if (probe.h >= probe.w) return { mode: 'short', why: `Shot ${probe.h > probe.w ? 'vertical' : 'square'}, so it's a short — and it stays vertical.` };
   return { mode: 'long', why: probe.d > 0
     ? `${clock(probe.d)} of widescreen, so it's long form — and it stays widescreen.`
@@ -4005,11 +4004,8 @@ function buildWizard() {
            </div>`}
       <div class="verdict">
         <span class="tag">${FORMATS[state.fmt].label}</span>
-        <span class="why">${state.fmtOverride
-          ? `You&rsquo;ve set this one to ${state.fmt === 'short' ? 'a short' : 'long form'}.`
-          : (state.fmtWhy || 'Reading your footage&hellip;')}</span>
-        <button data-fmtflip>${state.fmtOverride ? 'Use what we detected'
-          : `Make it ${state.fmt === 'short' ? 'long form' : 'a short'}`}</button>
+        <span class="why">${state.fmtWhy || 'Reading your footage&hellip;'}</span>
+        <span class="where">${FORMATS[state.fmt].platforms.join(' &middot; ')}</span>
       </div>
       <div class="looks">${styleChoices().map(([k, st]) => `
         <button class="lookcard" data-style="${k}" aria-pressed="${state.style === k}">
@@ -4048,7 +4044,7 @@ $('wiz-back').addEventListener('click', () => {
 });
 
 document.addEventListener('click', (e) => {
-  const b = e.target.closest('[data-fmt],[data-fmtflip],[data-inmode],[data-style],[data-go],[data-layer],[data-tstyle],[data-timeline],[data-wiz]');
+  const b = e.target.closest('[data-fmt],[data-inmode],[data-style],[data-go],[data-layer],[data-tstyle],[data-timeline],[data-wiz]');
   if (!b) return;
 
   if (b.hasAttribute('data-timeline')) return openTimeline();
@@ -4060,18 +4056,6 @@ document.addEventListener('click', (e) => {
     // pipeline and comes out vertical. Nothing is reframed.
     adoptFormat({ w: 1080, h: 1920, d: 47 });
     buildWizard();
-    return;
-  }
-  if (b.hasAttribute('data-fmtflip')) {
-    state.fmtOverride = !state.fmtOverride;
-    state.fmt = state.fmtOverride
-      ? (state.fmt === 'short' ? 'long' : 'short')
-      : (state.fmtDetected || 'short');
-    state.style = styleNow();
-    state.capScale = 1; state.capPos = null; BASE_OVERRIDE = null;
-    tl.ops = []; tl.redo = []; tl.sel = null;
-    refreshDoc();
-    buildWizard(); paintPreview(); render();
     return;
   }
 
@@ -4526,11 +4510,16 @@ function probeVideo(file, timeoutMs = 15000) {
   });
 }
 
-/** Take the format from the footage, and the style list with it. */
+/**
+ * Take the format from the footage, and the style list with it.
+ *
+ * There is no override any more, and no `fmtDetected` to fall back to: the
+ * shape of the file IS the format. Offering to "make it long form" was
+ * offering to crop somebody's vertical video into a shape they never filmed,
+ * which is the one thing this product does not do.
+ */
 function adoptFormat(probe) {
   const v = detectFormat(probe);
-  state.fmtDetected = v.mode;
-  state.fmtOverride = false;
   state.fmt = v.mode;
   state.fmtWhy = v.why;
   state.style = styleNow();

@@ -16,6 +16,7 @@ import {
 import { CostLedger, planDegradation } from '@/lib/pricing/cost';
 import { computeReframeTrack, retimeTrack } from '@/lib/reframe';
 import { storage } from '@/lib/storage';
+import { formatForShape } from '@/lib/styles/detect';
 import { FORMAT_PRESETS, styleFor } from '@/lib/styles/presets';
 import {
   applicableFindings,
@@ -65,6 +66,8 @@ export async function runPipeline(
 
   const context: PipelineContext = {
     request,
+    // Provisional until ingest has the file in hand and ffprobe has measured it.
+    mode: request.mode,
     style: styleFor(request.styleId, request.captionPreset),
     ledger: new CostLedger(),
     workDir,
@@ -142,15 +145,37 @@ async function stageIngest(ctx: PipelineContext): Promise<void> {
 
   ctx.media = await probe(ctx.sourcePath);
 
+  /*
+   * The format is a fact about the file, so it is settled here and not before.
+   *
+   * Everything upstream — the browser's probe, the mode on the create request,
+   * the row in the database — is a guess made before anybody had the bytes.
+   * ffprobe has them now, and `probe()` has already transposed the dimensions
+   * for a rotation tag, so this is the shape the viewer will actually see.
+   *
+   * A vertical file is edited vertical and a widescreen file is edited
+   * widescreen; there is no path from one to the other, and nothing a caller
+   * sends can crop somebody's footage into the format they did not film.
+   */
+  ctx.mode = formatForShape(ctx.media.width, ctx.media.height);
+  if (ctx.mode !== ctx.request.mode) {
+    // Worth a line: it means the browser's pre-upload guess was wrong, which is
+    // usually a rotation tag the caller did not account for.
+    console.info(
+      `[pipeline] ${ctx.request.projectId}: ${ctx.request.mode} claimed, ${ctx.mode} measured ` +
+        `(${ctx.media.width}×${ctx.media.height}). Using the measurement.`,
+    );
+  }
+
   if (!ctx.media.hasAudio) {
     throw new Error('This file has no audio track. EasyCut edits talking-head footage — it needs a voice to work from.');
   }
 
   const limit =
-    ctx.request.mode === 'short' ? env.limits.maxShortDurationSec : env.limits.maxLongDurationSec;
+    ctx.mode === 'short' ? env.limits.maxShortDurationSec : env.limits.maxLongDurationSec;
   if (ctx.media.durationSec > limit * 1.5) {
     throw new Error(
-      `That's ${Math.round(ctx.media.durationSec / 60)} minutes of footage; the ${ctx.request.mode}-form limit is ${Math.round(limit / 60)}.`,
+      `That's ${Math.round(ctx.media.durationSec / 60)} minutes of footage; the ${ctx.mode}-form limit is ${Math.round(limit / 60)}.`,
     );
   }
 
@@ -243,7 +268,7 @@ async function stageDirect(ctx: PipelineContext): Promise<void> {
   const result = await direct({
     transcript: ctx.transcript,
     style: ctx.style,
-    mode: ctx.request.mode,
+    mode: ctx.mode,
     inputMode: ctx.request.inputMode,
     targetDurationSec,
     userNote: ctx.request.userNote,
@@ -289,7 +314,7 @@ async function stageTimeline(ctx: PipelineContext): Promise<void> {
   const hook = ctx.plan?.hook ?? null;
   let ranges: Array<{ sourceStartSec: number; sourceEndSec: number; reason: 'keep' | 'hook'; text: string }> = [];
 
-  if (hook && hook.endSec > hook.startSec && ctx.request.mode === 'short') {
+  if (hook && hook.endSec > hook.startSec && ctx.mode === 'short') {
     // The hook plays first, then the rest of the video minus the hook's own
     // span — so the line isn't heard twice.
     const hookRange = { startSec: hook.startSec, endSec: hook.endSec };
@@ -306,7 +331,7 @@ async function stageTimeline(ctx: PipelineContext): Promise<void> {
 
   /* --------------------- short-form length ceiling --------------------- */
 
-  const ceiling = FORMAT_PRESETS[ctx.request.mode].maxDurationSec;
+  const ceiling = FORMAT_PRESETS[ctx.mode].maxDurationSec;
   let accumulated = 0;
   const trimmed: typeof ranges = [];
   for (const range of ranges) {
@@ -377,7 +402,7 @@ async function stageTimeline(ctx: PipelineContext): Promise<void> {
 async function stageReframe(ctx: PipelineContext): Promise<void> {
   if (!ctx.edl || !ctx.media) return;
 
-  const aspect: Aspect = FORMAT_PRESETS[ctx.request.mode].aspect;
+  const aspect: Aspect = FORMAT_PRESETS[ctx.mode].aspect;
   const dimensions = ASPECT_DIMENSIONS[aspect];
   const sourceAspect = ctx.media.width / ctx.media.height;
   const targetAspect = dimensions.width / dimensions.height;
@@ -412,12 +437,12 @@ async function stageAssets(ctx: PipelineContext): Promise<void> {
 
   // Build the full EDL first — asset resolution needs the final cue placement,
   // which only exists after the director's plan is mapped onto output time.
-  const aspect: Aspect = FORMAT_PRESETS[ctx.request.mode].aspect;
+  const aspect: Aspect = FORMAT_PRESETS[ctx.mode].aspect;
 
   const built = buildEdl({
     projectId: ctx.request.projectId,
     style: ctx.style,
-    mode: ctx.request.mode,
+    mode: ctx.mode,
     aspect,
     fps: Math.min(30, Math.round(ctx.media.fps) || 30),
     transcript: ctx.transcript,
@@ -433,7 +458,7 @@ async function stageAssets(ctx: PipelineContext): Promise<void> {
   const wanted = stripLayers(built, ctx.request.layersOff ?? []);
 
   const resolved = await resolveAssets(wanted, {
-    mode: ctx.request.mode,
+    mode: ctx.mode,
     musicMood: ctx.plan.musicMood || ctx.style.musicMood,
     ledger: ctx.ledger,
   });
@@ -449,7 +474,7 @@ async function stageFinaliseEdl(ctx: PipelineContext): Promise<void> {
 
   // Budget check with the real shape of the finished edit, before render spend.
   const degradation = planDegradation({
-    mode: ctx.request.mode,
+    mode: ctx.mode,
     sourceDurationSec: ctx.media.durationSec,
     outputDurationSec: ctx.edl.format.durationSec,
     width: ctx.edl.format.width,
