@@ -113,6 +113,10 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
     renders: project.renders.map((r) => ({
       id: r.id,
       aspect: r.aspect,
+      // The real pixels, so the editor can label a 4K export as one without
+      // keeping a separate flag that could disagree with the file.
+      width: r.width,
+      height: r.height,
       status: r.status,
       progress: r.progress,
       url: r.url,

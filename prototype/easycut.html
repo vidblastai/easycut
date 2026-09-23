@@ -5755,9 +5755,9 @@ const PLANS = [
   { id: 'starter', name: 'Starter', price: 30, best: 'One video a week, posted and done.',
     minutes: 60, maxUpload: 30, srcDays: 7, vidDays: 30, jobs: 1, k4: false, priority: false },
   { id: 'creator', name: 'Creator', price: 74.99, best: 'Posting several times a week across more than one channel.',
-    minutes: 180, maxUpload: 90, srcDays: 30, vidDays: 365, jobs: 3, k4: false, priority: true, featured: true },
+    minutes: 180, maxUpload: 90, srcDays: 30, vidDays: 365, jobs: 3, k4: true, priority: true, featured: true },
   { id: 'studio', name: 'Studio', price: 190, best: 'An agency or a team cutting for several people at once.',
-    minutes: 480, maxUpload: 240, srcDays: 90, vidDays: null, jobs: 10, k4: false, priority: true },
+    minutes: 480, maxUpload: 240, srcDays: 90, vidDays: null, jobs: 10, k4: true, priority: true },
 ];
 const FREE_MINUTES = 10;
 
@@ -5939,7 +5939,7 @@ function planCardsHtml() {
         ${li(`Footage kept <b>${p.srcDays} days</b> — re-cut it as often as you like until then`)}
         ${li(`Finished videos kept <b>${p.vidDays === null ? 'for as long as you subscribe' : p.vidDays + ' days'}</b>`)}
         ${li(`Up to ${p.maxUpload} minutes in a single upload`)}
-        ${li(`${p.k4 ? '4K' : '1080p'} export, in the shape you shot in — vertical or widescreen`)}
+        ${li(`${p.k4 ? '1080p export, or 4K when a video needs it' : '1080p export'}, in the shape you shot in — vertical or widescreen`)}
         ${li(`${p.jobs === 1 ? 'One video at a time' : p.jobs + ' videos at once'}${p.priority ? ', and first in the queue' : ''}`)}
         ${li('No watermark')}
       </ul>
@@ -6233,7 +6233,7 @@ const FAQ = [
     ['How long can my video be?',
      'Up to 30 minutes in a single upload on Starter, and up to 240 on the top plan. That is a separate limit from the monthly allowance, so one long file cannot eat your whole month in a single click.'],
     ['Is there a watermark?',
-     'Only on the free tier. Every paid plan exports clean, at 1080p, in both formats.'],
+     'Only on the free tier. Every paid plan exports clean, at 1080p, in both formats \u2014 and on \n      Creator and Studio you can re-export any video in 4K when it needs it. It is a per-video \n      choice rather than the default, because 4K takes about four times as long and a video \n      going to a feed gains nothing from it.'],
     ['What happens to my footage?',
      'It is deleted on a schedule your plan sets — 7 days on Starter — and the finished videos are kept far longer. Deletion is automatic and permanent. Once the footage has gone you can still watch and download what you made; you just cannot re-render it.'],
     ['Is my video used to train anything?',

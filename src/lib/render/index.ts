@@ -7,6 +7,7 @@ import { muxVideoAudio, renderAudio } from '@/lib/media/audio-mix';
 import { extractFrame } from '@/lib/media/ffmpeg';
 import { sfxUrl, SFX_NAMES } from '@/lib/assets/sfx';
 import { startAssetServer, type AssetServer } from './asset-server';
+import { DEFAULT_QUALITY, scaleFor, type RenderQuality } from './quality';
 
 /**
  * Rendering.
@@ -48,6 +49,15 @@ export interface RenderOptions {
    * removed with the developer tools — see src/lib/billing/entitlements.ts.
    */
   watermark?: boolean;
+  /**
+   * Which resolution to draw at — see src/lib/render/quality.ts.
+   *
+   * The compositions are laid out at a 1080 base and never consult this:
+   * `scale` multiplies the output, so a 4K export is the same layout drawn on
+   * a bigger canvas. Absent means HD, because a missing field must never
+   * quadruple somebody's render time.
+   */
+  quality?: RenderQuality;
   /**
    * Amend an existing render instead of drawing the whole thing again.
    *
@@ -105,6 +115,7 @@ async function renderWithSource(
   options: RenderOptions,
   startedAt: number,
 ): Promise<RenderResult> {
+  const quality = options.quality ?? DEFAULT_QUALITY;
   const silentVideoPath = join(options.outputDir, 'video-silent.mp4');
   const audioPath = join(options.outputDir, 'audio.m4a');
   const finalPath = join(options.outputDir, 'final.mp4');
@@ -121,7 +132,7 @@ async function renderWithSource(
 
   // The two halves, in parallel — this is the main speed win in the pipeline.
   await Promise.all([
-    renderFrames(edl, silentVideoPath, (f) => options.onProgress?.(0.02 + f * 0.82, 'Rendering frames')),
+    renderFrames(edl, silentVideoPath, (f) => options.onProgress?.(0.02 + f * 0.82, 'Rendering frames'), quality),
     renderAudio(edl, {
       sourceAudioPath: options.sourceAudioPath,
       sfxPaths: localSfxPaths(),
@@ -176,6 +187,14 @@ async function renderIncrementally(
 ): Promise<RenderResult | null> {
   const plan = options.incremental;
   if (!plan) return null;
+  /*
+   * The chunk has to be drawn at the same size as the file it is spliced into.
+   * The caller is responsible for not offering an incremental plan across a
+   * quality change at all (see `planIncremental` in the worker), but reading
+   * the option here rather than assuming HD means the two can never silently
+   * disagree if that ever slips.
+   */
+  const quality = options.quality ?? DEFAULT_QUALITY;
 
   const { existsSync } = await import('node:fs');
   if (!existsSync(plan.previousVideoPath)) {
@@ -223,6 +242,7 @@ async function renderIncrementally(
     edl,
     chunkPath,
     (f) => options.onProgress?.(0.05 + f * 0.75, 'Re-rendering what changed'),
+    quality,
     [fromFrame, toFrame - 1],
   );
 
@@ -265,6 +285,7 @@ async function renderFrames(
   edl: Edl,
   outputPath: string,
   onProgress: (fraction: number) => void,
+  quality: RenderQuality,
   /** Only these frames, for an incremental render. Inclusive at both ends. */
   frameRange?: [number, number],
 ): Promise<void> {
@@ -272,16 +293,17 @@ async function renderFrames(
     // Lambda splits a render across functions by frame and has its own notion
     // of a range; amending one there is a different design, so it draws the
     // whole video as it always has.
-    if (frameRange) return renderLocally(edl, outputPath, onProgress, frameRange);
-    return renderOnLambda(edl, outputPath, onProgress);
+    if (frameRange) return renderLocally(edl, outputPath, onProgress, quality, frameRange);
+    return renderOnLambda(edl, outputPath, onProgress, quality);
   }
-  return renderLocally(edl, outputPath, onProgress, frameRange);
+  return renderLocally(edl, outputPath, onProgress, quality, frameRange);
 }
 
 async function renderLocally(
   edl: Edl,
   outputPath: string,
   onProgress: (fraction: number) => void,
+  quality: RenderQuality,
   frameRange?: [number, number],
 ): Promise<void> {
   const { bundle } = await import('@remotion/bundler');
@@ -310,9 +332,20 @@ async function renderLocally(
     // No audio here: ffmpeg is building the real mix in parallel.
     muted: true,
     concurrency: env.render.concurrency,
+    /*
+     * The whole of 4K, in one option.
+     *
+     * `scale` multiplies the output dimensions and leaves the composition's
+     * own layout alone, so every `px` in `remotion/` still means what it meant
+     * at 1080 and nothing needed rewriting for this.
+     */
+    scale: scaleFor(quality),
     // CRF 21 at 1080p is visually transparent for talking-head content and
-    // roughly a third the size of CRF 17.
-    crf: 21,
+    // roughly a third the size of CRF 17. At 4K the same CRF produces a file
+    // three times the size for a difference nobody can see at four times the
+    // pixel density, so it steps back two — which is the standard adjustment
+    // and keeps a ten-minute 4K export at a size somebody can actually upload.
+    crf: quality === '4k' ? 23 : 21,
     ...(frameRange ? { frameRange } : {}),
     /*
      * A keyframe every second.
@@ -349,6 +382,7 @@ async function renderOnLambda(
   edl: Edl,
   outputPath: string,
   onProgress: (fraction: number) => void,
+  quality: RenderQuality,
 ): Promise<void> {
   const { renderMediaOnLambda, getRenderProgress } = await import('@remotion/lambda/client');
   const { writeFile } = await import('node:fs/promises');
@@ -361,7 +395,9 @@ async function renderOnLambda(
     inputProps: { edl, previewAudio: false },
     codec: 'h264',
     muted: true,
-    crf: 21,
+    scale: scaleFor(quality),
+    // See the note on the local path: 4K steps the CRF back two.
+    crf: quality === '4k' ? 23 : 21,
     // The main cost/speed dial: fewer frames per Lambda means more parallelism
     // and lower latency, at the price of more cold starts.
     framesPerLambda: env.render.framesPerLambda,

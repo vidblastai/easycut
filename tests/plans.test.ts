@@ -164,11 +164,44 @@ describe('getPlan', () => {
 describe('every plan feature is one the software actually enforces', () => {
   it('never advertises a resolution the renderer cannot produce', async () => {
     const { ASPECT_DIMENSIONS } = await import('@/lib/edl/types');
-    // The compositions are laid out at these sizes; nothing scales them up yet.
-    const tallest = Math.max(...Object.values(ASPECT_DIMENSIONS).map((d) => Math.max(d.width, d.height)));
+    const { RENDER_QUALITIES, QUALITY_SCALE, QUALITY_SHORT_SIDE } = await import('@/lib/render/quality');
+
+    /*
+     * The compositions are laid out at a 1080 base and `renderMedia`'s `scale`
+     * multiplies the output, so the resolutions that can actually come out are
+     * exactly the base short side times each quality's scale. A plan may only
+     * claim one of those.
+     *
+     * This test caught the original 4K lie — the page said 4K when nothing
+     * scaled anything — so it is deliberately still phrased as "can the
+     * renderer reach this number", not "is this number in a list".
+     */
+    const shortSide = Math.min(...Object.values(ASPECT_DIMENSIONS).map((d) => Math.min(d.width, d.height)));
+    const reachable = RENDER_QUALITIES.map((q) => shortSide * QUALITY_SCALE[q]);
+
     for (const plan of [PLANS.free, ...PAID_PLANS]) {
-      expect(plan.maxRenderHeight, `${plan.name} claims ${plan.maxRenderHeight}p`).toBeLessThanOrEqual(tallest);
+      expect(reachable, `${plan.name} claims ${plan.maxRenderHeight}p`).toContain(plan.maxRenderHeight);
     }
+
+    // And the quality table agrees with the compositions it multiplies.
+    for (const quality of RENDER_QUALITIES) {
+      expect(shortSide * QUALITY_SCALE[quality]).toBe(QUALITY_SHORT_SIDE[quality]);
+    }
+  });
+
+  it('gives 4K only to the plans whose page says so', async () => {
+    const { allowsQuality } = await import('@/lib/render/quality');
+    const { entitlementsOf } = await import('@/lib/billing/entitlements');
+    for (const plan of [PLANS.free, ...PAID_PLANS]) {
+      const claimed = plan.maxRenderHeight >= 2160;
+      // The entitlement the render route reads has to match the plan table the
+      // pricing card is printed from, or somebody pays for a button that 403s.
+      expect(allowsQuality(entitlementsOf(plan.id).maxHeight, '4k')).toBe(claimed);
+    }
+    expect(PLANS.free.maxRenderHeight).toBe(1080);
+    expect(PLANS.starter.maxRenderHeight).toBe(1080);
+    expect(PLANS.creator.maxRenderHeight).toBe(2160);
+    expect(PLANS.studio.maxRenderHeight).toBe(2160);
   });
 
   it('turns a priority plan into a queue priority, and an ordinary one into none', async () => {

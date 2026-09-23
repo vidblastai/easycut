@@ -1,5 +1,6 @@
 import '@/lib/config/load-env';
 import { entitlementsFor } from '@/lib/billing/entitlements';
+import { readQuality } from '@/lib/render/quality';
 import { env } from '@/lib/config/env';
 import { db } from '@/lib/db';
 import { sweepExpired } from './sweep';
@@ -36,8 +37,14 @@ async function loop(workerId: number): Promise<void> {
           await processProject(job.payload as ProcessJobPayload);
           break;
         case 'rerender': {
-          const { projectId, edlId } = job.payload as { projectId: string; edlId: string };
-          await rerenderProject(projectId, edlId);
+          const { projectId, edlId, quality } = job.payload as {
+            projectId: string;
+            edlId: string;
+            quality?: string;
+          };
+          // `readQuality` never guesses upwards, so an old job enqueued before
+          // 4K existed renders HD rather than quadrupling somebody's wait.
+          await rerenderProject(projectId, edlId, readQuality(quality));
           break;
         }
         default:

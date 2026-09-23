@@ -3,6 +3,7 @@ import { join } from 'node:path';
 import '../src/lib/config/load-env';
 import { EdlSchema } from '../src/lib/edl/types';
 import { renderVideo } from '../src/lib/render';
+import type { RenderQuality } from '../src/lib/render/quality';
 import { extractAudio } from '../src/lib/media/ffmpeg';
 
 /**
@@ -12,9 +13,13 @@ import { extractAudio } from '../src/lib/media/ffmpeg';
  *   npx tsx scripts/render-local.ts path/to/edl.json path/to/source.mp4 out/
  */
 async function main() {
-  const [edlPath, sourcePath, outputDir = 'out'] = process.argv.slice(2);
+  // `--4k` anywhere in the arguments, so the resolution is testable by hand
+  // without a database, a plan or a signed-in account.
+  const argv = process.argv.slice(2);
+  const quality: RenderQuality = argv.includes('--4k') ? '4k' : 'hd';
+  const [edlPath, sourcePath, outputDir = 'out'] = argv.filter((a) => a !== '--4k');
   if (!edlPath || !sourcePath) {
-    console.error('Usage: tsx scripts/render-local.ts <edl.json> <source.mp4> [outputDir]');
+    console.error('Usage: tsx scripts/render-local.ts <edl.json> <source.mp4> [outputDir] [--4k]');
     process.exit(1);
   }
 
@@ -27,6 +32,7 @@ async function main() {
 
   const result = await renderVideo({
     edl,
+    quality,
     sourceVideoPath: sourcePath,
     sourceAudioPath: audioPath,
     outputDir,

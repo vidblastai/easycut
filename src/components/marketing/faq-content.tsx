@@ -101,7 +101,10 @@ export const FAQ_GROUPS: FaqGroup[] = [
         q: 'Is there a watermark?',
         a: (
           <>
-            Only on the free tier. Every paid plan exports clean, at 1080p, in both formats.
+            Only on the free tier. Every paid plan exports clean, at 1080p, in both formats — and
+            on Creator and Studio you can re-export any video in 4K when it needs it. It is a
+            per-video choice rather than the default, because 4K takes about four times as long
+            and a video going to a feed gains nothing from it.
           </>
         ),
       },

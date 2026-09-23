@@ -177,26 +177,39 @@ Three policy calls the code has already made, so you can overrule them:
   created in the dashboard and never put in the environment, is logged and
   ignored rather than silently downgrading a paying customer to free.
 
-### 1b. 4K — a priced decision, not a missing feature
+### 1b. 4K — built, opt-in, on Creator and Studio
 
-The pricing page used to say Creator and Studio export in 4K. Nothing produced
-it: every composition is laid out at 1080 and there is no path that scales
-them. The page now says 1080p, which is what the software does.
+Shipped as an **opt-in export per video** rather than a plan default, which is
+what keeps the cost off the customers who do not want it.
 
-Shipping 4K is not hard — Remotion's `renderMedia` takes a `scale`, so the
-compositions need no layout changes at all — but it costs:
+- Creator and Studio have `maxRenderHeight: 2160`; Free and Starter stay at
+  1080. The pricing card reads "1080p export, or 4K when a video needs it".
+- The first render of any project is always 1080p. 4K is a second export,
+  requested from the editor, and the card states the wait — computed from
+  **that project's own last render**, not a benchmark, because a thirty-second
+  short and a ten-minute video are an hour apart.
+- Enforced on `POST /api/projects/[id]/render`, from `planAtUpload` like the
+  watermark. The editor hides the control on a plan without it, but a hidden
+  button is only a suggestion; the route is the part a browser cannot go round.
+- Verified against real files: widescreen comes out 3840×2160, a vertical short
+  2160×3840, same frame count and identical layout.
 
-- **Render time roughly 3–4×.** A ten-minute video renders in ~27 minutes on
-  four cores today; at 4K that is an hour and a half. On Lambda it is money
-  instead of time, at about the same multiple.
-- **Margin.** Rendering is 11–20 % of pipeline cost, so 4× on that line takes
-  Studio from ~75 % to about 68 % if everyone uses it.
+Why it stays opt-in: 4K is four times the pixels and three to four times the
+wall clock, and almost nobody needs it — a vertical short is watched on a phone
+and the platform re-encodes it on the way in regardless. Making it the default
+would charge every customer that multiple so a minority could have it, and take
+Studio's margin from ~75 % to about 68 %.
 
-My recommendation: ship it as an **opt-in export** on Creator and Studio rather
-than the default, with the wait stated on the button. Then the multiple is paid
-only on the videos that need it, which is a small minority of them. Say the
-word and it is a day's work — `maxRenderHeight` in `plans.ts` is already read at
-render time, so the plumbing is waiting for it.
+Two implementation notes worth knowing:
+
+- **`scale`, not a layout change.** Every composition is still laid out at a
+  1080 base; `renderMedia`'s `scale` multiplies the output. Nothing in
+  `remotion/` knows 4K exists.
+- **4K never splices.** An incremental re-render copies frames from the
+  previous file, so `planIncremental` compares the stored dimensions against
+  the *scaled* ones — otherwise a 1080 file and a 4K chunk would be stitched
+  into one video that changes size halfway through. Two 4K renders of the same
+  edit still take the cheap path.
 
 ### 2. Error reporting
 

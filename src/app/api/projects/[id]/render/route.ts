@@ -1,8 +1,9 @@
 import { NextResponse } from 'next/server';
 import { entitlementsFor } from '@/lib/billing/entitlements';
+import { allowsQuality, DEFAULT_QUALITY, dimensionsFor, RENDER_QUALITIES } from '@/lib/render/quality';
 import { z } from 'zod';
 import { db, parseJson, stringifyJson } from '@/lib/db';
-import { ASPECT_DIMENSIONS, ASPECTS, EdlSchema, type Edl } from '@/lib/edl/types';
+import { ASPECTS, EdlSchema, type Edl } from '@/lib/edl/types';
 import { queue } from '@/lib/queue';
 import { rebuildEdl } from '@/lib/pipeline/rebuild';
 import type { DirectorPlan } from '@/lib/director/schema';
@@ -16,6 +17,8 @@ export const runtime = 'nodejs';
 const RenderSchema = z.object({
   /** Export the same edit at another aspect ratio (e.g. a 1:1 for LinkedIn). */
   aspect: z.enum(ASPECTS).optional(),
+  /** `4k` doubles the output resolution. Opt-in, and only on plans that have it. */
+  quality: z.enum(RENDER_QUALITIES).optional(),
   edlId: z.string().optional(),
 });
 
@@ -33,6 +36,29 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   const denied = await guardProject(id);
   if (denied) return denied;
 
+  /*
+   * The 4K check lives here and nowhere else that matters.
+   *
+   * It is the only point a browser cannot go around: the editor hides the
+   * control on a plan without it, but a hidden button is a suggestion, and
+   * rendering four times the pixels for somebody who did not pay for them is
+   * the expensive kind of mistake. Read from `planAtUpload`, same as the
+   * watermark, so a downgrade does not retroactively change what an existing
+   * project may export.
+   */
+  const entitlements = await entitlementsFor(id);
+  const quality = input.quality ?? DEFAULT_QUALITY;
+  if (!allowsQuality(entitlements.maxHeight, quality)) {
+    return NextResponse.json(
+      {
+        error:
+          '4K export is on Creator and Studio. This project was made on a plan without it — ' +
+          'upgrade and re-render, and it will export in 4K.',
+      },
+      { status: 403 },
+    );
+  }
+
   const project = await db.project.findUnique({
     where: { id },
     include: {
@@ -45,11 +71,14 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   let edlId = input.edlId ?? project.edls[0]?.id;
   if (!edlId) return NextResponse.json({ error: 'Nothing to render yet.' }, { status: 409 });
 
+  // Read once: the aspect block needs the document, and so does the answer at
+  // the bottom — which used to report the EDL's ID in the `aspect` field.
+  const current = await db.edl.findUnique({ where: { id: edlId } });
+  const currentEdl = current ? EdlSchema.parse(parseJson<Edl>(current.document, {} as Edl)) : null;
+  const currentAspect = currentEdl?.format.aspect ?? null;
+
   // A different aspect means a genuinely different layout, so build a version.
   if (input.aspect) {
-    const current = await db.edl.findUnique({ where: { id: edlId } });
-    const currentEdl = current ? EdlSchema.parse(parseJson<Edl>(current.document, {} as Edl)) : null;
-
     if (currentEdl && currentEdl.format.aspect !== input.aspect) {
       const transcript = parseJson<Transcript | null>(project.transcriptJson, null);
       const plan = parseJson<DirectorPlan | null>(project.directorPlanJson, null);
@@ -98,14 +127,20 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   await db.project.update({ where: { id }, data: { status: 'processing' } });
   await queue().enqueue(
     'rerender',
-    { projectId: id, edlId },
-    { priority: (await entitlementsFor(id)).priority },
+    { projectId: id, edlId, quality },
+    { priority: entitlements.priority },
   );
+
+  // The aspect actually being rendered, which is the one asked for or the one
+  // the document already had — the dimensions below have to describe the file
+  // that is coming, not the change that was requested.
+  const renderedAspect = input.aspect ?? currentAspect ?? null;
 
   return NextResponse.json({
     ok: true,
     edlId,
-    aspect: input.aspect ?? project.edls[0]?.id,
-    dimensions: input.aspect ? ASPECT_DIMENSIONS[input.aspect] : null,
+    quality,
+    aspect: renderedAspect,
+    dimensions: renderedAspect ? dimensionsFor(renderedAspect, quality) : null,
   });
 }

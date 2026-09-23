@@ -19,6 +19,7 @@ import { CopyButton } from '@/components/CopyButton';
 import type { EdlOperation } from '@/lib/edl/operations';
 import type { CaptionStyle, Edl } from '@/lib/edl/types';
 import { explainFailure } from '@/lib/ui/failure';
+import { dimensionsFor, qualityOfRender, QUALITY_SLOWDOWN, type RenderQuality } from '@/lib/render/quality';
 import Link from 'next/link';
 
 /**
@@ -71,7 +72,16 @@ interface ProjectState {
     log: Array<{ stage: string; status: string; ms: number; message: string }>;
   } | null;
   edl: { id: string; version: number; document: Edl | null } | null;
-  renders: Array<{ id: string; aspect: string; status: string; progress: number; url: string | null; renderMs: number | null }>;
+  renders: Array<{
+    id: string;
+    aspect: string;
+    width: number;
+    height: number;
+    status: string;
+    progress: number;
+    url: string | null;
+    renderMs: number | null;
+  }>;
 }
 
 const POLL_MS = 1800;
@@ -80,10 +90,13 @@ export function ProjectWorkspace({
   projectId,
   styles,
   recents,
+  canExport4k = false,
 }: {
   projectId: string;
   styles: StyleOption[];
   recents: RecentProject[];
+  /** Decided on the server from the plan this project was made on. */
+  canExport4k?: boolean;
 }) {
   const [state, setState] = useState<ProjectState | null>(null);
   const [busy, setBusy] = useState(false);
@@ -263,22 +276,36 @@ export function ProjectWorkspace({
     }
   }, [projectId, load]);
 
-  const exportAspect = useCallback(
-    async (aspect: string) => {
+  const requestExport = useCallback(
+    async (body: { aspect?: string; quality?: RenderQuality }) => {
       setBusy(true);
       setError(null);
       try {
-        await fetch(`/api/projects/${projectId}/render`, {
+        const response = await fetch(`/api/projects/${projectId}/render`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ aspect }),
+          body: JSON.stringify(body),
         });
+        if (!response.ok) {
+          // A refusal here is a sentence somebody can act on — a 4K request
+          // from a plan without it says which plans have it. Swallowing it
+          // would leave the button looking broken.
+          const payload = await response.json().catch(() => ({}));
+          setError(payload.error ?? 'Could not start that export.');
+          return;
+        }
         await load();
+      } catch {
+        setError('Could not reach the server. Try again in a moment.');
       } finally {
         setBusy(false);
       }
     },
     [projectId, load],
+  );
+  const exportAspect = useCallback(
+    (aspect: string) => void requestExport({ aspect }),
+    [requestExport],
   );
 
   if (!state) {
@@ -324,6 +351,35 @@ export function ProjectWorkspace({
     ? Math.ceil((footageExpires.getTime() - Date.now()) / 86_400_000)
     : null;
   const styleName = styles.find((s) => s.id === project.styleId)?.name ?? project.styleId;
+
+  /* ------------------------------------------------------------ 4K ------ */
+
+  /** Whether a 4K export of this project already exists, read off its pixels. */
+  const has4k = state.renders.some(
+    (r) => r.status === 'succeeded' && qualityOfRender(r.width, r.height) === '4k',
+  );
+
+  /** The size the file will be, in the words a spec sheet uses. */
+  const fourKSize = doc
+    ? (() => {
+        const { width, height } = dimensionsFor(doc.format.aspect, '4k');
+        return `${width}×${height}`;
+      })()
+    : '4K';
+
+  /*
+   * How long the wait is, from this project's own last render rather than a
+   * figure from a benchmark. A ten-minute video and a thirty-second one are an
+   * hour apart at 4K, and "about 4× longer" is useless to somebody who never
+   * timed the first one.
+   */
+  const fourKWait = (() => {
+    const lastHd = state.renders.find(
+      (r) => r.status === 'succeeded' && r.renderMs && qualityOfRender(r.width, r.height) === 'hd',
+    );
+    if (!lastHd?.renderMs) return `about ${QUALITY_SLOWDOWN['4k']}× longer than the usual export`;
+    return approximateDuration((lastHd.renderMs / 1000) * QUALITY_SLOWDOWN['4k']);
+  })();
 
   const commitCaption = async () => {
     if (!captionStyle) return;
@@ -700,6 +756,39 @@ export function ProjectWorkspace({
                             <li key={i}>&bull; {item}</li>
                           ))}
                         </ul>
+                      </div>
+                    ) : null}
+
+                    {/* 4K, opt-in, with the wait on the control.
+                        Deliberately its own card rather than a toggle on the
+                        aspect buttons: it is the one export decision with a
+                        real cost attached, and burying it in a row of shapes
+                        would have people pressing it without reading. */}
+                    {canExport4k ? (
+                      <div className="card p-4">
+                        <div className="flex items-baseline justify-between gap-3">
+                          <h3 className="text-sm font-bold">Export in 4K</h3>
+                          {has4k ? (
+                            <span className="rounded-full bg-ok/15 px-2 py-0.5 text-[10.5px] font-bold uppercase tracking-wider text-ok">
+                              Done
+                            </span>
+                          ) : null}
+                        </div>
+                        <p className="mt-1 text-[12.5px] leading-snug text-muted">
+                          {footageGone
+                            ? 'Not any more — this needs your original footage, which has been deleted.'
+                            : `Four times the pixels — ${fourKSize}. Same edit, drawn bigger. ` +
+                              `It takes ${fourKWait}, so it is worth it for something going on a ` +
+                              'television or footage a client will crop into, and rarely worth it for a feed.'}
+                        </p>
+                        <button
+                          type="button"
+                          disabled={busy || footageGone}
+                          onClick={() => void requestExport({ quality: '4k' })}
+                          className="btn-ghost mt-3"
+                        >
+                          {has4k ? 'Render 4K again' : 'Render this in 4K'}
+                        </button>
                       </div>
                     ) : null}
 
@@ -1339,4 +1428,21 @@ function formatDuration(seconds: number): string {
   const total = Math.round(seconds);
   const minutes = Math.floor(total / 60);
   return `${minutes}:${String(total % 60).padStart(2, '0')}`;
+}
+
+/**
+ * A wait, in the words somebody would use to describe one.
+ *
+ * `formatDuration` is a timecode, which is right on a video and wrong on a
+ * sentence — "about 27:00" is not how anybody says half an hour. Rounded
+ * generously and upward: a wait that comes in early is a good surprise.
+ */
+function approximateDuration(seconds: number): string {
+  const minutes = seconds / 60;
+  if (minutes < 1.5) return 'about a minute';
+  if (minutes < 55) return `about ${Math.ceil(minutes / 5) * 5} minutes`;
+  const hours = minutes / 60;
+  if (hours < 1.25) return 'about an hour';
+  if (hours < 1.75) return 'about an hour and a half';
+  return `about ${Math.round(hours)} hours`;
 }

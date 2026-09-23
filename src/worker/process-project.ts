@@ -2,6 +2,7 @@ import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { entitlementsFor } from '@/lib/billing/entitlements';
 import { renderDelta, worthSplicing } from '@/lib/render/diff';
+import { DEFAULT_QUALITY, scaleFor, type RenderQuality } from '@/lib/render/quality';
 import { localMusicPath } from '@/lib/assets/music';
 import { parseLayersOff } from '@/lib/edl/layers';
 import { recordUsage } from '@/lib/billing/usage';
@@ -361,6 +362,8 @@ async function planIncremental(
   projectId: string,
   next: Edl,
   workDir: string,
+  /** What this render multiplies the composition by — 1 for HD, 2 for 4K. */
+  scale: number,
 ): Promise<{ previousVideoPath: string; fromSec: number; toSec: number } | null> {
   try {
     const previous = await db.render.findFirst({
@@ -370,10 +373,17 @@ async function planIncremental(
     });
     if (!previous?.url || !previous.edl) return null;
 
-    // A different shape is a different composition, whatever the documents say.
+    /*
+     * A different shape is a different composition, whatever the documents say
+     * — and a different RESOLUTION is too. Splicing 1080 frames into a 4K file
+     * would produce a video that changes size halfway through, so comparing
+     * against the scaled dimensions is what makes "export this one in 4K"
+     * safely fall through to a full render. Two 4K renders of the same edit
+     * still match each other, so the cheap path survives where it is correct.
+     */
     if (
-      previous.width !== next.format.width ||
-      previous.height !== next.format.height ||
+      previous.width !== next.format.width * scale ||
+      previous.height !== next.format.height * scale ||
       Math.abs(previous.fps - next.format.fps) > 0.01
     ) {
       return null;
@@ -433,20 +443,33 @@ function storageKeyOf(url: string): string | null {
  *
  * This is what makes every tweak in the editor cheap: swapping a style, nudging
  * a caption or changing aspect ratio costs one render and zero API calls.
+ *
+ * `quality` is the one thing here that is not cheap — a 4K export redraws every
+ * frame at four times the pixels and takes three to four times as long — so it
+ * arrives from the route that already checked the customer's plan allows it,
+ * and defaults to HD when absent.
  */
-export async function rerenderProject(projectId: string, edlId: string): Promise<void> {
+export async function rerenderProject(
+  projectId: string,
+  edlId: string,
+  quality: RenderQuality = DEFAULT_QUALITY,
+): Promise<void> {
   const row = await db.edl.findUnique({ where: { id: edlId } });
   if (!row) throw new Error('EDL not found');
 
   const edl = EdlSchema.parse(parseJson<Edl>(row.document, {} as Edl));
 
+  // The row records the pixels the file will actually have, not the
+  // composition's 1080 base — so a 4K export is self-describing and a label can
+  // never disagree with the video it names.
+  const scale = scaleFor(quality);
   const render = await db.render.create({
     data: {
       projectId,
       edlId,
       aspect: edl.format.aspect,
-      width: edl.format.width,
-      height: edl.format.height,
+      width: edl.format.width * scale,
+      height: edl.format.height * scale,
       fps: edl.format.fps,
       status: 'running',
     },
@@ -461,7 +484,7 @@ export async function rerenderProject(projectId: string, edlId: string): Promise
   await mkdir(workDir, { recursive: true });
 
   // Can this be an amendment to the last render rather than a new one?
-  const incremental = await planIncremental(projectId, edl, workDir);
+  const incremental = await planIncremental(projectId, edl, workDir, scale);
 
   // A re-render is the cheap path — change a style, change a caption look, and
   // it replays without touching an API. Which is exactly why its scratch space
@@ -483,6 +506,7 @@ export async function rerenderProject(projectId: string, edlId: string): Promise
     const rendered = await renderVideo({
       edl,
       watermark: (await entitlementsFor(projectId)).watermark,
+      quality,
       sourceVideoPath: sourcePath,
       sourceAudioPath: audioPath,
       musicPath: edl.music ? localMusicPath(edl.music.url) : null,
