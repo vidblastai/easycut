@@ -12,11 +12,23 @@ function str(name: string): string | undefined {
   return v && v.trim().length > 0 ? v.trim() : undefined;
 }
 
-/** How many cores this process can actually use, floored at one. */
+/**
+ * How many cores this process can actually use, floored at one.
+ *
+ * `navigator.hardwareConcurrency` rather than `os.cpus()`, and the difference
+ * is not cosmetic: this module is imported by `src/instrumentation.ts`, which
+ * Next.js compiles for the EDGE runtime as well as Node. Edge has no
+ * `node:os`, and webpack resolves the import whether or not the code path can
+ * run — so a `require('node:os')` in here, however carefully guarded at
+ * runtime, fails the production build outright.
+ *
+ * `navigator.hardwareConcurrency` is the cross-runtime spelling. Node has had
+ * it since 21, Edge runtimes have it, and browsers have had it for a decade.
+ */
 function coreCount(): number {
   try {
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
-    return Math.max(1, (require('node:os') as typeof import('node:os')).cpus().length);
+    const n = typeof navigator !== 'undefined' ? navigator.hardwareConcurrency : undefined;
+    return Math.max(1, Number.isFinite(n) ? (n as number) : 1);
   } catch {
     return 1;
   }
@@ -230,6 +242,34 @@ export const env = {
     sweepIntervalMinutes: num('RETENTION_SWEEP_MINUTES', 60),
   },
 
+  /**
+   * Being told when it breaks.
+   *
+   * Optional like everything else, and the console sink is always on — so an
+   * unconfigured clone still gets consistent, deduplicated failure lines. With
+   * a webhook URL (Slack, Discord, anything that takes JSON) or a Sentry DSN,
+   * the same failures also reach a human who is not reading the log.
+   */
+  errors: {
+    /** Slack/Discord/generic incoming webhook. The thirty-second option. */
+    webhookUrl: str('ERROR_WEBHOOK_URL'),
+    /** `https://PUBLIC_KEY@oNNN.ingest.sentry.io/PROJECT_ID`. No SDK needed. */
+    sentryDsn: str('SENTRY_DSN'),
+    /**
+     * How long one kind of failure stays quiet after it has been reported.
+     *
+     * The number that decides whether the alerting survives its first bad
+     * night: too short and a queue retrying one broken job buries the channel,
+     * too long and a second, different incident hides behind the first. Fifteen
+     * minutes is about one fix-and-deploy cycle.
+     */
+    cooldownMinutes: num('ERROR_COOLDOWN_MINUTES', 15),
+    /** A ceiling across all fingerprints, so a storm of DISTINCT errors cannot flood either. */
+    maxPerHour: num('ERROR_MAX_PER_HOUR', 20),
+    /** Which machine sent it, when several are running. */
+    serverName: str('ERROR_SERVER_NAME') ?? str('HOSTNAME') ?? 'easycut',
+  },
+
   limits: {
     /** Hard budget guard. A job that would exceed this is degraded, not billed. */
     maxCostShortUsd: num('MAX_COST_SHORT_USD', 1),
@@ -323,6 +363,16 @@ export function capabilities(): Capability[] {
       fallback: 'In-process queue. Jobs are lost if the server restarts mid-run.',
       envVars: ['REDIS_URL'],
       signupUrl: 'https://upstash.com/',
+    },
+    {
+      key: 'alerts',
+      label: 'Error alerts',
+      configured: Boolean(env.errors.webhookUrl || env.errors.sentryDsn),
+      fallback:
+        'Failures are logged and deduplicated but nothing reaches you. A render that breaks at 2am ' +
+        'waits in a log file until somebody looks. A Slack or Discord webhook URL is thirty seconds of setup.',
+      envVars: ['ERROR_WEBHOOK_URL', 'SENTRY_DSN'],
+      signupUrl: 'https://api.slack.com/messaging/webhooks',
     },
   ];
 }

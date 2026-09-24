@@ -3,6 +3,7 @@ import type Stripe from 'stripe';
 import { env } from '@/lib/config/env';
 import { stripe } from '@/lib/billing/stripe';
 import { applySubscription } from '@/lib/billing/subscription';
+import { reportError } from '@/lib/errors/report';
 
 export const runtime = 'nodejs';
 // The signature is computed over the EXACT bytes Stripe sent. Anything that
@@ -79,7 +80,13 @@ export async function POST(request: Request) {
     console.log(`[billing] ${event.type}: ${applied.userId} → ${applied.plan}${applied.written ? '' : ' (stale, ignored)'}`);
     return NextResponse.json({ ok: true, plan: applied.plan });
   } catch (error) {
-    console.error('[billing] webhook failed', event.type, error);
+    /*
+     * Worth waking up for. Stripe has taken the money by the time this event
+     * arrives, so a failure here is a customer who has paid and not been
+     * upgraded — and Stripe's own retries will replay it, which the
+     * fingerprint folds into one alert rather than six.
+     */
+    await reportError(error, { where: 'billing.webhook', event: event.type, eventId: event.id });
     return NextResponse.json({ error: 'Could not apply.' }, { status: 500 });
   }
 }

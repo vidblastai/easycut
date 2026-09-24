@@ -8,6 +8,7 @@ import { extractFrame } from '@/lib/media/ffmpeg';
 import { sfxUrl, SFX_NAMES } from '@/lib/assets/sfx';
 import { startAssetServer, type AssetServer } from './asset-server';
 import { DEFAULT_QUALITY, scaleFor, type RenderQuality } from './quality';
+import { reportError } from '@/lib/errors/report';
 
 /**
  * Rendering.
@@ -140,8 +141,10 @@ async function renderWithSource(
       outputPath: audioPath,
     }).catch((error) => {
       // A failed mix must not lose the render — fall back to no audio track and
-      // let the caller record the degradation.
-      console.error('[render] audio mix failed:', (error as Error).message);
+      // let the caller record the degradation. But a silent video is a
+      // deliverable the customer notices immediately, so it is reported even
+      // though the render goes on to succeed.
+      void reportError(error, { where: 'render.audio-mix', aspect: edl.format.aspect, projectId: edl.projectId });
       return null;
     }),
   ]);

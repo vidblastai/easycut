@@ -211,10 +211,51 @@ Two implementation notes worth knowing:
   into one video that changes size halfway through. Two 4K renders of the same
   edit still take the cheap path.
 
-### 2. Error reporting
+### 2. Error alerts — built; paste in one URL
 
-If a render breaks for a customer at 2am, nothing tells you. Sentry or similar,
-wired into the worker and the API.
+Built, tested and wired into every path a customer-visible failure can take:
+the worker's job loop, the worker's own crash, the rescuer and the sweeper, the
+Stripe webhook, the audio mix, and — through `src/instrumentation.ts` — every
+uncaught error in every API route and server component.
+
+`reportError()` in `src/lib/errors/` is the one way anything says "this broke".
+It fans out to whatever is configured and always to the console.
+
+**To switch it on, pick one:**
+
+- `ERROR_WEBHOOK_URL` — an incoming webhook from Slack or Discord. Thirty
+  seconds, no account, no SDK, and it reaches a phone. One body satisfies
+  Slack, Discord and any generic JSON endpoint.
+- `SENTRY_DSN` — Sentry, spoken to over its plain HTTP ingestion API. No SDK in
+  the bundle: the integration is one file, and nothing outside it knows Sentry
+  exists, so swapping to `@sentry/node` later changes no call sites.
+
+Both at once is fine. With neither, failures still get a consistent,
+deduplicated, greppable line instead of nine spellings of `console.error` — so
+the unconfigured state is better than what was there before.
+
+Three things it was built around, each of which is the reason alerting usually
+fails in practice:
+
+- **It cannot flood.** Identical failures are folded by fingerprint — the error
+  class, the place, and the message with ids, paths and numbers stripped — so
+  four hundred jobs dying on one broken bucket send **one** message, and the
+  next one says how many there were. Measured, not assumed: `ERROR_COOLDOWN_MINUTES`
+  (15) governs one kind of failure, `ERROR_MAX_PER_HOUR` (20) caps everything.
+  A second, different failure arriving mid-storm still gets through, which is
+  the case that matters — an incident hiding behind a noisier one is how
+  alerting kills people's trust in it.
+- **It cannot leak.** Every string that goes out is scrubbed: API keys by
+  shape (Anthropic, Stripe, Resend, Slack, GitHub, Google, AWS, JWT), signed
+  URLs, bearer tokens, `NAME=value` secrets and email addresses. Verified
+  against a real HTTP server, not a mock — a signed R2 URL arrives with the
+  path intact and the signature gone.
+- **It cannot throw.** Reporting a failure must never become one. Every sink
+  has its own five-second timeout, the whole function is wrapped, and it
+  returns a result rather than rejecting. If the alerting is down, the render
+  still finishes.
+
+`npm run doctor` shows whether it is configured, alongside everything else.
 
 ### 3. Both policies need a lawyer's pass
 
@@ -239,5 +280,6 @@ honest starting point for that conversation rather than the end of it.
 | Anthropic or Gemini | AI director | Falls back to the rule-based director. Works, less clever. |
 | Pexels | B-roll | Generated images and graphics only. |
 | Remotion Lambda | Rendering | Renders locally: ~27 min for a 10-minute video instead of ~2.5. |
+| Slack webhook *or* Sentry | Error alerts | Failures are logged but nothing reaches you. The cheapest line on this table to fix. |
 
 `npm run doctor` prints which of these are live for the current configuration.

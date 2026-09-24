@@ -7,6 +7,7 @@ import { sweepExpired } from './sweep';
 import { queue } from '@/lib/queue';
 import { processProject, rerenderProject, type ProcessJobPayload } from './process-project';
 import { selectedProvider } from '@/lib/director';
+import { reportError } from '@/lib/errors/report';
 
 /**
  * The worker loop.
@@ -54,8 +55,22 @@ async function loop(workerId: number): Promise<void> {
       await q.complete(job);
       console.log(`[worker ${workerId}] ${job.id} finished in ${Math.round((Date.now() - startedAt) / 1000)}s`);
     } catch (error) {
-      const message = (error as Error).message;
-      console.error(`[worker ${workerId}] ${job.id} failed: ${message}`);
+      /*
+       * The 2am failure. This is the single most important call site in the
+       * error module: everything downstream of an upload that goes wrong goes
+       * wrong HERE, and until this line existed the customer's "something went
+       * wrong" was the only notice anybody got.
+       *
+       * Reported before the job is failed, so an alert goes out even if the
+       * queue write is itself the thing that is broken.
+       */
+      await reportError(error, {
+        where: `worker.${job.type}`,
+        jobId: job.id,
+        attempt: job.attempts,
+        projectId: (job.payload as { projectId?: string })?.projectId,
+        ranForSec: Math.round((Date.now() - startedAt) / 1000),
+      });
       await q.fail(job, error as Error);
     }
   }
@@ -166,7 +181,7 @@ function startRescuer(): void {
   const every = Math.max(1, env.retention.sweepIntervalMinutes) * 60_000;
   const tick = () => {
     void rescueStaleJobs().catch((error) =>
-      console.error('[rescue] failed:', (error as Error).message),
+      reportError(error, { where: 'worker.rescue', severity: 'warning' }),
     );
   };
   setInterval(tick, Math.min(every, 5 * 60_000)).unref();
@@ -200,7 +215,10 @@ function startSweeper(): void {
       }
       for (const error of result.errors.slice(0, 5)) console.warn(`  sweep: ${error}`);
     } catch (error) {
-      console.warn(`  sweep failed: ${(error as Error).message}`);
+      // A warning, not an error: retention slipping by an hour is a problem
+      // worth knowing about and not one worth waking anybody for. The alert
+      // matters if it keeps happening, which the repeat count says.
+      await reportError(error, { where: 'worker.sweep', severity: 'warning' });
     }
   };
 
@@ -220,15 +238,17 @@ export async function startWorker(): Promise<void> {
   try {
     await main();
   } catch (error) {
-    console.error('[easycut] in-process worker stopped:', error);
+    // Fatal for the worker even though the web server survives: from the
+    // customer's side nothing will ever be rendered again until this is seen.
+    await reportError(error, { where: 'worker.in-process', severity: 'fatal' });
   }
 }
 
 // Only self-start when run directly (`npm run worker`), not when imported by
 // the web server's instrumentation hook.
 if (process.env.RUN_WORKER_IN_WEB !== 'true') {
-  main().catch((error) => {
-    console.error('Worker crashed:', error);
+  main().catch(async (error) => {
+    await reportError(error, { where: 'worker.boot', severity: 'fatal' });
     process.exit(1);
   });
 }
