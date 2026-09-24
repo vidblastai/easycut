@@ -1976,178 +1976,194 @@ body.instudio { overflow: hidden; }
   background: linear-gradient(180deg, transparent, rgba(4, 6, 12, 0.9));
 }
 
-/* ═════════════════════════════════════════════════ hero: the edit reel ═══ */
-.ec-reel { --loop: 12s; }
-.ec-reel-stage {
-  border: 1px solid var(--line); border-radius: 20px;
-  background: linear-gradient(180deg, #16161C, #101015);
-  padding: 14px;
-  box-shadow: 0 30px 80px -40px rgba(0,0,0,0.9), inset 0 0 0 1px rgba(155,123,255,0.06);
+/* ═════════════════════════════════════════ hero: the flow map ═══
+   Raw footage goes in on the left, finished videos come out on the right,
+   and the thing in the middle is us. It is the whole product in one picture,
+   which is what a hero is for.
+
+   The wires and the cards are positioned from ONE table of coordinates in
+   `FLOW_NODES`, in the same 1200×620 space the SVG's viewBox uses — so a card
+   can never drift off the end of the wire it is supposed to sit on. The
+   container is pinned to that aspect ratio, which is what makes a percentage
+   in CSS and a user unit in the SVG the same distance.
+   ═══════════════════════════════════════════════════════════════ */
+.flowmap {
+  position: relative; width: 100%; max-width: 1180px; margin: 0 auto;
+  aspect-ratio: 1200 / 790;
 }
-.ec-reel-frame {
-  position: relative; aspect-ratio: 16 / 9; overflow: hidden;
-  border-radius: 12px; background: #0A0A0D;
-  container-type: inline-size; isolation: isolate;
+.flowmap-wires { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+
+/* The wire itself: dim, and deliberately thin. It is the road, not the traffic. */
+.fm-wire { fill: none; stroke: rgba(155,123,255,.20); stroke-width: 1.5; }
+/* The traffic. A short dash travelling the same path, which is a stroke-dash
+   animation rather than a moving element — so it scales with the viewBox and
+   cannot fall out of step with the curve it rides. */
+.fm-pulse {
+  fill: none; stroke: var(--violet); stroke-width: 3; stroke-linecap: round;
+  stroke-dasharray: 34 1200; opacity: .95;
+  filter: drop-shadow(0 0 5px rgba(155,123,255,.9));
+  animation: fm-run 3.4s linear infinite;
+}
+.fm-pulse.out { stroke: var(--violet-hi); }
+@keyframes fm-run { from { stroke-dashoffset: 1234; } to { stroke-dashoffset: 0; } }
+/* A node where a wire meets the core, so the join reads as a connection
+   rather than a line that stops. */
+.fm-node { fill: var(--ink); stroke: var(--line); stroke-width: 1.5; }
+.fm-node.lit { stroke: var(--violet); }
+
+/* ── the core ─────────────────────────────────────────────────────── */
+.flowmap-core {
+  position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
+  width: 15.5%; aspect-ratio: 1; z-index: 3;
+  display: grid; place-items: center;
+  border-radius: 26%;
+  background: linear-gradient(160deg, #23233b, #16161f 60%, #101016);
+  border: 1px solid rgba(155,123,255,.45);
+  box-shadow:
+    0 0 0 10px rgba(155,123,255,.05),
+    0 0 0 22px rgba(155,123,255,.025),
+    0 26px 70px -20px rgba(155,123,255,.5),
+    inset 0 1px 0 rgba(255,255,255,.08);
+}
+.flowmap-core svg { width: 46%; height: auto; color: var(--violet-hi); }
+/* The glow breathes rather than pulses — a hero that blinks is a hero nobody
+   can read the headline over. */
+.flowmap-core::before {
+  content: ''; position: absolute; inset: -34%; border-radius: 50%; z-index: -1;
+  background: radial-gradient(circle, rgba(155,123,255,.30), transparent 68%);
+  animation: fm-breathe 5.5s var(--ease) infinite;
+}
+@keyframes fm-breathe { 0%, 100% { opacity: .55; transform: scale(.94); } 50% { opacity: 1; transform: scale(1.06); } }
+
+/* ── a card ───────────────────────────────────────────────────────── */
+.fm-card {
+  position: absolute; z-index: 2;
+  /* A <figure> carries `margin: 1em 40px` from the browser's own stylesheet.
+     That 40px is why every card sat forty pixels to the right of the wire it
+     belongs to — the positioning was right all along. */
+  margin: 0;
+  border-radius: 12px; overflow: hidden;
+  background: var(--charcoal); border: 1px solid var(--line);
+  box-shadow: 0 18px 44px -18px rgba(0,0,0,.95);
+  animation: fm-float 7s var(--ease) infinite;
+}
+@keyframes fm-float { 0%, 100% { translate: 0 0; } 50% { translate: 0 -7px; } }
+/* Finished work sits forward: brighter edge, warmer shadow, lifted. */
+.fm-card.out { border-color: rgba(155,123,255,.5); box-shadow: 0 20px 50px -18px rgba(155,123,255,.35); }
+.fm-card { transition: border-color var(--fast), box-shadow var(--fast); }
+.fm-card:hover { border-color: var(--violet); box-shadow: 0 24px 60px -18px rgba(155,123,255,.55); }
+
+.fm-slot { position: relative; display: block; width: 100%; }
+.fm-slot video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+
+/* The placeholder, until there is a file to put here. Drawn rather than a grey
+   box with a filename on it: the point of this graphic is "plain in, finished
+   out", and two identical grey rectangles would say nothing at all. */
+.fm-ph { position: absolute; inset: 0; overflow: hidden; background: #0A0A0E; }
+.fm-ph .room {
+  position: absolute; inset: 0;
+  background: radial-gradient(120% 90% at 60% 24%, #262631 0%, #17171f 52%, #0d0d12 100%);
+}
+.fm-ph .fig { position: absolute; bottom: 0; left: 50%; height: 78%; transform: translateX(-50%); }
+/* Raw footage is flat and a little cold; a finished cut is graded and warm.
+   The difference has to be visible in a still, not only in the labels. */
+.fm-card.in .fm-ph { filter: saturate(.55) brightness(.86); }
+/* The gaps a raw take is full of, as a strip along the bottom. */
+.fm-ph .gaps {
+  position: absolute; left: 7%; right: 7%; bottom: 8%;
+  display: flex; gap: 2px; height: 7px;
+  padding: 2px; border-radius: 4px; background: rgba(0,0,0,.45);
+}
+.fm-ph .gaps i { flex: 1; border-radius: 2px; background: rgba(255,255,255,.34); }
+.fm-ph .gaps i.dead { background: rgba(255,123,123,.8); }
+/* What the edit added: captions, an accent line, a stat card. */
+.fm-ph .caps {
+  position: absolute; left: 8%; right: 8%; bottom: 14%;
+  display: flex; flex-direction: column; align-items: center; gap: 3px;
+}
+.fm-ph .caps i { display: block; height: 4px; border-radius: 99px; background: var(--chalk); }
+.fm-ph .caps i.accent { background: var(--violet); }
+.fm-ph .chip {
+  position: absolute; left: 8%; top: 9%;
+  padding: 2px 6px; border-radius: 5px; font-size: 8.5px; font-weight: 800;
+  background: rgba(155,123,255,.9); color: var(--ink); letter-spacing: .02em;
+}
+.fm-ph .bar { position: absolute; left: 0; bottom: 0; height: 2px; background: var(--violet); }
+
+/* The label under a card: what it is, and how long. */
+.fm-meta {
+  margin: 0; display: flex; align-items: center; justify-content: space-between; gap: 6px;
+  padding: 6px 8px 7px; font-size: 9.5px; font-weight: 700; letter-spacing: .02em;
+}
+.fm-meta b { text-transform: uppercase; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fm-meta i { flex: none; font-style: normal; color: var(--faint); font-variant-numeric: tabular-nums; }
+.fm-card.in .fm-meta b { color: var(--muted); }
+.fm-card.out .fm-meta b { color: var(--violet-hi); }
+
+/* ── the two ends, named ──────────────────────────────────────────── */
+/* Their own band above the map rather than corners inside it: inside, the
+   first card on each side sat straight on top of them. */
+.flowmap-head {
+  display: flex; align-items: flex-end; justify-content: space-between; gap: 20px;
+  width: 100%; max-width: 1180px; margin: 0 auto 6px;
+  padding-inline: 4px;
+}
+.fm-end { font-size: 11px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; }
+.fm-end.in { color: var(--faint); }
+.fm-end.out { color: var(--violet); text-align: right; }
+.fm-end span {
+  display: block; margin-top: 4px; font-size: 11px; letter-spacing: .01em;
+  text-transform: none; color: var(--faint); font-weight: 500;
 }
 
-/* B-roll wiping in over the take. */
-.ec-broll {
-  position: absolute; left: 4cqw; top: 4cqw; width: 34cqw; aspect-ratio: 16/9;
-  border-radius: 1.2cqw; overflow: hidden;
-  box-shadow: inset 0 0 0 1px rgba(255,255,255,0.10);
-  clip-path: inset(0 100% 0 0 round 1.2cqw);
-  animation: ec-broll-in var(--loop) var(--ease) infinite forwards;
+/* ── narrow ───────────────────────────────────────────────────────── */
+/* Below this the curves are the first thing to go: four wires crossing a
+   phone-width column is a scribble. The story survives as two labelled rows
+   with the mark between them, which is the same sentence in less space. */
+@media (max-width: 900px) {
+  .flowmap { aspect-ratio: auto; display: grid; gap: 14px; justify-items: center; }
+  .flowmap-wires { display: none; }
+  .flowmap-head { display: none; }
+  /* `relative`, not `static`: the glow is an absolutely positioned
+     pseudo-element inset by -34%, and with a static parent it resolved
+     against the map instead — 240px of invisible box hanging off the side,
+     which is what was scrolling the page sideways on a phone. */
+  .flowmap-core {
+    position: relative; left: auto; top: auto; transform: none;
+    width: 84px; order: 2;
+  }
+  .fm-card {
+    position: static; transform: none; width: auto !important;
+    left: auto !important; top: auto !important; animation: none;
+  }
+  /* One row per side, three across — the number of cards there are. `order`
+     only accepts integers, and an `order: 2.5` on the second rail silently
+     became 0, which stacked both labels at the top with no cards under
+     either. */
+  .fm-row {
+    display: grid; grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 10px; width: 100%; align-items: start;
+  }
+  .fm-row.in { order: 1; }
+  .fm-row.out { order: 4; }
+  .fm-rail {
+    order: 0; font-size: 10.5px; font-weight: 700; letter-spacing: .14em;
+    text-transform: uppercase; color: var(--faint);
+  }
+  .fm-rail.out { order: 3; color: var(--violet); }
 }
-.ec-broll-tag {
-  position: absolute; left: 1.4cqw; bottom: 1.2cqw; max-width: calc(100% - 2.8cqw);
-  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-  border-radius: 999px; padding: 0.5cqw 1.3cqw;
-  background: rgba(8,8,12,0.78); backdrop-filter: blur(6px);
-  font-size: clamp(8px, 1.3cqw, 11px); font-weight: 700; color: var(--chalk);
+@media (min-width: 901px) {
+  /* A real box that exactly overlays the map, rather than `display: contents`.
+     A contents element generates no box, and the absolutely positioned cards
+     inside it were resolving their percentages against a containing block
+     forty pixels off from the one the wires are drawn in — so every card sat
+     beside its wire instead of on it. */
+  .fm-row { position: absolute; inset: 0; pointer-events: none; }
+  .fm-row .fm-card { pointer-events: auto; }
+  .fm-rail { display: none; }
 }
-@keyframes ec-broll-in {
-  0%, 46.6% { clip-path: inset(0 100% 0 0 round 1.2cqw); }
-  52%, 100% { clip-path: inset(0 0 0 0 round 1.2cqw); }
-}
-
-.ec-stat {
-  position: absolute; right: 5cqw; bottom: 26%;
-  display: flex; flex-direction: column; gap: 1px;
-  border: 1px solid rgba(155,123,255,0.38); border-radius: 1.2cqw;
-  padding: 1.2cqw 1.8cqw;
-  background: rgba(19,17,28,0.88); backdrop-filter: blur(10px);
-  opacity: 0; transform: translateY(12px) scale(0.94);
-  animation: ec-stat-in var(--loop) var(--ease) infinite forwards;
-}
-.ec-stat b { font-size: clamp(15px, 3.2cqw, 30px); font-weight: 800; letter-spacing: -0.04em; color: var(--violet-hi); line-height: 1; }
-.ec-stat span { font-size: clamp(8px, 1.5cqw, 12px); font-weight: 600; color: var(--muted); }
-@keyframes ec-stat-in {
-  0%, 61.6% { opacity: 0; transform: translateY(12px) scale(0.94); }
-  67%, 100% { opacity: 1; transform: translateY(0) scale(1); }
-}
-
-.ec-caption {
-  position: absolute; left: 0; right: 0; bottom: 7%;
-  display: flex; justify-content: center; gap: 0.3em;
-  font-size: clamp(15px, 5cqw, 38px); font-weight: 800; letter-spacing: -0.025em;
-}
-.ec-word {
-  display: inline-block; color: #fff;
-  text-shadow: 0 0.3cqw 1.4cqw rgba(0,0,0,0.7);
-  opacity: 0; transform: translateY(6px) scale(0.88);
-  animation: ec-word-in var(--loop) cubic-bezier(0.2, 1.5, 0.4, 1) infinite forwards;
-}
-.ec-word-accent { color: var(--violet-hi); }
-/* One keyframe set per word rather than a delay on a shared one: a delay
-   shifts the element's whole twelve-second loop, so it no longer lines up with
-   the master clock every other pass. The stagger belongs in the percentages. */
-@keyframes ec-word-in {
-  0%, 29% { opacity: 0; transform: translateY(6px) scale(0.88); }
-  33%, 100% { opacity: 1; transform: translateY(0) scale(1); }
-}
-@keyframes ec-word-in-2 {
-  0%, 31.7% { opacity: 0; transform: translateY(6px) scale(0.88); }
-  35.7%, 100% { opacity: 1; transform: translateY(0) scale(1); }
-}
-@keyframes ec-word-in-3 {
-  0%, 34.3% { opacity: 0; transform: translateY(6px) scale(0.88); }
-  38.3%, 100% { opacity: 1; transform: translateY(0) scale(1); }
-}
-.ec-word:nth-child(2) { animation-name: ec-word-in-2; }
-.ec-word:nth-child(3) { animation-name: ec-word-in-3; }
-
-.ec-chip {
-  position: absolute; right: 2.5cqw; top: 2.5cqw; z-index: 3;
-  display: inline-flex; align-items: center; gap: 0.9cqw;
-  border-radius: 999px; padding: 0.8cqw 1.8cqw;
-  background: rgba(8,8,12,0.76); backdrop-filter: blur(8px);
-  font-size: clamp(9px, 1.7cqw, 13px); font-weight: 700; color: var(--chalk);
-  white-space: nowrap;
-}
-.ec-chip i { width: 0.8em; height: 0.8em; border-radius: 999px; flex: none; }
-.ec-dot-raw { background: var(--bad); }
-.ec-dot-done { background: var(--ok); }
-.ec-chip-raw { animation: ec-chip-out var(--loop) var(--ease) infinite forwards; }
-.ec-chip-done { opacity: 0; animation: ec-chip-in var(--loop) var(--ease) infinite forwards; }
-@keyframes ec-chip-out { 0%, 86% { opacity: 1; } 89%, 100% { opacity: 0; } }
-@keyframes ec-chip-in  { 0%, 87% { opacity: 0; } 91%, 100% { opacity: 1; } }
-
-/* The timeline under the frame. The pauses are marked, then squeezed out, and
-   the bar is visibly shorter afterwards — flex-grow animates, so it really is. */
-.ec-strip { position: relative; margin-top: 12px; }
-.ec-strip-row { display: flex; gap: 3px; height: 26px; }
-.ec-cell { position: relative; overflow: hidden; border-radius: 5px; min-width: 0; display: grid; place-items: center; }
-.ec-cell-talk { background: #23232E; }
-.ec-cell-talk i {
-  display: block; width: 76%; height: 10px; border-radius: 2px;
-  background: repeating-linear-gradient(90deg, var(--faint) 0 2px, transparent 2px 5px);
-  mask-image: radial-gradient(60% 100% at 50% 50%, #000 40%, rgba(0,0,0,0.35));
-}
-.ec-cell-gap {
-  background: repeating-linear-gradient(135deg, rgba(255,123,123,0.32) 0 5px, rgba(255,123,123,0.12) 5px 10px);
-  box-shadow: inset 0 0 0 1px rgba(255,123,123,0.32);
-  animation: ec-gap-close var(--loop) var(--ease) infinite forwards;
-}
-@keyframes ec-gap-close {
-  0%, 16.6% { flex-grow: 7; opacity: 1; margin-right: 0; }
-  26%, 100% { flex-grow: 0.0001; opacity: 0; margin-right: -3px; }
-}
-.ec-playhead {
-  position: absolute; top: -3px; bottom: -3px; width: 2px; border-radius: 2px;
-  background: var(--violet); box-shadow: 0 0 10px rgba(155,123,255,0.8);
-  animation: ec-sweep var(--loop) linear infinite;
-}
-@keyframes ec-sweep { from { left: 0%; } to { left: calc(100% - 2px); } }
-.ec-sfx-row { position: absolute; inset: 0; pointer-events: none; }
-.ec-sfx {
-  position: absolute; top: 50%; width: 7px; height: 7px; margin: -3.5px 0 0 -3.5px;
-  border-radius: 999px; background: var(--violet-hi); opacity: 0;
-  animation: ec-ping var(--loop) var(--ease) infinite forwards;
-}
-@keyframes ec-ping {
-  0%, 76.6% { opacity: 0; box-shadow: 0 0 0 0 rgba(155,123,255,0.55); }
-  79% { opacity: 1; box-shadow: 0 0 0 9px rgba(155,123,255,0); }
-  82%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(155,123,255,0); }
-}
-@keyframes ec-ping-2 {
-  0%, 78.7% { opacity: 0; box-shadow: 0 0 0 0 rgba(155,123,255,0.55); }
-  81% { opacity: 1; box-shadow: 0 0 0 9px rgba(155,123,255,0); }
-  84%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(155,123,255,0); }
-}
-@keyframes ec-ping-3 {
-  0%, 80.8% { opacity: 0; box-shadow: 0 0 0 0 rgba(155,123,255,0.55); }
-  83% { opacity: 1; box-shadow: 0 0 0 9px rgba(155,123,255,0); }
-  86%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(155,123,255,0); }
-}
-.ec-sfx:nth-child(2) { animation-name: ec-ping-2; }
-.ec-sfx:nth-child(3) { animation-name: ec-ping-3; }
-
-.ec-layers { display: flex; flex-wrap: wrap; justify-content: center; gap: 7px; margin-top: 16px; }
-.ec-layer {
-  display: inline-flex; align-items: center; gap: 6px;
-  border: 1px solid var(--line); border-radius: 999px; padding: 5px 11px 5px 7px;
-  font-size: 12px; font-weight: 600; color: var(--muted); background: var(--charcoal);
-  opacity: 0.32; transform: translateY(3px);
-  animation: ec-layer-in var(--loop) var(--ease) infinite forwards;
-}
-@keyframes ec-layer-in {
-  0% { opacity: 0.32; transform: translateY(3px); border-color: var(--line); color: var(--muted); }
-  2%, 100% { opacity: 1; transform: translateY(0); border-color: rgba(155,123,255,0.32); color: var(--chalk); }
-}
-.ec-tick {
-  display: grid; place-items: center; flex: none;
-  width: 16px; height: 16px; border-radius: 999px;
-  background: var(--violet-dim); color: var(--violet-hi);
-  transform: scale(0.6); opacity: 0;
-  animation: ec-tick-in var(--loop) cubic-bezier(0.2, 1.6, 0.4, 1) infinite forwards;
-}
-.ec-tick svg { width: 11px; height: 11px; }
-@keyframes ec-tick-in { 0% { transform: scale(0.6); opacity: 0; } 2.5%, 100% { transform: scale(1); opacity: 1; } }
-
-@media (max-width: 640px) {
-  .ec-reel-stage { padding: 10px; border-radius: 16px; }
-  .ec-strip-row { height: 20px; gap: 2px; }
-  .ec-layer { font-size: 11px; padding: 4px 9px 4px 6px; }
+@media (max-width: 380px) {
+  .fm-row { gap: 7px; }
 }
 
 /* ═══════════════════════════════════════════════════════ before / after ══ */
@@ -2415,8 +2431,15 @@ body.instudio { overflow: hidden; }
   font-size: clamp(8px, 2.4cqw, 10px); font-weight: 800; letter-spacing: 0.02em;
 }
 
-.hero-stacked { grid-template-columns: minmax(0,1fr); gap: 34px; padding-bottom: 44px; }
-.ec-reel { margin-bottom: 72px; }
+.hero-stacked { grid-template-columns: minmax(0,1fr); gap: 34px; padding-bottom: 30px; }
+/* Centred, because the flow map underneath is symmetrical and a left-aligned
+   headline over a symmetrical graphic reads as two unrelated things. */
+.hero-mid { text-align: center; display: flex; flex-direction: column; align-items: center; }
+.hero-mid h1 { max-width: 22ch; }
+.hero-mid .lede { max-width: 58ch; }
+.hero-mid .curt { margin-top: 18px; }
+.hero-mid .hero-cta { justify-content: center; }
+#flowmap { margin-bottom: 64px; }
 </style>
 
 <header class="top">
@@ -2441,78 +2464,42 @@ body.instudio { overflow: hidden; }
     <!-- Where the shared preview node waits while the homepage is showing. -->
     <div id="stage-park" hidden></div>
     <div class="hero hero-stacked">
-      <div>
+      <div class="hero-mid">
         <span class="eyebrow"><i></i>Short video in ~90 seconds. Long form in under six minutes.</span>
         <h1>Upload your footage.<br><em>Get a finished video.</em></h1>
         <p class="lede">
           You talk to camera. We do the rest &mdash; cutting out the pauses and the
           &ldquo;umm&rdquo;s, adding captions, B-roll, graphics, sound design and music,
-          and framing it for wherever you&rsquo;re posting it.
+          in the shape you filmed it.
         </p>
-        <p class="curt">No timeline required. No editing knowledge of any kind. Full manual control if you want it.</p>
         <div class="hero-cta">
-          <button class="cta-primary" data-route="dashboard">Open the dashboard</button>
-          <button class="cta-ghost" data-route="new">Upload your footage</button>
-          <button class="cta-ghost" data-route="timeline">Open the timeline editor</button>
+          <button class="cta-primary" data-route="new">Upload your footage</button>
+          <button class="cta-ghost" data-route="dashboard">See the dashboard</button>
         </div>
+        <p class="curt">No timeline required. No editing knowledge of any kind. Full manual control if you want it.</p>
       </div>
     </div>
 
-      <div class="ec-reel">
-        <div class="ec-reel-stage">
-          <div class="ec-reel-frame">
-            <div class="shot">
-            <svg class="shot-figure" viewBox="0 0 150 150" preserveAspectRatio="xMidYMax meet" aria-hidden="true">
-              <rect class="shot-skin" x="64" y="48" width="22" height="20" rx="9"/>
-              <path class="shot-body" d="M14 150 L17 100 C20 74, 38 63, 58 62 L92 62 C112 63, 130 74, 133 100 L136 150 Z"/>
-              <ellipse class="shot-skin" cx="75" cy="30" rx="20.8" ry="26"/>
-            </svg>
-            <div class="shot-floor"></div>
-            <div class="shot-sheen"></div>
-          </div>
-            <div class="ec-broll" aria-hidden="true">
-              <div class="shot-broll"></div>
-              <span class="ec-broll-tag">&ldquo;city at night&rdquo;</span>
-            </div>
-            <div class="ec-stat" aria-hidden="true"><b>3.2&times;</b><span>more watch time</span></div>
-            <div class="ec-caption" aria-hidden="true">
-              <span class="ec-word">This</span>
-              <span class="ec-word ec-word-accent">changes</span>
-              <span class="ec-word">everything</span>
-            </div>
-            <span class="ec-chip ec-chip-raw" aria-hidden="true"><i class="ec-dot-raw"></i>Raw take &middot; 3:42</span>
-            <span class="ec-chip ec-chip-done" aria-hidden="true"><i class="ec-dot-done"></i>Ready to post &middot; 1:08</span>
-          </div>
-
-          <div class="ec-strip" aria-hidden="true">
-            <div class="ec-strip-row">
-              <span class="ec-cell ec-cell-talk" style="flex-grow:13"><i></i></span>
-              <span class="ec-cell ec-cell-gap"  style="flex-grow:7;animation-delay:.045s"></span>
-              <span class="ec-cell ec-cell-talk" style="flex-grow:18"><i></i></span>
-              <span class="ec-cell ec-cell-gap"  style="flex-grow:5;animation-delay:.135s"></span>
-              <span class="ec-cell ec-cell-talk" style="flex-grow:9"><i></i></span>
-              <span class="ec-cell ec-cell-gap"  style="flex-grow:9;animation-delay:.225s"></span>
-              <span class="ec-cell ec-cell-talk" style="flex-grow:15"><i></i></span>
-              <span class="ec-cell ec-cell-gap"  style="flex-grow:6;animation-delay:.315s"></span>
-              <span class="ec-cell ec-cell-talk" style="flex-grow:18"><i></i></span>
-            </div>
-            <div class="ec-playhead"></div>
-            <div class="ec-sfx-row">
-              <span class="ec-sfx" style="left:17%"></span>
-              <span class="ec-sfx" style="left:44%"></span>
-              <span class="ec-sfx" style="left:71%"></span>
-            </div>
-          </div>
-        </div>
-
-        <ul class="ec-layers">
-          <li class="ec-layer" style="animation-delay:2.30s"><span class="ec-tick" style="animation-delay:2.30s"><svg viewBox="0 0 12 12" fill="none"><path d="M2.5 6.2l2.4 2.4 4.6-5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>Dead air cut</li>
-          <li class="ec-layer" style="animation-delay:3.70s"><span class="ec-tick" style="animation-delay:3.70s"><svg viewBox="0 0 12 12" fill="none"><path d="M2.5 6.2l2.4 2.4 4.6-5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>Captions</li>
-          <li class="ec-layer" style="animation-delay:5.80s"><span class="ec-tick" style="animation-delay:5.80s"><svg viewBox="0 0 12 12" fill="none"><path d="M2.5 6.2l2.4 2.4 4.6-5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>B-roll</li>
-          <li class="ec-layer" style="animation-delay:7.60s"><span class="ec-tick" style="animation-delay:7.60s"><svg viewBox="0 0 12 12" fill="none"><path d="M2.5 6.2l2.4 2.4 4.6-5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>Graphics</li>
-          <li class="ec-layer" style="animation-delay:9.40s"><span class="ec-tick" style="animation-delay:9.40s"><svg viewBox="0 0 12 12" fill="none"><path d="M2.5 6.2l2.4 2.4 4.6-5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>Sound design</li>
-        </ul>
+    <!-- The product, in one picture: raw takes go in on the left, finished
+         videos come out on the right, and we are the thing in the middle.
+         Built by `buildFlowmap()` from one table of coordinates, so the cards
+         cannot drift off the ends of the wires they sit on. -->
+    <div class="flowmap-head">
+      <span class="fm-end in">Footage in<span>However you filmed it</span></span>
+      <span class="fm-end out">Videos out<span>Cut, captioned, scored</span></span>
+    </div>
+    <div class="flowmap" id="flowmap" aria-label="Raw footage goes in, finished videos come out">
+      <span class="fm-rail in">Footage in</span>
+      <span class="fm-rail out">Videos out</span>
+      <svg class="flowmap-wires" id="fm-wires" viewBox="0 0 1200 790" fill="none" aria-hidden="true"></svg>
+      <div class="flowmap-core" aria-hidden="true">
+        <svg viewBox="0 0 88.96 100" fill="none">
+          <path d="M64.6 30.39C65.36 30.39 66.2 30.42 66.92 30.67C69.17 31.48 72.32 33.42 74.38 34.75C77.16 36.53 80.44 37.75 82.88 40.02C87.83 44.61 88.96 52.83 84.67 58.29C83.83 59.35 82.93 60.33 81.85 61.17C80.24 62.43 78.27 63.21 76.56 64.31C73.79 66.09 70.82 67.65 67.95 69.3C62.91 72.18 57.93 75.14 52.89 78.02C49.51 79.96 45.69 81.93 42.45 84.02C40.4 85.34 35.36 88.29 33.22 89.36C29 91.46 19.29 98.19 15.5 99C10.84 100 5.98 98.38 3.01 94.59C1.92 93.15 1.1 91.51 0.73 89.73C0.09 86.75 0.44 76.84 0.44 73.16C0.44 71.34 0.02 67.66 1.14 66.24C2.15 64.95 5.26 63.67 6.76 62.72C8.5 61.59 10.42 60.72 12.16 59.6C14.44 58.13 16.89 56.77 19.32 55.55C20.35 55.04 21.46 54.67 22.54 54.28C28.59 52.12 34.96 57.17 38.63 61.51C39.89 62.98 41.11 64.49 42.15 66.12C42.35 66.41 42.48 66.78 42.75 67.01C43.02 67.24 43.41 67.37 43.73 67.16C43.99 66.99 44.24 66.7 44.21 66.37C44.16 65.61 42.95 63.68 42.58 62.84C40.82 58.71 39.52 53.88 39.84 49.36C40.3 42.93 45.38 40.7 50.04 37.7C51.56 36.72 53.22 35.75 54.84 34.93C56.97 33.86 60.59 31.11 62.73 30.65C63.37 30.52 63.97 30.48 64.6 30.39ZM56.45 24.84C56.55 25.83 55.99 26.25 55.2 26.7C50.89 29.16 44.32 33.44 39.9 35.02C37.86 35.75 35.63 35.87 33.53 35.42C30.42 34.76 26.76 31.97 24.66 29.66C23.51 28.41 22.35 27.2 21.3 25.88C20.5 24.84 19.87 23.47 19.01 22.53C18.78 22.29 18.54 22.29 18.22 22.29C17.81 22.39 17.49 22.74 17.52 23.2C17.53 23.34 19.54 27.65 19.82 28.42C21.12 32.07 22.56 37.42 21.73 41.29C21.32 43.2 20.49 45.06 19.14 46.51C15.98 49.91 7.84 54.09 3.53 56.55C2.68 57.04 1.88 57.63 0.92 57.05C0.09 56.18 0.44 53.55 0.44 52.34C0.44 42.41 0.44 32.46 0.44 22.53C0.44 19.14 0 12.3 1.04 9.36C2.37 5.65 5.18 2.91 8.88 1.58C13.33 0 17.56 1.65 21.32 4.07C22.54 4.85 23.87 5.47 25.09 6.25C26.63 7.25 28.33 8.01 29.88 9C32.19 10.48 34.66 11.8 37.05 13.17C42.01 16 46.95 18.9 51.92 21.74C53.11 22.42 55.93 23.64 56.45 24.84Z" fill="currentColor"/>
+        </svg>
       </div>
+      <div class="fm-row in" id="fm-in"></div>
+      <div class="fm-row out" id="fm-out"></div>
+    </div>
 
     <div class="home-sec">
       <h2>Two decisions, then it&rsquo;s done.</h2>
@@ -5967,6 +5954,188 @@ function buildHomePricing() {
 }
 
 
+
+/* ═══════════════════════════════════════════════ the hero flow map ═══
+   Raw footage in, finished videos out, us in the middle.
+
+   ── One table of coordinates ─────────────────────────────────────────
+   Every wire and every card is placed from `FLOW_NODES`, in the same
+   1200×620 space the SVG's viewBox declares. The container is pinned to that
+   aspect ratio in CSS, so a percentage there and a user unit here are the same
+   distance — which is the only reason a card can be positioned in CSS and a
+   curve drawn in SVG and have the two meet exactly. Change a number here and
+   both move together; there is no second copy to forget.
+
+   ── Filling these in with real videos ────────────────────────────────
+   Give a node a `src` and it plays that file instead of the drawn placeholder:
+
+       { ..., src: '/flow/raw-podcast.mp4' }
+
+   Muted, looping and inline, which is what every feed has taught people a
+   silent autoplaying tile does. Until then the placeholder draws the thing the
+   picture is actually about — a flat, gappy take on the left, a graded and
+   captioned cut on the right — because two identical grey rectangles would
+   illustrate nothing.
+   ══════════════════════════════════════════════════════════════════ */
+
+/** Half the core tile, in viewBox units — where a wire has to stop. */
+const FLOW_CORE = { x: 600, y: 395, half: 104 };
+/** The space the map is drawn in. The CSS pins the box to this ratio. */
+const FLOW_BOX = { w: 1200, h: 790 };
+
+/* Card sizes, in viewBox units. `meta` is the label strip under the picture:
+   it is part of the card's height, and forgetting that is what had the first
+   version's cards sitting on top of each other. */
+const FLOW_META = 24;
+const FLOW_SIZE = {
+  '9:16': { w: 132, h: 234 },
+  '16:9': { w: 220, h: 124 },
+};
+const flowHeight = (ratio) => FLOW_SIZE[ratio].h + FLOW_META;
+
+/* Three a side: two shorts and one long-form, so both formats are on screen
+   without the column becoming a list. The x values stagger the column a little
+   so it reads as scattered rather than stacked. */
+const FLOW_NODES = [
+  { side: 'in',  x: 168, ratio: '9:16', kind: 'Raw',  len: '3:42',  src: null },
+  { side: 'in',  x: 126, ratio: '16:9', kind: 'Raw',  len: '18:05', src: null },
+  { side: 'in',  x: 178, ratio: '9:16', kind: 'Raw',  len: '41:27', src: null },
+  { side: 'out', x: 1032, ratio: '9:16', kind: 'Punchy',    len: '0:38',  src: null },
+  { side: 'out', x: 1074, ratio: '16:9', kind: 'Chaptered', len: '11:40', src: null },
+  { side: 'out', x: 1022, ratio: '9:16', kind: 'Reaction',  len: '0:47',  src: null },
+];
+
+/**
+ * Stacks each side and writes the `y` back onto the nodes.
+ *
+ * Computed rather than typed, because the heights differ by format and a hand
+ * -placed column silently breaks the moment a card changes size — which is
+ * exactly what happened when the label strip was added. The stack is centred
+ * in the box, so adding or removing a card keeps it balanced.
+ */
+/** Keeps a card inside the box however its x was typed. */
+function clampX(left, width) {
+  const margin = 10;
+  return Math.max(margin, Math.min(FLOW_BOX.w - width - margin, left));
+}
+
+function layOutFlow() {
+  for (const side of ['in', 'out']) {
+    const column = FLOW_NODES.filter((n) => n.side === side);
+    const gap = 30;
+    const total = column.reduce((sum, n) => sum + flowHeight(n.ratio), 0) + gap * (column.length - 1);
+    let y = (FLOW_BOX.h - total) / 2;
+    for (const node of column) {
+      const size = FLOW_SIZE[node.ratio];
+      const h = flowHeight(node.ratio);
+      /*
+       * Top-left, not centre.
+       *
+       * Positioning by centre means a `translate(-50%, -50%)` that resolves
+       * against the element's own rendered size — which includes the label
+       * strip, whose height depends on font metrics rather than on anything in
+       * this table. The card then lands somewhere the wire does not. Top-left
+       * is a pure function of these numbers and the container, so the two
+       * always agree.
+       */
+      node.left = clampX(node.x - size.w / 2, size.w);
+      node.top = y;
+      // The middle of the PICTURE, which is where a wire should meet a card —
+      // the label strip hangs below it and is not part of the frame.
+      node.wireY = y + size.h / 2;
+      node.wireX = node.left + size.w / 2;
+      y += h + gap;
+    }
+  }
+}
+
+/**
+ * The curve from a node to the core.
+ *
+ * Control points are pulled horizontally, which is what gives the wire its
+ * flat approach and stops it arriving at the core on a diagonal. Each wire
+ * lands on its own y at the core edge — `lane` — so three of them meeting one
+ * tile reads as three connections rather than one smudge.
+ */
+function flowWire(node, lane) {
+  const into = node.side === 'in';
+  const edgeX = FLOW_CORE.x + (into ? -FLOW_CORE.half : FLOW_CORE.half);
+  const edgeY = FLOW_CORE.y + lane;
+  const reach = into ? 250 : -250;
+  return `M ${node.wireX} ${node.wireY} C ${node.wireX + reach} ${node.wireY}, ${edgeX - reach} ${edgeY}, ${edgeX} ${edgeY}`;
+}
+
+/** The drawn stand-in for a video that has not been supplied yet. */
+function flowPlaceholder(node) {
+  const figure = `<svg class="fig" viewBox="0 0 150 150" preserveAspectRatio="xMidYMax meet">
+      <path d="M14 150 L17 100 C20 74, 38 63, 58 62 L92 62 C112 63, 130 74, 133 100 L136 150 Z" fill="#3B3555"/>
+      <ellipse cx="75" cy="34" rx="20" ry="25" fill="#D9B68B"/>
+    </svg>`;
+
+  if (node.side === 'in') {
+    /* A raw take: flat, and full of the gaps we are about to remove. The red
+       cells are the dead air — the thing the product is for, shown rather
+       than claimed. */
+    const cells = [1, 1, 0, 1, 1, 1, 0, 0, 1, 1, 0, 1, 1, 1, 0, 1]
+      .map((live) => `<i class="${live ? '' : 'dead'}"></i>`).join('');
+    return `<span class="fm-ph"><span class="room"></span>${figure}<span class="gaps">${cells}</span></span>`;
+  }
+
+  return `<span class="fm-ph">
+      <span class="room"></span>${figure}
+      <span class="chip">${node.kind}</span>
+      <span class="caps"><i style="width:66%"></i><i class="accent" style="width:40%"></i></span>
+      <span class="bar" style="width:${38 + ((Math.round(node.top) * 7) % 46)}%"></span>
+    </span>`;
+}
+
+function flowCardHtml(node, i) {
+  const size = FLOW_SIZE[node.ratio];
+  const slot = node.src
+    ? `<video src="${node.src}" muted loop autoplay playsinline preload="metadata"></video>`
+    : flowPlaceholder(node);
+
+  return `<figure class="fm-card ${node.side}" data-flow="${i}"
+      style="width:${((size.w / FLOW_BOX.w) * 100).toFixed(3)}%;
+             left:${((node.left / FLOW_BOX.w) * 100).toFixed(3)}%;
+             top:${((node.top / FLOW_BOX.h) * 100).toFixed(3)}%;
+             animation-delay:${(i * 0.7).toFixed(2)}s">
+      <span class="fm-slot" style="aspect-ratio:${node.ratio.replace(':', ' / ')}">${slot}</span>
+      <figcaption class="fm-meta"><b>${node.kind}</b><i>${node.len}</i></figcaption>
+    </figure>`;
+}
+
+function buildFlowmap() {
+  const wires = $('fm-wires');
+  const inRow = $('fm-in');
+  const outRow = $('fm-out');
+  if (!wires || !inRow || !outRow) return;
+
+  layOutFlow();
+
+  // Lanes fan the wires out where they meet the core, in the order they sit
+  // vertically on their own side.
+  const LANES = [-46, 0, 46];
+  const perSide = { in: 0, out: 0 };
+
+  wires.innerHTML = FLOW_NODES.map((node, i) => {
+    const lane = LANES[perSide[node.side]++ % LANES.length];
+    const d = flowWire(node, lane);
+    const edgeX = FLOW_CORE.x + (node.side === 'in' ? -FLOW_CORE.half : FLOW_CORE.half);
+    return `
+      <path class="fm-wire" d="${d}"/>
+      <path class="fm-pulse ${node.side}" d="${d}" style="animation-delay:${(i * 0.42).toFixed(2)}s"/>
+      <circle class="fm-node lit" cx="${edgeX}" cy="${FLOW_CORE.y + lane}" r="4.5"/>`;
+  }).join('');
+
+  // The cards live in two rows so the narrow layout has something to stack;
+  // on a wide screen each row is an absolute box overlaying the map exactly,
+  // and the per-card positions above are what place them.
+  const html = (side) => FLOW_NODES.map((n, i) => (n.side === side ? flowCardHtml(n, i) : '')).join('');
+  inRow.innerHTML = html('in');
+  outRow.innerHTML = html('out');
+}
+
 /* ══════════════════════════════════════════════════ the showreel ═══
    A gallery of finished cuts, on a page selling finished cuts.
 
@@ -6480,6 +6649,7 @@ window.addEventListener('resize', measureTopbar);
 // The sample file is already loaded, so the verdict on it is too — the wizard
 // should never open on "Reading your footage…" for a file it already has.
 adoptFormat({ w: 1080, h: 1920, d: 47 });
+buildFlowmap();
 buildHomeLooks();
 buildWhoItsFor();
 buildComparison();
