@@ -1980,250 +1980,151 @@ body.instudio { overflow: hidden; }
 }
 
 /* ═════════════════════════════════════════ hero: the flow map ═══
-   Raw footage goes in on the left, finished videos come out on the right,
-   and the thing in the middle is us. It is the whole product in one picture,
-   which is what a hero is for.
-
-   The wires and the cards are positioned from ONE table of coordinates in
-   `FLOW_NODES`, in the same 1200×620 space the SVG's viewBox uses — so a card
-   can never drift off the end of the wire it is supposed to sit on. The
-   container is pinned to that aspect ratio, which is what makes a percentage
-   in CSS and a user unit in the SVG the same distance.
+   Wires edge to edge, clips riding them, the mark fixed in the middle.
+   Proportions measured off the reference: see src comments in the script.
    ═══════════════════════════════════════════════════════════════ */
-/*
- * Sized from the height that is left, not from the width that is available.
- *
- * This graphic only does its job if you can see it when the page loads, and a
- * fixed width means a short laptop gets the headline and the top of a wire.
- * So the width is capped by the space between the copy above it and the
- * bottom of the window — on a tall screen it hits the 1000px ceiling, on a
- * short one the whole picture scales down rather than running off the end.
- *
- * `--fm-above` is everything stacked above it: the header, the hero, the
- * label band and a little air. Measured, not guessed; if the copy above
- * changes height, this is the number to change.
- */
-:root { --fm-above: 470px; --fm-ratio: 2.0833; }
-.flowmap-head,
-.flowmap { width: min(100%, 1000px, (100vh - var(--fm-above)) * var(--fm-ratio)); margin-inline: auto; }
 .flowmap {
-  position: relative; margin-block: 0;
-  aspect-ratio: 1000 / 480;
+  position: relative;
+  /* Full bleed. The wires have to reach the edges of the window or the
+     pipeline looks like it starts and stops on the page. */
+  width: 100vw; margin-inline: calc(50% - 50vw);
+  aspect-ratio: 2000 / 520;
 }
 .flowmap-wires { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
 
-/* The wire itself: dim, and deliberately thin. It is the road, not the traffic. */
-.fm-wire { fill: none; stroke: rgba(155,123,255,.26); stroke-width: 1.4; }
-/* The traffic. A short dash travelling the same path, which is a stroke-dash
-   animation rather than a moving element — so it scales with the viewBox and
-   cannot fall out of step with the curve it rides. */
-/* The light that runs ahead of the clip, so a wire reads as carrying
-   something even in the moment no clip is on it. */
-.fm-pulse {
-  fill: none; stroke: var(--violet-hi); stroke-width: 2.4; stroke-linecap: round;
-  stroke-dasharray: 26 1600; opacity: .8;
-  filter: drop-shadow(0 0 4px rgba(155,123,255,.8));
-  animation: fm-run var(--fm-loop, 7.2s) cubic-bezier(.55, 0, .45, 1) infinite;
+.fc-wire { fill: none; stroke: rgba(155,123,255,.42); stroke-width: 1.8; }
+/* A lane with no clip on it still shows which way it runs. */
+.fc-drift {
+  fill: none; stroke: var(--violet-hi); stroke-width: 2.2; stroke-linecap: round;
+  stroke-dasharray: 30 2400; opacity: .55;
+  filter: drop-shadow(0 0 5px rgba(155,123,255,.75));
+  animation: fc-drift 9s linear infinite;
 }
-@keyframes fm-run { from { stroke-dashoffset: 1600; } to { stroke-dashoffset: 0; } }
+@keyframes fc-drift { from { stroke-dashoffset: 2430; } to { stroke-dashoffset: 0; } }
+.fc-ring { fill: var(--ink); stroke: rgba(155,123,255,.6); stroke-width: 1.8; }
 
-/* ── the clip that makes the journey ──────────────────────────────── */
-/* An element riding the same path the wire is drawn from, so it cannot take a
-   route the picture does not show. `offset-path` on an SVG element takes its
-   coordinates in USER units, which is what lets it scale with the viewBox —
-   the px-based CSS equivalent would drift the moment the box resized. And
-   because it is a CSS animation rather than SMIL, the global reduced-motion
-   rule at the top of this file already switches it off. */
-.fm-chip {
-  offset-rotate: 0deg;
-  offset-distance: 0%;
-  animation:
-    fm-travel var(--fm-loop, 7.2s) cubic-bezier(.55, 0, .45, 1) infinite,
-    fm-chip-life var(--fm-loop, 7.2s) linear infinite,
-    fm-chip-squeeze var(--fm-loop, 7.2s) ease-in-out infinite;
-}
-@keyframes fm-travel { from { offset-distance: 0%; } to { offset-distance: 100%; } }
-/* Out at both ends, so a clip appears to leave the card it came from and
-   settle into the one it becomes rather than popping in mid-air. */
-@keyframes fm-chip-life {
-  0%, 2% { opacity: 0; }
-  9%, 91% { opacity: 1; }
-  98%, 100% { opacity: 0; }
-}
-/* A dip as it goes through — the edit, as a beat you can see. */
-@keyframes fm-chip-squeeze {
-  0%, 40% { scale: 1; }
-  50% { scale: .74; }
-  60%, 100% { scale: 1; }
-}
-/* Plain on the way in, finished on the way out. The two are the same shape
-   stacked, cross-faded at the halfway point, which is the core. */
-.fm-chip-raw { animation: fm-chip-was var(--fm-loop, 7.2s) linear infinite; }
-.fm-chip-done {
-  opacity: 0;
-  animation: fm-chip-is var(--fm-loop, 7.2s) linear infinite;
-  filter: drop-shadow(0 0 5px rgba(155,123,255,.55));
-}
-.fm-chip-raw, .fm-chip-done { animation-delay: inherit; }
-@keyframes fm-chip-was { 0%, 44% { opacity: 1; } 54%, 100% { opacity: 0; } }
-@keyframes fm-chip-is { 0%, 44% { opacity: 0; } 54%, 100% { opacity: 1; } }
-/* A node where a wire meets the core, so the join reads as a connection
-   rather than a line that stops. */
-.fm-node { fill: var(--ink); stroke: rgba(155,123,255,.5); stroke-width: 1.4; }
-
-/* ── the core ─────────────────────────────────────────────────────── */
+/* ── the mark, and its halo ───────────────────────────────────────── */
 .flowmap-core {
-  position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
-  width: 14%; aspect-ratio: 1; z-index: 3;
+  position: absolute; left: 50%; top: 50%; translate: -50% -50%;
+  /* 202 of 2000 — a tenth of the width, as measured. */
+  width: 10.1%; aspect-ratio: 1; z-index: 3;
   display: grid; place-items: center;
-  border-radius: 26%;
-  background: linear-gradient(160deg, #23233b, #16161f 60%, #101016);
-  border: 1px solid rgba(155,123,255,.45);
-  box-shadow:
-    0 0 0 8px rgba(155,123,255,.05),
-    0 20px 56px -20px rgba(155,123,255,.5),
-    inset 0 1px 0 rgba(255,255,255,.08);
+  border-radius: 28%;
+  background: linear-gradient(155deg, #2b2b45, #1a1a26 58%, #121218);
+  border: 1px solid rgba(155,123,255,.5);
+  box-shadow: 0 24px 64px -18px rgba(155,123,255,.55), inset 0 1px 0 rgba(255,255,255,.09);
 }
-.flowmap-core svg { width: 46%; height: auto; color: var(--violet-hi); }
-/* The glow breathes rather than pulses — a hero that blinks is a hero nobody
-   can read the headline over. */
+.flowmap-core svg { width: 44%; height: auto; color: var(--violet-hi); }
+/* The soft square halo the reference wraps its tile in — 1.55× the tile,
+   which is -27.5% on each side. */
 .flowmap-core::before {
-  content: ''; position: absolute; inset: -26%; border-radius: 50%; z-index: -1;
-  background: radial-gradient(circle, rgba(155,123,255,.30), transparent 68%);
-  animation: fm-breathe 5.5s var(--ease) infinite;
+  content: ''; position: absolute; inset: -27.5%; z-index: -1; border-radius: 30%;
+  background: radial-gradient(closest-side, rgba(155,123,255,.34), rgba(155,123,255,.16) 58%, transparent 76%);
+  animation: fc-breathe 6s var(--ease) infinite;
 }
-@keyframes fm-breathe { 0%, 100% { opacity: .55; transform: scale(.94); } 50% { opacity: 1; transform: scale(1.06); } }
+/* A second, tighter ring so the tile sits in light rather than on it — the
+   reference's halo is two stops of the same violet, not one soft blur. */
+.flowmap-core::after {
+  content: ''; position: absolute; inset: -12%; z-index: -1; border-radius: 30%;
+  background: radial-gradient(closest-side, rgba(155,123,255,.30), transparent 82%);
+  pointer-events: none;
+}
+@keyframes fc-breathe { 0%, 100% { opacity: .7; scale: .97; } 50% { opacity: 1; scale: 1.04; } }
 
-/* ── a card ───────────────────────────────────────────────────────── */
-.fm-card {
-  position: absolute; z-index: 2;
-  /* A <figure> carries `margin: 1em 40px` from the browser's own stylesheet.
-     That 40px is why every card sat forty pixels to the right of the wire it
-     belongs to — the positioning was right all along. */
-  margin: 0;
-  border-radius: 12px; overflow: hidden;
-  background: var(--charcoal); border: 1px solid var(--line);
-  box-shadow: 0 18px 44px -18px rgba(0,0,0,.95);
-  animation: fm-float 7s var(--ease) infinite;
+/* ── a clip in transit ────────────────────────────────────────────── */
+.fc {
+  offset-rotate: 0deg; offset-distance: 0%;
+  animation:
+    fc-travel var(--fc-loop, 13s) linear infinite,
+    fc-life var(--fc-loop, 13s) linear infinite;
 }
-@keyframes fm-float { 0%, 100% { translate: 0 0; } 50% { translate: 0 -5px; } }
-/* Finished work sits forward: brighter edge, warmer shadow, lifted. */
-.fm-card.out { border-color: rgba(155,123,255,.5); box-shadow: 0 20px 50px -18px rgba(155,123,255,.35); }
-.fm-card { transition: border-color var(--fast), box-shadow var(--fast); }
-.fm-card:hover { border-color: var(--violet); box-shadow: 0 24px 60px -18px rgba(155,123,255,.55); }
+@keyframes fc-travel { from { offset-distance: 0%; } to { offset-distance: 100%; } }
+/* In at the edge of the screen, out at the other one — a clip should arrive
+   from off-screen rather than appear in the middle of empty space. */
+@keyframes fc-life {
+  0%, 1% { opacity: 0; }
+  7%, 93% { opacity: 1; }
+  99%, 100% { opacity: 0; }
+}
 
-.fm-slot { position: relative; display: block; width: 100%; }
-.fm-slot video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.fc-card {
+  position: relative; display: block; width: 100%; height: 100%;
+  border-radius: 11px; overflow: hidden;
+  background: var(--charcoal);
+  box-shadow: 0 16px 40px -14px rgba(0,0,0,.95);
+}
+/* The edge is on the ART, not the card, so it cross-fades with everything
+   else and a clip visibly gains its accent as it leaves the tile. */
+.fc-art { border-radius: 11px; }
+.fc-art.raw { box-shadow: inset 0 0 0 1px var(--line); }
+.fc-art.done { box-shadow: inset 0 0 0 1.5px rgba(155,123,255,.75), 0 0 22px rgba(155,123,255,.25); }
+.fc-art { position: absolute; inset: 0; overflow: hidden; background: #0A0A0E; }
+video.fc-art { object-fit: cover; width: 100%; height: 100%; }
+/* Plain on the way in, finished on the way out, swapped behind the tile —
+   which is why the swap is invisible and the change is not. */
+.fc-art.raw { animation: fc-was var(--fc-loop, 13s) linear infinite; }
+.fc-art.done { opacity: 0; animation: fc-is var(--fc-loop, 13s) linear infinite; }
+/* The phone's stack shows both states side by side, so neither animates. */
+.fc-card.static .fc-art { animation: none; }
+.fc-card.static .fc-art.done { opacity: 1; }
+@keyframes fc-was { 0%, 47% { opacity: 1; } 53%, 100% { opacity: 0; } }
+@keyframes fc-is { 0%, 47% { opacity: 0; } 53%, 100% { opacity: 1; } }
+/* A finished clip is graded; a raw one is flat. The difference has to survive
+   at a twentieth of the screen's width, so it is a small desaturation rather
+   than a dimming — dimmed, the clip simply disappeared into the background. */
+.fc-art.raw { filter: saturate(.55); }
 
-/* The placeholder, until there is a file to put here. Drawn rather than a grey
-   box with a filename on it: the point of this graphic is "plain in, finished
-   out", and two identical grey rectangles would say nothing at all. */
-.fm-ph { position: absolute; inset: 0; overflow: hidden; background: #0A0A0E; }
-.fm-ph .room {
-  position: absolute; inset: 0;
-  background: radial-gradient(120% 90% at 60% 24%, #262631 0%, #17171f 52%, #0d0d12 100%);
+.fc-room { position: absolute; inset: 0; background: radial-gradient(120% 90% at 60% 22%, #35354a 0%, #22222f 52%, #15151c 100%); }
+.fc-art.done .fc-room { background: radial-gradient(120% 90% at 60% 22%, #3b3352 0%, #251f38 52%, #16111f 100%); }
+/* `max-width` matters: the drawing is square, so on a vertical clip its
+   natural width is wider than the card. It was clipped and looked fine, and
+   still stretched the page sideways on a phone. `preserveAspectRatio` keeps
+   it centred and unsquashed inside whatever box this leaves it. */
+.fc-fig {
+  position: absolute; left: 50%; bottom: 0; translate: -50% 0;
+  height: 74%; width: auto; max-width: 92%;
 }
-.fm-ph .fig { position: absolute; bottom: 0; left: 50%; height: 78%; transform: translateX(-50%); }
-/* Raw footage is flat and a little cold; a finished cut is graded and warm.
-   The difference has to be visible in a still, not only in the labels. */
-.fm-card.in .fm-ph { filter: saturate(.55) brightness(.86); }
-/* The gaps a raw take is full of, as a strip along the bottom. */
-.fm-ph .gaps {
-  position: absolute; left: 7%; right: 7%; bottom: 8%;
-  display: flex; gap: 2px; height: 7px;
-  padding: 2px; border-radius: 4px; background: rgba(0,0,0,.45);
+.fc-gaps {
+  position: absolute; left: 8%; right: 8%; bottom: 9%;
+  display: flex; gap: 1.5px; height: 6px; padding: 1.5px;
+  border-radius: 3px; background: rgba(0,0,0,.5);
 }
-.fm-ph .gaps i { flex: 1; border-radius: 2px; background: rgba(255,255,255,.34); }
-.fm-ph .gaps i.dead { background: rgba(255,123,123,.8); }
-/* What the edit added: captions, an accent line, a stat card. */
-.fm-ph .caps {
-  position: absolute; left: 8%; right: 8%; bottom: 14%;
+.fc-gaps i { flex: 1; border-radius: 1.5px; background: rgba(255,255,255,.34); }
+.fc-gaps i.dead { background: rgba(255,123,123,.85); }
+.fc-chip {
+  position: absolute; left: 7%; top: 7%;
+  padding: 2px 6px; border-radius: 5px;
+  font-size: 9px; font-weight: 800; letter-spacing: .01em; text-transform: uppercase;
+  background: var(--violet); color: var(--ink); white-space: nowrap;
+}
+.fc-caps {
+  position: absolute; left: 8%; right: 8%; bottom: 15%;
   display: flex; flex-direction: column; align-items: center; gap: 3px;
 }
-.fm-ph .caps i { display: block; height: 4px; border-radius: 99px; background: var(--chalk); }
-.fm-ph .caps i.accent { background: var(--violet); }
-.fm-ph .chip {
-  position: absolute; left: 8%; top: 9%;
-  padding: 2px 6px; border-radius: 5px; font-size: 8.5px; font-weight: 800;
-  background: rgba(155,123,255,.9); color: var(--ink); letter-spacing: .02em;
-}
-.fm-ph .bar { position: absolute; left: 0; bottom: 0; height: 2px; background: var(--violet); }
-
-/* The label under a card: what it is, and how long. */
-.fm-meta {
-  margin: 0; display: flex; align-items: center; justify-content: space-between; gap: 4px;
-  padding: 5px 6px 6px; font-size: 8.5px; font-weight: 700; letter-spacing: 0;
-}
-.fm-meta b { text-transform: uppercase; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.fm-meta i { flex: none; font-style: normal; color: var(--faint); font-variant-numeric: tabular-nums; }
-.fm-card.in .fm-meta b { color: var(--muted); }
-.fm-card.out .fm-meta b { color: var(--violet-hi); }
-
-/* ── the two ends, named ──────────────────────────────────────────── */
-/* Their own band above the map rather than corners inside it: inside, the
-   first card on each side sat straight on top of them. */
-.flowmap-head {
-  display: flex; align-items: flex-end; justify-content: space-between; gap: 20px;
-  margin-block: 12px 2px;
-  padding-inline: 4px;
-}
-.fm-end { font-size: 11px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; }
-.fm-end.in { color: var(--faint); }
-.fm-end.out { color: var(--violet); text-align: right; }
-.fm-end span {
-  display: block; margin-top: 2px; font-size: 10.5px; letter-spacing: .01em;
-  text-transform: none; color: var(--faint); font-weight: 500;
-}
+.fc-caps i { display: block; height: 3.5px; border-radius: 99px; background: var(--chalk); }
+.fc-caps i.accent { background: var(--violet); }
+.fc-bar { position: absolute; left: 0; bottom: 0; height: 2.5px; width: 62%; background: var(--violet); }
 
 /* ── narrow ───────────────────────────────────────────────────────── */
-/* Below this the curves are the first thing to go: four wires crossing a
-   phone-width column is a scribble. The story survives as two labelled rows
-   with the mark between them, which is the same sentence in less space. */
+/* Wires across a phone-width column are a scribble, and a clip crossing one
+   is gone before you have read it. The same sentence, stacked: this goes in,
+   that comes out. */
+.fm-rail { display: none; }
 @media (max-width: 900px) {
-  .flowmap-head, .flowmap { width: 100%; }
-  .flowmap { aspect-ratio: auto; display: grid; gap: 14px; justify-items: center; }
+  .flowmap { width: 100%; margin-inline: 0; aspect-ratio: auto; display: grid; justify-items: center; gap: 16px; }
   .flowmap-wires { display: none; }
-  .flowmap-head { display: none; }
-  /* `relative`, not `static`: the glow is an absolutely positioned
-     pseudo-element inset by -34%, and with a static parent it resolved
-     against the map instead — 240px of invisible box hanging off the side,
-     which is what was scrolling the page sideways on a phone. */
-  .flowmap-core {
-    position: relative; left: auto; top: auto; transform: none;
-    width: 84px; order: 2;
-  }
-  .fm-card {
-    position: static; transform: none; width: auto !important;
-    left: auto !important; top: auto !important; animation: none;
-  }
-  /* One row per side, three across — the number of cards there are. `order`
-     only accepts integers, and an `order: 2.5` on the second rail silently
-     became 0, which stacked both labels at the top with no cards under
-     either. */
-  .fm-row {
-    display: grid; grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 10px; width: 100%; align-items: start;
-  }
-  .fm-row.in { order: 1; }
-  .fm-row.out { order: 4; }
+  /* `relative`, not `static`. The halo is two absolutely positioned
+     pseudo-elements inset past the tile's edges; with a static parent they
+     resolve against the whole map instead and hang 96px off each side, which
+     is a sideways scroll on a phone and nothing visible to explain it. */
+  .flowmap-core { position: relative; left: auto; top: auto; translate: none; width: 76px; order: 2; }
   .fm-rail {
-    order: 0; font-size: 10.5px; font-weight: 700; letter-spacing: .14em;
-    text-transform: uppercase; color: var(--faint);
+    display: grid; order: 3; width: 100%;
+    grid-template-columns: repeat(auto-fit, minmax(96px, 1fr)); gap: 12px;
   }
-  .fm-rail.out { order: 3; color: var(--violet); }
-}
-@media (min-width: 901px) {
-  /* A real box that exactly overlays the map, rather than `display: contents`.
-     A contents element generates no box, and the absolutely positioned cards
-     inside it were resolving their percentages against a containing block
-     forty pixels off from the one the wires are drawn in — so every card sat
-     beside its wire instead of on it. */
-  .fm-row { position: absolute; inset: 0; pointer-events: none; }
-  .fm-row .fm-card { pointer-events: auto; }
-  .fm-rail { display: none; }
-}
-@media (max-width: 380px) {
-  .fm-row { gap: 7px; }
+  .fm-stack { display: grid; justify-items: center; gap: 6px; }
+  .fm-stack .fc-card { width: 100%; height: auto; }
+  .fm-arrow { font-size: 13px; color: var(--violet); line-height: 1; }
 }
 
 /* ═══════════════════════════════════════════════════════ before / after ══ */
@@ -2552,21 +2453,17 @@ body.instudio { overflow: hidden; }
          videos come out on the right, and we are the thing in the middle.
          Built by `buildFlowmap()` from one table of coordinates, so the cards
          cannot drift off the ends of the wires they sit on. -->
-    <div class="flowmap-head">
-      <span class="fm-end in">Footage in<span>However you filmed it</span></span>
-      <span class="fm-end out">Videos out<span>Cut, captioned, scored</span></span>
-    </div>
+    <!-- The product as one picture: footage arrives at one edge, rides
+         through the mark, and leaves the other edge edited. Everything moves
+         except the mark. `buildFlowmap()` draws it from one table of lanes. -->
     <div class="flowmap" id="flowmap" aria-label="Raw footage goes in, finished videos come out">
-      <span class="fm-rail in">Footage in</span>
-      <span class="fm-rail out">Videos out</span>
-      <svg class="flowmap-wires" id="fm-wires" viewBox="0 0 1000 480" fill="none" aria-hidden="true"></svg>
+      <svg class="flowmap-wires" id="fm-wires" viewBox="0 0 2000 520" fill="none" aria-hidden="true"></svg>
       <div class="flowmap-core" aria-hidden="true">
         <svg viewBox="0 0 88.96 100" fill="none">
           <path d="M64.6 30.39C65.36 30.39 66.2 30.42 66.92 30.67C69.17 31.48 72.32 33.42 74.38 34.75C77.16 36.53 80.44 37.75 82.88 40.02C87.83 44.61 88.96 52.83 84.67 58.29C83.83 59.35 82.93 60.33 81.85 61.17C80.24 62.43 78.27 63.21 76.56 64.31C73.79 66.09 70.82 67.65 67.95 69.3C62.91 72.18 57.93 75.14 52.89 78.02C49.51 79.96 45.69 81.93 42.45 84.02C40.4 85.34 35.36 88.29 33.22 89.36C29 91.46 19.29 98.19 15.5 99C10.84 100 5.98 98.38 3.01 94.59C1.92 93.15 1.1 91.51 0.73 89.73C0.09 86.75 0.44 76.84 0.44 73.16C0.44 71.34 0.02 67.66 1.14 66.24C2.15 64.95 5.26 63.67 6.76 62.72C8.5 61.59 10.42 60.72 12.16 59.6C14.44 58.13 16.89 56.77 19.32 55.55C20.35 55.04 21.46 54.67 22.54 54.28C28.59 52.12 34.96 57.17 38.63 61.51C39.89 62.98 41.11 64.49 42.15 66.12C42.35 66.41 42.48 66.78 42.75 67.01C43.02 67.24 43.41 67.37 43.73 67.16C43.99 66.99 44.24 66.7 44.21 66.37C44.16 65.61 42.95 63.68 42.58 62.84C40.82 58.71 39.52 53.88 39.84 49.36C40.3 42.93 45.38 40.7 50.04 37.7C51.56 36.72 53.22 35.75 54.84 34.93C56.97 33.86 60.59 31.11 62.73 30.65C63.37 30.52 63.97 30.48 64.6 30.39ZM56.45 24.84C56.55 25.83 55.99 26.25 55.2 26.7C50.89 29.16 44.32 33.44 39.9 35.02C37.86 35.75 35.63 35.87 33.53 35.42C30.42 34.76 26.76 31.97 24.66 29.66C23.51 28.41 22.35 27.2 21.3 25.88C20.5 24.84 19.87 23.47 19.01 22.53C18.78 22.29 18.54 22.29 18.22 22.29C17.81 22.39 17.49 22.74 17.52 23.2C17.53 23.34 19.54 27.65 19.82 28.42C21.12 32.07 22.56 37.42 21.73 41.29C21.32 43.2 20.49 45.06 19.14 46.51C15.98 49.91 7.84 54.09 3.53 56.55C2.68 57.04 1.88 57.63 0.92 57.05C0.09 56.18 0.44 53.55 0.44 52.34C0.44 42.41 0.44 32.46 0.44 22.53C0.44 19.14 0 12.3 1.04 9.36C2.37 5.65 5.18 2.91 8.88 1.58C13.33 0 17.56 1.65 21.32 4.07C22.54 4.85 23.87 5.47 25.09 6.25C26.63 7.25 28.33 8.01 29.88 9C32.19 10.48 34.66 11.8 37.05 13.17C42.01 16 46.95 18.9 51.92 21.74C53.11 22.42 55.93 23.64 56.45 24.84Z" fill="currentColor"/>
         </svg>
       </div>
-      <div class="fm-row in" id="fm-in"></div>
-      <div class="fm-row out" id="fm-out"></div>
+      <div class="fm-rail" id="fm-rail"></div>
     </div>
 
     <div class="home-sec">
@@ -6046,243 +5943,180 @@ function buildHomePricing() {
    illustrate nothing.
    ══════════════════════════════════════════════════════════════════ */
 
-/** Half the core tile, in viewBox units — where a wire has to stop. */
-const FLOW_CORE = { x: 500, y: 240, half: 70 };
-/** The space the map is drawn in. The CSS pins the box to this ratio. */
-const FLOW_BOX = { w: 1000, h: 480 };
+/* ══════════════════════════════════════════════════ the hero flow map ═══
+   Raw footage in on the left, finished videos out on the right, us in the
+   middle — and the footage is what MOVES. Nothing rests on either side: clips
+   appear at the edge of the screen, ride a wire through the mark, come out the
+   other side edited, and leave. The mark is the only thing that stays put.
 
-/* Card sizes, in viewBox units. `FLOW_META` is the label strip under the
-   picture: it is part of the card's height, and forgetting that is what had
-   the first version's cards sitting on top of each other. */
-const FLOW_META = 22;
+   ── Proportions ──────────────────────────────────────────────────────────
+   Measured off the reference rather than guessed, in a 2000-wide space:
+   the tile is 202 across (about a tenth of the width), its halo about 1.55×
+   that, the wires run edge to edge and stay flat until the last ~380 units
+   before the tile, and a clip is roughly a twentieth of the width. Every
+   number below is in that space, and the container is pinned to its ratio —
+   which is what lets a wire drawn in SVG and a card laid out in HTML meet.
+
+   ── Why the cards live inside the SVG ────────────────────────────────────
+   They ride the wire with `offset-path`, whose coordinates on an SVG element
+   are USER units and therefore scale with the viewBox. A `<foreignObject>`
+   carries the ordinary HTML card — so the slot can still hold a real <video>
+   — while the `<g>` around it does the travelling.
+   ══════════════════════════════════════════════════════════════════════ */
+
+const FLOW_BOX = { w: 2000, h: 520 };
+/** The mark: centre, and half its width. The halo is a multiple of this. */
+const FLOW_CORE = { x: 1000, y: 260, half: 101 };
+/** How long a wire stays flat before it starts bending toward the tile. */
+const FLOW_BEND = 380;
+
+/* Clip sizes, in viewBox units. Small, like the reference — the pipeline is
+   the subject, and a clip that fills a lane stops reading as something
+   passing through. */
 const FLOW_SIZE = {
-  '9:16': { w: 104, h: 185 },
-  '16:9': { w: 176, h: 99 },
+  '9:16': { w: 110, h: 196 },
+  '16:9': { w: 186, h: 105 },
 };
-const flowHeight = (ratio) => FLOW_SIZE[ratio].h + FLOW_META;
 
 /*
- * Three a side, in two columns.
+ * The lanes.
  *
- * The two verticals stack in an INNER column near the core; the widescreen
- * one sits further OUT, vertically centred, in the space beside them. Three
- * portrait cards in one column is 600 units tall whatever you do to them, and
- * this graphic has to fit on screen with the headline above it — so the third
- * card goes sideways instead of downwards.
- *
- * Entries pair up by position: the first `in` becomes the first `out`, and
- * that is the journey a travelling clip makes.
+ * `edge` is where the wire sits at the screen's edge, `core` where it meets
+ * the tile; the out edge differs from the in edge on purpose, so the picture
+ * is not a mirror of itself. A lane with no `ratio` carries no clip — the
+ * reference has more wires than cards, and the empty ones are what make it
+ * read as a pipeline rather than a diagram.
  */
-const FLOW_SPECS = [
-  { side: 'in',  slot: 'inner', x: 300, ratio: '9:16', kind: 'Raw', len: '3:42' },
-  { side: 'in',  slot: 'outer', x: 122, ratio: '16:9', kind: 'Raw', len: '18:05' },
-  { side: 'in',  slot: 'inner', x: 300, ratio: '9:16', kind: 'Raw', len: '0:58' },
-  { side: 'out', slot: 'inner', x: 700, ratio: '9:16', kind: 'Punchy',    len: '0:38' },
-  { side: 'out', slot: 'outer', x: 878, ratio: '16:9', kind: 'Chaptered', len: '11:40' },
-  { side: 'out', slot: 'inner', x: 700, ratio: '9:16', kind: 'Reaction',  len: '0:47' },
+const FLOW_LANES = [
+  { edge: 105, core: 190, out: 98,  ratio: '9:16', done: 'Punchy' },
+  { edge: 165, core: 218, out: 176 },
+  { edge: 250, core: 244, out: 244, ratio: '16:9', done: 'Chaptered' },
+  { edge: 305, core: 270, out: 298, ratio: '9:16', done: 'Reaction' },
+  { edge: 395, core: 300, out: 404 },
+  { edge: 462, core: 328, out: 452, ratio: '16:9', done: 'Side by side' },
 ];
-/* Filled in by `layOutFlow`, which is what `buildFlowmap` reads. Kept separate
-   from the specs above so the specs stay a plain table somebody can edit. */
-let FLOW_NODES = [];
 
-/** Where each wire lands on the core, so three do not meet at one pixel. */
-const FLOW_LANES = [-38, 0, 38];
-/** The gap between the two stacked verticals. */
-const FLOW_GAP = 34;
-
-/** Keeps a card inside the box however its x was written. */
-function clampX(left, width) {
-  const margin = 8;
-  return Math.max(margin, Math.min(FLOW_BOX.w - width - margin, left));
-}
+/** One trip end to end. Clips are spread evenly along it. */
+const FLOW_LOOP = 13;
 
 /**
- * Works out where every card and wire end belongs.
+ * A wire, from one edge of the screen to the other.
  *
- * Computed rather than typed, because the heights differ by format and a
- * hand-placed column silently breaks the moment a card changes size — which
- * is exactly what happened when the label strip was added.
+ * Flat for most of its run, then an S-bend into the tile, straight through
+ * behind it, and back out the other side. The straight middle is what the
+ * tile covers, so a clip passing through is hidden for exactly as long as it
+ * takes to be edited.
  */
-function layOutFlow() {
-  FLOW_NODES = FLOW_SPECS.map((spec, i) => ({ ...spec, order: i }));
-
-  for (const side of ['in', 'out']) {
-    const column = FLOW_NODES.filter((n) => n.side === side);
-    column.forEach((n, i) => { n.lane = FLOW_LANES[i % FLOW_LANES.length]; });
-
-    const place = (node, top) => {
-      const size = FLOW_SIZE[node.ratio];
-      /*
-       * Top-left, not centre.
-       *
-       * Positioning by centre means a `translate(-50%, -50%)` that resolves
-       * against the element's own rendered size — which includes the label
-       * strip, whose height comes from font metrics rather than from this
-       * table. Top-left is a pure function of these numbers.
-       */
-      node.left = clampX(node.x - size.w / 2, size.w);
-      node.top = top;
-      node.wireX = node.left + size.w / 2;
-      // The middle of the PICTURE. The label strip hangs below it and is not
-      // part of the frame a wire should meet.
-      node.wireY = top + size.h / 2;
-    };
-
-    const inner = column.filter((n) => n.slot === 'inner');
-    const total = inner.reduce((sum, n) => sum + flowHeight(n.ratio), 0) + FLOW_GAP * (inner.length - 1);
-    let y = (FLOW_BOX.h - total) / 2;
-    for (const node of inner) {
-      place(node, y);
-      y += flowHeight(node.ratio) + FLOW_GAP;
-    }
-    for (const node of column.filter((n) => n.slot === 'outer')) {
-      place(node, (FLOW_BOX.h - flowHeight(node.ratio)) / 2);
-    }
-  }
-  return FLOW_NODES;
-}
-
-/** The pairs: the first card in is the first card out, and so on. */
-function flowPairs() {
-  const going = FLOW_NODES.filter((n) => n.side === 'in');
-  const coming = FLOW_NODES.filter((n) => n.side === 'out');
-  return going.map((from, i) => [from, coming[i]]).filter(([, to]) => to);
-}
-
-/* How far the control points are pulled sideways. This is what gives a wire
-   its flat approach and stops it arriving at the core on a diagonal. */
-const FLOW_REACH = 190;
-
-/**
- * One continuous path from a raw card, through the core, to the finished one.
- *
- * Drawn as the wire AND used as the track a travelling clip rides, so the clip
- * cannot take a route the picture does not show. It passes behind the core
- * tile, which is opaque and sits above it.
- */
-function flowJourney(from, to) {
+function flowWire(lane) {
   const edgeL = FLOW_CORE.x - FLOW_CORE.half;
   const edgeR = FLOW_CORE.x + FLOW_CORE.half;
-  const yIn = FLOW_CORE.y + from.lane;
-  const yOut = FLOW_CORE.y + to.lane;
+  const startBend = edgeL - FLOW_BEND;
+  const endBend = edgeR + FLOW_BEND;
   return (
-    `M ${from.wireX} ${from.wireY}` +
-    ` C ${from.wireX + FLOW_REACH} ${from.wireY}, ${edgeL - FLOW_REACH} ${yIn}, ${edgeL} ${yIn}` +
-    ` L ${edgeR} ${yOut}` +
-    ` C ${edgeR + FLOW_REACH} ${yOut}, ${to.wireX - FLOW_REACH} ${to.wireY}, ${to.wireX} ${to.wireY}`
+    `M 0 ${lane.edge}` +
+    ` L ${startBend} ${lane.edge}` +
+    ` C ${startBend + FLOW_BEND * 0.55} ${lane.edge}, ${edgeL - FLOW_BEND * 0.55} ${lane.core}, ${edgeL} ${lane.core}` +
+    ` L ${edgeR} ${lane.core}` +
+    ` C ${edgeR + FLOW_BEND * 0.55} ${lane.core}, ${endBend - FLOW_BEND * 0.55} ${lane.out}, ${endBend} ${lane.out}` +
+    ` L ${FLOW_BOX.w} ${lane.out}`
   );
 }
 
-/**
- * The clip that makes the journey, drawn twice.
- *
- * `raw` and `done` are the same shape with different treatment, stacked and
- * cross-faded at the halfway point — which is the core. So a clip visibly goes
- * in plain and comes out captioned, rather than a dot sliding along a line.
- */
-function flowChipArt(ratio) {
-  const vertical = ratio === '9:16';
-  const w = vertical ? 38 : 66;
-  const h = vertical ? 67 : 37;
-  const x = -w / 2, y = -h / 2;
-  const headR = vertical ? 6.2 : 5.4;
-  const headY = y + h * (vertical ? 0.3 : 0.32);
-  const bodyW = w * 0.52, bodyH = h * (vertical ? 0.34 : 0.3);
-
-  const figure = `
-      <circle cx="0" cy="${headY.toFixed(1)}" r="${headR}" fill="#D9B68B"/>
-      <rect x="${(-bodyW / 2).toFixed(1)}" y="${(headY + headR + 0.8).toFixed(1)}"
-            width="${bodyW.toFixed(1)}" height="${bodyH.toFixed(1)}" rx="${(bodyW / 2.6).toFixed(1)}" fill="#3B3555"/>`;
-
-  const raw = `<g class="fm-chip-raw">
-      <rect x="${x}" y="${y}" width="${w}" height="${h}" rx="4" fill="#14141B" stroke="#2C2C36" stroke-width="1.2"/>
-      ${figure}
-      <rect x="${x + 3}" y="${y + h - 7}" width="${w - 6}" height="2.4" rx="1.2" fill="#FF7B7B" opacity=".75"/>
-    </g>`;
-
-  const done = `<g class="fm-chip-done">
-      <rect x="${x}" y="${y}" width="${w}" height="${h}" rx="4" fill="#16121F" stroke="#9B7BFF" stroke-width="1.4"/>
-      ${figure}
-      <rect x="${(-w * 0.32).toFixed(1)}" y="${(y + h - 10).toFixed(1)}" width="${(w * 0.64).toFixed(1)}" height="2.4" rx="1.2" fill="#F5F5F7"/>
-      <rect x="${(-w * 0.2).toFixed(1)}" y="${(y + h - 6).toFixed(1)}" width="${(w * 0.4).toFixed(1)}" height="2.4" rx="1.2" fill="#9B7BFF"/>
-    </g>`;
-
-  return raw + done;
-}
-
-/** The drawn stand-in for a video that has not been supplied yet. */
-function flowPlaceholder(node) {
-  const figure = `<svg class="fig" viewBox="0 0 150 150" preserveAspectRatio="xMidYMax meet">
-      <path d="M14 150 L17 100 C20 74, 38 63, 58 62 L92 62 C112 63, 130 74, 133 100 L136 150 Z" fill="#3B3555"/>
+/** The drawn stand-in for a clip nobody has supplied a file for yet. */
+function flowClipArt(lane, done, delay) {
+  const timing = delay === undefined ? '' : ` style="animation-delay:${delay}s"`;
+  const figure = `<svg class="fc-fig" viewBox="0 0 150 150" preserveAspectRatio="xMidYMax meet">
+      <path d="M14 150 L17 100 C20 74, 38 63, 58 62 L92 62 C112 63, 130 74, 133 100 L136 150 Z" fill="#453E68"/>
       <ellipse cx="75" cy="34" rx="20" ry="25" fill="#D9B68B"/>
     </svg>`;
-
-  if (node.side === 'in') {
-    /* A raw take: flat, and full of the gaps we are about to remove. The red
-       cells are the dead air — the thing the product is for, shown rather
-       than claimed. */
+  if (!done) {
+    /* Flat, and full of the gaps we are about to remove. The red cells are the
+       dead air — the thing the product is for, shown rather than claimed. */
     const cells = [1, 1, 0, 1, 1, 1, 0, 0, 1, 1, 0, 1, 1, 1, 0, 1]
       .map((live) => `<i class="${live ? '' : 'dead'}"></i>`).join('');
-    return `<span class="fm-ph"><span class="room"></span>${figure}<span class="gaps">${cells}</span></span>`;
+    return `<span class="fc-art raw"${timing}><span class="fc-room"></span>${figure}<span class="fc-gaps">${cells}</span></span>`;
   }
-
-  return `<span class="fm-ph">
-      <span class="room"></span>${figure}
-      <span class="chip">${node.kind}</span>
-      <span class="caps"><i style="width:66%"></i><i class="accent" style="width:40%"></i></span>
-      <span class="bar" style="width:${38 + ((Math.round(node.top) * 7) % 46)}%"></span>
+  return `<span class="fc-art done"${timing}>
+      <span class="fc-room"></span>${figure}
+      <span class="fc-chip">${lane.done}</span>
+      <span class="fc-caps"><i style="width:64%"></i><i class="accent" style="width:38%"></i></span>
+      <span class="fc-bar"></span>
     </span>`;
 }
 
-function flowCardHtml(node, i) {
-  const size = FLOW_SIZE[node.ratio];
-  const slot = node.src
-    ? `<video src="${node.src}" muted loop autoplay playsinline preload="metadata"></video>`
-    : flowPlaceholder(node);
+/**
+ * A clip riding a wire: the same frame drawn twice, plain and finished,
+ * cross-faded behind the tile.
+ *
+ * `src` on a lane plays that file instead of the drawing, in both states —
+ * which is the point of the placeholder. Put the files in a folder and set
+ * the two paths; nothing else changes.
+ */
+function flowClipHtml(lane, i, delay) {
+  const size = FLOW_SIZE[lane.ratio];
+  /*
+   * The delay is stamped on the two art layers as well as on the travelling
+   * group, and it has to be: `animation-delay: inherit` looks at the parent's
+   * COMPUTED value, and the parent here is the card inside a <foreignObject>,
+   * which never had one. Every clip was therefore travelling on its own clock
+   * and changing from raw to finished on a shared one — so all four flipped at
+   * the same instant, most of them nowhere near the tile.
+   */
+  const media = (src, done) =>
+    src
+      ? `<video class="fc-art ${done ? 'done' : 'raw'}" style="animation-delay:${delay}s"
+                src="${src}" muted loop autoplay playsinline preload="metadata"></video>`
+      : flowClipArt(lane, done, delay);
 
-  return `<figure class="fm-card ${node.side}" data-flow="${i}"
-      style="width:${((size.w / FLOW_BOX.w) * 100).toFixed(3)}%;
-             left:${((node.left / FLOW_BOX.w) * 100).toFixed(3)}%;
-             top:${((node.top / FLOW_BOX.h) * 100).toFixed(3)}%;
-             animation-delay:${(i * 0.7).toFixed(2)}s">
-      <span class="fm-slot" style="aspect-ratio:${node.ratio.replace(':', ' / ')}">${slot}</span>
-      <figcaption class="fm-meta"><b>${node.kind}</b><i>${node.len}</i></figcaption>
-    </figure>`;
+  return `<g class="fc" style="offset-path:path('${flowWire(lane)}');animation-delay:${delay}s">
+      <foreignObject x="${-size.w / 2}" y="${-size.h / 2}" width="${size.w}" height="${size.h}">
+        <span xmlns="http://www.w3.org/1999/xhtml" class="fc-card" style="aspect-ratio:${lane.ratio.replace(':', ' / ')}">
+          ${media(lane.src, false)}
+          ${media(lane.srcDone ?? lane.src, true)}
+        </span>
+      </foreignObject>
+    </g>`;
+}
+
+/** The little rings the reference dots its wires with. */
+function flowRings(lane, i) {
+  if (i % 2) return '';
+  const edgeR = FLOW_CORE.x + FLOW_CORE.half;
+  return `<circle class="fc-ring" cx="${edgeR + FLOW_BEND + 210}" cy="${lane.out}" r="9"/>`;
 }
 
 function buildFlowmap() {
   const wires = $('fm-wires');
-  const inRow = $('fm-in');
-  const outRow = $('fm-out');
-  if (!wires || !inRow || !outRow) return;
+  const rail = $('fm-rail');
+  if (!wires) return;
 
-  layOutFlow();
-  const pairs = flowPairs();
+  const carrying = FLOW_LANES.filter((l) => l.ratio);
+  const step = FLOW_LOOP / Math.max(1, carrying.length);
+  let nth = 0;
 
-  /* One loop, three clips, evenly spaced along it — so something is always
-     arriving somewhere and the picture never reads as finished. */
-  const LOOP = 7.2;
-  const step = LOOP / pairs.length;
-
-  wires.innerHTML = pairs.map(([from, to], i) => {
-    const d = flowJourney(from, to);
-    const delay = (-i * step).toFixed(2);
-    return `
-      <path class="fm-wire" d="${d}"/>
-      <path class="fm-pulse" d="${d}" style="animation-delay:${delay}s"/>
-      <circle class="fm-node" cx="${FLOW_CORE.x - FLOW_CORE.half}" cy="${FLOW_CORE.y + from.lane}" r="3.6"/>
-      <circle class="fm-node" cx="${FLOW_CORE.x + FLOW_CORE.half}" cy="${FLOW_CORE.y + to.lane}" r="3.6"/>
-      <g class="fm-chip" style="offset-path:path('${d}');animation-delay:${delay}s">
-        ${flowChipArt(from.ratio)}
-      </g>`;
+  wires.innerHTML = FLOW_LANES.map((lane, i) => {
+    const d = flowWire(lane);
+    const parts = [`<path class="fc-wire" d="${d}"/>`, flowRings(lane, i)];
+    if (lane.ratio) {
+      // Spread along one loop, so clips arrive steadily rather than in a pack.
+      parts.push(flowClipHtml(lane, i, (-nth++ * step).toFixed(2)));
+    } else {
+      // A lane with no clip still has to show which way it runs.
+      parts.push(`<path class="fc-drift" d="${d}" style="animation-delay:${(-i * 1.9).toFixed(2)}s"/>`);
+    }
+    return parts.join('');
   }).join('');
 
-  // The cards live in two rows so the narrow layout has something to stack;
-  // on a wide screen each row is an absolute box overlaying the map exactly,
-  // and the per-card positions above are what place them.
-  const html = (side) => FLOW_NODES.map((n, i) => (n.side === side ? flowCardHtml(n, i) : '')).join('');
-  inRow.innerHTML = html('in');
-  outRow.innerHTML = html('out');
+  /* The phone gets a stack instead: the wires are meaningless in a column,
+     but "this goes in, that comes out" still is. */
+  if (rail) {
+    rail.innerHTML = carrying.map((lane) => `
+      <span class="fm-stack">
+        <span class="fc-card static" style="aspect-ratio:${lane.ratio.replace(':', ' / ')}">${flowClipArt(lane, false)}</span>
+        <span class="fm-arrow" aria-hidden="true">&darr;</span>
+        <span class="fc-card static" style="aspect-ratio:${lane.ratio.replace(':', ' / ')}">${flowClipArt(lane, true)}</span>
+      </span>`).join('');
+  }
 }
 
 /* ══════════════════════════════════════════════════ the showreel ═══
