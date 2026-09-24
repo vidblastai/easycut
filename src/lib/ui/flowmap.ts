@@ -98,12 +98,6 @@ export function flowWire(lane: FlowLane): string {
   );
 }
 
-/** Where a decorative ring sits on a lane, or null for the lanes without one. */
-export function flowRing(lane: FlowLane, i: number): { x: number; y: number } | null {
-  if (i % 2) return null;
-  return { x: FLOW_CORE.x + FLOW_CORE.half + BEND + 210, y: lane.out };
-}
-
 /**
  * The lanes that carry a clip, with the delay that spreads them along the
  * loop so they arrive steadily rather than in a pack.

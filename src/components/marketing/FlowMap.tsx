@@ -6,7 +6,6 @@ import {
   FLOW_RAIL,
   FLOW_SIZE,
   flowClips,
-  flowRing,
   flowWire,
   type FlowLane,
 } from '@/lib/ui/flowmap';
@@ -48,13 +47,9 @@ export function FlowMap() {
       >
         {FLOW_LANES.map((lane, i) => {
           const d = flowWire(lane);
-          const ring = flowRing(lane, i);
           return (
             <g key={i}>
               <path d={d} stroke="rgba(155,123,255,.42)" strokeWidth={1.8} fill="none" />
-              {ring ? (
-                <circle cx={ring.x} cy={ring.y} r={9} fill="#0D0D10" stroke="rgba(155,123,255,.6)" strokeWidth={1.8} />
-              ) : null}
               {/* A lane with no clip still has to show which way it runs. */}
               {lane.ratio ? null : (
                 <path

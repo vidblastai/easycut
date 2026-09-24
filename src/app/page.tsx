@@ -7,6 +7,7 @@ import { BeforeAfter } from '@/components/marketing/BeforeAfter';
 import { FlowMap } from '@/components/marketing/FlowMap';
 import { LayerDemos } from '@/components/marketing/LayerDemos';
 import { MarketingStyles } from '@/components/marketing/styles';
+import { SocialProof } from '@/components/marketing/SocialProof';
 import { STYLE_LIST, leadsWithCards } from '@/lib/styles/presets';
 import { StylePreview } from '@/components/styles/StylePreview';
 import { WhoItsFor } from '@/components/marketing/WhoItsFor';
@@ -91,10 +92,7 @@ export default function HomePage() {
       {/* ------------------------------------------------------------ hero */}
       <section className="relative z-10 mx-auto max-w-5xl px-6 pb-3 pt-6 text-center sm:pt-8">
         <div className="animate-rise">
-          <span className="inline-flex items-center gap-2 rounded-full border border-line bg-charcoal px-3.5 py-1.5 text-xs font-semibold text-muted">
-            <span className="h-1.5 w-1.5 animate-pulseDot rounded-full bg-violet" />
-            Short video in ~90 seconds. Long form in under six minutes.
-          </span>
+          <SocialProof />
         </div>
 
         {/* One fluid size rather than a jump at `sm`. The promise — "get an
@@ -120,7 +118,9 @@ export default function HomePage() {
           </Link>
         </div>
 
-        <p className="mt-3 text-[13px] text-muted/70">No timeline. No keyframes. No editing knowledge of any kind.</p>
+        <p className="mt-3 text-[13px] text-muted/70">
+          Short video in ~90 seconds. Long form in under six minutes. No editing knowledge of any kind.
+        </p>
       </section>
 
       {/* The product in one picture: footage goes in one side, finished videos
