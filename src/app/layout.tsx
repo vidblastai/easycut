@@ -13,12 +13,12 @@ const jakarta = Plus_Jakarta_Sans({
 });
 
 export const metadata: Metadata = {
-  title: 'EasyCut AI — Upload your footage. Get a finished video.',
+  title: 'EasyCut AI — Upload your footage. Get an edited video, ready to post.',
   description:
     'Drop in your talking-head footage and get back a fully edited video: captions, B-roll, motion graphics, sound design and music. No editing knowledge required.',
   openGraph: {
     title: 'EasyCut AI',
-    description: 'Upload your footage. Get a finished video.',
+    description: 'Upload your footage. Get an edited video, ready to post.',
     type: 'website',
   },
 };

@@ -54,7 +54,7 @@ export function SiteFooter() {
           <div>
             <Logo size={26} />
             <p className="mt-3 max-w-[34ch] text-[13px] leading-relaxed text-muted">
-              Upload the footage, get a finished video. Built for people who would rather be making
+              Upload the footage, get a video ready to post. Built for people who would rather be making
               things than editing them.
             </p>
           </div>

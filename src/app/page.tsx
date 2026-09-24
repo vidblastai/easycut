@@ -47,7 +47,7 @@ const STEPS = [
   },
   {
     number: '03',
-    title: 'Get a finished video',
+    title: 'Get a video ready to post',
     body: 'Under two minutes for a short. Download it, or nudge anything you want and re-render for free.',
   },
 ];
@@ -97,10 +97,13 @@ export default function HomePage() {
           </span>
         </div>
 
-        <h1 className="animate-rise mt-4 text-[34px] font-extrabold leading-[1.04] tracking-[-0.038em] sm:text-[48px]">
+        {/* One fluid size rather than a jump at `sm`. The promise — "get an
+            edited video, ready to post" — is a long line, and at a fixed 48px
+            it broke in two on a tablet, which delivers the payoff in pieces. */}
+        <h1 className="animate-rise mt-4 text-[clamp(30px,4vw,48px)] font-extrabold leading-[1.04] tracking-[-0.038em]">
           Upload your footage.
           <br />
-          <span className="text-violet">Get a finished video.</span>
+          <span className="text-violet">Get an edited video, ready to post.</span>
         </h1>
 
         <p className="animate-rise mx-auto mt-3 max-w-3xl text-[16px] leading-[1.55] text-muted">

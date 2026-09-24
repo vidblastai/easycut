@@ -38,7 +38,7 @@ export function FlowMap() {
         'grid justify-items-center gap-4',
         'lg:block lg:aspect-[2000/520]',
       )}
-      aria-label="Raw footage goes in, finished videos come out"
+      aria-label="Raw footage goes in, edited videos come out ready to post"
     >
       <svg
         viewBox={`0 0 ${FLOW_BOX.w} ${FLOW_BOX.h}`}
