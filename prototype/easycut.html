@@ -1794,27 +1794,33 @@ body.instudio { overflow: hidden; }
    there are customers who have said yes to appearing here.
    ═══════════════════════════════════════════════════════════════ */
 .proof {
-  display: inline-flex; align-items: center; gap: 12px; flex-wrap: wrap;
-  justify-content: center;
+  display: inline-flex; align-items: center; gap: 13px;
+  border: 1px solid var(--line); background: var(--charcoal);
+  border-radius: 99px; padding: 7px 19px 7px 11px;
 }
+/* The faces and their verdict are ONE thing — who is here, and what they made
+   of it — so they stack into a single block and the sentence sits beside it,
+   rather than three items strung along a line. */
+.proof-who { display: grid; justify-items: center; gap: 4px; }
 .proof-faces { display: flex; }
 .proof-faces span {
-  width: 32px; height: 32px; border-radius: 99px; overflow: hidden;
-  /* The ring is the page's own background, so the stack reads as overlapping
-     discs rather than as one blurred shape. */
-  box-shadow: 0 0 0 2px var(--ink);
+  width: 28px; height: 28px; border-radius: 99px; overflow: hidden;
+  /* The ring is the pill's own fill, so the stack reads as overlapping discs
+     rather than as one blurred shape. */
+  box-shadow: 0 0 0 2px var(--charcoal);
   display: block;
 }
-.proof-faces span + span { margin-left: -10px; }
+.proof-faces span + span { margin-left: -8px; }
 .proof-faces svg { display: block; width: 100%; height: 100%; }
-.proof-said { display: flex; align-items: center; gap: 9px; }
-.proof-stars { display: flex; gap: 2px; color: var(--violet); }
+.proof-stars { display: flex; gap: 2.5px; color: var(--violet); }
 .proof-stars svg { display: block; }
 .proof-copy { font-size: 13.5px; font-weight: 600; color: var(--muted); white-space: nowrap; }
-.proof-copy b { color: var(--chalk); font-weight: 700; }
-@media (max-width: 460px) {
-  .proof { gap: 9px; }
-  .proof-copy { white-space: normal; }
+/* The number never splits across lines: "Loved by over / 100k creators" reads
+   as a broken sentence, "Loved by / over 100k creators" as a wrapped one. */
+.proof-copy b { color: var(--chalk); font-weight: 700; white-space: nowrap; }
+@media (max-width: 420px) {
+  .proof { gap: 10px; padding-right: 15px; }
+  .proof-copy { font-size: 12.5px; white-space: normal; }
 }
 
 .hero h1 {
@@ -6163,15 +6169,15 @@ function buildProof() {
     </span>`).join('');
 
   const stars = Array.from({ length: 5 }, () =>
-    `<svg width="14" height="14" viewBox="0 0 20 20" aria-hidden="true"><path d="${STAR}" fill="currentColor"/></svg>`
+    `<svg width="13" height="13" viewBox="0 0 20 20" aria-hidden="true"><path d="${STAR}" fill="currentColor"/></svg>`
   ).join('');
 
   el.innerHTML = `
-    <span class="proof-faces">${faces}</span>
-    <span class="proof-said">
+    <span class="proof-who">
+      <span class="proof-faces">${faces}</span>
       <span class="proof-stars" role="img" aria-label="Rated five out of five">${stars}</span>
-      <span class="proof-copy">Loved by <b>${PROOF_COUNT} creators</b></span>
-    </span>`;
+    </span>
+    <span class="proof-copy">Loved by <b>${PROOF_COUNT} creators</b></span>`;
 }
 
 function buildFlowmap() {
