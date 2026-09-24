@@ -1796,12 +1796,12 @@ body.instudio { overflow: hidden; }
 .proof {
   display: inline-flex; align-items: center; gap: 13px;
   border: 1px solid var(--line); background: var(--charcoal);
-  border-radius: 99px; padding: 7px 19px 7px 11px;
+  border-radius: 99px; padding: 6px 19px 6px 11px;
 }
 /* The faces and their verdict are ONE thing — who is here, and what they made
    of it — so they stack into a single block and the sentence sits beside it,
    rather than three items strung along a line. */
-.proof-who { display: grid; justify-items: center; gap: 4px; }
+.proof-who { display: grid; justify-items: center; }
 .proof-faces { display: flex; }
 .proof-faces span {
   width: 28px; height: 28px; border-radius: 99px; overflow: hidden;
@@ -1812,7 +1812,15 @@ body.instudio { overflow: hidden; }
 }
 .proof-faces span + span { margin-left: -8px; }
 .proof-faces svg { display: block; width: 100%; height: 100%; }
-.proof-stars { display: flex; gap: 2.5px; color: var(--violet); }
+/* The stars sit ON the faces rather than under them: pulled up over the
+   bottom of the discs, which halves the height of the block and keeps the
+   pill a badge instead of a box. The drop shadow is what stops a violet star
+   disappearing into a dark shoulder. */
+.proof-stars {
+  display: flex; gap: 2.5px; color: var(--violet);
+  position: relative; margin-top: -11px;
+  filter: drop-shadow(0 1px 2.5px rgba(0,0,0,.9));
+}
 .proof-stars svg { display: block; }
 .proof-copy { font-size: 13.5px; font-weight: 600; color: var(--muted); white-space: nowrap; }
 /* The number never splits across lines: "Loved by over / 100k creators" reads

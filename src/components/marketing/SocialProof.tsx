@@ -36,14 +36,14 @@ export function SocialProof({ className }: { className?: string }) {
       data-proof
       className={clsx(
         'inline-flex items-center gap-[13px] rounded-full border border-line bg-charcoal',
-        'py-[7px] pl-[11px] pr-[19px] max-[420px]:pr-[15px]',
+        'py-[6px] pl-[11px] pr-[19px] max-[420px]:pr-[15px]',
         className,
       )}
     >
       {/* The faces and their verdict are ONE thing — who is here, and what
           they made of it — so they stack into a single block and the sentence
           sits beside it, rather than three items strung along a line. */}
-      <span className="grid justify-items-center gap-1">
+      <span className="grid justify-items-center">
         <span className="flex">
           {FACES.map((f, i) => (
             <span
@@ -63,7 +63,15 @@ export function SocialProof({ className }: { className?: string }) {
           ))}
         </span>
 
-        <span role="img" aria-label="Rated five out of five" className="flex gap-[2.5px] text-violet">
+        {/* The stars sit ON the faces rather than under them: pulled up over
+            the bottom of the discs, which takes a third off the height of the
+            block and keeps the pill a badge instead of a box. The drop shadow
+            is what stops a violet star disappearing into a dark shoulder. */}
+        <span
+          role="img"
+          aria-label="Rated five out of five"
+          className="relative -mt-[11px] flex gap-[2.5px] text-violet [filter:drop-shadow(0_1px_2.5px_rgba(0,0,0,.9))]"
+        >
           {Array.from({ length: 5 }, (_, i) => (
             <svg key={i} width="13" height="13" viewBox="0 0 20 20" aria-hidden className="block">
               <path d={STAR} fill="currentColor" />
