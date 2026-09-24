@@ -4,7 +4,7 @@ import { SiteFooter } from '@/components/marketing/SiteFooter';
 import { Logo, LogoMark } from '@/components/Logo';
 import { CaptionShowcase } from '@/components/captions/CaptionShowcase';
 import { BeforeAfter } from '@/components/marketing/BeforeAfter';
-import { EditReel } from '@/components/marketing/EditReel';
+import { FlowMap } from '@/components/marketing/FlowMap';
 import { LayerDemos } from '@/components/marketing/LayerDemos';
 import { MarketingStyles } from '@/components/marketing/styles';
 import { STYLE_LIST, leadsWithCards } from '@/lib/styles/presets';
@@ -106,7 +106,7 @@ export default function HomePage() {
         <p className="animate-rise mx-auto mt-5 max-w-2xl text-[17px] leading-[1.65] text-muted sm:text-lg">
           You talk to camera. We do the rest — cutting out the pauses and the
           &ldquo;umm&rdquo;s, adding captions, B-roll, graphics, sound design and music,
-          and framing it for wherever you&rsquo;re posting it.
+          in the shape you filmed it.
         </p>
 
         <div className="animate-rise mt-7 flex flex-col items-center justify-center gap-3 sm:flex-row">
@@ -121,10 +121,11 @@ export default function HomePage() {
         <p className="mt-4 text-sm text-muted/70">No timeline. No keyframes. No editing knowledge of any kind.</p>
       </section>
 
-      {/* The edit, assembling itself. This is the page's whole argument, and it
-          sits above the fold on a laptop for exactly that reason. */}
-      <section className="relative z-10 mx-auto max-w-4xl px-6 pb-24">
-        <EditReel />
+      {/* The product in one picture: footage goes in one side, finished videos
+          come out the other. This is the page's whole argument, and it sits
+          above the fold on a laptop for exactly that reason. */}
+      <section className="relative z-10 mx-auto max-w-6xl px-6 pb-24">
+        <FlowMap />
       </section>
 
       {/* ---------------------------------------------------- before / after */}

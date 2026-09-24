@@ -41,11 +41,23 @@ export default {
         rise: { '0%': { opacity: '0', transform: 'translateY(10px)' }, '100%': { opacity: '1', transform: 'none' } },
         shimmer: { '100%': { transform: 'translateX(100%)' } },
         pulseDot: { '0%,100%': { opacity: '1' }, '50%': { opacity: '0.35' } },
+        /* The hero flow map. `flowRun` is a dash travelling a wire rather than
+           an element moving along one, so it scales with the SVG's viewBox and
+           cannot fall out of step with the curve it rides. */
+        flowRun: { from: { strokeDashoffset: '1234' }, to: { strokeDashoffset: '0' } },
+        flowFloat: { '0%,100%': { translate: '0 0' }, '50%': { translate: '0 -7px' } },
+        flowBreathe: {
+          '0%,100%': { opacity: '0.55', transform: 'scale(0.94)' },
+          '50%': { opacity: '1', transform: 'scale(1.06)' },
+        },
       },
       animation: {
         rise: 'rise 0.5s cubic-bezier(0.16,1,0.3,1) both',
         shimmer: 'shimmer 1.6s infinite',
         pulseDot: 'pulseDot 1.4s ease-in-out infinite',
+        flowRun: 'flowRun 3.4s linear infinite',
+        flowFloat: 'flowFloat 7s cubic-bezier(.22,.68,.28,1) infinite',
+        flowBreathe: 'flowBreathe 5.5s cubic-bezier(.22,.68,.28,1) infinite',
       },
     },
   },
