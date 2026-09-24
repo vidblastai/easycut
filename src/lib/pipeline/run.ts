@@ -204,8 +204,34 @@ async function stageTranscribe(ctx: PipelineContext): Promise<void> {
   ctx.ledger.add('transcription', result.costUsd, result.transcript.provider);
 
   if (result.transcript.degraded || !result.transcript.words.length) {
-    ctx.degraded.push('captions (no transcription provider configured)');
+    ctx.degraded.push(`captions (${whyNoTranscript(result.attempts)})`);
   }
+}
+
+/**
+ * Why a video came back without captions, in the words of what actually
+ * happened.
+ *
+ * This used to say "no transcription provider configured" whatever the cause,
+ * which is the most expensive kind of wrong message: it sends somebody to
+ * check a key that was never the problem. A configured provider that could not
+ * be REACHED — a firewall, an egress allowlist, an outage, an expired key —
+ * looks identical from the outside and needs the opposite action.
+ *
+ * `attempts` carries one entry per provider tried, with the error that made
+ * the chain fall through, so the real reason is already in hand.
+ */
+function whyNoTranscript(attempts: Array<{ provider: string; error?: string }>): string {
+  const failed = attempts.filter((a) => a.provider !== 'stub' && a.error);
+  if (!failed.length) {
+    // Nothing was even tried: the chain was the stub alone, so there genuinely
+    // is no provider set up. Or one ran and heard no speech in the audio.
+    return attempts.some((a) => a.provider !== 'stub')
+      ? 'no speech found in the audio'
+      : 'no transcription provider configured';
+  }
+  const first = failed[0];
+  return `${first.provider} could not be reached — ${first.error}`;
 }
 
 /* ------------------------------------------------------------- 3. silence */
