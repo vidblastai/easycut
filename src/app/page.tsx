@@ -170,7 +170,13 @@ export default function HomePage() {
 
       {/* ----------------------------------------------------------- steps */}
       <section className="relative z-10 mx-auto max-w-6xl px-6 py-24">
-        <div className="grid gap-4 sm:grid-cols-3">
+        {/* The heading the prototype has always had. Without it the three
+            cards floated, and the layers section that now follows them read as
+            a reply to nothing. */}
+        <h2 className="max-w-2xl text-3xl font-extrabold tracking-[-0.03em] sm:text-[40px]">
+          Two decisions, then it&rsquo;s done.
+        </h2>
+        <div className="mt-10 grid gap-4 sm:grid-cols-3">
           {STEPS.map((step) => (
             <div key={step.number} className="card p-6">
               <div className="text-xs font-bold tracking-[0.18em] text-violet">{step.number}</div>
@@ -180,9 +186,6 @@ export default function HomePage() {
           ))}
         </div>
       </section>
-
-      {/* ---------------------------------------------------- who it's for */}
-      <WhoItsFor />
 
       {/* ---------------------------------------------------------- layers */}
       <section className="relative z-10 border-t border-line bg-[#0B0B0E] py-24">
@@ -199,6 +202,9 @@ export default function HomePage() {
           </div>
         </div>
       </section>
+
+      {/* ---------------------------------------------------- who it's for */}
+      <WhoItsFor />
 
       {/* -------------------------------------------------------- captions */}
       <section className="relative z-10 py-24">
