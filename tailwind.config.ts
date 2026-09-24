@@ -44,7 +44,26 @@ export default {
         /* The hero flow map. `flowRun` is a dash travelling a wire rather than
            an element moving along one, so it scales with the SVG's viewBox and
            cannot fall out of step with the curve it rides. */
-        flowRun: { from: { strokeDashoffset: '1234' }, to: { strokeDashoffset: '0' } },
+        flowRun: { from: { strokeDashoffset: '1600' }, to: { strokeDashoffset: '0' } },
+        /* A clip riding its wire: along the path, fading in and out at the
+           ends so it leaves the card it came from rather than popping into
+           mid-air, with a squeeze as it passes through the core — the edit,
+           as a beat you can see. */
+        flowTravel: { from: { offsetDistance: '0%' }, to: { offsetDistance: '100%' } },
+        flowLife: {
+          '0%,2%': { opacity: '0' },
+          '9%,91%': { opacity: '1' },
+          '98%,100%': { opacity: '0' },
+        },
+        flowSqueeze: {
+          '0%,40%': { scale: '1' },
+          '50%': { scale: '0.74' },
+          '60%,100%': { scale: '1' },
+        },
+        /* Plain going in, finished coming out — cross-faded at the halfway
+           point, which is where the core is. */
+        flowWas: { '0%,44%': { opacity: '1' }, '54%,100%': { opacity: '0' } },
+        flowIs: { '0%,44%': { opacity: '0' }, '54%,100%': { opacity: '1' } },
         flowFloat: { '0%,100%': { translate: '0 0' }, '50%': { translate: '0 -7px' } },
         flowBreathe: {
           '0%,100%': { opacity: '0.55', transform: 'scale(0.94)' },
@@ -55,7 +74,11 @@ export default {
         rise: 'rise 0.5s cubic-bezier(0.16,1,0.3,1) both',
         shimmer: 'shimmer 1.6s infinite',
         pulseDot: 'pulseDot 1.4s ease-in-out infinite',
-        flowRun: 'flowRun 3.4s linear infinite',
+        flowRun: 'flowRun 7.2s cubic-bezier(.55,0,.45,1) infinite',
+        flowTravel:
+          'flowTravel 7.2s cubic-bezier(.55,0,.45,1) infinite, flowLife 7.2s linear infinite, flowSqueeze 7.2s ease-in-out infinite',
+        flowWas: 'flowWas 7.2s linear infinite',
+        flowIs: 'flowIs 7.2s linear infinite',
         flowFloat: 'flowFloat 7s cubic-bezier(.22,.68,.28,1) infinite',
         flowBreathe: 'flowBreathe 5.5s cubic-bezier(.22,.68,.28,1) infinite',
       },

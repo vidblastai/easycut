@@ -89,7 +89,7 @@ export default function HomePage() {
       </header>
 
       {/* ------------------------------------------------------------ hero */}
-      <section className="relative z-10 mx-auto max-w-5xl px-6 pb-16 pt-12 text-center sm:pt-16">
+      <section className="relative z-10 mx-auto max-w-5xl px-6 pb-3 pt-6 text-center sm:pt-8">
         <div className="animate-rise">
           <span className="inline-flex items-center gap-2 rounded-full border border-line bg-charcoal px-3.5 py-1.5 text-xs font-semibold text-muted">
             <span className="h-1.5 w-1.5 animate-pulseDot rounded-full bg-violet" />
@@ -97,19 +97,18 @@ export default function HomePage() {
           </span>
         </div>
 
-        <h1 className="animate-rise mt-6 text-[40px] font-extrabold leading-[1.04] tracking-[-0.035em] sm:text-[62px]">
+        <h1 className="animate-rise mt-4 text-[34px] font-extrabold leading-[1.04] tracking-[-0.038em] sm:text-[48px]">
           Upload your footage.
           <br />
           <span className="text-violet">Get a finished video.</span>
         </h1>
 
-        <p className="animate-rise mx-auto mt-5 max-w-2xl text-[17px] leading-[1.65] text-muted sm:text-lg">
-          You talk to camera. We do the rest — cutting out the pauses and the
-          &ldquo;umm&rdquo;s, adding captions, B-roll, graphics, sound design and music,
-          in the shape you filmed it.
+        <p className="animate-rise mx-auto mt-3 max-w-3xl text-[16px] leading-[1.55] text-muted">
+          You talk to camera. We do the rest — the pauses and &ldquo;umm&rdquo;s cut, captions,
+          B-roll, graphics, sound design and music, in the shape you filmed it.
         </p>
 
-        <div className="animate-rise mt-7 flex flex-col items-center justify-center gap-3 sm:flex-row">
+        <div className="animate-rise mt-5 flex flex-col items-center justify-center gap-3 sm:flex-row">
           <Link href="/new" className="btn-primary w-full px-7 py-3.5 text-[15px] sm:w-auto">
             Upload your footage
           </Link>
@@ -118,13 +117,13 @@ export default function HomePage() {
           </Link>
         </div>
 
-        <p className="mt-4 text-sm text-muted/70">No timeline. No keyframes. No editing knowledge of any kind.</p>
+        <p className="mt-3 text-[13px] text-muted/70">No timeline. No keyframes. No editing knowledge of any kind.</p>
       </section>
 
       {/* The product in one picture: footage goes in one side, finished videos
           come out the other. This is the page's whole argument, and it sits
           above the fold on a laptop for exactly that reason. */}
-      <section className="relative z-10 mx-auto max-w-6xl px-6 pb-24">
+      <section className="relative z-10 mx-auto max-w-6xl px-6 pb-20">
         <FlowMap />
       </section>
 

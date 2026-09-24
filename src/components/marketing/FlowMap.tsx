@@ -3,8 +3,10 @@ import { LogoMark } from '@/components/Logo';
 import {
   FLOW_BOX,
   flowCardVars,
-  flowCoreJoin,
-  flowWirePath,
+  flowChipGeometry,
+  flowCoreJoins,
+  flowJourney,
+  flowPairs,
   layOutFlow,
   type FlowNode,
 } from '@/lib/ui/flowmap';
@@ -20,15 +22,22 @@ import {
  * JavaScript. Everything animated here respects `prefers-reduced-motion`
  * through the global rule in globals.css.
  */
+/** One loop, shared by the wire's light and the clip riding it. */
+const LOOP_SEC = 7.2;
+
 export function FlowMap() {
   const nodes = layOutFlow();
+  const pairs = flowPairs(nodes);
   const cards = (side: 'in' | 'out') => nodes.filter((n) => n.side === side);
+  // Evenly spaced along the loop, so something is always arriving somewhere
+  // and the picture never reads as finished.
+  const step = LOOP_SEC / Math.max(1, pairs.length);
 
   return (
     <div>
       {/* The two ends, named — in their own band above the map. Inside it, the
           first card on each side sits straight on top of them. */}
-      <div className="mx-auto mb-2 hidden w-full max-w-[1180px] items-end justify-between gap-5 px-1 lg:flex">
+      <div className="mx-auto mb-0.5 mt-3 hidden w-[min(100%,1000px,(100vh-518px)*2.0833)] items-end justify-between gap-5 px-1 lg:flex">
         <span className="text-[11px] font-bold uppercase tracking-[0.14em] text-faint">
           Footage in
           <span className="mt-1 block text-[11px] font-medium normal-case tracking-normal text-faint">
@@ -45,12 +54,21 @@ export function FlowMap() {
 
       <div
         className={clsx(
-          'relative mx-auto w-full max-w-[1180px]',
+          'relative mx-auto w-full',
+          /*
+           * Sized from the height that is LEFT, not the width available.
+           *
+           * This graphic only does its job if you can see it when the page
+           * loads, and a fixed width means a short laptop gets the headline
+           * and the top of a wire. 518px is everything stacked above it —
+           * header, hero, label band, air — measured rather than guessed.
+           */
+          'lg:w-[min(100%,1000px,(100vh-518px)*2.0833)]',
           // Narrow: the curves are the first thing to go — four wires crossing
           // a phone-width column is a scribble. The story survives as two
           // labelled rows with the mark between them.
           'grid gap-3.5 justify-items-center',
-          'lg:block lg:aspect-[1200/790]',
+          'lg:block lg:aspect-[1000/480]',
         )}
       >
         <svg
@@ -59,26 +77,32 @@ export function FlowMap() {
           aria-hidden
           className="pointer-events-none absolute inset-0 hidden h-full w-full overflow-visible lg:block"
         >
-          {nodes.map((node, i) => {
-            const d = flowWirePath(node);
-            const join = flowCoreJoin(node);
+          {pairs.map(([from, to], i) => {
+            const d = flowJourney(from, to);
+            const delay = `${(-i * step).toFixed(2)}s`;
             return (
               <g key={i}>
-                <path d={d} stroke="rgba(155,123,255,.20)" strokeWidth={1.5} fill="none" />
+                <path d={d} stroke="rgba(155,123,255,.26)" strokeWidth={1.4} fill="none" />
+                {/* The light that runs ahead of the clip, so a wire reads as
+                    carrying something even when no clip is on it. */}
                 <path
                   d={d}
                   fill="none"
-                  strokeWidth={3}
+                  stroke="#B39AFF"
+                  strokeWidth={2.4}
                   strokeLinecap="round"
                   className="animate-flowRun"
-                  stroke={node.side === 'in' ? '#9B7BFF' : '#B39AFF'}
                   style={{
-                    strokeDasharray: '34 1200',
-                    filter: 'drop-shadow(0 0 5px rgba(155,123,255,.9))',
-                    animationDelay: `${(i * 0.42).toFixed(2)}s`,
+                    strokeDasharray: '26 1600',
+                    opacity: 0.8,
+                    filter: 'drop-shadow(0 0 4px rgba(155,123,255,.8))',
+                    animationDelay: delay,
                   }}
                 />
-                <circle cx={join.x} cy={join.y} r={4.5} fill="#0D0D10" stroke="#9B7BFF" strokeWidth={1.5} />
+                {flowCoreJoins(from, to).map((j, k) => (
+                  <circle key={k} cx={j.x} cy={j.y} r={3.6} fill="#0D0D10" stroke="rgba(155,123,255,.5)" strokeWidth={1.4} />
+                ))}
+                <TravellingClip path={d} ratio={from.ratio} delay={delay} />
               </g>
             );
           })}
@@ -113,6 +137,59 @@ export function FlowMap() {
         <FlowRow nodes={cards('out')} />
       </div>
     </div>
+  );
+}
+
+/**
+ * A clip making the journey, plain on the way in and finished on the way out.
+ *
+ * It rides the same path the wire is drawn from, via `offset-path` — which on
+ * an SVG element takes its coordinates in USER units and therefore scales with
+ * the viewBox. The px-based CSS equivalent drifts the moment the box resizes,
+ * and SMIL would have ignored the global reduced-motion rule; this is a plain
+ * CSS animation, so it does not.
+ */
+function TravellingClip({ path, ratio, delay }: { path: string; ratio: string; delay: string }) {
+  const g = flowChipGeometry(ratio);
+  const figure = (
+    <>
+      <circle cx={0} cy={g.headY} r={g.headR} fill="#D9B68B" />
+      <rect
+        x={-g.bodyW / 2}
+        y={g.headY + g.headR + 0.8}
+        width={g.bodyW}
+        height={g.bodyH}
+        rx={g.bodyW / 2.6}
+        fill="#3B3555"
+      />
+    </>
+  );
+
+  return (
+    <g
+      className="animate-flowTravel"
+      style={{
+        offsetPath: `path('${path}')`,
+        offsetRotate: '0deg',
+        offsetDistance: '0%',
+        animationDelay: delay,
+      }}
+    >
+      <g className="animate-flowWas" style={{ animationDelay: delay }}>
+        <rect x={g.x} y={g.y} width={g.w} height={g.h} rx={4} fill="#14141B" stroke="#2C2C36" strokeWidth={1.2} />
+        {figure}
+        <rect x={g.x + 3} y={g.y + g.h - 7} width={g.w - 6} height={2.4} rx={1.2} fill="#FF7B7B" opacity={0.75} />
+      </g>
+      <g
+        className="animate-flowIs"
+        style={{ animationDelay: delay, opacity: 0, filter: 'drop-shadow(0 0 5px rgba(155,123,255,.55))' }}
+      >
+        <rect x={g.x} y={g.y} width={g.w} height={g.h} rx={4} fill="#16121F" stroke="#9B7BFF" strokeWidth={1.4} />
+        {figure}
+        <rect x={-g.w * 0.32} y={g.y + g.h - 10} width={g.w * 0.64} height={2.4} rx={1.2} fill="#F5F5F7" />
+        <rect x={-g.w * 0.2} y={g.y + g.h - 6} width={g.w * 0.4} height={2.4} rx={1.2} fill="#9B7BFF" />
+      </g>
+    </g>
   );
 }
 
@@ -176,7 +253,9 @@ function FlowCard({ node, index }: { node: FlowNode; index: number }) {
           <FlowPlaceholder node={node} />
         )}
       </span>
-      <figcaption className="m-0 flex items-center justify-between gap-1.5 px-2 pb-[7px] pt-1.5 text-[9.5px] font-bold tracking-[0.02em]">
+      {/* 8.5px, not 9.5: "REACTION 0:47" is one pixel too wide for a 104-unit
+          card at the larger size and ellipsises to "REAC…". */}
+      <figcaption className="m-0 flex items-center justify-between gap-1 px-1.5 pb-1.5 pt-1 text-[8.5px] font-bold tracking-normal">
         <b className={clsx('min-w-0 truncate uppercase', out ? 'text-violet-hover' : 'text-muted')}>
           {node.kind}
         </b>
