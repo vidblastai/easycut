@@ -2118,12 +2118,25 @@ video.fc-art { object-fit: cover; width: 100%; height: 100%; }
      resolve against the whole map instead and hang 96px off each side, which
      is a sideways scroll on a phone and nothing visible to explain it. */
   .flowmap-core { position: relative; left: auto; top: auto; translate: none; width: 76px; order: 2; }
+  /* Two columns, fixed. `auto-fit` looked like the tidy answer and was not:
+     it fits as many tracks as the phone allows, so four pairs came out three
+     and one, with the last pair alone on a row of its own. */
   .fm-rail {
     display: grid; order: 3; width: 100%;
-    grid-template-columns: repeat(auto-fit, minmax(96px, 1fr)); gap: 12px;
+    grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px 12px;
   }
   .fm-stack { display: grid; justify-items: center; gap: 6px; }
-  .fm-stack .fc-card { width: 100%; height: auto; }
+  /* Every card sits in a slot of the same height, so the arrows across a row
+     line up however differently the two shapes fill it. A vertical clip is
+     sized by that height; a widescreen one runs out of column width first and
+     `max-width` takes over, which is why neither needs its own rule. */
+  .fm-slot { display: grid; place-items: center; width: 100%; height: 148px; }
+  /* Sized by WIDTH, not height: with a definite height an `aspect-ratio` box
+     that hits its `max-width` keeps the height and loses the ratio, so a
+     widescreen card stretched square on a narrow phone. By width the height
+     follows from the ratio however hard the column squeezes it. */
+  .fm-stack .fc-card { width: min(84px, 100%); height: auto; }
+  .fm-stack .fc-card.wide { width: min(140px, 100%); }
   .fm-arrow { font-size: 13px; color: var(--violet); line-height: 1; }
 }
 
@@ -6110,12 +6123,16 @@ function buildFlowmap() {
   /* The phone gets a stack instead: the wires are meaningless in a column,
      but "this goes in, that comes out" still is. */
   if (rail) {
-    rail.innerHTML = carrying.map((lane) => `
+    rail.innerHTML = carrying.map((lane) => {
+      const ar = lane.ratio.replace(':', ' / ');
+      const wide = lane.ratio === '16:9' ? ' wide' : '';
+      return `
       <span class="fm-stack">
-        <span class="fc-card static" style="aspect-ratio:${lane.ratio.replace(':', ' / ')}">${flowClipArt(lane, false)}</span>
+        <span class="fm-slot"><span class="fc-card static${wide}" style="aspect-ratio:${ar}">${flowClipArt(lane, false)}</span></span>
         <span class="fm-arrow" aria-hidden="true">&darr;</span>
-        <span class="fc-card static" style="aspect-ratio:${lane.ratio.replace(':', ' / ')}">${flowClipArt(lane, true)}</span>
-      </span>`).join('');
+        <span class="fm-slot"><span class="fc-card static${wide}" style="aspect-ratio:${ar}">${flowClipArt(lane, true)}</span></span>
+      </span>`;
+    }).join('');
   }
 }
 

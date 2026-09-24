@@ -2,324 +2,283 @@ import { clsx } from 'clsx';
 import { LogoMark } from '@/components/Logo';
 import {
   FLOW_BOX,
-  flowCardVars,
-  flowChipGeometry,
-  flowCoreJoins,
-  flowJourney,
-  flowPairs,
-  layOutFlow,
-  type FlowNode,
+  FLOW_LANES,
+  FLOW_RAIL,
+  FLOW_SIZE,
+  flowClips,
+  flowRing,
+  flowWire,
+  type FlowLane,
 } from '@/lib/ui/flowmap';
 
 /**
- * The hero graphic: footage in on the left, finished videos out on the right.
+ * The hero graphic: footage arrives at one edge of the window, rides a wire
+ * through the mark, and leaves the other edge edited.
  *
- * The whole product in one picture, which is what a hero is for. All the
- * geometry lives in `@/lib/ui/flowmap` — one table of coordinates that both
- * the SVG and the cards read, so a card cannot drift off the end of its wire.
+ * Nothing rests on either side — the mark is the only fixed thing on screen.
+ * All the geometry lives in `@/lib/ui/flowmap`: one table of lanes that both
+ * the SVG and the cards read, so a clip cannot drift off the wire it rides.
  *
- * Static: the movement is CSS, so this stays a server component and ships no
- * JavaScript. Everything animated here respects `prefers-reduced-motion`
- * through the global rule in globals.css.
+ * A server component. Every movement here is a CSS animation declared in the
+ * Tailwind config, so the hero ships no JavaScript and the global
+ * reduced-motion rule in globals.css already switches it off.
  */
-/** One loop, shared by the wire's light and the clip riding it. */
-const LOOP_SEC = 7.2;
-
 export function FlowMap() {
-  const nodes = layOutFlow();
-  const pairs = flowPairs(nodes);
-  const cards = (side: 'in' | 'out') => nodes.filter((n) => n.side === side);
-  // Evenly spaced along the loop, so something is always arriving somewhere
-  // and the picture never reads as finished.
-  const step = LOOP_SEC / Math.max(1, pairs.length);
+  const clips = flowClips();
 
   return (
-    <div>
-      {/* The two ends, named — in their own band above the map. Inside it, the
-          first card on each side sits straight on top of them. */}
-      <div className="mx-auto mb-0.5 mt-3 hidden w-[min(100%,1000px,(100vh-518px)*2.0833)] items-end justify-between gap-5 px-1 lg:flex">
-        <span className="text-[11px] font-bold uppercase tracking-[0.14em] text-faint">
-          Footage in
-          <span className="mt-1 block text-[11px] font-medium normal-case tracking-normal text-faint">
-            However you filmed it
-          </span>
-        </span>
-        <span className="text-right text-[11px] font-bold uppercase tracking-[0.14em] text-violet">
-          Videos out
-          <span className="mt-1 block text-[11px] font-medium normal-case tracking-normal text-faint">
-            Cut, captioned, scored
-          </span>
-        </span>
-      </div>
-
-      <div
-        className={clsx(
-          'relative mx-auto w-full',
-          /*
-           * Sized from the height that is LEFT, not the width available.
-           *
-           * This graphic only does its job if you can see it when the page
-           * loads, and a fixed width means a short laptop gets the headline
-           * and the top of a wire. 518px is everything stacked above it —
-           * header, hero, label band, air — measured rather than guessed.
-           */
-          'lg:w-[min(100%,1000px,(100vh-518px)*2.0833)]',
-          // Narrow: the curves are the first thing to go — four wires crossing
-          // a phone-width column is a scribble. The story survives as two
-          // labelled rows with the mark between them.
-          'grid gap-3.5 justify-items-center',
-          'lg:block lg:aspect-[1000/480]',
-        )}
+    <div
+      className={clsx(
+        // Full bleed: wires that stop at a content column look like a pipeline
+        // that starts and ends on the page.
+        'relative w-screen ml-[calc(50%-50vw)]',
+        // Narrow: wires across a phone-width column are a scribble, and a clip
+        // crossing one is gone before you have read it. The same sentence,
+        // stacked, instead.
+        'grid justify-items-center gap-4',
+        'lg:block lg:aspect-[2000/520]',
+      )}
+      aria-label="Raw footage goes in, finished videos come out"
+    >
+      <svg
+        viewBox={`0 0 ${FLOW_BOX.w} ${FLOW_BOX.h}`}
+        fill="none"
+        aria-hidden
+        className="pointer-events-none absolute inset-0 hidden h-full w-full overflow-visible lg:block"
       >
-        <svg
-          viewBox={`0 0 ${FLOW_BOX.w} ${FLOW_BOX.h}`}
-          fill="none"
-          aria-hidden
-          className="pointer-events-none absolute inset-0 hidden h-full w-full overflow-visible lg:block"
-        >
-          {pairs.map(([from, to], i) => {
-            const d = flowJourney(from, to);
-            const delay = `${(-i * step).toFixed(2)}s`;
-            return (
-              <g key={i}>
-                <path d={d} stroke="rgba(155,123,255,.26)" strokeWidth={1.4} fill="none" />
-                {/* The light that runs ahead of the clip, so a wire reads as
-                    carrying something even when no clip is on it. */}
+        {FLOW_LANES.map((lane, i) => {
+          const d = flowWire(lane);
+          const ring = flowRing(lane, i);
+          return (
+            <g key={i}>
+              <path d={d} stroke="rgba(155,123,255,.42)" strokeWidth={1.8} fill="none" />
+              {ring ? (
+                <circle cx={ring.x} cy={ring.y} r={9} fill="#0D0D10" stroke="rgba(155,123,255,.6)" strokeWidth={1.8} />
+              ) : null}
+              {/* A lane with no clip still has to show which way it runs. */}
+              {lane.ratio ? null : (
                 <path
                   d={d}
                   fill="none"
                   stroke="#B39AFF"
-                  strokeWidth={2.4}
+                  strokeWidth={2.2}
                   strokeLinecap="round"
-                  className="animate-flowRun"
+                  className="animate-flowDrift"
                   style={{
-                    strokeDasharray: '26 1600',
-                    opacity: 0.8,
-                    filter: 'drop-shadow(0 0 4px rgba(155,123,255,.8))',
-                    animationDelay: delay,
+                    strokeDasharray: '30 2400',
+                    opacity: 0.55,
+                    filter: 'drop-shadow(0 0 5px rgba(155,123,255,.75))',
+                    animationDelay: `${(-i * 1.9).toFixed(2)}s`,
                   }}
                 />
-                {flowCoreJoins(from, to).map((j, k) => (
-                  <circle key={k} cx={j.x} cy={j.y} r={3.6} fill="#0D0D10" stroke="rgba(155,123,255,.5)" strokeWidth={1.4} />
-                ))}
-                <TravellingClip path={d} ratio={from.ratio} delay={delay} />
-              </g>
-            );
-          })}
-        </svg>
+              )}
+            </g>
+          );
+        })}
 
-        <span className="text-[10.5px] font-bold uppercase tracking-[0.14em] text-faint lg:hidden">
-          Footage in
-        </span>
-        <FlowRow nodes={cards('in')} />
+        {clips.map(({ lane, delay }, i) => (
+          <TravellingClip key={`clip-${i}`} lane={lane} delay={delay} />
+        ))}
+      </svg>
 
-        {/* The core. `relative` even when it is a plain grid item, because the
-            glow is an absolutely positioned pseudo-element and a static parent
-            would anchor it to the whole map. */}
-        <div
-          aria-hidden
-          className={clsx(
-            'relative z-[3] grid w-[84px] place-items-center rounded-[26%] border border-violet/45',
-            'bg-[linear-gradient(160deg,#23233b,#16161f_60%,#101016)]',
-            'shadow-[0_0_0_10px_rgba(155,123,255,.05),0_0_0_22px_rgba(155,123,255,.025),0_26px_70px_-20px_rgba(155,123,255,.5),inset_0_1px_0_rgba(255,255,255,.08)]',
-            'lg:absolute lg:left-1/2 lg:top-1/2 lg:w-[15.5%] lg:-translate-x-1/2 lg:-translate-y-1/2',
-            'aspect-square',
-            'before:absolute before:-inset-[34%] before:-z-10 before:rounded-full before:animate-flowBreathe',
-            'before:bg-[radial-gradient(circle,rgba(155,123,255,.30),transparent_68%)] before:content-[""]',
-          )}
-        >
-          <LogoMark className="h-[46%] w-auto text-violet-hover" />
-        </div>
+      {/* The mark. `relative` even as a plain grid item, because the halo is
+          two absolutely positioned pseudo-elements inset past its edges and a
+          static parent would anchor them to the whole map. */}
+      <div
+        aria-hidden
+        className={clsx(
+          'relative z-[3] order-2 grid w-[76px] place-items-center rounded-[28%] border border-violet/50',
+          'aspect-square bg-[linear-gradient(155deg,#2b2b45,#1a1a26_58%,#121218)]',
+          'shadow-[0_24px_64px_-18px_rgba(155,123,255,.55),inset_0_1px_0_rgba(255,255,255,.09)]',
+          'lg:absolute lg:left-1/2 lg:top-1/2 lg:w-[10.1%] lg:-translate-x-1/2 lg:-translate-y-1/2',
+          // The soft square halo, 1.55× the tile — two stops of the same
+          // violet rather than one blur, which is how the reference reads.
+          'before:absolute before:-inset-[27.5%] before:-z-10 before:rounded-[30%] before:animate-flowBreathe before:content-[""]',
+          'before:bg-[radial-gradient(closest-side,rgba(155,123,255,.34),rgba(155,123,255,.16)_58%,transparent_76%)]',
+          'after:absolute after:-inset-[12%] after:-z-10 after:rounded-[30%] after:content-[""]',
+          'after:bg-[radial-gradient(closest-side,rgba(155,123,255,.30),transparent_82%)]',
+        )}
+      >
+        <LogoMark className="h-[44%] w-auto text-violet-hover" />
+      </div>
 
-        <span className="text-[10.5px] font-bold uppercase tracking-[0.14em] text-violet lg:hidden">
-          Videos out
-        </span>
-        <FlowRow nodes={cards('out')} />
+      {/* The phone's version: before above, after below.
+
+          Two columns, fixed. `auto-fit` looked like the tidy answer and was
+          not: it fits as many tracks as the phone allows, so four pairs came
+          out three and one, with the last pair alone on a row of its own. */}
+      <div className="order-3 grid w-full grid-cols-2 gap-x-3 gap-y-[18px] px-4 lg:hidden">
+        {clips.map(({ lane }, i) => (
+          <span key={`stack-${i}`} className="grid justify-items-center gap-1.5">
+            <Slot>
+              <ClipCard lane={lane} state="raw" />
+            </Slot>
+            <span aria-hidden className="text-[13px] leading-none text-violet">↓</span>
+            <Slot>
+              <ClipCard lane={lane} state="done" />
+            </Slot>
+          </span>
+        ))}
       </div>
     </div>
   );
 }
 
 /**
- * A clip making the journey, plain on the way in and finished on the way out.
+ * One cell of the phone's grid.
  *
- * It rides the same path the wire is drawn from, via `offset-path` — which on
- * an SVG element takes its coordinates in USER units and therefore scales with
- * the viewBox. The px-based CSS equivalent drifts the moment the box resizes,
- * and SMIL would have ignored the global reduced-motion rule; this is a plain
- * CSS animation, so it does not.
+ * Every card sits in a slot of the same height, so the arrows across a row
+ * line up however differently the two shapes fill it: a vertical clip is sized
+ * by that height, and a widescreen one runs out of column width first, where
+ * the card's own `max-w-full` takes over.
  */
-function TravellingClip({ path, ratio, delay }: { path: string; ratio: string; delay: string }) {
-  const g = flowChipGeometry(ratio);
-  const figure = (
-    <>
-      <circle cx={0} cy={g.headY} r={g.headR} fill="#D9B68B" />
-      <rect
-        x={-g.bodyW / 2}
-        y={g.headY + g.headR + 0.8}
-        width={g.bodyW}
-        height={g.bodyH}
-        rx={g.bodyW / 2.6}
-        fill="#3B3555"
-      />
-    </>
-  );
+function Slot({ children }: { children: React.ReactNode }) {
+  return <span className="grid h-[148px] w-full place-items-center">{children}</span>;
+}
 
+/**
+ * A clip riding a wire: the same frame drawn twice, plain and finished,
+ * cross-faded exactly where the tile hides it.
+ *
+ * `offset-path` on an SVG element takes its coordinates in USER units, so it
+ * scales with the viewBox; the px-based CSS equivalent drifts the moment the
+ * box resizes. A `<foreignObject>` carries the ordinary HTML card inside it,
+ * so the slot can still hold a real `<video>`.
+ */
+function TravellingClip({ lane, delay }: { lane: FlowLane; delay: string }) {
+  const size = FLOW_SIZE[lane.ratio!];
   return (
     <g
       className="animate-flowTravel"
       style={{
-        offsetPath: `path('${path}')`,
+        offsetPath: `path('${flowWire(lane)}')`,
         offsetRotate: '0deg',
         offsetDistance: '0%',
         animationDelay: delay,
       }}
     >
-      <g className="animate-flowWas" style={{ animationDelay: delay }}>
-        <rect x={g.x} y={g.y} width={g.w} height={g.h} rx={4} fill="#14141B" stroke="#2C2C36" strokeWidth={1.2} />
-        {figure}
-        <rect x={g.x + 3} y={g.y + g.h - 7} width={g.w - 6} height={2.4} rx={1.2} fill="#FF7B7B" opacity={0.75} />
-      </g>
-      <g
-        className="animate-flowIs"
-        style={{ animationDelay: delay, opacity: 0, filter: 'drop-shadow(0 0 5px rgba(155,123,255,.55))' }}
-      >
-        <rect x={g.x} y={g.y} width={g.w} height={g.h} rx={4} fill="#16121F" stroke="#9B7BFF" strokeWidth={1.4} />
-        {figure}
-        <rect x={-g.w * 0.32} y={g.y + g.h - 10} width={g.w * 0.64} height={2.4} rx={1.2} fill="#F5F5F7" />
-        <rect x={-g.w * 0.2} y={g.y + g.h - 6} width={g.w * 0.4} height={2.4} rx={1.2} fill="#9B7BFF" />
-      </g>
+      <foreignObject x={-size.w / 2} y={-size.h / 2} width={size.w} height={size.h}>
+        <span
+          {...{ xmlns: 'http://www.w3.org/1999/xhtml' }}
+          className="relative block h-full w-full overflow-hidden rounded-[11px] bg-charcoal shadow-[0_16px_40px_-14px_rgba(0,0,0,.95)]"
+        >
+          <ClipCard lane={lane} state="raw" delay={delay} inline />
+          <ClipCard lane={lane} state="done" delay={delay} inline />
+        </span>
+      </foreignObject>
     </g>
   );
 }
 
 /**
- * One side's cards.
+ * One state of a clip.
  *
- * A real box that overlays the map on a wide screen, rather than
- * `display: contents` — a contents element generates no box, and the cards
- * inside one resolve their percentages against the wrong containing block,
- * which puts every card beside its wire instead of on it.
- */
-function FlowRow({ nodes }: { nodes: FlowNode[] }) {
-  return (
-    <div
-      className={clsx(
-        'grid w-full grid-cols-3 items-start gap-2.5',
-        'lg:pointer-events-none lg:absolute lg:inset-0 lg:block',
-      )}
-    >
-      {nodes.map((node, i) => (
-        <FlowCard key={`${node.side}-${i}`} node={node} index={i} />
-      ))}
-    </div>
-  );
-}
-
-function FlowCard({ node, index }: { node: FlowNode; index: number }) {
-  const out = node.side === 'out';
-  return (
-    <figure
-      /* `m-0` is load-bearing: a <figure> carries `margin: 1em 40px` from the
-         browser's own stylesheet, and that 40px puts every card exactly forty
-         pixels clear of the wire it belongs to. */
-      className={clsx(
-        'm-0 overflow-hidden rounded-xl border bg-charcoal transition-colors',
-        // The position only exists at this breakpoint; below it the card is an
-        // ordinary grid item and the variables go unread.
-        'lg:pointer-events-auto lg:absolute lg:animate-flowFloat',
-        'lg:left-[var(--fm-x)] lg:top-[var(--fm-y)] lg:w-[var(--fm-w)]',
-        out
-          ? 'border-violet/50 shadow-[0_20px_50px_-18px_rgba(155,123,255,.35)] hover:border-violet'
-          : 'border-line shadow-[0_18px_44px_-18px_rgba(0,0,0,.95)] hover:border-violet',
-      )}
-      style={{ animationDelay: `${(index * 0.7).toFixed(2)}s`, ...flowCardVars(node) } as React.CSSProperties}
-    >
-      <span
-        className="relative block w-full"
-        style={{ aspectRatio: node.ratio.replace(':', ' / ') }}
-      >
-        {node.src ? (
-          <video
-            src={node.src}
-            muted
-            loop
-            autoPlay
-            playsInline
-            preload="metadata"
-            className="absolute inset-0 h-full w-full object-cover"
-          />
-        ) : (
-          <FlowPlaceholder node={node} />
-        )}
-      </span>
-      {/* 8.5px, not 9.5: "REACTION 0:47" is one pixel too wide for a 104-unit
-          card at the larger size and ellipsises to "REAC…". */}
-      <figcaption className="m-0 flex items-center justify-between gap-1 px-1.5 pb-1.5 pt-1 text-[8.5px] font-bold tracking-normal">
-        <b className={clsx('min-w-0 truncate uppercase', out ? 'text-violet-hover' : 'text-muted')}>
-          {node.kind}
-        </b>
-        <i className="flex-none not-italic tabular-nums text-faint">{node.len}</i>
-      </figcaption>
-    </figure>
-  );
-}
-
-/**
- * What a card shows until there is a file to put in it.
+ * `inline` means it is one of the two stacked layers inside a travelling card
+ * and animates; without it the card stands alone, which is what the phone's
+ * before-and-after pairs use.
  *
- * Drawn rather than a grey box with a filename on it: the point of this
- * graphic is "plain in, finished out", and two identical rectangles would
- * illustrate nothing. So the raw side is flat and full of the gaps we are
- * about to remove, and the finished side is graded, captioned and marked with
- * the style it was cut in.
+ * The delay is stamped here as well as on the travelling group, and it has to
+ * be: `animation-delay: inherit` resolves against the parent's COMPUTED value,
+ * and the parent is a card inside a `<foreignObject>` that never had one — so
+ * every clip travelled on its own clock and changed from raw to finished on a
+ * shared one.
  */
-function FlowPlaceholder({ node }: { node: FlowNode }) {
-  const figure = (
-    <svg viewBox="0 0 150 150" preserveAspectRatio="xMidYMax meet" className="absolute bottom-0 left-1/2 h-[78%] -translate-x-1/2">
-      <path d="M14 150 L17 100 C20 74, 38 63, 58 62 L92 62 C112 63, 130 74, 133 100 L136 150 Z" fill="#3B3555" />
-      <ellipse cx="75" cy="34" rx="20" ry="25" fill="#D9B68B" />
-    </svg>
-  );
-  const room = (
-    <span className="absolute inset-0 bg-[radial-gradient(120%_90%_at_60%_24%,#262631_0%,#17171f_52%,#0d0d12_100%)]" />
-  );
+function ClipCard({
+  lane,
+  state,
+  delay,
+  inline,
+}: {
+  lane: FlowLane;
+  state: 'raw' | 'done';
+  delay?: string;
+  inline?: boolean;
+}) {
+  const done = state === 'done';
+  const src = done ? (lane.srcDone ?? lane.src) : lane.src;
 
-  if (node.side === 'in') {
-    // The red cells are the dead air — the thing the product is for, shown
-    // rather than claimed.
-    const live = [1, 1, 0, 1, 1, 1, 0, 0, 1, 1, 0, 1, 1, 1, 0, 1];
+  const shell = clsx(
+    'overflow-hidden rounded-[11px]',
+    inline ? 'absolute inset-0' : 'relative block h-auto',
+    done
+      ? 'shadow-[inset_0_0_0_1.5px_rgba(155,123,255,.75),0_0_22px_rgba(155,123,255,.25)]'
+      : 'shadow-[inset_0_0_0_1px_#2C2C36] [filter:saturate(.55)]',
+    inline && (done ? 'opacity-0 animate-flowIs' : 'animate-flowWas'),
+  );
+  const style = {
+    ...(inline ? { animationDelay: delay } : null),
+    // Width, not height: with a definite height an `aspect-ratio` box that hits
+    // its `max-width` keeps the height and loses the ratio, so a widescreen
+    // card stretched square on a narrow phone. Sized by width, the height
+    // follows from the ratio however hard the column squeezes it.
+    ...(inline
+      ? null
+      : {
+          aspectRatio: lane.ratio!.replace(':', ' / '),
+          width: `min(${FLOW_RAIL[lane.ratio!]}px, 100%)`,
+        }),
+  };
+
+  if (src) {
     return (
-      <span className="absolute inset-0 overflow-hidden bg-[#0A0A0E] [filter:saturate(.55)_brightness(.86)]">
-        {room}
-        {figure}
-        <span className="absolute bottom-[8%] left-[7%] right-[7%] flex h-[7px] gap-[2px] rounded p-[2px] [background:rgba(0,0,0,.45)]">
-          {live.map((on, i) => (
-            <i
-              key={i}
-              className={clsx('flex-1 rounded-sm', on ? 'bg-white/[.34]' : 'bg-[rgba(255,123,123,.8)]')}
-            />
-          ))}
-        </span>
-      </span>
+      <video
+        src={src}
+        muted
+        loop
+        autoPlay
+        playsInline
+        preload="metadata"
+        className={clsx(shell, 'h-full w-full object-cover')}
+        style={style}
+      />
     );
   }
 
   return (
-    <span className="absolute inset-0 overflow-hidden bg-[#0A0A0E]">
-      {room}
-      {figure}
-      <span className="absolute left-[8%] top-[9%] rounded-[5px] bg-violet/90 px-1.5 py-0.5 text-[8.5px] font-extrabold uppercase tracking-[0.02em] text-ink">
-        {node.kind}
-      </span>
-      <span className="absolute bottom-[14%] left-[8%] right-[8%] flex flex-col items-center gap-[3px]">
-        <i className="block h-1 w-[66%] rounded-full bg-chalk" />
-        <i className="block h-1 w-[40%] rounded-full bg-violet" />
-      </span>
+    <span className={clsx(shell, 'bg-[#0A0A0E]')} style={style}>
       <span
-        className="absolute bottom-0 left-0 h-0.5 bg-violet"
-        style={{ width: `${38 + ((Math.round(node.top) * 7) % 46)}%` }}
+        className={clsx(
+          'absolute inset-0',
+          done
+            ? 'bg-[radial-gradient(120%_90%_at_60%_22%,#3b3352_0%,#251f38_52%,#16111f_100%)]'
+            : 'bg-[radial-gradient(120%_90%_at_60%_22%,#35354a_0%,#22222f_52%,#15151c_100%)]',
+        )}
       />
+      {/* `max-w` matters: the drawing is square, so on a vertical clip its
+          natural width is wider than the card. Clipped it looked fine, and
+          still stretched the page sideways on a phone. */}
+      <svg
+        viewBox="0 0 150 150"
+        preserveAspectRatio="xMidYMax meet"
+        className="absolute bottom-0 left-1/2 h-[74%] w-auto max-w-[92%] -translate-x-1/2"
+      >
+        <path d="M14 150 L17 100 C20 74, 38 63, 58 62 L92 62 C112 63, 130 74, 133 100 L136 150 Z" fill="#453E68" />
+        <ellipse cx="75" cy="34" rx="20" ry="25" fill="#D9B68B" />
+      </svg>
+
+      {done ? (
+        <>
+          <span className="absolute left-[7%] top-[7%] whitespace-nowrap rounded-[5px] bg-violet px-1.5 py-0.5 text-[9px] font-extrabold uppercase tracking-[0.01em] text-ink">
+            {lane.done}
+          </span>
+          <span className="absolute bottom-[15%] left-[8%] right-[8%] flex flex-col items-center gap-[3px]">
+            <i className="block h-[3.5px] w-[64%] rounded-full bg-chalk" />
+            <i className="block h-[3.5px] w-[38%] rounded-full bg-violet" />
+          </span>
+          <span className="absolute bottom-0 left-0 h-[2.5px] w-[62%] bg-violet" />
+        </>
+      ) : (
+        /* The gaps a raw take is full of. The red cells are the dead air —
+           the thing the product is for, shown rather than claimed. */
+        <span className="absolute bottom-[9%] left-[8%] right-[8%] flex h-[6px] gap-[1.5px] rounded-[3px] bg-black/50 p-[1.5px]">
+          {[1, 1, 0, 1, 1, 1, 0, 0, 1, 1, 0, 1, 1, 1, 0, 1].map((live, i) => (
+            <i
+              key={i}
+              className={clsx('flex-1 rounded-[1.5px]', live ? 'bg-white/[.34]' : 'bg-[rgba(255,123,123,.85)]')}
+            />
+          ))}
+        </span>
+      )}
     </span>
   );
 }

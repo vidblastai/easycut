@@ -41,46 +41,36 @@ export default {
         rise: { '0%': { opacity: '0', transform: 'translateY(10px)' }, '100%': { opacity: '1', transform: 'none' } },
         shimmer: { '100%': { transform: 'translateX(100%)' } },
         pulseDot: { '0%,100%': { opacity: '1' }, '50%': { opacity: '0.35' } },
-        /* The hero flow map. `flowRun` is a dash travelling a wire rather than
-           an element moving along one, so it scales with the SVG's viewBox and
-           cannot fall out of step with the curve it rides. */
-        flowRun: { from: { strokeDashoffset: '1600' }, to: { strokeDashoffset: '0' } },
-        /* A clip riding its wire: along the path, fading in and out at the
-           ends so it leaves the card it came from rather than popping into
-           mid-air, with a squeeze as it passes through the core — the edit,
-           as a beat you can see. */
+        /* The hero flow map. A clip rides its wire with `offset-path`, whose
+           coordinates on an SVG element are user units and therefore scale
+           with the viewBox. Light drifts down the lanes that carry no clip. */
+        flowDrift: { from: { strokeDashoffset: '2430' }, to: { strokeDashoffset: '0' } },
         flowTravel: { from: { offsetDistance: '0%' }, to: { offsetDistance: '100%' } },
+        /* In at one edge of the screen, out at the other — a clip should
+           arrive from off-screen, not appear in the middle of empty space. */
         flowLife: {
-          '0%,2%': { opacity: '0' },
-          '9%,91%': { opacity: '1' },
-          '98%,100%': { opacity: '0' },
+          '0%,1%': { opacity: '0' },
+          '7%,93%': { opacity: '1' },
+          '99%,100%': { opacity: '0' },
         },
-        flowSqueeze: {
-          '0%,40%': { scale: '1' },
-          '50%': { scale: '0.74' },
-          '60%,100%': { scale: '1' },
-        },
-        /* Plain going in, finished coming out — cross-faded at the halfway
-           point, which is where the core is. */
-        flowWas: { '0%,44%': { opacity: '1' }, '54%,100%': { opacity: '0' } },
-        flowIs: { '0%,44%': { opacity: '0' }, '54%,100%': { opacity: '1' } },
-        flowFloat: { '0%,100%': { translate: '0 0' }, '50%': { translate: '0 -7px' } },
+        /* Plain going in, finished coming out, swapped behind the tile —
+           which is why the swap is invisible and the change is not. */
+        flowWas: { '0%,47%': { opacity: '1' }, '53%,100%': { opacity: '0' } },
+        flowIs: { '0%,47%': { opacity: '0' }, '53%,100%': { opacity: '1' } },
         flowBreathe: {
-          '0%,100%': { opacity: '0.55', transform: 'scale(0.94)' },
-          '50%': { opacity: '1', transform: 'scale(1.06)' },
+          '0%,100%': { opacity: '0.7', scale: '0.97' },
+          '50%': { opacity: '1', scale: '1.04' },
         },
       },
       animation: {
         rise: 'rise 0.5s cubic-bezier(0.16,1,0.3,1) both',
         shimmer: 'shimmer 1.6s infinite',
         pulseDot: 'pulseDot 1.4s ease-in-out infinite',
-        flowRun: 'flowRun 7.2s cubic-bezier(.55,0,.45,1) infinite',
-        flowTravel:
-          'flowTravel 7.2s cubic-bezier(.55,0,.45,1) infinite, flowLife 7.2s linear infinite, flowSqueeze 7.2s ease-in-out infinite',
-        flowWas: 'flowWas 7.2s linear infinite',
-        flowIs: 'flowIs 7.2s linear infinite',
-        flowFloat: 'flowFloat 7s cubic-bezier(.22,.68,.28,1) infinite',
-        flowBreathe: 'flowBreathe 5.5s cubic-bezier(.22,.68,.28,1) infinite',
+        flowDrift: 'flowDrift 9s linear infinite',
+        flowTravel: 'flowTravel 13s linear infinite, flowLife 13s linear infinite',
+        flowWas: 'flowWas 13s linear infinite',
+        flowIs: 'flowIs 13s linear infinite',
+        flowBreathe: 'flowBreathe 6s cubic-bezier(.22,.68,.28,1) infinite',
       },
     },
   },
