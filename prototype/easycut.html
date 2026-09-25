@@ -6046,19 +6046,27 @@ const FLOW_SIZE = {
 /*
  * The lanes.
  *
- * `edge` is where the wire sits at the screen's edge, `core` where it meets
- * the tile; the out edge differs from the in edge on purpose, so the picture
- * is not a mirror of itself. A lane with no `ratio` carries no clip — the
- * reference has more wires than cards, and the empty ones are what make it
- * read as a pipeline rather than a diagram.
+ * `edge` is where the wire sits at BOTH edges of the screen, `core` where it
+ * meets the tile. One number, not two: the exit height used to be its own
+ * field, set a little away from the entry so the picture was not a mirror of
+ * itself — and the cost was a fan on the left whose gaps did not match the fan
+ * on the right, which reads as a mistake rather than as variety.
+ *
+ * The UNEVEN spacing between lanes is the thing worth keeping — 60, 85, 55,
+ * 90, 67, because six evenly spaced lines read as a diagram and this is meant
+ * to read as footage. Uneven on both sides identically. With one field the
+ * two sides cannot drift apart again.
+ *
+ * A lane with no `ratio` carries no clip — the reference has more wires than
+ * cards, and the empty ones are what make it read as a pipeline.
  */
 const FLOW_LANES = [
-  { edge: 105, core: 190, out: 98,  ratio: '9:16', done: 'Punchy' },
-  { edge: 165, core: 218, out: 176 },
-  { edge: 250, core: 244, out: 244, ratio: '16:9', done: 'Chaptered' },
-  { edge: 305, core: 270, out: 298, ratio: '9:16', done: 'Reaction' },
-  { edge: 395, core: 300, out: 404 },
-  { edge: 462, core: 328, out: 452, ratio: '16:9', done: 'Side by side' },
+  { edge: 105, core: 190, ratio: '9:16', done: 'Punchy' },
+  { edge: 165, core: 218 },
+  { edge: 250, core: 244, ratio: '16:9', done: 'Chaptered' },
+  { edge: 305, core: 270, ratio: '9:16', done: 'Reaction' },
+  { edge: 395, core: 300 },
+  { edge: 462, core: 328, ratio: '16:9', done: 'Side by side' },
 ];
 
 /** One trip end to end. Clips are spread evenly along it. */
@@ -6068,9 +6076,12 @@ const FLOW_LOOP = 13;
  * A wire, from one edge of the screen to the other.
  *
  * Flat for most of its run, then an S-bend into the tile, straight through
- * behind it, and back out the other side. The straight middle is what the
- * tile covers, so a clip passing through is hidden for exactly as long as it
- * takes to be edited.
+ * behind it, and back out to the height it came in at. The straight middle is
+ * what the tile covers, so a clip passing through is hidden for exactly as
+ * long as it takes to be edited.
+ *
+ * Both halves are drawn from `lane.edge`, so the wire is a mirror image of
+ * itself about the tile and the two fans cannot disagree.
  */
 function flowWire(lane) {
   const edgeL = FLOW_CORE.x - FLOW_CORE.half;
@@ -6082,8 +6093,8 @@ function flowWire(lane) {
     ` L ${startBend} ${lane.edge}` +
     ` C ${startBend + FLOW_BEND * 0.55} ${lane.edge}, ${edgeL - FLOW_BEND * 0.55} ${lane.core}, ${edgeL} ${lane.core}` +
     ` L ${edgeR} ${lane.core}` +
-    ` C ${edgeR + FLOW_BEND * 0.55} ${lane.core}, ${endBend - FLOW_BEND * 0.55} ${lane.out}, ${endBend} ${lane.out}` +
-    ` L ${FLOW_BOX.w} ${lane.out}`
+    ` C ${edgeR + FLOW_BEND * 0.55} ${lane.core}, ${endBend - FLOW_BEND * 0.55} ${lane.edge}, ${endBend} ${lane.edge}` +
+    ` L ${FLOW_BOX.w} ${lane.edge}`
   );
 }
 

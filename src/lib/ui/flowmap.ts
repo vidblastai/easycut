@@ -48,12 +48,20 @@ export const FLOW_SIZE: Record<string, { w: number; h: number }> = {
 export const FLOW_RAIL: Record<string, number> = { '9:16': 84, '16:9': 140 };
 
 export interface FlowLane {
-  /** Where the wire sits at the left edge of the screen. */
+  /**
+   * Where the wire sits at BOTH edges of the screen.
+   *
+   * One number, not two. The exit height used to be its own field, set a
+   * little away from the entry height so the wires were not perfectly
+   * straight — and the cost of that was a fan on the left whose gaps did not
+   * match the fan on the right, which reads as a mistake rather than as
+   * variety. The uneven spacing between lanes is the thing worth keeping; a
+   * left and right that disagree is not. With one field the two sides cannot
+   * drift apart again.
+   */
   edge: number;
   /** Where it meets the tile. */
   core: number;
-  /** Where it leaves at the right edge — deliberately not the same as `edge`. */
-  out: number;
   /** Omit to leave the lane empty: light runs down it instead of a clip. */
   ratio?: '9:16' | '16:9';
   /** The style the clip comes out cut in. */
@@ -63,13 +71,20 @@ export interface FlowLane {
   srcDone?: string | null;
 }
 
+/**
+ * The six lanes.
+ *
+ * The gaps between them are deliberately uneven — 60, 85, 55, 90, 67 — because
+ * six evenly spaced lines read as a diagram and this is meant to read as
+ * footage. Uneven on both sides IDENTICALLY, which is the point.
+ */
 export const FLOW_LANES: FlowLane[] = [
-  { edge: 105, core: 190, out: 98, ratio: '9:16', done: 'Punchy' },
-  { edge: 165, core: 218, out: 176 },
-  { edge: 250, core: 244, out: 244, ratio: '16:9', done: 'Chaptered' },
-  { edge: 305, core: 270, out: 298, ratio: '9:16', done: 'Reaction' },
-  { edge: 395, core: 300, out: 404 },
-  { edge: 462, core: 328, out: 452, ratio: '16:9', done: 'Side by side' },
+  { edge: 105, core: 190, ratio: '9:16', done: 'Punchy' },
+  { edge: 165, core: 218 },
+  { edge: 250, core: 244, ratio: '16:9', done: 'Chaptered' },
+  { edge: 305, core: 270, ratio: '9:16', done: 'Reaction' },
+  { edge: 395, core: 300 },
+  { edge: 462, core: 328, ratio: '16:9', done: 'Side by side' },
 ];
 
 /** One trip end to end, in seconds. Clips are spread evenly along it. */
@@ -79,9 +94,13 @@ export const FLOW_LOOP = 13;
  * A wire, from one edge of the screen to the other.
  *
  * Flat for most of its run, then an S-bend into the tile, straight through
- * behind it, and back out. The straight middle is what the tile covers, so a
- * clip passing through is hidden for exactly as long as it takes to be edited
- * — which is where the raw and finished frames cross-fade.
+ * behind it, and back out to the height it came in at. The straight middle is
+ * what the tile covers, so a clip passing through is hidden for exactly as
+ * long as it takes to be edited — which is where the raw and finished frames
+ * cross-fade.
+ *
+ * Both halves are drawn from `lane.edge`, so the wire is a mirror image of
+ * itself about the tile and the two fans cannot disagree.
  */
 export function flowWire(lane: FlowLane): string {
   const edgeL = FLOW_CORE.x - FLOW_CORE.half;
@@ -93,8 +112,8 @@ export function flowWire(lane: FlowLane): string {
     ` L ${startBend} ${lane.edge}` +
     ` C ${startBend + BEND * 0.55} ${lane.edge}, ${edgeL - BEND * 0.55} ${lane.core}, ${edgeL} ${lane.core}` +
     ` L ${edgeR} ${lane.core}` +
-    ` C ${edgeR + BEND * 0.55} ${lane.core}, ${endBend - BEND * 0.55} ${lane.out}, ${endBend} ${lane.out}` +
-    ` L ${FLOW_BOX.w} ${lane.out}`
+    ` C ${edgeR + BEND * 0.55} ${lane.core}, ${endBend - BEND * 0.55} ${lane.edge}, ${endBend} ${lane.edge}` +
+    ` L ${FLOW_BOX.w} ${lane.edge}`
   );
 }
 
