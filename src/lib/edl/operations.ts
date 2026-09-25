@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { TimeMapper, layoutSegments } from '@/lib/timeline/time-mapper';
 import {
   CAPTION_ANIMATIONS,
+  CaptionWordStyleSchema,
   GRAPHIC_TYPES,
   TRANSITION_TYPES,
   EdlSchema,
@@ -112,6 +113,20 @@ export const EdlOperationSchema = z.discriminatedUnion('op', [
     id: z.string(),
     wordIndex: z.number().int().nonnegative(),
     emphasis: z.boolean(),
+  }),
+  /**
+   * Style ONE word differently from the rest of its line.
+   *
+   * A patch rather than a whole style, so "make this word blue" does not also
+   * silently reset the font somebody chose for it a minute ago. Passing null
+   * for a field clears that one override; passing `style: null` clears them
+   * all and returns the word to the line.
+   */
+  z.object({
+    op: z.literal('caption.wordStyle'),
+    id: z.string(),
+    wordIndex: z.number().int().nonnegative(),
+    style: CaptionWordStyleSchema.nullable(),
   }),
   z.object({ op: z.literal('caption.delete'), id: z.string() }),
 
@@ -451,6 +466,25 @@ function applyOne(edl: Edl, op: EdlOperation): Edl {
         captions: edl.captions.map((c) =>
           c.id === op.id
             ? { ...c, words: c.words.map((w, i) => (i === op.wordIndex ? { ...w, emphasis: op.emphasis } : w)) }
+            : c,
+        ),
+      };
+
+    case 'caption.wordStyle':
+      return {
+        ...edl,
+        captions: edl.captions.map((c) =>
+          c.id === op.id
+            ? {
+                ...c,
+                words: c.words.map((w, i) => {
+                  if (i !== op.wordIndex) return w;
+                  // null clears the lot; anything else merges, so two separate
+                  // decisions about the same word do not overwrite each other.
+                  if (op.style === null) return { ...w, style: null };
+                  return { ...w, style: { ...(w.style ?? {}), ...op.style } };
+                }),
+              }
             : c,
         ),
       };
@@ -999,6 +1033,7 @@ export function describeOperation(op: EdlOperation): string {
     case 'caption.text': return 'Edited a caption';
     case 'caption.time': return 'Retimed a caption';
     case 'caption.emphasis': return op.emphasis ? 'Emphasised a word' : 'Removed emphasis';
+    case 'caption.wordStyle': return op.style === null ? 'Reset a word\u2019s style' : 'Styled a word';
     case 'caption.delete': return 'Deleted a caption';
     case 'captionStyle.set': return 'Changed the caption style';
     case 'music.gain': return 'Changed the music level';

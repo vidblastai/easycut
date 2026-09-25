@@ -11,6 +11,7 @@ import type { RecentProject } from '@/components/shell/Sidebar';
 import { Stepper, type StepKey } from '@/components/shell/Stepper';
 import { STAGES as PIPELINE_STAGES, STAGE_LABELS } from '@/lib/pipeline/types';
 import { CaptionStudio } from '@/components/captions/CaptionStudio';
+import { WordStyler } from '@/components/captions/WordStyler';
 import { CaptionBand } from '@/components/captions/CaptionPreview';
 import { captionPresetFor } from '@/lib/captions/presets';
 import { IconCheck, IconDownload, IconPlus, IconSliders } from '@/components/shell/Icons';
@@ -154,7 +155,33 @@ export function ProjectWorkspace({
    * the timeline's effects run again with something real to bind to.
    */
   const [player, setPlayer] = useState<PlayerRef | null>(null);
+
+  /**
+   * Where the playhead is, in seconds.
+   *
+   * The timeline has its own copy and drives the player; this one is read back
+   * OUT of the player, so it is correct no matter which of the two moved it —
+   * dragging the ruler, pressing play, or a keyboard nudge. The panel beside
+   * the picture needs to know which caption is on screen, and asking the thing
+   * that is actually painting the frame is the only answer that cannot drift.
+   */
+  const [playheadSec, setPlayheadSec] = useState(0);
   const [workingEdl, setWorkingEdl] = useState<Edl | null>(null);
+
+  /* Follow the player's own clock. Keyed on `player` rather than on a ref, for
+     the reason spelled out where that state is declared: the preview is a lazy
+     import and arrives after this component has mounted. */
+  useEffect(() => {
+    if (!player) return;
+    const onFrame = (e: { detail: { frame: number } }) => {
+      // The composition's fps, not a guess: a 24fps upload would otherwise
+      // report the wrong second and select the wrong caption.
+      const fps = lastDoc.current?.format.fps || 30;
+      setPlayheadSec(e.detail.frame / fps);
+    };
+    player.addEventListener('frameupdate', onFrame);
+    return () => player.removeEventListener('frameupdate', onFrame);
+  }, [player]);
 
   /**
    * The side panel: what's selected, the caption look, what you've changed.
@@ -598,7 +625,21 @@ export function ProjectWorkspace({
                 <div hidden={pane !== 'captions'}>
                   {captionStyle ? (
                     <>
-                      <h3 className="mb-3 text-[14px] font-bold">Captions</h3>
+                      {/* One word at a time, above the whole-line controls:
+                          "make THAT word blue" is the thing people come here
+                          to do, and burying it under the preset gallery makes
+                          it a feature nobody finds. */}
+                      <WordStyler
+                        edl={live}
+                        style={captionStyle}
+                        playheadSec={playheadSec}
+                        onCommit={applyOperations}
+                        busy={busy}
+                      />
+
+                      <h3 className="mb-3 mt-6 border-t border-line-soft pt-5 text-[14px] font-bold">
+                        The whole line
+                      </h3>
                       <CaptionStudio
                         style={captionStyle}
                         onChange={setDraftCaption}

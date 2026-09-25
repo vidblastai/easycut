@@ -1,5 +1,5 @@
 import type React from 'react';
-import type { CaptionStyle } from '../edl/types';
+import type { CaptionStyle, CaptionWordStyle } from '../edl/types';
 
 /**
  * How a caption is painted, as plain CSS.
@@ -54,11 +54,21 @@ export function strokeStyle(style: CaptionStyle, fontSize: number): React.CSSPro
   };
 }
 
-/** A gradient fill has to be clipped to the glyphs, which means no flat colour. */
-export function fillStyle(style: CaptionStyle, color: string): React.CSSProperties {
-  if (!style.gradient) return { color };
+/**
+ * A gradient fill has to be clipped to the glyphs, which means no flat colour.
+ *
+ * `override` is a word's own gradient, which wins over the line's — that is
+ * what puts one word in a different gradient from its neighbours.
+ */
+export function fillStyle(
+  style: CaptionStyle,
+  color: string,
+  override?: { from: string; to: string; angle: number } | null,
+): React.CSSProperties {
+  const gradient = override ?? style.gradient;
+  if (!gradient) return { color };
   return {
-    backgroundImage: `linear-gradient(${style.gradient.angle}deg, ${style.gradient.from}, ${style.gradient.to})`,
+    backgroundImage: `linear-gradient(${gradient.angle}deg, ${gradient.from}, ${gradient.to})`,
     WebkitBackgroundClip: 'text',
     backgroundClip: 'text',
     // The stroke still needs a colour to draw against; transparent text plus a
@@ -103,7 +113,20 @@ export function blockStyle(
   };
 }
 
-/** Everything about one word that does not move. */
+/**
+ * Everything about one word that does not move.
+ *
+ * ── The override is resolved HERE, in one place ──────────────────────────
+ *
+ * Both the Remotion renderer and the picker's live preview call this, which is
+ * what keeps the README's promise that what you pick is what exports. A word's
+ * own font, size, colour, gradient, slant or nudge would otherwise have to be
+ * applied twice, in two files, identically — and "identically" is a thing that
+ * survives about one refactor.
+ *
+ * Every override falls back to the line's value, so a word without one renders
+ * byte for byte as it did before per-word styling existed.
+ */
 export function wordStyle(
   style: CaptionStyle,
   opts: {
@@ -113,31 +136,61 @@ export function wordStyle(
     emphasis: boolean;
     /** The word is sitting on its own plate, which replaces the stroke. */
     boxed?: boolean;
+    /** This word's hand-set overrides, if it has any. */
+    word?: CaptionWordStyle | null;
+    /**
+     * The font stack for `word.fontFamily`, resolved by the caller.
+     *
+     * Resolving it here would mean this file importing the font registry, and
+     * the two callers already load faces differently — the renderer from disk,
+     * the preview from the page. So the caller, which knows, passes it.
+     */
+    overrideFontStack?: string | null;
   },
 ): React.CSSProperties {
-  const { fontStack, fontSize, color, emphasis, boxed = false } = opts;
+  const { fontStack, fontSize, color, emphasis, boxed = false, word, overrideFontStack } = opts;
+
+  // Size first: the slant, the nudge and the plate are all expressed relative
+  // to the size this word actually ends up at, not the line's.
+  const scaled = fontSize * (word?.scale ?? 1);
+  const box = word?.box ?? (boxed ? style.wordBox : null);
+
+  const transforms = [
+    word?.offsetY != null ? `translateY(${word.offsetY}em)` : '',
+    word?.rotate != null ? `rotate(${word.rotate}deg)` : '',
+  ].filter(Boolean);
 
   return {
-    fontFamily: fontStack,
-    fontWeight: emphasis ? Math.min(900, style.fontWeight + 100) : style.fontWeight,
-    fontStyle: style.italic ? 'italic' : 'normal',
-    fontSize,
+    fontFamily: overrideFontStack ?? fontStack,
+    fontWeight:
+      word?.fontWeight ?? (emphasis ? Math.min(900, style.fontWeight + 100) : style.fontWeight),
+    fontStyle: (word?.italic ?? style.italic) ? 'italic' : 'normal',
+    fontSize: scaled,
     lineHeight: style.lineHeight,
     letterSpacing: `${style.letterSpacing}em`,
-    textShadow: buildTextShadow(style, fontSize),
+    textShadow: buildTextShadow(style, scaled),
     whiteSpace: 'pre',
-    ...(boxed && style.wordBox
+    ...(transforms.length
       ? {
-          backgroundColor: style.wordBox.color,
-          borderRadius: style.wordBox.radius,
-          padding: `${style.wordBox.padding * 0.55}px ${style.wordBox.padding}px`,
-          margin: `${-style.wordBox.padding * 0.55}px ${-style.wordBox.padding * 0.35}px`,
+          transform: transforms.join(' '),
+          // The word leaves the line's flow visually but not its layout, which
+          // is exactly what makes an overlapping word possible without
+          // shoving its neighbours sideways.
+          display: 'inline-block',
+        }
+      : {}),
+    ...(box
+      ? {
+          backgroundColor: box.color,
+          borderRadius: box.radius,
+          padding: `${box.padding * 0.55}px ${box.padding}px`,
+          margin: `${-box.padding * 0.55}px ${-box.padding * 0.35}px`,
           // A plate under the word does the job a stroke was doing; both at
           // once reads as a mistake.
           WebkitTextStroke: undefined,
         }
-      : strokeStyle(style, fontSize)),
-    ...fillStyle(style, color),
+      : strokeStyle(style, scaled)),
+    ...fillStyle(style, word?.color ?? color, word?.gradient),
   };
 }
 
@@ -150,8 +203,12 @@ export function wordStyle(
  */
 export function wordColor(
   style: CaptionStyle,
-  opts: { active: boolean; emphasis: boolean },
+  opts: { active: boolean; emphasis: boolean; word?: CaptionWordStyle | null },
 ): string {
+  // A colour somebody set by hand is not a suggestion — it outranks both the
+  // emphasis rule and the karaoke highlight, because they chose it FOR this
+  // word and the other two are defaults about words in general.
+  if (opts.word?.color) return opts.word.color;
   const activeColor = style.activeColor ?? style.emphasisColor;
   if (style.animation === 'karaoke' || style.animation === 'word-box') {
     if (opts.active) return activeColor;

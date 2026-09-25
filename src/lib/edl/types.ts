@@ -100,12 +100,63 @@ export type Segment = z.infer<typeof SegmentSchema>;
 
 /* ---------------------------------------------------------------- captions */
 
+/**
+ * One word styled differently from the rest of its line.
+ *
+ * ── Why the word, and not the line, is the unit ──────────────────────────
+ *
+ * A caption used to carry exactly one styling fact per word: `emphasis`,
+ * true or false, which meant the accent colour and a bit more weight. That is
+ * enough for sixteen clean presets and nowhere near enough for the look people
+ * actually want, where one word in a line is a different TYPEFACE, in a
+ * gradient, larger, on a slant, crossing the lines above and below it.
+ *
+ * Every field is optional and every one falls back to the line's own style, so
+ * a word with no override renders exactly as it always did — this widened what
+ * is possible without changing a single existing caption.
+ */
+export const CaptionWordStyleSchema = z.object({
+  /** A different face for this word. Must be a family id in CAPTION_FONTS. */
+  fontFamily: z.string().nullable().optional(),
+  fontWeight: z.number().nullable().optional(),
+  italic: z.boolean().nullable().optional(),
+  /** Multiplier on the line's font size. 1.4 is noticeably bigger, not shouting. */
+  scale: z.number().nullable().optional(),
+  color: z.string().nullable().optional(),
+  /** Fills this word's glyphs with a gradient, independent of the line's. */
+  gradient: z.object({ from: z.string(), to: z.string(), angle: z.number().default(180) })
+    .nullable().optional(),
+  /** Degrees. A degree or two is a designed slant; ten is a mistake. */
+  rotate: z.number().nullable().optional(),
+  /**
+   * Vertical nudge in em, so it tracks the type size.
+   *
+   * This is what lets a word overlap the lines around it rather than sit
+   * politely between them — the single detail that separates the reference
+   * look from "a coloured word".
+   */
+  offsetY: z.number().nullable().optional(),
+  /** Drawn behind this word only. Overrides the line's wordBox while active. */
+  box: z.object({
+    color: z.string(),
+    padding: z.number().default(6),
+    radius: z.number().default(8),
+  }).nullable().optional(),
+});
+export type CaptionWordStyle = z.infer<typeof CaptionWordStyleSchema>;
+
 export const CaptionWordSchema = z.object({
   text: z.string(),
   startSec: z.number().nonnegative(),
   endSec: z.number().nonnegative(),
   /** Director-chosen emphasis — rendered in the accent colour / scaled up. */
   emphasis: z.boolean().default(false),
+  /**
+   * Hand-set overrides for this one word. Null is the normal case: the word
+   * takes the line's style, which is what every caption did before this
+   * existed.
+   */
+  style: CaptionWordStyleSchema.nullable().optional(),
 });
 export type CaptionWord = z.infer<typeof CaptionWordSchema>;
 

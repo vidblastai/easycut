@@ -30,6 +30,25 @@ export const Captions: React.FC<{ edl: Edl; positionY?: number | null }> = ({ ed
   // loading on frame 0, not on the frame the first cue happens to land on.
   const fontStack = ensureCaptionFont(edl.captionStyle.fontFamily);
 
+  /*
+   * And the same for every face a WORD asks for.
+   *
+   * A word can carry its own family, and a face requested at the moment its
+   * cue appears is a face that renders as a fallback for the first frames —
+   * on a server render that is a permanent artefact in the file, not a flash
+   * somebody might miss. So every family used anywhere in the track is
+   * requested here, before a single frame is drawn.
+   */
+  const overrideFonts = new Map<string, string>();
+  for (const cue of edl.captions) {
+    for (const word of cue.words) {
+      const family = word.style?.fontFamily;
+      if (family && !overrideFonts.has(family)) {
+        overrideFonts.set(family, ensureCaptionFont(family));
+      }
+    }
+  }
+
   const cue = edl.captions.find((c) => outSec >= c.startSec && outSec < c.endSec);
   if (!cue) return null;
 
@@ -38,7 +57,9 @@ export const Captions: React.FC<{ edl: Edl; positionY?: number | null }> = ({ ed
   // below. Everywhere else the preset's own choice stands.
   const style = positionY === null ? edl.captionStyle : { ...edl.captionStyle, positionY };
 
-  return <CaptionCard cue={cue} style={style} fontStack={fontStack} />;
+  return (
+    <CaptionCard cue={cue} style={style} fontStack={fontStack} overrideFonts={overrideFonts} />
+  );
 };
 
 /* ------------------------------------------------------------------ paint */
@@ -49,11 +70,12 @@ export const Captions: React.FC<{ edl: Edl; positionY?: number | null }> = ({ ed
 
 /* ----------------------------------------------------------------- render */
 
-const CaptionCard: React.FC<{ cue: CaptionCue; style: CaptionStyle; fontStack: string }> = ({
-  cue,
-  style,
-  fontStack,
-}) => {
+const CaptionCard: React.FC<{
+  cue: CaptionCue;
+  style: CaptionStyle;
+  fontStack: string;
+  overrideFonts: Map<string, string>;
+}> = ({ cue, style, fontStack, overrideFonts }) => {
   const frame = useCurrentFrame();
   const { fps, height, width } = useVideoConfig();
   const outSec = frame / fps;
@@ -111,6 +133,7 @@ const CaptionCard: React.FC<{ cue: CaptionCue; style: CaptionStyle; fontStack: s
             index={index}
             style={style}
             fontStack={fontStack}
+            overrideFonts={overrideFonts}
             fontSize={fontSize}
             outSec={outSec}
             frame={frame}
@@ -128,12 +151,13 @@ const Word: React.FC<{
   index: number;
   style: CaptionStyle;
   fontStack: string;
+  overrideFonts: Map<string, string>;
   fontSize: number;
   outSec: number;
   frame: number;
   fps: number;
   sinceCue: number;
-}> = ({ word, index, style, fontStack, fontSize, outSec, frame, fps, sinceCue }) => {
+}> = ({ word, index, style, fontStack, overrideFonts, fontSize, outSec, frame, fps, sinceCue }) => {
   const isActive = outSec >= word.startSec && outSec < word.endSec;
   const hasArrived = outSec >= word.startSec;
 
@@ -141,7 +165,11 @@ const Word: React.FC<{
   let scale = 1;
   let translateY = 0;
   let rotate = 0;
-  const color = wordColor(style, { active: isActive, emphasis: word.emphasis });
+  const color = wordColor(style, {
+    active: isActive,
+    emphasis: word.emphasis,
+    word: word.style,
+  });
   let boxed = false;
 
   switch (style.animation) {
@@ -201,9 +229,38 @@ const Word: React.FC<{
   return (
     <span
       style={{
-        ...wordStyle(style, { fontStack, fontSize, color, emphasis: word.emphasis, boxed }),
+        ...wordStyle(style, {
+          fontStack,
+          fontSize,
+          color,
+          emphasis: word.emphasis,
+          boxed,
+          word: word.style,
+          overrideFontStack: word.style?.fontFamily
+            ? (overrideFonts.get(word.style.fontFamily) ?? null)
+            : null,
+        }),
         opacity,
-        transform: `scale(${scale}) translateY(${translateY}px) rotate(${rotate}deg)`,
+        /*
+         * The animation's transform and the word's own are composed HERE,
+         * rather than one overwriting the other.
+         *
+         * `wordStyle` returns the hand-set slant and nudge as a transform, and
+         * this line used to replace whatever it returned — so a word given a
+         * rotation rendered straight the moment any animation was playing,
+         * which is every caption. Order matters too: the static placement is
+         * applied first so the animation happens around where the word sits,
+         * not around where it would have sat.
+         */
+        transform: [
+          word.style?.offsetY != null ? `translateY(${word.style.offsetY}em)` : '',
+          word.style?.rotate != null ? `rotate(${word.style.rotate}deg)` : '',
+          `scale(${scale})`,
+          `translateY(${translateY}px)`,
+          `rotate(${rotate}deg)`,
+        ]
+          .filter(Boolean)
+          .join(' '),
         transformOrigin: 'center bottom',
       }}
     >
