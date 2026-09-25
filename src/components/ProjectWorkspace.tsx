@@ -14,6 +14,7 @@ import { CaptionStudio } from '@/components/captions/CaptionStudio';
 import { CaptionBand } from '@/components/captions/CaptionPreview';
 import { captionPresetFor } from '@/lib/captions/presets';
 import { IconCheck, IconDownload, IconPlus, IconSliders } from '@/components/shell/Icons';
+import { TopbarUpload } from '@/components/shell/UploadEntry';
 import { AddedList, CutRibbon, Glance, TheCut } from '@/components/export/ExportReport';
 import { CopyButton } from '@/components/CopyButton';
 import type { EdlOperation } from '@/lib/edl/operations';
@@ -476,6 +477,10 @@ export function ProjectWorkspace({
               <IconSliders className="h-[17px] w-[17px] text-violet" />
               Panels
             </button>
+            {/* Uploading the next one should not mean leaving this screen to
+                find a drop zone. Hidden on a phone, where the topbar has only
+                room for the two buttons that act on THIS video. */}
+            <TopbarUpload className="hidden sm:inline-flex" />
             <button type="button" onClick={() => setMode('simple')} className="btn-ghost">
               Done
             </button>
@@ -651,10 +656,13 @@ export function ProjectWorkspace({
     <AppShell
       recents={recents}
       action={
-        <Link href="/new" className="btn-ghost">
-          <IconPlus className="h-4 w-4" />
-          New video
-        </Link>
+        <>
+          <TopbarUpload />
+          <Link href="/new" className="btn-ghost">
+            <IconPlus className="h-4 w-4" />
+            New video
+          </Link>
+        </>
       }
     >
       <div className="px-4 pt-5 sm:px-8">

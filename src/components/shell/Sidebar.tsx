@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation';
 import { clsx } from 'clsx';
 import { IconGrid, IconPlus, IconCaptions, IconSettings, IconHelp, IconSparkle } from './Icons';
 import { UsageMeter } from './UsageMeter';
+import { SidebarUpload } from './UploadEntry';
 
 export interface RecentProject {
   id: string;
@@ -55,6 +56,11 @@ export function Sidebar({ recents }: { recents: RecentProject[] }) {
         {NAV.map(({ href, label, Icon }) => (
           <NavLink key={href} href={href} label={label} Icon={Icon} current={isCurrent(href)} />
         ))}
+
+        {/* The one action this product exists for, reachable from every screen
+            without first going to a page about it. Opens the file picker where
+            you stand and carries the file into the wizard — see UploadEntry. */}
+        <SidebarUpload />
       </ul>
 
       {recents.length > 0 ? (
