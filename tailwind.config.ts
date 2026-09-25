@@ -88,6 +88,11 @@ export default {
            which is why the swap is invisible and the change is not. */
         flowWas: { '0%,47%': { opacity: '1' }, '53%,100%': { opacity: '0' } },
         flowIs: { '0%,47%': { opacity: '0' }, '53%,100%': { opacity: '1' } },
+        /* The line under a showreel card, running once per loop. It is the
+           one thing that says "this is a video, not a screenshot" on a card
+           whose content is drawn rather than filmed. Cards stagger by a
+           negative delay, so the wall never pulses in unison. */
+        reelProgress: { from: { width: '0%' }, to: { width: '100%' } },
         flowBreathe: {
           '0%,100%': { opacity: '0.7', scale: '0.97' },
           '50%': { opacity: '1', scale: '1.04' },
@@ -103,6 +108,7 @@ export default {
         flowIs: 'flowIs 13s linear infinite',
         flowBreathe: 'flowBreathe 6s cubic-bezier(.22,.68,.28,1) infinite',
         proofSlide: 'proofSlide 10s cubic-bezier(.76,0,.24,1) infinite',
+        reelProgress: 'reelProgress 5.6s linear infinite',
       },
     },
   },

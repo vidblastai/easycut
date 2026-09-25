@@ -2,7 +2,6 @@ import Link from 'next/link';
 import { PricingExplainer, PricingSection } from '@/components/marketing/PricingSection';
 import { SiteFooter } from '@/components/marketing/SiteFooter';
 import { Logo, LogoMark } from '@/components/Logo';
-import { CaptionShowcase } from '@/components/captions/CaptionShowcase';
 import { BeforeAfter } from '@/components/marketing/BeforeAfter';
 import { FlowMap } from '@/components/marketing/FlowMap';
 import { LayerDemos } from '@/components/marketing/LayerDemos';
@@ -13,7 +12,8 @@ import { StylePreview } from '@/components/styles/StylePreview';
 import { WhoItsFor } from '@/components/marketing/WhoItsFor';
 import { WhatItReplaces } from '@/components/marketing/WhatItReplaces';
 import { Testimonials } from '@/components/marketing/Testimonials';
-import { Showcase } from '@/components/marketing/Showcase';
+import { Showreel } from '@/components/marketing/Showreel';
+import { CostCompare } from '@/components/marketing/CostCompare';
 import { Faq } from '@/components/marketing/Faq';
 import { FAQ_GROUPS } from '@/components/marketing/faq-content';
 
@@ -39,17 +39,17 @@ const STEPS = [
   {
     number: '01',
     title: 'Drop in your footage',
-    body: 'Raw and rambling, or already trimmed — tell us which and we adjust how hard we cut.',
+    body: 'We read the shape and the length off the file — vertical is a short, a long widescreen recording is long form. Nobody asks you what your own video is.',
   },
   {
     number: '02',
-    title: 'Pick short or long',
-    body: 'Vertical and hook-first, or widescreen and chaptered. Then choose a look. That is every decision you make.',
+    title: 'Pick a style',
+    body: 'The shape of the finished video: full frame, or your face on top with something to watch underneath. Captions, B-roll, pacing and sound all follow from it.',
   },
   {
     number: '03',
     title: 'Get a video ready to post',
-    body: 'Under two minutes for a short. Download it, or nudge anything you want and re-render for free.',
+    body: 'Post it as-is, or open the timeline and fine-tune every cut before you export.',
   },
 ];
 
@@ -114,7 +114,7 @@ export default function HomePage() {
             Upload your footage
           </Link>
           <Link href="/dashboard" className="btn-ghost w-full px-7 py-3.5 text-[15px] sm:w-auto">
-            See an example
+            See the dashboard
           </Link>
         </div>
 
@@ -129,44 +129,6 @@ export default function HomePage() {
       <section className="relative z-10 mx-auto max-w-6xl px-6 pb-20">
         <FlowMap />
       </section>
-
-      {/* ---------------------------------------------------- before / after */}
-      <section className="relative z-10 border-t border-line bg-[#0B0B0E] py-24">
-        <div className="mx-auto max-w-5xl px-6">
-          <div className="max-w-2xl">
-            <h2 className="text-3xl font-extrabold tracking-[-0.03em] sm:text-[40px]">
-              The same thirty seconds.
-            </h2>
-            <p className="mt-4 text-muted">
-              Drag it. On the left is what came off the camera — the pauses are the
-              red ones. On the right is what you&rsquo;d post.
-            </p>
-          </div>
-
-          <div className="mt-10">
-            <BeforeAfter />
-          </div>
-
-          <dl className="mt-8 grid gap-px overflow-hidden rounded-xl border border-line bg-line sm:grid-cols-3">
-            {[
-              ['Cuts made', '94', 'Every pause, um and false start'],
-              ['Time removed', '2:34', 'Out of a 3:42 take'],
-              ['Your input', '1 upload', 'And two dropdowns'],
-            ].map(([label, value, note]) => (
-              <div key={label} className="bg-charcoal px-5 py-5">
-                <dt className="text-[11.5px] font-semibold uppercase tracking-[0.14em] text-faint">{label}</dt>
-                <dd className="mt-1.5 text-2xl font-extrabold tracking-[-0.03em] text-violet">{value}</dd>
-                <dd className="mt-1 text-[13px] text-muted">{note}</dd>
-              </div>
-            ))}
-          </dl>
-        </div>
-      </section>
-
-      {/* -------------------------------------------------------- showcase */}
-      {/* Renders nothing until src/content/showcase.ts has real exports in it
-          — see the note at the top of that file. */}
-      <Showcase />
 
       {/* ----------------------------------------------------------- steps */}
       <section className="relative z-10 mx-auto max-w-6xl px-6 py-24">
@@ -191,7 +153,7 @@ export default function HomePage() {
       <section className="relative z-10 border-t border-line bg-[#0B0B0E] py-24">
         <div className="mx-auto max-w-6xl px-6">
           <h2 className="max-w-2xl text-3xl font-extrabold tracking-[-0.03em] sm:text-[40px]">
-            Everything a good editor would add, added for you.
+            Everything a good editor would add.
           </h2>
           <p className="mt-4 max-w-xl text-muted">
             Not filters on top of your video — an actual edit, built from what you said.
@@ -203,25 +165,47 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* ---------------------------------------------------- who it's for */}
-      <WhoItsFor />
+      {/* ---------------------------------------------------- before / after */}
+      <section className="relative z-10 border-t border-line bg-[#0B0B0E] py-24">
+        <div className="mx-auto max-w-5xl px-6">
+          <div className="max-w-2xl">
+            <h2 className="text-3xl font-extrabold tracking-[-0.03em] sm:text-[40px]">
+              The same thirty seconds.
+            </h2>
+            <p className="mt-4 text-muted">
+              Drag it. On the left is what came off the camera — the pauses are the
+              red ones. On the right is what you&rsquo;d post.
+            </p>
+          </div>
 
-      {/* -------------------------------------------------------- captions */}
-      <section className="relative z-10 py-24">
-        <div className="mx-auto max-w-6xl px-6">
-          <h2 className="max-w-2xl text-3xl font-extrabold tracking-[-0.03em] sm:text-[40px]">
-            Most of it gets watched muted.
-          </h2>
-          <p className="mt-4 max-w-xl text-muted">
-            Which makes the captions the video. Sixteen finished looks, drawn here by
-            the renderer&rsquo;s own code — so what you pick is what exports.
-          </p>
-        </div>
+          <div className="mt-10">
+            <BeforeAfter />
+          </div>
 
-        <div className="mt-12">
-          <CaptionShowcase />
+          <dl className="mt-8 grid gap-px overflow-hidden rounded-xl border border-line bg-line sm:grid-cols-3">
+            {[
+              ['Cuts made', '94', 'Every pause, um and false start.'],
+              ['Time removed', '2:34', 'Out of a 3:42 take.'],
+              ['Your input', '1 upload', 'And two dropdowns.'],
+            ].map(([label, value, note]) => (
+              <div key={label} className="bg-charcoal px-5 py-5">
+                <dt className="text-[11.5px] font-semibold uppercase tracking-[0.14em] text-faint">{label}</dt>
+                <dd className="mt-1.5 text-2xl font-extrabold tracking-[-0.03em] text-violet">{value}</dd>
+                <dd className="mt-1 text-[13px] text-muted">{note}</dd>
+              </div>
+            ))}
+          </dl>
         </div>
       </section>
+
+      {/* -------------------------------------------------------- showreel */}
+      {/* Drawn from the renderer's own layout plans until
+          src/content/showcase.ts has real exports in it — see the note at
+          the top of Showreel.tsx. */}
+      <Showreel />
+
+      {/* ---------------------------------------------------- who it's for */}
+      <WhoItsFor />
 
       {/* ---------------------------------------------------------- styles */}
       <section id="styles" className="relative z-10 scroll-mt-16 border-t border-line py-24">
@@ -266,6 +250,9 @@ export default function HomePage() {
         </div>
       </section>
 
+      {/* ------------------------------------------------------- what it costs */}
+      <CostCompare />
+
       {/* ------------------------------------------------- what it replaces */}
       <WhatItReplaces />
 
@@ -302,8 +289,8 @@ export default function HomePage() {
           <p className="mx-auto mt-4 max-w-lg text-muted">
             Bring the footage. We&rsquo;ll bring the edit.
           </p>
-          <Link href="/new" className="btn-primary mt-8 px-7 py-3.5 text-[15px]">
-            Upload your footage
+          <Link href="/dashboard" className="btn-primary mt-8 px-7 py-3.5 text-[15px]">
+            Open the dashboard
           </Link>
         </div>
       </section>

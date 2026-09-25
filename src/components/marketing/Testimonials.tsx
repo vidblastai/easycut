@@ -22,15 +22,21 @@ export function Testimonials() {
     <section className="relative z-10 border-t border-line bg-[#0B0B0E] py-24">
       <div className="mx-auto max-w-6xl px-6">
         <div className="flex flex-wrap items-end justify-between gap-x-8 gap-y-4">
-          <h2 className="max-w-2xl text-3xl font-extrabold tracking-[-0.03em] sm:text-[40px]">
-            What people say once they stop editing.
-          </h2>
+          <div>
+            <span className="eyebrow inline-flex items-center gap-2 text-violet">
+              <span aria-hidden className="h-1.5 w-1.5 rounded-full bg-violet" />
+              Reviews
+            </span>
+            <h2 className="mt-3 max-w-2xl text-3xl font-extrabold tracking-[-0.03em] sm:text-[40px]">
+              What people say once they stop editing.
+            </h2>
+          </div>
 
           <div className="flex items-center gap-2.5">
             <Stars count={Math.round(average)} className="h-[17px] w-[17px]" />
             <b className="text-[17px] font-extrabold">{average.toFixed(1)}</b>
             <span className="text-[12px] font-bold uppercase tracking-[0.1em] text-faint">
-              {TESTIMONIALS.length} review{TESTIMONIALS.length === 1 ? '' : 's'}
+              {TESTIMONIALS.length} rating{TESTIMONIALS.length === 1 ? '' : 's'}
             </span>
           </div>
         </div>
