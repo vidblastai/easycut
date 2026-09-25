@@ -42,24 +42,35 @@ export default {
         shimmer: { '100%': { transform: 'translateX(100%)' } },
         pulseDot: { '0%,100%': { opacity: '1' }, '50%': { opacity: '0.35' } },
         /*
-         * The proof pill's two halves taking turns: up and out of the frame,
-         * then back in from below. Both travel the same way, which is what
-         * makes it read as one strip turning over rather than two things
-         * swapping places.
+         * The proof pill's two halves rolling past a window.
          *
-         * The in-window (0–5%) and the out-window (45–50%) do not overlap when
-         * two elements run this half a loop apart, so one half has fully left
-         * before the other arrives. The 50.01% step is the teleport: whatever
-         * has just left the top waits underneath for its next turn, and makes
-         * that move while it is invisible.
+         * The CLIP on the container is what makes this work — see
+         * SocialProof.tsx. These keyframes only move things; `overflow:hidden`
+         * is what turns two moving elements into one strip scrolling past a
+         * window, with no fade needed to hide anything.
+         *
+         * EXACTLY 100%, which is one window height, and that number is the
+         * difference between a roll and two things passing each other. At 130%
+         * the halves are 260% apart, so mid-handover a strip of empty window
+         * opens between them — measured at 7 of 28 pixels. At 100% the
+         * incoming half sits exactly one window below the outgoing one, so
+         * what leaves the top is replaced by what arrives at the bottom, pixel
+         * for pixel, all the way through.
+         *
+         * Two elements half a loop apart move in LOCKSTEP here: one travels
+         * 0 → -100% over 45–50% while the other travels 100% → 0 over its own
+         * 95–100%, which is the same five hundred milliseconds.
          */
-        proofTurn: {
-          '0%': { transform: 'rotateX(88deg) translateY(90%)', opacity: '0' },
-          '5%': { transform: 'rotateX(0deg) translateY(0)', opacity: '1' },
-          '45%': { transform: 'rotateX(0deg) translateY(0)', opacity: '1' },
-          '50%': { transform: 'rotateX(-88deg) translateY(-90%)', opacity: '0' },
-          '50.01%': { transform: 'rotateX(88deg) translateY(90%)', opacity: '0' },
-          '100%': { transform: 'rotateX(88deg) translateY(90%)', opacity: '0' },
+        proofSlide: {
+          '0%': { transform: 'translateY(0)' },
+          '45%': { transform: 'translateY(0)' },
+          '50%': { transform: 'translateY(-100%)' },
+          /* The teleport, made in the one instant it is exactly out of sight
+             above: whatever has just left the top waits underneath for its
+             next turn. */
+          '50.01%': { transform: 'translateY(100%)' },
+          '95%': { transform: 'translateY(100%)' },
+          '100%': { transform: 'translateY(0)' },
         },
         /* The hero flow map. A clip rides its wire with `offset-path`, whose
            coordinates on an SVG element are user units and therefore scale
@@ -91,7 +102,7 @@ export default {
         flowWas: 'flowWas 13s linear infinite',
         flowIs: 'flowIs 13s linear infinite',
         flowBreathe: 'flowBreathe 6s cubic-bezier(.22,.68,.28,1) infinite',
-        proofTurn: 'proofTurn 10s cubic-bezier(.5,.05,.2,1) infinite',
+        proofSlide: 'proofSlide 10s cubic-bezier(.76,0,.24,1) infinite',
       },
     },
   },

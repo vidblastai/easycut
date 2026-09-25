@@ -1816,44 +1816,54 @@ body.instudio { overflow: hidden; }
    
    The box is sized by the FACES, which are the wider of the two; the stars are
    laid over the same space. So the pill never changes width mid-turn. */
-.proof-who { position: relative; perspective: 340px; }
+/*
+ * THE CLIP IS THE WHOLE TRICK.
+ *
+ * `overflow: hidden` on this box is what turns two moving elements into one
+ * strip scrolling past a window. Without it the halves would have to fade to
+ * hide themselves, and a fade is what makes a swap look like a swap; with it
+ * they simply travel out of view, and the eye reads a continuous roll.
+ */
+.proof-who { position: relative; overflow: hidden; }
 .proof-faces { display: flex; }
 
 .proof-faces, .proof-stars {
-  animation: proof-turn 10s cubic-bezier(.5,.05,.2,1) infinite;
-  transform-origin: 50% 50%;
-  backface-visibility: hidden;
-  will-change: transform, opacity;
+  animation: proof-slide 10s cubic-bezier(.76,0,.24,1) infinite;
+  will-change: transform;
 }
 /*
- * The two delays, and why they are not 0 and -5s.
+ * Half a loop apart, and moving TOGETHER.
  *
- * ONE HALF AT A TIME. The keyframes below spend 0–5% flipping in and 45–50%
- * flipping out, so the two windows do not overlap when the halves are half a
- * loop apart: at 45–50% one is leaving while the other is still waiting
- * underneath at 95–100%, and only then does it come in at 50–55%. A first
- * attempt put the out-window at 45–50% and the in-window at 95–100%, which
- * made them cross at the same instant — a crossfade, not a turn.
+ * The outgoing half travels 0 → -130% over 45–50%, and the incoming half
+ * travels 130% → 0 over its own 95–100% — which, half a loop apart, is the
+ * same five hundred milliseconds. They move in lockstep, the way two frames
+ * of one filmstrip do.
  *
- * And the negative offsets start the loop at 5% rather than 0, so the pill
- * opens with the faces AT REST rather than mid-flip. A page whose first frame
- * is a half-turned strip looks broken in a screenshot.
+ * (An earlier version deliberately made them sequential — one gone before the
+ * other arrives. That is right for a flip, where two things turning in the
+ * same place at once reads as a crossfade. It is wrong for a slide: inside a
+ * clip, simultaneous IS the effect, and sequential leaves the window empty in
+ * between.)
+ *
+ * EXACTLY 100%, which is one slot height, and that number is the difference
+ * between a roll and two things passing each other. At 130% the halves are
+ * 260% apart, so mid-handover there is a strip of empty window between them —
+ * measured at 7 of 28 pixels. At 100% the incoming half sits exactly one
+ * window below the outgoing one, so what leaves the top is replaced by what
+ * arrives at the bottom, pixel for pixel, all the way through.
  */
-.proof-faces { animation-delay: -0.5s; }
-.proof-stars { animation-delay: -5.5s; }
+.proof-stars { animation-delay: -5s; }
 
-/* Up and out, then back in from below — both halves travel the same way, which
-   is what makes it read as one strip turning over rather than two things
-   swapping. The 0.01% step is the teleport: whatever has just left the top has
-   to be waiting underneath for its next turn, and it makes that move while it
-   is invisible. */
-@keyframes proof-turn {
-  0%      { transform: rotateX(88deg) translateY(90%); opacity: 0; }
-  5%      { transform: rotateX(0deg) translateY(0); opacity: 1; }
-  45%     { transform: rotateX(0deg) translateY(0); opacity: 1; }
-  50%     { transform: rotateX(-88deg) translateY(-90%); opacity: 0; }
-  50.01%  { transform: rotateX(88deg) translateY(90%); opacity: 0; }
-  100%    { transform: rotateX(88deg) translateY(90%); opacity: 0; }
+@keyframes proof-slide {
+  0%      { transform: translateY(0); }
+  45%     { transform: translateY(0); }
+  50%     { transform: translateY(-100%); }
+  /* The teleport, made in the one instant it is exactly out of sight above:
+     whatever has just left the top has to be waiting underneath for its next
+     turn. */
+  50.01%  { transform: translateY(100%); }
+  95%     { transform: translateY(100%); }
+  100%    { transform: translateY(0); }
 }
 
 /* Somebody who has asked for less motion gets the pill it was before the
@@ -1863,7 +1873,7 @@ body.instudio { overflow: hidden; }
 @media (prefers-reduced-motion: reduce) {
   .proof-faces, .proof-stars { animation: none !important; transform: none; opacity: 1; }
   .proof-stars { position: relative; inset: auto; margin-top: -11px; }
-  .proof-who { display: grid; justify-items: center; }
+  .proof-who { display: grid; justify-items: center; overflow: visible; }
 }
 .proof-faces span {
   width: 28px; height: 28px; border-radius: 99px; overflow: hidden;

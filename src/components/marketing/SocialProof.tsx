@@ -33,17 +33,24 @@ export function SocialProof({ className }: { className?: string }) {
       )}
     >
       {/* The faces and their verdict are ONE thing — who is here, and what
-          they made of it — so they share one slot and take turns in it: five
-          seconds of faces, then the faces roll up and out of the frame while
-          the stars roll up into it from below.
+          they made of it — so they share one slot and roll past it: five
+          seconds of faces, then the faces travel up out of the window as the
+          stars arrive from below, in lockstep, like two frames of one
+          filmstrip.
+
+          THE CLIP IS THE WHOLE TRICK. `overflow-hidden` is what turns two
+          moving elements into one strip scrolling past a window. Without it
+          the halves would have to fade to hide themselves, and a fade is what
+          makes a swap look like a swap; with it they simply travel out of
+          view and the eye reads a continuous roll.
 
           The box is sized by the FACES, which are the wider of the two, and
           the stars are laid over the same space — so the pill never changes
-          width mid-turn. `motion-reduce` puts both halves back at rest,
+          width mid-roll. `motion-reduce` puts both halves back at rest,
           because globals.css only shortens durations and that would strand
-          one half mid-turn and invisible. */}
-      <span className="relative [perspective:340px]">
-        <span className="flex animate-proofTurn [animation-delay:-0.5s] [backface-visibility:hidden] [transform-origin:50%_50%] motion-reduce:animate-none motion-reduce:opacity-100 motion-reduce:[transform:none]">
+          one half mid-roll and out of frame. */}
+      <span className="relative overflow-hidden motion-reduce:overflow-visible">
+        <span className="flex animate-proofSlide [will-change:transform] motion-reduce:animate-none motion-reduce:[transform:none]">
           {FACES.slice(0, 5).map((_, i) => (
             <Avatar
               key={i}
@@ -59,8 +66,11 @@ export function SocialProof({ className }: { className?: string }) {
           role="img"
           aria-label="Rated five out of five"
           className={clsx(
-            'absolute inset-0 flex animate-proofTurn items-center justify-center gap-[3px] text-violet',
-            '[animation-delay:-5.5s] [backface-visibility:hidden] [transform-origin:50%_50%]',
+            'absolute inset-0 flex animate-proofSlide items-center justify-center gap-[3px] text-violet',
+            /* Half a loop behind the faces, which is what puts the two in
+               lockstep: one leaves the top exactly as the other fills in from
+               the bottom. */
+            '[animation-delay:-5s] [will-change:transform]',
             /* Still, and back on the faces where they used to live — a reader
                who asked for less motion should still see the rating, not lose
                half the pill's content to a preference. */
