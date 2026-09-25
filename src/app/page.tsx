@@ -131,21 +131,27 @@ export default function HomePage() {
       </section>
 
       {/* ----------------------------------------------------------- steps */}
-      <section className="relative z-10 mx-auto max-w-6xl px-6 py-24">
-        {/* The heading the prototype has always had. Without it the three
-            cards floated, and the layers section that now follows them read as
-            a reply to nothing. */}
-        <h2 className="max-w-2xl text-3xl font-extrabold tracking-[-0.03em] sm:text-[40px]">
-          Two decisions, then it&rsquo;s done.
-        </h2>
-        <div className="mt-10 grid gap-4 sm:grid-cols-3">
-          {STEPS.map((step) => (
-            <div key={step.number} className="card p-6">
-              <div className="text-xs font-bold tracking-[0.18em] text-violet">{step.number}</div>
-              <h3 className="mt-3 text-lg font-bold tracking-[-0.02em]">{step.title}</h3>
-              <p className="mt-2 text-sm leading-relaxed text-muted">{step.body}</p>
-            </div>
-          ))}
+      {/* Full-bleed section with the rule on it, and the content held to the
+          same column as everywhere else — every other band on this page is
+          built this way, and this one was not, so the rule that separates the
+          flow map from the first section was missing here and only here. */}
+      <section className="relative z-10 border-t border-line py-24">
+        <div className="mx-auto max-w-6xl px-6">
+          {/* The heading the prototype has always had. Without it the three
+              cards floated, and the layers section that now follows them read
+              as a reply to nothing. */}
+          <h2 className="max-w-2xl text-3xl font-extrabold tracking-[-0.03em] sm:text-[40px]">
+            Two decisions, then it&rsquo;s done.
+          </h2>
+          <div className="mt-10 grid gap-4 sm:grid-cols-3">
+            {STEPS.map((step) => (
+              <div key={step.number} className="card p-6">
+                <div className="text-xs font-bold tracking-[0.18em] text-violet">{step.number}</div>
+                <h3 className="mt-3 text-lg font-bold tracking-[-0.02em]">{step.title}</h3>
+                <p className="mt-2 text-sm leading-relaxed text-muted">{step.body}</p>
+              </div>
+            ))}
+          </div>
         </div>
       </section>
 
