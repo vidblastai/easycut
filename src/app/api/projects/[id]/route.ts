@@ -35,6 +35,25 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
   const job = project.jobs[0];
   const edl = project.edls[0];
 
+  /*
+   * Is there a finished file of the edit as it stands?
+   *
+   * Editing in the studio saves the document without burning a video — the
+   * preview there is live, and a render per change would be a minute of
+   * compute for a file the person is about to replace. So an mp4 that is one
+   * or more edits old is now a NORMAL state, and the editor has to be able to
+   * tell, because the one thing that must never happen is handing somebody an
+   * older cut as their finished video.
+   *
+   * Asked of the database rather than derived from the `renders` array below:
+   * that array is the five most recent, and a few exports at different aspect
+   * ratios would push the matching render off the end and report a current
+   * file as stale. A count over the whole table cannot be wrong.
+   */
+  const renderedCurrent = edl
+    ? await db.render.count({ where: { edlId: edl.id, status: 'succeeded' } })
+    : 0;
+
   /**
    * The EDL is only sent once there is something to edit.
    *
@@ -102,6 +121,8 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
             progressLabel: '', errorMessage: null, startedAt: null, queuedAt: null,
             stalled: stalledProject(project, false), log: [] }
         : null,
+    /** True when the newest edit has no finished file yet. See above. */
+    exportStale: Boolean(edl) && renderedCurrent === 0,
     edl: edl
       ? {
           id: edl.id,
@@ -112,6 +133,17 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
       : null,
     renders: project.renders.map((r) => ({
       id: r.id,
+      /*
+       * WHICH version of the edit this file is of.
+       *
+       * Without it the editor cannot tell a finished video from a stale one:
+       * both are an mp4 with a url. Editing in the studio no longer queues a
+       * render per change — the preview is live, and burning a file for every
+       * colour nudge is a minute of compute for something you are about to
+       * change again — so "the file is behind the edit" is now a normal state
+       * that has to be visible rather than a bug.
+       */
+      edlId: r.edlId,
       aspect: r.aspect,
       // The real pixels, so the editor can label a 4K export as one without
       // keeping a separate flag that could disagree with the file.

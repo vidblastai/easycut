@@ -72,8 +72,18 @@ interface ProjectState {
     log: Array<{ stage: string; status: string; ms: number; message: string }>;
   } | null;
   edl: { id: string; version: number; document: Edl | null } | null;
+  /**
+   * True when the newest edit has no finished file yet.
+   *
+   * Computed by the API, which can count over the whole render table — the
+   * `renders` array here is only the five most recent, and a few exports at
+   * different aspect ratios would push the matching one off the end and report
+   * a perfectly current file as stale.
+   */
+  exportStale: boolean;
   renders: Array<{
     id: string;
+    edlId: string;
     aspect: string;
     width: number;
     height: number;
@@ -215,14 +225,23 @@ export function ProjectWorkspace({
   }, [isWorking, load]);
 
   const patch = useCallback(
-    async (body: Record<string, unknown>) => {
+    /*
+     * `render` says whether to burn a new file as well as saving the edit.
+     *
+     * In the simple view it is true: there is no live preview there, so the
+     * finished mp4 IS the feedback and a change nobody can see has not
+     * happened. In the studio it is false — the Remotion preview already shows
+     * the edit, and a minute of render per colour nudge is a minute spent on a
+     * file you are about to replace. The render happens once, on Export.
+     */
+    async (body: Record<string, unknown>, { render = true }: { render?: boolean } = {}) => {
       setBusy(true);
       setError(null);
       try {
         const response = await fetch(`/api/projects/${projectId}/edl`, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ render: true, ...body }),
+          body: JSON.stringify({ render, ...body }),
         });
         if (!response.ok) {
           throw new Error((await response.json().catch(() => ({}))).error ?? 'That change could not be applied.');
@@ -245,7 +264,9 @@ export function ProjectWorkspace({
         const response = await fetch(`/api/projects/${projectId}/edl`, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ operations, render: true }),
+          // Studio-only, so never a render: the preview beside the timeline is
+          // already showing these operations. Export burns the file.
+          body: JSON.stringify({ operations, render: false }),
         });
         const body = await response.json().catch(() => ({}));
         if (!response.ok) throw new Error(body.error ?? 'Those edits could not be applied.');
@@ -338,6 +359,11 @@ export function ProjectWorkspace({
   const captionStyle = draftCaption ?? doc?.captionStyle ?? null;
   const captionDirty = Boolean(draftCaption && doc && !sameStyle(draftCaption, doc.captionStyle));
 
+  /* Is a file being made right now, and is the one on the page behind the
+     edit? The second is the API's answer — see `exportStale` on ProjectState. */
+  const rendering = state.renders.some((r) => r.status === 'queued' || r.status === 'running');
+  const exportStale = state.exportStale;
+
   /**
    * Where this video is in the four steps.
    *
@@ -396,7 +422,10 @@ export function ProjectWorkspace({
 
   const commitCaption = async () => {
     if (!captionStyle) return;
-    await patch({ captionStyle, captionPreset: captionStyle.preset });
+    await patch(
+      { captionStyle, captionPreset: captionStyle.preset },
+      { render: mode !== 'studio' },
+    );
     setDraftCaption(null);
   };
 
@@ -406,7 +435,18 @@ export function ProjectWorkspace({
      picture and the picture belongs in the middle. It claims the viewport, so
      the dock is always reachable without scrolling. */
   if (mode === 'studio' && doc) {
-    const live = workingEdl ?? doc;
+    /*
+     * What the preview plays: the timeline's pending operations AND the caption
+     * style currently under the cursor in the picker.
+     *
+     * The draft used to stop at the picker's own thumbnails — the big preview
+     * went on playing the committed style, so clicking through the presets
+     * changed six small cards and nothing you were actually looking at. It read
+     * as "changing the captions does not work", which is a fair reading of a
+     * picker that does not change the picture.
+     */
+    const base = workingEdl ?? doc;
+    const live = draftCaption ? { ...base, captionStyle: draftCaption } : base;
     return (
       <AppShell
         recents={recents}
@@ -624,7 +664,7 @@ export function ProjectWorkspace({
                     rendered 9:16 file, which reads as a broken render rather
                     than a broken stylesheet. */}
                 <div
-                  className="overflow-hidden rounded-[18px] bg-black shadow-card"
+                  className="relative overflow-hidden rounded-[18px] bg-black shadow-card"
                   style={{ aspectRatio: project.mode === 'short' ? '9 / 16' : '16 / 9' }}
                 >
                   <video
@@ -635,6 +675,15 @@ export function ProjectWorkspace({
                     playsInline
                     className="h-full w-full"
                   />
+
+                  {/* On the picture, not beside it: somebody checking their
+                      video looks at the video, and a caveat in the margin is
+                      a caveat nobody reads. */}
+                  {exportStale ? (
+                    <span className="pointer-events-none absolute inset-x-0 top-0 bg-ink/85 px-3 py-2 text-center text-[12px] font-semibold text-warn backdrop-blur">
+                      {rendering ? 'Making the new version…' : 'This is the cut before your last changes'}
+                    </span>
+                  ) : null}
                 </div>
 
                 <div className="min-w-0">
@@ -651,16 +700,44 @@ export function ProjectWorkspace({
                   </p>
 
                   <div className="mt-5 grid gap-2.5 sm:grid-cols-2">
-                    <a href={project.previewUrl} download className="act act-go">
-                      <IconDownload className="h-[19px] w-[19px] flex-none" />
-                      <span>
-                        Export video
-                        <i className="mt-0.5 block font-mono text-[11.5px] font-medium not-italic text-ink/[.62]">
-                          MP4{doc ? ` · ${doc.format.width}×${doc.format.height}` : ''}
-                          {project.durationSec ? ` · ${formatDuration(project.durationSec)}` : ''}
-                        </i>
-                      </span>
-                    </a>
+                    {/* Two different buttons, because they are two different
+                        promises. Once the file matches the edit, Export hands
+                        it over. While the edit is ahead of the file — which is
+                        now normal, because the studio does not render as you
+                        work — the same place has to MAKE the file first, and
+                        say so. Offering a download of an older cut under the
+                        word "Export" is the one outcome worth any amount of
+                        extra UI to avoid. */}
+                    {exportStale ? (
+                      <button
+                        type="button"
+                        disabled={busy || rendering || footageGone}
+                        onClick={() => void requestExport({})}
+                        title={footageGone ? 'Your original footage has been deleted, so this video can no longer be re-cut.' : undefined}
+                        className="act act-go"
+                      >
+                        <IconDownload className="h-[19px] w-[19px] flex-none" />
+                        <span>
+                          {rendering ? 'Making your video…' : 'Render this edit'}
+                          <i className="mt-0.5 block text-[11.5px] font-medium not-italic text-ink/[.62]">
+                            {rendering
+                              ? 'The file below is the previous cut'
+                              : 'Your changes are not in the file below yet'}
+                          </i>
+                        </span>
+                      </button>
+                    ) : (
+                      <a href={project.previewUrl} download className="act act-go">
+                        <IconDownload className="h-[19px] w-[19px] flex-none" />
+                        <span>
+                          Export video
+                          <i className="mt-0.5 block font-mono text-[11.5px] font-medium not-italic text-ink/[.62]">
+                            MP4{doc ? ` · ${doc.format.width}×${doc.format.height}` : ''}
+                            {project.durationSec ? ` · ${formatDuration(project.durationSec)}` : ''}
+                          </i>
+                        </span>
+                      </a>
+                    )}
                     <button
                       type="button"
                       onClick={() => setMode('studio')}
