@@ -1,4 +1,5 @@
 import { env } from '@/lib/config/env';
+import { isWavespeedMediaConfigured, runMediaJob } from './wavespeed-media';
 
 /**
  * Bespoke illustration, for the rare cue where no stock clip and no icon can
@@ -13,7 +14,7 @@ import { env } from '@/lib/config/env';
 
 export interface GeneratedImage {
   url: string;
-  provider: 'replicate' | 'fal';
+  provider: 'replicate' | 'fal' | 'wavespeed';
   costUsd: number;
   prompt: string;
 }
@@ -21,16 +22,24 @@ export interface GeneratedImage {
 /** Flux Schnell, 1 megapixel, 4 steps. */
 const REPLICATE_COST_USD = 0.003;
 const FAL_COST_USD = 0.003;
+/** WaveSpeed's own catalogue price for the default model, per image. */
+const WAVESPEED_COST_USD = 0.008;
+/** Measured at about six seconds; this is the give-up point, not the expectation. */
+const WAVESPEED_TIMEOUT_MS = 90_000;
 const POLL_INTERVAL_MS = 700;
 const MAX_POLLS = 60;
 
 export function isImageGenConfigured(): boolean {
   if (!env.features.generatedImages) return false;
-  return Boolean(env.imagegen.replicateToken || env.imagegen.falKey);
+  return Boolean(
+    env.imagegen.replicateToken || env.imagegen.falKey || isWavespeedMediaConfigured(),
+  );
 }
 
 export function estimateImageCostUsd(count: number): number {
-  return count * (env.imagegen.replicateToken ? REPLICATE_COST_USD : FAL_COST_USD);
+  if (env.imagegen.replicateToken) return count * REPLICATE_COST_USD;
+  if (env.imagegen.falKey) return count * FAL_COST_USD;
+  return count * WAVESPEED_COST_USD;
 }
 
 export async function generateImage(prompt: string, aspect: '9:16' | '16:9' | '1:1'): Promise<GeneratedImage | null> {
@@ -44,9 +53,42 @@ export async function generateImage(prompt: string, aspect: '9:16' | '16:9' | '1
     if (result) return result;
   }
   if (env.imagegen.falKey) {
-    return generateWithFal(styled, aspect).catch(() => null);
+    const result = await generateWithFal(styled, aspect).catch(() => null);
+    if (result) return result;
+  }
+  // Last, and reached by most deployments, because it is the key people
+  // already have for the director. A failure here returns null like the
+  // others: a missing illustration means the cue falls back to stock or an
+  // icon, never that the video fails.
+  if (isWavespeedMediaConfigured()) {
+    return generateWithWavespeed(styled, aspect).catch(() => null);
   }
   return null;
+}
+
+/** Sizes that match the frame the insert will sit in, at about one megapixel. */
+const WAVESPEED_SIZE: Record<string, string> = {
+  '9:16': '768*1344',
+  '16:9': '1344*768',
+  '1:1': '1024*1024',
+};
+
+async function generateWithWavespeed(
+  prompt: string,
+  aspect: '9:16' | '16:9' | '1:1',
+): Promise<GeneratedImage | null> {
+  const { urls } = await runMediaJob({
+    model: env.imagegen.wavespeedModel,
+    input: {
+      prompt,
+      size: WAVESPEED_SIZE[aspect] ?? WAVESPEED_SIZE['1:1'],
+      output_format: 'jpeg',
+    },
+    timeoutMs: WAVESPEED_TIMEOUT_MS,
+    // These land in seconds, so poll faster than the video path does.
+    pollMs: 900,
+  });
+  return { url: urls[0], provider: 'wavespeed', costUsd: WAVESPEED_COST_USD, prompt };
 }
 
 async function generateWithReplicate(prompt: string, aspect: string): Promise<GeneratedImage | null> {

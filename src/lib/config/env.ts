@@ -136,12 +136,32 @@ export const env = {
     pixabayKey: str('PIXABAY_API_KEY'),
   },
 
+  /**
+   * B-roll that does not exist yet — see src/lib/assets/generated-broll.ts.
+   *
+   * OFF by default, and the reason is time rather than money: a six-second
+   * clip costs four cents and takes about 109 seconds, against a product that
+   * promises a finished short in ninety. Worth offering, not worth imposing.
+   */
+  genvideo: {
+    enabled: bool('GENERATED_BROLL', false),
+    model: str('GENERATED_BROLL_MODEL') ?? 'lightricks/ltx-2-fast/text-to-video',
+    /** Never more than this many per video, whatever the director asks for. */
+    maxPerVideo: num('GENERATED_BROLL_MAX', 2),
+  },
+
   imagegen: {
     provider: (str('IMAGEGEN_PROVIDER') ?? 'auto') as 'auto' | 'replicate' | 'fal' | 'none',
     replicateToken: str('REPLICATE_API_TOKEN'),
     replicateModel: str('REPLICATE_IMAGE_MODEL') ?? 'black-forest-labs/flux-schnell',
     falKey: str('FAL_KEY'),
     falModel: str('FAL_IMAGE_MODEL') ?? 'fal-ai/flux/schnell',
+    /**
+     * Reached with the WaveSpeed key, so most deployments get generated
+     * illustration without a fourth account. Flux Klein 4B at $0.008 an image
+     * and a few seconds — the same trade Flux Schnell was picked for.
+     */
+    wavespeedModel: str('WAVESPEED_IMAGE_MODEL') ?? 'wavespeed-ai/flux-2-klein-4b/text-to-image',
   },
 
   render: {
@@ -345,7 +365,9 @@ export function capabilities(): Capability[] {
     {
       key: 'imagegen',
       label: 'Image generation',
-      configured: Boolean(env.imagegen.replicateToken || env.imagegen.falKey),
+      configured: Boolean(
+        env.imagegen.replicateToken || env.imagegen.falKey || env.llm.wavespeedKey,
+      ),
       fallback: 'Icons come from the free Iconify set only; no bespoke illustrations.',
       envVars: ['REPLICATE_API_TOKEN', 'FAL_KEY'],
       signupUrl: 'https://replicate.com/account/api-tokens',

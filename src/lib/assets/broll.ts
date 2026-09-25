@@ -9,7 +9,12 @@ import { env } from '@/lib/config/env';
 
 export interface StockClip {
   id: string;
-  provider: 'pexels' | 'pixabay';
+  /**
+   * Where the clip came from. `generated` is B-roll made to order rather than
+   * found — see generated-broll.ts. It shares this shape on purpose, so the
+   * timeline builder never has to know which kind it is holding.
+   */
+  provider: 'pexels' | 'pixabay' | 'generated';
   url: string;
   previewUrl: string;
   width: number;
