@@ -33,10 +33,17 @@ export function SocialProof({ className }: { className?: string }) {
       )}
     >
       {/* The faces and their verdict are ONE thing — who is here, and what
-          they made of it — so they stack into a single block and the sentence
-          sits beside it, rather than three items strung along a line. */}
-      <span className="grid justify-items-center">
-        <span className="flex">
+          they made of it — so they share one slot and take turns in it: five
+          seconds of faces, then the faces roll up and out of the frame while
+          the stars roll up into it from below.
+
+          The box is sized by the FACES, which are the wider of the two, and
+          the stars are laid over the same space — so the pill never changes
+          width mid-turn. `motion-reduce` puts both halves back at rest,
+          because globals.css only shortens durations and that would strand
+          one half mid-turn and invisible. */}
+      <span className="relative [perspective:340px]">
+        <span className="flex animate-proofTurn [animation-delay:-0.5s] [backface-visibility:hidden] [transform-origin:50%_50%] motion-reduce:animate-none motion-reduce:opacity-100 motion-reduce:[transform:none]">
           {FACES.slice(0, 5).map((_, i) => (
             <Avatar
               key={i}
@@ -48,17 +55,21 @@ export function SocialProof({ className }: { className?: string }) {
           ))}
         </span>
 
-        {/* The stars sit ON the faces rather than under them: pulled up over
-            the bottom of the discs, which takes a third off the height of the
-            block and keeps the pill a badge instead of a box. The drop shadow
-            is what stops a violet star disappearing into a dark shoulder. */}
         <span
           role="img"
           aria-label="Rated five out of five"
-          className="relative -mt-[11px] flex gap-[2.5px] text-violet [filter:drop-shadow(0_1px_2.5px_rgba(0,0,0,.9))]"
+          className={clsx(
+            'absolute inset-0 flex animate-proofTurn items-center justify-center gap-[3px] text-violet',
+            '[animation-delay:-5.5s] [backface-visibility:hidden] [transform-origin:50%_50%]',
+            /* Still, and back on the faces where they used to live — a reader
+               who asked for less motion should still see the rating, not lose
+               half the pill's content to a preference. */
+            'motion-reduce:animate-none motion-reduce:items-end motion-reduce:opacity-100',
+            'motion-reduce:[transform:none] motion-reduce:[filter:drop-shadow(0_1px_2.5px_rgba(0,0,0,.9))]',
+          )}
         >
           {Array.from({ length: 5 }, (_, i) => (
-            <svg key={i} width="13" height="13" viewBox="0 0 20 20" aria-hidden className="block">
+            <svg key={i} width="16" height="16" viewBox="0 0 20 20" aria-hidden className="block">
               <path d={STAR} fill="currentColor" />
             </svg>
           ))}

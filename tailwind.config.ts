@@ -41,6 +41,26 @@ export default {
         rise: { '0%': { opacity: '0', transform: 'translateY(10px)' }, '100%': { opacity: '1', transform: 'none' } },
         shimmer: { '100%': { transform: 'translateX(100%)' } },
         pulseDot: { '0%,100%': { opacity: '1' }, '50%': { opacity: '0.35' } },
+        /*
+         * The proof pill's two halves taking turns: up and out of the frame,
+         * then back in from below. Both travel the same way, which is what
+         * makes it read as one strip turning over rather than two things
+         * swapping places.
+         *
+         * The in-window (0–5%) and the out-window (45–50%) do not overlap when
+         * two elements run this half a loop apart, so one half has fully left
+         * before the other arrives. The 50.01% step is the teleport: whatever
+         * has just left the top waits underneath for its next turn, and makes
+         * that move while it is invisible.
+         */
+        proofTurn: {
+          '0%': { transform: 'rotateX(88deg) translateY(90%)', opacity: '0' },
+          '5%': { transform: 'rotateX(0deg) translateY(0)', opacity: '1' },
+          '45%': { transform: 'rotateX(0deg) translateY(0)', opacity: '1' },
+          '50%': { transform: 'rotateX(-88deg) translateY(-90%)', opacity: '0' },
+          '50.01%': { transform: 'rotateX(88deg) translateY(90%)', opacity: '0' },
+          '100%': { transform: 'rotateX(88deg) translateY(90%)', opacity: '0' },
+        },
         /* The hero flow map. A clip rides its wire with `offset-path`, whose
            coordinates on an SVG element are user units and therefore scale
            with the viewBox. Light drifts down the lanes that carry no clip. */
@@ -71,6 +91,7 @@ export default {
         flowWas: 'flowWas 13s linear infinite',
         flowIs: 'flowIs 13s linear infinite',
         flowBreathe: 'flowBreathe 6s cubic-bezier(.22,.68,.28,1) infinite',
+        proofTurn: 'proofTurn 10s cubic-bezier(.5,.05,.2,1) infinite',
       },
     },
   },

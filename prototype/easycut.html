@@ -1806,10 +1806,65 @@ body.instudio { overflow: hidden; }
   border-radius: 99px; padding: 6px 19px 6px 11px;
 }
 /* The faces and their verdict are ONE thing — who is here, and what they made
-   of it — so they stack into a single block and the sentence sits beside it,
-   rather than three items strung along a line. */
-.proof-who { display: grid; justify-items: center; }
+   of it — so they share one slot and the sentence sits beside it, rather than
+   three items strung along a line.
+   
+   They take turns rather than overlapping: five seconds of faces, then the
+   faces roll up and out of the frame while the stars roll up into it from
+   below. Both halves move the same way, which is what makes it read as one
+   strip turning over rather than two things crossfading.
+   
+   The box is sized by the FACES, which are the wider of the two; the stars are
+   laid over the same space. So the pill never changes width mid-turn. */
+.proof-who { position: relative; perspective: 340px; }
 .proof-faces { display: flex; }
+
+.proof-faces, .proof-stars {
+  animation: proof-turn 10s cubic-bezier(.5,.05,.2,1) infinite;
+  transform-origin: 50% 50%;
+  backface-visibility: hidden;
+  will-change: transform, opacity;
+}
+/*
+ * The two delays, and why they are not 0 and -5s.
+ *
+ * ONE HALF AT A TIME. The keyframes below spend 0–5% flipping in and 45–50%
+ * flipping out, so the two windows do not overlap when the halves are half a
+ * loop apart: at 45–50% one is leaving while the other is still waiting
+ * underneath at 95–100%, and only then does it come in at 50–55%. A first
+ * attempt put the out-window at 45–50% and the in-window at 95–100%, which
+ * made them cross at the same instant — a crossfade, not a turn.
+ *
+ * And the negative offsets start the loop at 5% rather than 0, so the pill
+ * opens with the faces AT REST rather than mid-flip. A page whose first frame
+ * is a half-turned strip looks broken in a screenshot.
+ */
+.proof-faces { animation-delay: -0.5s; }
+.proof-stars { animation-delay: -5.5s; }
+
+/* Up and out, then back in from below — both halves travel the same way, which
+   is what makes it read as one strip turning over rather than two things
+   swapping. The 0.01% step is the teleport: whatever has just left the top has
+   to be waiting underneath for its next turn, and it makes that move while it
+   is invisible. */
+@keyframes proof-turn {
+  0%      { transform: rotateX(88deg) translateY(90%); opacity: 0; }
+  5%      { transform: rotateX(0deg) translateY(0); opacity: 1; }
+  45%     { transform: rotateX(0deg) translateY(0); opacity: 1; }
+  50%     { transform: rotateX(-88deg) translateY(-90%); opacity: 0; }
+  50.01%  { transform: rotateX(88deg) translateY(90%); opacity: 0; }
+  100%    { transform: rotateX(88deg) translateY(90%); opacity: 0; }
+}
+
+/* Somebody who has asked for less motion gets the pill it was before the
+   animation existed: both halves still, the stars back on the faces. The
+   global reduce rule only shortens durations, which would leave one half
+   mid-turn and invisible. */
+@media (prefers-reduced-motion: reduce) {
+  .proof-faces, .proof-stars { animation: none !important; transform: none; opacity: 1; }
+  .proof-stars { position: relative; inset: auto; margin-top: -11px; }
+  .proof-who { display: grid; justify-items: center; }
+}
 .proof-faces span {
   width: 28px; height: 28px; border-radius: 99px; overflow: hidden;
   /* The ring is the pill's own fill, so the stack reads as overlapping discs
@@ -1824,9 +1879,11 @@ body.instudio { overflow: hidden; }
    pill a badge instead of a box. The drop shadow is what stops a violet star
    disappearing into a dark shoulder. */
 .proof-stars {
-  display: flex; gap: 2.5px; color: var(--violet);
-  position: relative; margin-top: -11px;
-  filter: drop-shadow(0 1px 2.5px rgba(0,0,0,.9));
+  /* Laid over the faces' box rather than under it, so the two halves turn
+     through the same rectangle. */
+  position: absolute; inset: 0;
+  display: flex; align-items: center; justify-content: center; gap: 3px;
+  color: var(--violet);
 }
 .proof-stars svg { display: block; }
 .proof-copy { font-size: 13.5px; font-weight: 600; color: var(--muted); white-space: nowrap; }
@@ -6189,8 +6246,10 @@ function buildProof() {
       </svg>
     </span>`).join('');
 
+  // Bigger than they were: with the slot to themselves rather than sitting on
+  // the faces, 13px read as an afterthought.
   const stars = Array.from({ length: 5 }, () =>
-    `<svg width="13" height="13" viewBox="0 0 20 20" aria-hidden="true"><path d="${STAR}" fill="currentColor"/></svg>`
+    `<svg width="16" height="16" viewBox="0 0 20 20" aria-hidden="true"><path d="${STAR}" fill="currentColor"/></svg>`
   ).join('');
 
   el.innerHTML = `
