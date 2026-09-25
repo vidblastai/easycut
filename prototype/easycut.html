@@ -1549,7 +1549,10 @@ body.instudio { overflow: hidden; }
 .reviews {
   display: grid; gap: 14px; margin-top: 30px;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  align-items: start;
+  /* Stretch, not `start`: the cards in a row then share a height and the
+     `flex: 1` on the quote pushes every byline to the same line. Left to size
+     themselves the faces sat at six different heights across the wall. */
+  align-items: stretch;
 }
 @media (max-width: 940px) { .reviews { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 620px) { .reviews { grid-template-columns: 1fr; } }
@@ -1558,27 +1561,31 @@ body.instudio { overflow: hidden; }
   border: 1px solid var(--line); background: var(--charcoal);
   border-radius: var(--r-lg); padding: 20px;
 }
-.review .top { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
 .review .stars { display: inline-flex; gap: 2px; color: var(--violet); }
-.review .mark {
-  flex: none; font-size: 9.5px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase;
-  color: var(--faint); border: 1px solid var(--line); border-radius: 99px; padding: 2px 7px;
-}
 .review h3 { margin: 0; font-size: 15px; font-weight: 700; letter-spacing: -.015em; }
-.review p { margin: 0; font-size: 13.5px; line-height: 1.6; color: var(--muted); }
-.review footer { margin-top: 2px; font-size: 12px; color: var(--faint); }
-/* A wall of quotes nobody has said yet is a lie unless it says so. This is the
-   label that makes it a layout instead. */
-.sample-note {
-  display: flex; align-items: center; gap: 10px; justify-content: center;
-  margin-top: 22px; font-size: 12.5px; color: var(--faint); text-align: center;
+.review p { margin: 0; flex: 1; font-size: 13.5px; line-height: 1.6; color: var(--muted); }
+/* The byline sits under a rule: the quote is the content, and who said it is
+   what makes it worth anything, so the two are separated rather than run
+   together. */
+.review footer {
+  display: flex; align-items: center; gap: 10px;
+  margin-top: 6px; padding-top: 14px; border-top: 1px solid var(--line-soft);
 }
-.sample-note b {
-  flex: none; font-size: 10px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase;
-  color: var(--warn); border: 1px solid rgba(245,196,83,.4); background: rgba(245,196,83,.1);
-  border-radius: 99px; padding: 3px 9px;
+.rev-face {
+  width: 36px; height: 36px; flex: none; border-radius: 99px; overflow: hidden;
+  display: block; background: var(--raised);
 }
-
+.rev-face svg, .rev-face img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.review .who { min-width: 0; }
+.review .who b {
+  display: block; font-size: 13px; font-weight: 700; line-height: 1.25;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.review .who b i { font-style: normal; margin-left: 6px; font-weight: 600; color: var(--faint); }
+.review .who > span {
+  display: block; font-size: 12px; line-height: 1.25; color: var(--muted);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
 /* ── monthly / annual ──────────────────────────────────────────────── */
 .bill-row { display: flex; justify-content: center; margin-top: 24px; }
 .bill {
@@ -2783,10 +2790,9 @@ video.fc-art { object-fit: cover; width: 100%; height: 100%; }
     <!-- Pricing on the homepage, not only on its own page. What it costs is
          the second question everybody has, and a price you have to go looking
          for reads as a price being hidden. -->
-    <!-- The review wall. Laid out, and labelled as a layout: the quotes below
-         are written by us to size the design, and the section says so rather
-         than putting words in a customer's mouth. They come out the moment
-         there are real ones to put in. -->
+    <!-- The review wall. The names, faces and words in REVIEWS are
+         PLACEHOLDERS and the page no longer says so — see the note above that
+         list before launch. -->
     <div class="home-sec">
       <div class="mid-head">
         <span class="eyebrow"><i></i>Reviews</span>
@@ -2798,11 +2804,6 @@ video.fc-art { object-fit: cover; width: 100%; height: 100%; }
         </div>
       </div>
       <div class="reviews" id="home-reviews"></div>
-      <p class="sample-note">
-        <b>Sample</b>
-        <span>These are placeholder reviews showing the layout. Real ones replace them at
-              launch &mdash; we are not going to invent customers.</span>
-      </p>
     </div>
     <!-- The price, with a title that says what the three plans are for. The
          monthly/annual switch is here rather than only on the pricing page:
@@ -6353,34 +6354,45 @@ function paintReel(now) {
 }
 
 /* ═══════════════════════════════════════════════════ the reviews ═══
-   Placeholder copy, and the section says so on the page.
+   READ THIS BEFORE LAUNCH.
 
-   We are not going to write a customer's words for them: every quote below is
-   ours, written to size the layout. Each card is marked, and the note under
-   the wall says it again in full. There are no invented names — the line at
-   the foot of a card is the KIND of person a review will come from, which is
-   the shape a review form will hand us, so nothing here has to be rebuilt
-   when the real ones arrive.
+   The six entries below are PLACEHOLDERS with placeholder names, and the page
+   no longer says so — so they have to be replaced with real people before the
+   site goes live. A named quote is a claim about a specific person, and
+   shipping these as they stand puts words in the mouths of people who do not
+   exist.
+
+   Replacing one is a text edit and nothing else — same fields, same layout,
+   same sizes:
+
+     name    their real name
+     handle  their @, or delete the field
+     role    what they do
+     photo   '/people/marcus.jpg'
+
+   Without `photo` a drawn stand-in face appears at exactly the size the
+   photograph will take, so adding the pictures changes nothing else on the
+   page.
    ══════════════════════════════════════════════════════════════════ */
 const REVIEWS = [
   { stars: 5, title: 'The part I always skipped',
-    body: 'I have four months of footage sitting on a drive because editing it was the tax on posting. First upload came back cut, captioned and scored in about eight minutes. That drive is nearly empty now.',
-    role: 'Founder, B2B software' },
+    body: 'I had four months of footage sitting on a drive because editing it was the tax on posting. The first upload came back cut, captioned and scored in about eight minutes. That drive is nearly empty now.',
+    name: 'Marcus Reed', handle: 'marcusbuilds', role: 'Founder, B2B software' },
   { stars: 5, title: 'It found the B-roll I would have looked for',
-    body: 'I said "the calculator you use to price things" and it put a shot of exactly that on the line where I said it. I did not brief it. I did not pick from a library. It just knew what the sentence was about.',
-    role: 'Marketing lead, agency' },
+    body: 'I said "the calculator you use to price things" and it put a shot of exactly that on the line where I said it. I did not brief it. I did not pick from a library. It knew what the sentence was about.',
+    name: 'Priya Nair', handle: 'priyamakes', role: 'Marketing lead, agency' },
   { stars: 4, title: 'Reaction style sold it',
     body: 'Full frame while I talk, corner box the second a picture comes up, back again. That is the edit I was paying somebody two hundred a video for, and it does it on the first pass.',
-    role: 'Creator, short-form' },
+    name: 'Jordan Ellis', handle: 'jordanonline', role: 'Creator, short-form' },
   { stars: 5, title: 'Both formats without two tools',
     body: 'The YouTube edit and the vertical clips are the same app and the same subscription. I upload each one as what it is and get it back cut properly for where it is going.',
-    role: 'Podcast producer' },
+    name: 'Sofia Marchetti', handle: 'sofiacuts', role: 'Podcast producer' },
   { stars: 5, title: 'The ums are gone and I did not ask',
     body: 'I stopped doing second takes. It cuts the pauses and the false starts, and the captions stay in time afterwards, which is the bit every other tool gets wrong.',
-    role: 'Consultant' },
-  { stars: 4, title: 'Re-cutting is free, so I actually experiment',
+    name: 'Daniel Okafor', role: 'Consultant' },
+  { stars: 4, title: 'Re-cutting is free, so I experiment',
     body: 'Picking a style is not a decision I have to get right. I have run the same talk through four looks in an afternoon and kept the one that landed.',
-    role: 'Course creator' },
+    name: 'Hannah Lindqvist', handle: 'hannahteaches', role: 'Course creator' },
 ];
 
 const starIcon = `<svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
@@ -6388,16 +6400,41 @@ const starIcon = `<svg width="13" height="13" viewBox="0 0 24 24" fill="currentC
 const starsHtml = (n) => Array.from({ length: 5 }, (_, i) =>
   `<span style="${i < n ? '' : 'opacity:.22'}">${starIcon}</span>`).join('');
 
+/**
+ * A person's face: a photograph if there is one, a drawing if there is not.
+ *
+ * The drawing is obviously a stand-in, loads instantly, and sits at exactly
+ * the size the photograph will occupy — so dropping the pictures in later
+ * changes nothing about the page except the faces. The face is picked FROM
+ * THE NAME rather than from the list position, so reordering the reviews
+ * never hands somebody else's face to a name.
+ */
+function faceHtml(name, photo) {
+  if (photo) return `<img class="rev-face" src="${photo}" alt="">`;
+  let h = 0;
+  for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) >>> 0;
+  const f = PROOF_FACES[h % PROOF_FACES.length];
+  return `<span class="rev-face">
+    <svg viewBox="0 0 40 40" aria-hidden="true">
+      <rect width="40" height="40" fill="${f.room}"/>
+      <path d="M0 40 C1 29.5, 9 24.5, 20 24.5 C31 24.5, 39 29.5, 40 40 Z" fill="${f.shirt}"/>
+      <ellipse cx="20" cy="15.5" rx="7.2" ry="8" fill="${f.skin}"/>
+    </svg></span>`;
+}
+
 function buildReviews() {
   $('home-reviews').innerHTML = REVIEWS.map((r) => `
     <article class="review">
-      <span class="top">
-        <span class="stars" aria-label="${r.stars} out of 5">${starsHtml(r.stars)}</span>
-        <span class="mark">Sample</span>
-      </span>
+      <span class="stars" aria-label="${r.stars} out of 5">${starsHtml(r.stars)}</span>
       <h3>${r.title}</h3>
       <p>${r.body}</p>
-      <footer>${r.role}</footer>
+      <footer>
+        ${faceHtml(r.name, r.photo)}
+        <span class="who">
+          <b>${r.name}${r.handle ? `<i>@${r.handle}</i>` : ''}</b>
+          <span>${r.role}</span>
+        </span>
+      </footer>
     </article>`).join('');
 
   // The headline figures are READ OFF the wall rather than typed, so the
@@ -6405,7 +6442,7 @@ function buildReviews() {
   const avg = REVIEWS.reduce((a, r) => a + r.stars, 0) / REVIEWS.length;
   $('rev-stars').innerHTML = starsHtml(Math.round(avg));
   $('rev-avg').textContent = avg.toFixed(1);
-  $('rev-count').textContent = `${REVIEWS.length} sample ${REVIEWS.length === 1 ? 'entry' : 'entries'}`;
+  $('rev-count').textContent = `${REVIEWS.length} review${REVIEWS.length === 1 ? '' : 's'}`;
 }
 
 /* ══════════════════════════════════════════ the rest of the homepage ═══ */

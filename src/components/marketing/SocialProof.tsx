@@ -1,4 +1,5 @@
 import { clsx } from 'clsx';
+import { Avatar, FACES } from '@/components/marketing/Avatar';
 
 /**
  * The row above the headline: who else is here, and what they made of it.
@@ -19,15 +20,6 @@ import { clsx } from 'clsx';
 
 const COUNT = 'over 100k';
 
-/** Skin and shirt per face: five people, visibly different, nobody real. */
-const FACES = [
-  { skin: '#E8C9A0', shirt: '#4A4370', room: '#2A2440' },
-  { skin: '#8D5C3D', shirt: '#3C5A6E', room: '#1F3242' },
-  { skin: '#F0D5B4', shirt: '#5A4A6E', room: '#332A47' },
-  { skin: '#6B4530', shirt: '#4C6A55', room: '#23392E' },
-  { skin: '#D8A87C', shirt: '#6A4A63', room: '#3D2A3A' },
-];
-
 const STAR = 'M10 1.4 12.5 7l6.1.6-4.6 4.1 1.3 6-5.3-3.1-5.3 3.1 1.3-6L1.4 7.6 7.5 7Z';
 
 export function SocialProof({ className }: { className?: string }) {
@@ -45,21 +37,14 @@ export function SocialProof({ className }: { className?: string }) {
           sits beside it, rather than three items strung along a line. */}
       <span className="grid justify-items-center">
         <span className="flex">
-          {FACES.map((f, i) => (
-            <span
+          {FACES.slice(0, 5).map((_, i) => (
+            <Avatar
               key={i}
+              name={`proof-${i}`}
               /* The ring is the pill's own fill, so the stack reads as
                  overlapping discs rather than as one blurred shape. */
-              className="block h-7 w-7 overflow-hidden rounded-full shadow-[0_0_0_2px_#19191F] [&+&]:-ml-2"
-            >
-              <svg viewBox="0 0 40 40" aria-hidden className="block h-full w-full">
-                <rect width="40" height="40" fill={f.room} />
-                {/* Shoulders run the full width of the disc. Stopped short
-                    they read as a hill behind a head rather than a person. */}
-                <path d="M0 40 C1 29.5, 9 24.5, 20 24.5 C31 24.5, 39 29.5, 40 40 Z" fill={f.shirt} />
-                <ellipse cx="20" cy="15.5" rx="7.2" ry="8" fill={f.skin} />
-              </svg>
-            </span>
+              className="h-7 w-7 shadow-[0_0_0_2px_#19191F] [&+&]:-ml-2"
+            />
           ))}
         </span>
 
