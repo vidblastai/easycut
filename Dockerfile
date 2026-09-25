@@ -32,8 +32,9 @@ ENV NODE_ENV=production
 FROM base AS deps
 COPY package.json package-lock.json* ./
 COPY prisma ./prisma
-# Dev dependencies are needed to build; the runtime stage takes only node_modules
-# that survive the prune below.
+# Dev dependencies ship to the runtime stage too, on purpose: the image runs
+# `tsx` for the worker and for the sound-effect generation below, and both are
+# dev dependencies. An earlier comment here promised a prune that never existed.
 RUN npm ci --include=dev
 
 # --------------------------------------------------------------- build ----
@@ -44,6 +45,11 @@ RUN npx prisma generate && npm run build
 # Remotion downloads its own Chromium on first render. Doing it here means the
 # first video a user renders is not also the one that waits for a 150MB
 # download on a cold container.
+#
+# It lands in `node_modules/.remotion`, NOT in a home-directory cache —
+# `getDownloadsCacheDir()` walks up from the cwd to the nearest package.json and
+# puts it there. That is why the runtime stage needs no separate COPY for it:
+# the `node_modules` copy below already carries the browser with it.
 RUN npx remotion browser ensure
 
 # ------------------------------------------------------------- runtime ----
@@ -62,8 +68,6 @@ COPY --from=build /app/remotion ./remotion
 COPY --from=build /app/scripts ./scripts
 COPY --from=build /app/content ./content
 COPY --from=build /app/tsconfig.json ./tsconfig.json
-# The browser Remotion fetched during build.
-COPY --from=build /root/.cache/remotion /root/.cache/remotion
 
 # Sound effects are synthesised, not shipped — a few hundred KB of ffmpeg output
 # rather than a binary blob in git.
