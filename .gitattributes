@@ -1,0 +1,2 @@
+# A Windows batch file must keep CRLF or cmd.exe mis-parses multi-line blocks.
+*.cmd text eol=crlf

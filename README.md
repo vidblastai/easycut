@@ -13,9 +13,14 @@ http://localhost:3000. Safe to run again.
 
 Needs Node 20 or newer. ffmpeg comes from npm — nothing to install by hand.
 
-**On Windows**, `start.sh` needs a bash — right-click the folder and pick
-"Git Bash here" (it comes with [Git for Windows](https://git-scm.com/download/win)).
-Or skip it and use the two cross-platform commands instead:
+**On Windows**, double-click **`start-windows.cmd`**. It does the same job:
+checks Node and Git, downloads the code if it is missing, installs, starts the
+app and opens the browser. Nothing to type.
+
+If you would rather use a terminal, `start.sh` needs a bash — right-click the
+folder and pick "Git Bash here" (it comes with
+[Git for Windows](https://git-scm.com/download/win)). Or use the two
+cross-platform commands instead:
 
 ```
 npm run setup       # installs, builds the database, fetches fonts and music
