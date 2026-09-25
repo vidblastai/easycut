@@ -166,6 +166,19 @@ export function ProjectWorkspace({
    * where they belong.
    */
   const [pane, setPane] = useState<'selected' | 'captions' | 'changes'>('captions');
+
+  /**
+   * Whether the inspector is showing, on a window too narrow to keep it open.
+   *
+   * It used to be `hidden lg:flex`, which meant that under 1024px the caption
+   * picker, the clip inspector and the change list did not merely shrink —
+   * they did not exist, with nothing on screen to say so. A laptop at a
+   * half-width window lost half the editor.
+   *
+   * Only consulted below `lg`; from there up the panel is always in the
+   * layout, exactly as before.
+   */
+  const [inspectorOpen, setInspectorOpen] = useState(false);
   const [inspectorHost, setInspectorHost] = useState<HTMLDivElement | null>(null);
   const [changesHost, setChangesHost] = useState<HTMLDivElement | null>(null);
 
@@ -453,6 +466,16 @@ export function ProjectWorkspace({
         full
         action={
           <>
+            {/* Only where the panel cannot be on screen already. */}
+            <button
+              type="button"
+              onClick={() => setInspectorOpen((open) => !open)}
+              aria-expanded={inspectorOpen}
+              className="btn-ghost lg:hidden"
+            >
+              <IconSliders className="h-[17px] w-[17px] text-violet" />
+              Panels
+            </button>
             <button type="button" onClick={() => setMode('simple')} className="btn-ghost">
               Done
             </button>
@@ -489,8 +512,31 @@ export function ProjectWorkspace({
               </div>
             </div>
 
-            {/* Beside the picture, never inside the timeline. */}
-            <aside className="hidden w-[368px] flex-none border-l border-line-soft lg:flex">
+            {/* Beside the picture, never inside the timeline.
+
+                Below `lg` there is no room beside the picture, so it slides
+                over it instead of disappearing: same panel, same contents,
+                reachable from "Panels" in the header. Moved with a transform
+                rather than unmounted, because the clip inspector and the
+                change list are PORTAL HOSTS — the timeline renders into these
+                two nodes, and unmounting them mid-edit would tear out what the
+                editor is currently drawing. */}
+            {inspectorOpen ? (
+              <button
+                type="button"
+                aria-label="Close the side panel"
+                onClick={() => setInspectorOpen(false)}
+                className="fixed inset-0 z-30 bg-ink/60 backdrop-blur-[2px] lg:hidden"
+              />
+            ) : null}
+
+            <aside
+              className={clsx(
+                'fixed inset-y-0 right-0 z-40 flex w-[min(368px,88vw)] border-l border-line-soft bg-ink transition-transform duration-200 motion-reduce:transition-none',
+                inspectorOpen ? 'translate-x-0' : 'translate-x-full',
+                'lg:static lg:z-auto lg:w-[368px] lg:flex-none lg:translate-x-0 lg:bg-transparent lg:transition-none',
+              )}
+            >
               <nav
                 aria-label="Side panel"
                 className="flex w-[48px] flex-none flex-col gap-1 border-r border-line-soft p-2.5"
