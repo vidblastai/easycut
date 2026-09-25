@@ -18,7 +18,7 @@ import { Avatar, FACES } from '@/components/marketing/Avatar';
  * never claim two different figures in two places.
  */
 
-const COUNT = 'over 100k';
+const COUNT = '100K+';
 
 const STAR = 'M10 1.4 12.5 7l6.1.6-4.6 4.1 1.3 6-5.3-3.1-5.3 3.1 1.3-6L1.4 7.6 7.5 7Z';
 
@@ -87,9 +87,9 @@ export function SocialProof({ className }: { className?: string }) {
       </span>
 
       <span className="whitespace-nowrap text-[13.5px] font-semibold text-muted max-[420px]:whitespace-normal max-[420px]:text-[12.5px]">
-        {/* The number never splits across lines: "Loved by over / 100k
-            creators" reads as a broken sentence, "Loved by / over 100k
-            creators" as a wrapped one. */}
+        {/* The number never splits across lines: "Loved by 100K+ /
+            creators" reads as a broken sentence, "Loved by / 100K+ creators"
+            as a wrapped one. */}
         Loved by <b className="whitespace-nowrap font-bold text-chalk">{COUNT} creators</b>
       </span>
     </div>

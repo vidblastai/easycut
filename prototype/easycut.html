@@ -1555,7 +1555,11 @@ body.instudio { overflow: hidden; }
   align-items: stretch;
 }
 @media (max-width: 940px) { .reviews { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-@media (max-width: 620px) { .reviews { grid-template-columns: 1fr; } }
+/* `minmax(0, 1fr)`, never a bare `1fr`. A `1fr` track has an automatic
+   MINIMUM of its content's min-content width, so on a narrow phone the card
+   refused to shrink past its longest byline and pushed the whole page 47px
+   sideways — the two wider breakpoints above already spell it correctly. */
+@media (max-width: 620px) { .reviews { grid-template-columns: minmax(0, 1fr); } }
 .review {
   display: flex; flex-direction: column; gap: 10px;
   border: 1px solid var(--line); background: var(--charcoal);
@@ -1897,8 +1901,8 @@ body.instudio { overflow: hidden; }
 }
 .proof-stars svg { display: block; }
 .proof-copy { font-size: 13.5px; font-weight: 600; color: var(--muted); white-space: nowrap; }
-/* The number never splits across lines: "Loved by over / 100k creators" reads
-   as a broken sentence, "Loved by / over 100k creators" as a wrapped one. */
+/* The number never splits across lines: "Loved by 100K+ / creators" reads as
+   a broken sentence, "Loved by / 100K+ creators" as a wrapped one. */
 .proof-copy b { color: var(--chalk); font-weight: 700; white-space: nowrap; }
 @media (max-width: 420px) {
   .proof { gap: 10px; padding-right: 15px; }
@@ -6227,7 +6231,7 @@ function flowClipHtml(lane, i, delay) {
    The number lives HERE, once, so changing it is one edit and there is no
    chance of the page claiming two different figures in two places.
    ══════════════════════════════════════════════════════════════ */
-const PROOF_COUNT = 'over 100k';
+const PROOF_COUNT = '100K+';
 
 /* Skin and shirt for each face. Five people, visibly different, none of them
    a photograph of anybody. */
