@@ -1,106 +1,165 @@
 #!/usr/bin/env bash
-# Deploy EasyCut to Railway.
+# Finish the Railway deployment. One command, no questions.
 #
-#   bash scripts/deploy-railway.sh
+#   RAILWAY_TOKEN=<your token> bash scripts/deploy-railway.sh
 #
-# Run this from a machine with a browser — `railway login` opens one. That means
-# your laptop, via the Claude desktop app or your own terminal; it cannot run
-# from a remote container that has no browser to hand you.
+# Adds Postgres, attaches a disk, sets the keys, gives the service a public URL
+# and waits until the app answers. Safe to run again — every step skips itself
+# if it is already done, so a half-finished project can simply be re-run.
 #
-# It prints every command before running it and stops on the first failure, so
-# a wrong flag is something you see rather than something that half-creates a
-# project. If a step fails, the manual click-path in docs/DEPLOY.md does the
-# same thing.
+# ── Why this file exists in this shape ──────────────────────────────────────
+#
+# The infrastructure half of a deployment — provision a database, mount a
+# volume, open a port — is not something a repository can do to itself. It
+# needs an authenticated call to the host. Anything that cannot reach
+# railway.app has to hand the work to something that can, and this is the
+# smallest possible thing to hand over: one line, no decisions, no browser.
+#
+# It used to ask `railway login`, which opens a browser, and then ask three
+# interactive questions. With RAILWAY_TOKEN set the CLI authenticates without
+# any of that, which is what turns this from a guided walkthrough into a
+# command you paste once.
 set -euo pipefail
 
-say()  { printf '\n\033[1m▸ %s\033[0m\n' "$1"; }
-run()  { printf '  \033[2m$ %s\033[0m\n' "$*"; "$@"; }
-ask()  { read -r -p "  $1 [y/N] " reply; [[ "$reply" =~ ^[Yy]$ ]]; }
+bold() { printf '\n\033[1m▸ %s\033[0m\n' "$1"; }
+dim()  { printf '  \033[2m%s\033[0m\n' "$1"; }
+ok()   { printf '  \033[32m✓\033[0m %s\n' "$1"; }
+warn() { printf '  \033[33m!\033[0m %s\n' "$1"; }
 
-# ── 0. the CLI ──────────────────────────────────────────────────────────────
+# Prints the command, then runs it. A wrong flag should be something you can
+# see afterwards rather than something that half-applied silently.
+run()  { printf '  \033[2m$ %s\033[0m\n' "$*"; "$@"; }
+
+# ── the token ───────────────────────────────────────────────────────────────
+if [ -z "${RAILWAY_TOKEN:-}" ] && [ -f .env ]; then
+  RAILWAY_TOKEN="$(grep '^RAILWAY_TOKEN=' .env 2>/dev/null | cut -d= -f2- || true)"
+  export RAILWAY_TOKEN
+fi
+
+if [ -z "${RAILWAY_TOKEN:-}" ]; then
+  cat <<'NEEDED'
+
+  No RAILWAY_TOKEN.
+
+  Make one at https://railway.com/account/tokens, then either put it in .env
+  as RAILWAY_TOKEN=... or run this as:
+
+      RAILWAY_TOKEN=xxxxxxxx bash scripts/deploy-railway.sh
+
+NEEDED
+  exit 1
+fi
+
+# ── the CLI ─────────────────────────────────────────────────────────────────
 if ! command -v railway >/dev/null 2>&1; then
-  say "Installing the Railway CLI"
+  bold "Installing the Railway CLI"
   if command -v brew >/dev/null 2>&1; then run brew install railway
   else run npm install -g @railway/cli
   fi
 fi
-run railway --version
+dim "$(railway --version 2>/dev/null || echo 'railway CLI')"
 
-# ── 1. Postgres in the schema ───────────────────────────────────────────────
-# Prisma reads the database type from schema.prisma, not an env var, so this
-# has to be committed before the image is built.
-if grep -q 'provider = "sqlite"' prisma/schema.prisma; then
-  say "Switching Prisma to Postgres"
-  run npm run db:postgres
-  run git add prisma/schema.prisma
-  run git commit -m "Use Postgres for the deployment"
-  run git push
+bold "Checking the token"
+if railway status >/dev/null 2>&1; then
+  ok "linked"
+  railway status 2>/dev/null | head -5 || true
 else
-  say "Prisma already targets Postgres"
+  warn "The token did not resolve to a project."
+  dim "A PROJECT token scopes itself automatically. An ACCOUNT token needs a link:"
+  dim "    railway link        # pick EasyCut → production"
+  dim "Then run this again."
+  exit 1
 fi
 
-# ── 2. account ──────────────────────────────────────────────────────────────
-say "Signing in to Railway (this opens your browser)"
-railway whoami >/dev/null 2>&1 || run railway login
-
-# ── 3. project ──────────────────────────────────────────────────────────────
-if [ -f .railway/config.json ] || railway status >/dev/null 2>&1; then
-  say "Already linked to a Railway project"
-  run railway status
+# ── Postgres ────────────────────────────────────────────────────────────────
+bold "Database"
+if railway variables 2>/dev/null | grep -q "DATABASE_URL"; then
+  ok "DATABASE_URL already present"
 else
-  say "Creating the project"
-  run railway init --name easycut
+  run railway add --database postgres || warn "could not add it — do it in the dashboard, then re-run"
+  dim "Railway injects DATABASE_URL into the service itself."
 fi
 
-# ── 4. database ─────────────────────────────────────────────────────────────
-say "Adding Postgres"
-# Railway injects DATABASE_URL into the app service itself.
-run railway add --database postgres || echo "  (already present, or add it in the dashboard)"
+# ── the disk ────────────────────────────────────────────────────────────────
+# Uploaded footage and finished renders live on a mounted disk. Without one the
+# container's filesystem is wiped on every restart, which loses somebody's
+# video rather than merely inconveniencing them.
+bold "A disk for the footage and the renders"
+if railway volume list 2>/dev/null | grep -q "/data"; then
+  ok "volume already mounted at /data"
+else
+  run railway volume add --mount-path /data \
+    || warn "this CLI cannot add volumes — Service → Settings → Volumes → mount at /data"
+fi
 
-# ── 5. settings ─────────────────────────────────────────────────────────────
-say "Setting the variables that are not secrets"
-run railway variables \
-  --set "QUEUE_DRIVER=db" \
-  --set "STORAGE_DRIVER=local" \
-  --set "STORAGE_LOCAL_DIR=/data" \
-  --set "LLM_PROVIDER=gemini" \
-  --set "NODE_ENV=production"
-
-say "Setting the API keys from your local .env"
+# ── the keys ────────────────────────────────────────────────────────────────
+# Only the secrets. QUEUE_DRIVER, STORAGE_DRIVER and STORAGE_LOCAL_DIR are
+# baked into the image, because they are the same on every deployment and a web
+# form is three more chances to typo them.
+bold "API keys"
 if [ -f .env ]; then
-  for key in DEEPGRAM_API_KEY GEMINI_API_KEY PEXELS_API_KEY CLERK_SECRET_KEY NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY; do
+  for key in DEEPGRAM_API_KEY ANTHROPIC_API_KEY GEMINI_API_KEY PEXELS_API_KEY \
+             RESEND_API_KEY CLERK_SECRET_KEY NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY \
+             STRIPE_SECRET_KEY STRIPE_WEBHOOK_SECRET ERROR_WEBHOOK_URL SENTRY_DSN; do
     value="$(grep "^${key}=" .env 2>/dev/null | cut -d= -f2- || true)"
     if [ -n "$value" ]; then
-      # Printed without the value — this scrolls past in a terminal others may see.
+      # The value is never printed: this scrolls past in a terminal, and a
+      # terminal is a place other people look.
       printf '  \033[2m$ railway variables --set "%s=***"\033[0m\n' "$key"
-      railway variables --set "${key}=${value}"
-    else
-      echo "  skipping ${key} (not in .env)"
+      railway variables --set "${key}=${value}" >/dev/null 2>&1 \
+        && ok "$key" || warn "$key failed"
     fi
   done
+  # The director needs telling which provider to use when both keys exist.
+  if grep -q '^GEMINI_API_KEY=.' .env 2>/dev/null && ! grep -q '^ANTHROPIC_API_KEY=.' .env 2>/dev/null; then
+    railway variables --set "LLM_PROVIDER=gemini" >/dev/null 2>&1 && ok "LLM_PROVIDER=gemini"
+  fi
 else
-  echo "  no .env found — set the keys in the Railway dashboard"
+  warn "no .env here, so no keys to copy up"
 fi
 
-# ── 6. disk ─────────────────────────────────────────────────────────────────
-say "A disk for the uploads and renders"
-echo "  The CLI's volume support has moved around between versions, so this one"
-echo "  is a dashboard click: Service → Settings → Volumes → mount at /data"
-ask "Done that?" || echo "  (carrying on — without it, videos vanish on restart)"
+# ── a public URL ────────────────────────────────────────────────────────────
+# A Dockerfile service is created unexposed: Railway will not guess that a
+# container wants a port open. Without this the app runs perfectly and nobody
+# can reach it, which looks exactly like a broken deployment.
+bold "A public URL"
+DOMAIN="$(railway domain 2>&1 | grep -oE '[a-z0-9.-]+\.up\.railway\.app' | head -1 || true)"
+if [ -n "$DOMAIN" ]; then
+  ok "https://$DOMAIN"
+  run railway variables --set "APP_URL=https://$DOMAIN" || warn "could not set APP_URL"
+else
+  warn "no domain yet — Service → Settings → Networking → Generate Domain"
+fi
 
-# ── 7. ship ─────────────────────────────────────────────────────────────────
-say "Deploying (first build takes a few minutes — it installs Chromium)"
-run railway up --detach
+# ── ship ────────────────────────────────────────────────────────────────────
+bold "Deploying"
+dim "The first build takes a few minutes: it installs a headless Chromium."
+run railway redeploy --yes 2>/dev/null || run railway up --detach
 
-say "Giving it a public URL"
-run railway domain
+# ── did it actually come up ─────────────────────────────────────────────────
+# Reporting success because a command exited 0 is how deployments get called
+# done while being down. This asks the app itself.
+if [ -n "$DOMAIN" ]; then
+  bold "Waiting for it to answer"
+  for i in $(seq 1 60); do
+    if curl -sf "https://$DOMAIN/api/health" >/dev/null 2>&1; then
+      ok "it is up: https://$DOMAIN"
+      echo
+      curl -s "https://$DOMAIN/api/health" | head -40
+      echo
+      exit 0
+    fi
+    sleep 10
+  done
+  warn "no answer after ten minutes. Check: railway logs"
+fi
 
 cat <<'DONE'
 
-  Next:
-    railway logs            watch it boot
-    railway open            open the dashboard
+  If anything above said "!", that step needs a click in the dashboard.
+  Everything else is done.
 
-  Then visit  <your-url>/api/health  — you want "status": "ok".
-  Set APP_URL to that URL in the Railway variables and redeploy.
+    railway logs        watch it boot
+    railway open        open the dashboard
+
 DONE

@@ -92,7 +92,25 @@ COPY --from=build /app/tsconfig.json ./tsconfig.json
 RUN npx tsx scripts/generate-sfx.ts || true
 
 EXPOSE 3000
-ENV PORT=3000 HOSTNAME=0.0.0.0
+
+# The settings that are not secrets live HERE, not in the host's dashboard.
+#
+# Every one of these is the same on any container deployment, so making a
+# person type them into a web form is three chances to typo something and one
+# more thing to forget. A secret still has to come from the environment —
+# these do not.
+#
+#   QUEUE_DRIVER=db      the web server and the worker share work through the
+#                        database, which is what removes Redis from the picture
+#   STORAGE_DRIVER=local a mounted disk, not S3 — see STORAGE_LOCAL_DIR
+#   STORAGE_LOCAL_DIR    where the volume gets mounted; override if you mount
+#                        it somewhere else
+#
+# All three are still overridable: a variable set on the host wins over ENV.
+ENV PORT=3000 HOSTNAME=0.0.0.0 \
+    QUEUE_DRIVER=db \
+    STORAGE_DRIVER=local \
+    STORAGE_LOCAL_DIR=/data
 
 # Render hosts sit behind load balancers that health-check before routing.
 HEALTHCHECK --interval=30s --timeout=5s --start-period=40s --retries=3 \
