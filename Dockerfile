@@ -40,6 +40,24 @@ RUN npm ci --include=dev
 # --------------------------------------------------------------- build ----
 FROM deps AS build
 COPY . .
+
+# Postgres, not SQLite, and this has to happen BEFORE `prisma generate`.
+#
+# Prisma resolves the database type from the schema FILE at generate time and
+# will not read it from an environment variable, so an image generated against
+# sqlite cannot talk to a Postgres DATABASE_URL however correct that URL is.
+# The failure arrives at runtime, on the first query, long after the build went
+# green — which is the worst possible moment to find out.
+#
+# The deploy guide used to say "run `npm run db:postgres` locally and commit
+# it". That is one manual step between a working repo and a broken deployment,
+# and it was duly forgotten. A container is always a deployment, so it decides
+# for itself; local development keeps SQLite untouched.
+#
+#   docker build --build-arg DB_PROVIDER=sqlite .   # if you really want it
+ARG DB_PROVIDER=postgresql
+RUN if [ "$DB_PROVIDER" = "postgresql" ]; then npm run db:postgres; fi
+
 RUN npx prisma generate && npm run build
 
 # Remotion downloads its own Chromium on first render. Doing it here means the

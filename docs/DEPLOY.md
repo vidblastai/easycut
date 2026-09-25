@@ -95,14 +95,15 @@ Written against Railway's documented commands but not executed end to end, so
 if a step fails, the manual path below is the ground truth. Volumes are a
 dashboard click either way.
 
-**1. Point the database at Postgres.** Run this once, locally, and commit it —
-Prisma reads the database type from a file, not an environment variable:
+**1. Nothing — the container does this for you.** Prisma reads the database
+type from a file rather than an environment variable, so the image has to be
+generated against Postgres. The Dockerfile now runs `npm run db:postgres`
+itself before `prisma generate`, and the repo stays on SQLite for local
+development.
 
-```bash
-npm run db:postgres
-git commit -am "Use Postgres"
-git push
-```
+This used to be a manual "run it locally and commit it" step. It was forgotten
+exactly once, which produced an image that built green and then failed on its
+first query — so it is no longer a step.
 
 **2. Make a Railway project.** [railway.app](https://railway.app) → sign in with
 GitHub → **New Project** → **Deploy from GitHub repo** → pick `easycut`.
