@@ -13,6 +13,18 @@ http://localhost:3000. Safe to run again.
 
 Needs Node 20 or newer. ffmpeg comes from npm — nothing to install by hand.
 
+**On Windows**, `start.sh` needs a bash — right-click the folder and pick
+"Git Bash here" (it comes with [Git for Windows](https://git-scm.com/download/win)).
+Or skip it and use the two cross-platform commands instead:
+
+```
+npm run setup       # installs, builds the database, fetches fonts and music
+npm run start:all   # web server and worker together
+```
+
+Everything else is the same. The binaries ffmpeg, ffprobe and the headless
+browser all come from npm, so there is nothing to install by hand there either.
+
 **Want to see a finished video before signing up for anything?**
 
 ```bash
