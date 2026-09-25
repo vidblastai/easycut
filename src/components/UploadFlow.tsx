@@ -337,21 +337,36 @@ export function UploadFlow({ styles, formats }: { styles: StyleOption[]; formats
                 there is no path from one to the other. Offering to "make it
                 long form" would be offering to crop somebody's vertical video
                 into a shape they did not film — and the server settles this
-                from ffprobe anyway, so the control would have been a lie. */}
-            <div className="mb-5 flex flex-wrap items-center gap-2 rounded-xl border border-line bg-charcoal px-3 py-2.5 text-[12.5px]">
-              <span
-                className="rounded-full px-2 py-0.5 text-[11px] font-bold uppercase tracking-wider"
-                style={{ background: 'rgba(155,123,255,.14)', color: '#B39AFF' }}
-              >
-                {format?.label ?? (mode === 'short' ? 'Short form' : 'Long form')}
-              </span>
-              <span className="text-muted">
-                {detected ? detected.reason : 'Reading your footage…'}
-              </span>
-              <span className="ml-auto text-faint">
-                {format ? format.platforms.join(' · ') : ''}
-              </span>
-            </div>
+                from ffprobe anyway, so the control would have been a lie.
+
+                ONLY ONCE THERE IS A FILE. This used to render on an empty
+                wizard, where it read "SHORT FORM · Reading your footage…" over
+                an empty drop zone — announcing a file nobody had chosen and
+                claiming to be reading it. Next to a button saying "Choose a
+                file first" that is a screen contradicting itself, and the
+                honest reading of it is that something is already loaded and
+                the upload is refusing you. */}
+            {file ? (
+              <div className="mb-5 flex flex-wrap items-center gap-2 rounded-xl border border-line bg-charcoal px-3 py-2.5 text-[12.5px]">
+                {/* The badge waits for the verdict too. Guessing "short form"
+                    while the header is still being read is a guess that will
+                    silently flip a second later on a widescreen file. */}
+                {detected && format ? (
+                  <span
+                    className="rounded-full px-2 py-0.5 text-[11px] font-bold uppercase tracking-wider"
+                    style={{ background: 'rgba(155,123,255,.14)', color: '#B39AFF' }}
+                  >
+                    {format.label}
+                  </span>
+                ) : null}
+                <span className="text-muted">
+                  {detected ? detected.reason : 'Reading your footage…'}
+                </span>
+                <span className="ml-auto text-faint">
+                  {detected && format ? format.platforms.join(' · ') : ''}
+                </span>
+              </div>
+            ) : null}
 
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
               {choices.map((s) => (
