@@ -1,4 +1,5 @@
 import { mkdir, rm } from 'node:fs/promises';
+import { stageDetail } from './detail';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { env } from '@/lib/config/env';
@@ -103,7 +104,14 @@ export async function runPipeline(
 
     try {
       await handler(context);
-      context.log.push({ stage, status: 'ok', ms: Date.now() - startedAt, message: '' });
+      // What it found, not how long it took — see detail.ts. Read AFTER the
+      // handler so the line reports the work that actually happened.
+      context.log.push({
+        stage,
+        status: 'ok',
+        ms: Date.now() - startedAt,
+        message: stageDetail(stage, context),
+      });
     } catch (error) {
       const message = (error as Error).message;
       const fatal = stage === 'ingest';

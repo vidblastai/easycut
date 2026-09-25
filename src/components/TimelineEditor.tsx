@@ -44,8 +44,17 @@ interface TimelineEditorProps {
    * a line on a chart and you are trimming blind; with it, dragging the playhead
    * scrubs the video and pressing play walks the playhead. One transport, two
    * views of the same moment.
+   *
+   * THE INSTANCE, NOT A REF, and that distinction was a real bug. The preview
+   * is a `next/dynamic` import with `ssr: false`, so it arrives a commit or two
+   * AFTER this component has mounted. A ref object never changes identity, so
+   * an effect keyed on one runs exactly once — here, while `.current` was still
+   * null — and never again once the player showed up. The listeners were never
+   * attached: pressing play played the video and left the playhead sitting at
+   * zero. A plain value re-renders when it arrives, so the effect below binds
+   * to the player the moment there is one.
    */
-  playerRef?: React.RefObject<PlayerRef | null>;
+  player?: PlayerRef | null;
   /** The working document, lifted so the preview renders the pending edits. */
   onWorkingEdlChange?: (edl: Edl) => void;
   /**
@@ -114,7 +123,7 @@ export function TimelineEditor({
   edl: committedEdl,
   onCommit,
   busy = false,
-  playerRef,
+  player = null,
   onWorkingEdlChange,
   panels = null,
   onSelect,
@@ -177,12 +186,11 @@ export function TimelineEditor({
   const seek = useCallback((sec: number) => {
     const clamped = Math.max(0, Math.min(duration, sec));
     setPlayhead(clamped);
-    playerRef?.current?.seekTo(Math.round(clamped * fps));
-  }, [duration, fps, playerRef]);
+    player?.seekTo(Math.round(clamped * fps));
+  }, [duration, fps, player]);
 
   /** Player → timeline, so playback walks the playhead. */
   useEffect(() => {
-    const player = playerRef?.current;
     if (!player) return;
 
     const onFrame = (e: { detail: { frame: number } }) => setPlayhead(e.detail.frame / fps);
@@ -197,7 +205,7 @@ export function TimelineEditor({
       player.removeEventListener('play', onPlay);
       player.removeEventListener('pause', onPause);
     };
-  }, [playerRef, fps]);
+  }, [player, fps]);
 
   /**
    * Zooming, anchored.
@@ -363,10 +371,9 @@ export function TimelineEditor({
   }, [playhead]);
 
   const togglePlay = useCallback(() => {
-    const player = playerRef?.current;
     if (!player) { setPlaying((p) => !p); return; }
     player.toggle();
-  }, [playerRef]);
+  }, [player]);
 
   /* ─────────────────────────────────────────────── op plumbing ─── */
 
@@ -539,6 +546,28 @@ export function TimelineEditor({
       // Anywhere that is not a clip means "nothing". Without it the only way to
       // put the inspector down is to pick up something else.
       setSelection(null);
+
+      /*
+       * And it means "go there", which is what every editor does and what this
+       * one used to do only on a 28px strip of ruler. Scrubbing is how you find
+       * the frame you are about to cut on; making it a hunt for a thin band at
+       * the top makes the most-used gesture the hardest one to land.
+       *
+       * Two places are deliberately NOT a scrub: the track-label gutter down
+       * the left, and the horizontal scrollbar along the bottom — capturing the
+       * pointer there would take the scrollbar away from the person using it.
+       * Both are measured off the scroll box rather than guessed from the event
+       * target, which is whatever child the cursor happened to be over.
+       */
+      const el = scrollRef.current;
+      if (!el) return;
+      const rect = el.getBoundingClientRect();
+      const onScrollbar = event.clientY - rect.top > el.clientHeight;
+      const inGutter = event.clientX - rect.left < TRACK_LABEL_W;
+      if (onScrollbar || inGutter) return;
+
+      beginDrag(event, 'playhead', null, 0, 0);
+      seek(secAtClientX(event.clientX));
       return;
     }
 

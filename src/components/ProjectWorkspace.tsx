@@ -129,7 +129,20 @@ export function ProjectWorkspace({
    * render, not the edit in your hands. So the timeline gets a Remotion Player
    * rendering the WORKING document, and the two share one playhead.
    */
-  const playerRef = useRef<PlayerRef | null>(null);
+  /*
+   * STATE, not a ref, and it has to be.
+   *
+   * The Player is a `next/dynamic` import with `ssr: false`, so it attaches a
+   * commit or two after everything around it has mounted. A ref's identity
+   * never changes, so anything downstream keyed on one binds once — while it
+   * is still null — and never rebinds. That is exactly what happened: the
+   * timeline attached its `frameupdate` listener to nothing, and pressing play
+   * played the video with the playhead parked at zero.
+   *
+   * A state setter in a callback ref re-renders when the player arrives, so
+   * the timeline's effects run again with something real to bind to.
+   */
+  const [player, setPlayer] = useState<PlayerRef | null>(null);
   const [workingEdl, setWorkingEdl] = useState<Edl | null>(null);
 
   /**
@@ -432,7 +445,7 @@ export function ProjectWorkspace({
                   maxWidth: '100%',
                 }}
               >
-                <LivePreview edl={live} playerRef={playerRef} />
+                <LivePreview edl={live} onPlayer={setPlayer} />
               </div>
             </div>
 
@@ -536,7 +549,7 @@ export function ProjectWorkspace({
               edl={doc}
               onCommit={applyOperations}
               busy={busy}
-              playerRef={playerRef}
+              player={player}
               onWorkingEdlChange={setWorkingEdl}
               panels={panels}
               onSelect={showSelected}
@@ -845,10 +858,11 @@ const EasyCutVideo = dynamic(
 
 function LivePreview({
   edl,
-  playerRef,
+  onPlayer,
 }: {
   edl: Edl;
-  playerRef: React.RefObject<PlayerRef | null>;
+  /** Called with the player as it mounts, and with null as it goes. */
+  onPlayer: (player: PlayerRef | null) => void;
 }) {
   const fps = edl.format.fps || 30;
   const [failed, setFailed] = useState<string | null>(null);
@@ -884,7 +898,7 @@ function LivePreview({
       ) : null}
 
       <Player
-        ref={playerRef}
+        ref={onPlayer}
         component={EasyCutVideo as never}
         inputProps={{
           edl,
@@ -1001,14 +1015,14 @@ function ProgressPanel({
             <li
               key={stage}
               className={clsx(
-                'grid grid-cols-[18px_minmax(0,1fr)_auto] items-center gap-3 rounded-lg px-3 py-2 transition-colors',
+                'grid grid-cols-[18px_minmax(0,1fr)_auto] items-start gap-3 rounded-lg px-3 py-2 transition-colors',
                 state === 'now' && 'bg-violet-dim',
                 state === 'dead' && 'bg-bad/[0.08]',
               )}
             >
               <span
                 className={clsx(
-                  'grid h-4 w-4 place-items-center rounded-full border',
+                  'mt-0.5 grid h-4 w-4 flex-none place-items-center rounded-full border',
                   state === 'done' && 'border-ok/45 bg-ok/[0.13] text-ok',
                   state === 'warn' && 'border-warn/50 bg-warn/[0.12] text-warn',
                   state === 'now' && 'animate-spin border-violet border-r-transparent',
@@ -1024,7 +1038,7 @@ function ProgressPanel({
 
               <span
                 className={clsx(
-                  'truncate text-[13.5px]',
+                  'min-w-0 text-[13.5px]',
                   state === 'now' && 'font-semibold text-chalk',
                   state === 'done' && 'text-muted',
                   state === 'warn' && 'text-warn',
@@ -1032,13 +1046,30 @@ function ProgressPanel({
                   state === 'todo' && 'text-faint',
                 )}
               >
-                {STAGE_LABELS[stage]}
-                {state === 'warn' && entry?.message ? (
-                  <span className="ml-2 text-[12px] text-muted">— {entry.message}</span>
+                <span className="block truncate">{STAGE_LABELS[stage]}</span>
+
+                {/* What the stage FOUND, under its name. A wall-clock beside
+                    each row only says the machine was busy, which the spinner
+                    already said; "118 words · deepgram nova-3" is the thing
+                    somebody watching this screen actually wants to know, and
+                    it is the only place eleven stages of work is ever visible
+                    before they collapse into one finished video. Written by
+                    src/lib/pipeline/detail.ts from what the stage produced,
+                    so a stage that found nothing says nothing. */}
+                {entry?.message ? (
+                  <span
+                    className={clsx(
+                      'mt-0.5 block truncate text-[11.5px] font-normal',
+                      state === 'warn' || state === 'dead' ? 'text-muted' : 'text-faint',
+                    )}
+                    title={entry.message}
+                  >
+                    {entry.message}
+                  </span>
                 ) : null}
               </span>
 
-              <span className="font-mono text-[11.5px] tabular-nums text-faint">
+              <span className="self-start font-mono text-[11.5px] leading-[20px] tabular-nums text-faint">
                 {entry ? `${(entry.ms / 1000).toFixed(1)}s` : ''}
               </span>
             </li>
