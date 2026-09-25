@@ -101,7 +101,12 @@ export const env = {
 
   llm: {
     // `auto` picks whichever key is present, preferring Anthropic when both are.
-    provider: (str('LLM_PROVIDER') ?? 'auto') as 'auto' | 'anthropic' | 'gemini' | 'stub',
+    provider: (str('LLM_PROVIDER') ?? 'auto') as
+      | 'auto'
+      | 'anthropic'
+      | 'gemini'
+      | 'wavespeed'
+      | 'stub',
     anthropicKey: str('ANTHROPIC_API_KEY'),
     model: str('LLM_MODEL') ?? 'claude-opus-5',
     geminiKey: str('GEMINI_API_KEY'),
@@ -113,6 +118,16 @@ export const env = {
      * script.
      */
     geminiPaid: bool('GEMINI_PAID_TIER', false),
+    /**
+     * One key, ~113 models, and the same account that generates the B-roll.
+     *
+     * The default model is a CLOSED one on purpose. Google is the only place
+     * Gemini's weights exist, so routing cannot downgrade it; open-weight
+     * models can be served at any quantisation by anyone, which is a quality
+     * question a router does not answer for you.
+     */
+    wavespeedKey: str('WAVESPEED_API_KEY'),
+    wavespeedModel: str('WAVESPEED_MODEL') ?? 'google/gemini-3.6-flash',
     maxOutputTokens: num('LLM_MAX_OUTPUT_TOKENS', 8000),
   },
 
@@ -311,10 +326,13 @@ export function capabilities(): Capability[] {
     {
       key: 'llm',
       label: 'AI director',
-      configured: Boolean(env.llm.anthropicKey || env.llm.geminiKey),
+      configured: Boolean(env.llm.anthropicKey || env.llm.geminiKey || env.llm.wavespeedKey),
       fallback: 'Rule-based director: hook = first strong sentence, B-roll on noun-dense spans. Usable, less clever.',
-      envVars: ['ANTHROPIC_API_KEY', 'GEMINI_API_KEY'],
-      signupUrl: 'https://console.anthropic.com/',
+      // WaveSpeed first: one key reaches every vendor's models AND the image
+      // and video generation, so it is the fewest accounts for the most of
+      // this list.
+      envVars: ['WAVESPEED_API_KEY', 'ANTHROPIC_API_KEY', 'GEMINI_API_KEY'],
+      signupUrl: 'https://wavespeed.ai/llm',
     },
     {
       key: 'stock',

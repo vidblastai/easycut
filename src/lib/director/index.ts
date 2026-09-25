@@ -3,6 +3,11 @@ import type { FormatMode, StylePreset } from '@/lib/styles/presets';
 import type { Transcript } from '@/lib/transcribe/types';
 import { estimateDirectorCostUsd, isAnthropicConfigured, runAnthropicDirector } from './anthropic';
 import { estimateGeminiCostUsd, isGeminiConfigured, runGeminiDirector } from './gemini';
+import {
+  estimateWavespeedCostUsd,
+  isWavespeedConfigured,
+  runWavespeedDirector,
+} from './wavespeed';
 import { runHeuristicDirector } from './heuristic';
 import type { DirectorBrief } from './prompt';
 import { mergePlans, type DirectorPlan } from './schema';
@@ -33,7 +38,7 @@ export interface DirectorRequest {
   userNote?: string;
 }
 
-export type DirectorProvider = 'anthropic' | 'gemini' | 'heuristic';
+export type DirectorProvider = 'anthropic' | 'gemini' | 'wavespeed' | 'heuristic';
 
 export interface DirectorResult {
   plan: DirectorPlan;
@@ -55,8 +60,12 @@ export function selectedProvider(): DirectorProvider {
   if (provider === 'stub') return 'heuristic';
   if (provider === 'anthropic') return isAnthropicConfigured() ? 'anthropic' : 'heuristic';
   if (provider === 'gemini') return isGeminiConfigured() ? 'gemini' : 'heuristic';
+  if (provider === 'wavespeed') return isWavespeedConfigured() ? 'wavespeed' : 'heuristic';
   if (isAnthropicConfigured()) return 'anthropic';
   if (isGeminiConfigured()) return 'gemini';
+  // Last of the three because it is the newest, not because it is the worst —
+  // an explicit LLM_PROVIDER always wins over this order anyway.
+  if (isWavespeedConfigured()) return 'wavespeed';
   return 'heuristic';
 }
 
@@ -93,7 +102,12 @@ export async function direct(request: DirectorRequest): Promise<DirectorResult> 
   }
 
   const windows = planWindows(transcript.durationSec);
-  const run = provider === 'gemini' ? runGeminiDirector : runAnthropicDirector;
+  const run =
+    provider === 'gemini'
+      ? runGeminiDirector
+      : provider === 'wavespeed'
+        ? runWavespeedDirector
+        : runAnthropicDirector;
 
   try {
     // Gemini's free tier allows only a handful of requests a minute, so a
@@ -136,9 +150,9 @@ export function estimateCostUsd(request: DirectorRequest): number {
   if (provider === 'heuristic') return 0;
   const windows = planWindows(request.transcript.durationSec);
   const chars = request.transcript.text.length;
-  return provider === 'gemini'
-    ? estimateGeminiCostUsd(chars, windows.length)
-    : estimateDirectorCostUsd(chars, windows.length);
+  if (provider === 'gemini') return estimateGeminiCostUsd(chars, windows.length);
+  if (provider === 'wavespeed') return estimateWavespeedCostUsd(chars, windows.length);
+  return estimateDirectorCostUsd(chars, windows.length);
 }
 
 function briefFor(request: DirectorRequest, startSec: number, endSec: number): DirectorBrief {
