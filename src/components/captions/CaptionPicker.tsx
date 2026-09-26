@@ -1,7 +1,9 @@
 'use client';
 
+import React, { useEffect, useMemo } from 'react';
 import { clsx } from 'clsx';
 import { CAPTION_PRESETS } from '@/lib/captions/presets';
+import { preloadCaptionFonts } from '@/lib/captions/web-fonts';
 import { CaptionBand } from './CaptionPreview';
 
 /**
@@ -41,8 +43,28 @@ export function CaptionPicker({
   // A style is only offered where it works: a ticker built for a widescreen
   // lower third is not a short-form caption, and offering it there is offering
   // something that will look wrong.
-  const shown = CAPTION_PRESETS.filter((p) => p.bestFor === 'both' || p.bestFor === mode);
+  const shown = useMemo(
+    () => CAPTION_PRESETS.filter((p) => p.bestFor === 'both' || p.bestFor === mode),
+    [mode],
+  );
   const frame = mode === 'short' ? { w: 1080, h: 1920 } : { w: 1920, h: 1080 };
+
+  /*
+   * Ask for every face at once, before any tile needs one.
+   *
+   * Left to itself each tile requests its own family the first time it paints,
+   * so choosing a style kicked off a fresh font fetch and a reflow of the whole
+   * grid — twenty of them, one per click, which is most of what made this feel
+   * slow. One batch up front, and the grid never reflows again.
+   */
+  useEffect(() => {
+    preloadCaptionFonts(shown.map((p) => p.style.fontFamily));
+    preloadCaptionFonts(
+      shown.flatMap((p) =>
+        [p.style.emphasisStyle?.fontFamily, p.style.lineTwoStyle?.fontFamily].filter(Boolean) as string[],
+      ),
+    );
+  }, [shown]);
 
   return (
     <div className={className}>
@@ -65,7 +87,15 @@ export function CaptionPicker({
         {shown.map((preset) => {
           const on = value === preset.id;
           return (
-            <li key={preset.id}>
+            /*
+             * `content-visibility` lets the browser skip the tiles that are
+             * scrolled out of sight. Each one is heavy — gradient text with a
+             * chain of drop-shadows, laid out at the video's real pixel size
+             * and scaled down — and twenty of them painting at once is what
+             * made the grid stutter. The reserved size stops the page jumping
+             * as they come into view.
+             */
+            <li key={preset.id} style={{ contentVisibility: 'auto', containIntrinsicSize: '220px' }}>
               <button
                 type="button"
                 onClick={() => onChange(on ? null : preset.id)}

@@ -32,7 +32,7 @@ import { findCaptionFont, fontStackFor } from '@/lib/captions/fonts';
  * Without it the two animations that light a word previewed with nothing lit,
  * which made them look identical to the ones that don't.
  */
-export function CaptionPreview({
+function CaptionPreviewImpl({
   style,
   text,
   frameWidth,
@@ -189,7 +189,7 @@ function splitForPreview(text: string, maxWords: number): string[] {
  * percentage translate is relative to the frame's own height — `-78%` puts
  * positionY 0.78 on the window's centre line, so the crop follows the style.
  */
-export function CaptionBand({
+function CaptionBandImpl({
   style,
   text,
   frameWidth,
@@ -236,3 +236,15 @@ export function CaptionBand({
     </div>
   );
 }
+
+/*
+ * Memoised, and that is load-bearing in the picker.
+ *
+ * Every tile is a gradient-filled, drop-shadowed block laid out at the video's
+ * real pixel size and scaled down. A preset's `style` is module data and the
+ * sample text is a literal, so the props of twenty tiles are identical from
+ * one render to the next — but choosing one lifts state in the wizard above
+ * them, and without this every tile re-rendered and repainted on every click.
+ */
+export const CaptionPreview = React.memo(CaptionPreviewImpl);
+export const CaptionBand = React.memo(CaptionBandImpl);

@@ -171,10 +171,19 @@ export async function extractAudio(videoPath: string, outputPath: string): Promi
  * 540p H.264 proxy is instant. The editor preview is entirely proxy-driven,
  * which is what makes tweaking feel free.
  */
-export async function makeProxy(videoPath: string, outputPath: string, height = 540): Promise<void> {
+export async function makeProxy(videoPath: string, outputPath: string, shortSide = 540): Promise<void> {
   await ffmpeg([
     '-y', '-i', videoPath,
-    '-vf', `scale=-2:${height}:flags=fast_bilinear`,
+    /*
+     * The SHORT side, not the height.
+     *
+     * Scaling the height of a vertical video to 540 leaves 304 pixels across,
+     * which is a thumbnail rather than a preview — and vertical is what most
+     * of this product's footage is. Measured on the short side, a portrait
+     * clip comes out 540×960 and a landscape one 960×540: the same half a
+     * megapixel either way, which is what makes the decode cheap.
+     */
+    '-vf', `scale='if(gt(iw,ih),-2,${shortSide})':'if(gt(iw,ih),${shortSide},-2)':flags=fast_bilinear`,
     '-c:v', 'libx264',
     '-preset', 'veryfast',
     '-crf', '28',

@@ -83,6 +83,8 @@ interface ProjectState {
    * a perfectly current file as stale.
    */
   exportStale: boolean;
+  /** The small copy of the footage the live preview plays. See the API. */
+  proxyUrl?: string | null;
   renders: Array<{
     id: string;
     edlId: string;
@@ -487,7 +489,18 @@ export function ProjectWorkspace({
      * picker that does not change the picture.
      */
     const base = workingEdl ?? doc;
-    const live = draftCaption ? { ...base, captionStyle: draftCaption } : base;
+    const styled = draftCaption ? { ...base, captionStyle: draftCaption } : base;
+    /*
+     * The preview plays the PROXY, the export reads the original.
+     *
+     * The document names the file the renderer must read, which from a phone
+     * is 4K HEVC — a file no browser can scrub. Swapping the URL here, for
+     * playback only, is the difference between an editor that responds and one
+     * that looks broken while the edit underneath it is fine.
+     */
+    const live = state.proxyUrl
+      ? { ...styled, source: { ...styled.source, url: state.proxyUrl } }
+      : styled;
     return (
       <AppShell
         recents={recents}

@@ -152,7 +152,24 @@ export async function processProject(payload: ProcessJobPayload): Promise<void> 
       data: { stage: 'deliver', progress: 0.94, progressLabel: STAGE_LABELS.deliver },
     });
 
-    const thumbObject = await makePosterFrame(projectId, edl, result.context.sourcePath);
+    const [thumbObject, proxyObject] = await Promise.all([
+      makePosterFrame(projectId, edl, result.context.sourcePath),
+      publishProxy(projectId, result.context.proxyPath),
+    ]);
+
+    if (proxyObject) {
+      await db.asset.create({
+        data: {
+          projectId,
+          kind: 'proxy',
+          storageKey: proxyObject.key,
+          url: proxyObject.url,
+          contentType: 'video/mp4',
+          sizeBytes: proxyObject.sizeBytes,
+          durationSec: edl.source.durationSec,
+        },
+      });
+    }
 
     if (thumbObject) {
       await db.asset.create({
@@ -544,6 +561,34 @@ async function makePosterFrame(
     return { key, url: object.url, sizeBytes: object.sizeBytes };
   } catch (error) {
     console.warn(`[worker] no poster frame for ${projectId}: ${String(error).slice(0, 140)}`);
+    return null;
+  }
+}
+
+/**
+ * Publishes the small proxy the pipeline already made.
+ *
+ * The editor plays the edit live, and it was playing it off the ORIGINAL —
+ * which from a phone is 4K HEVC. A browser seeking around that file drops
+ * frames on a laptop and stalls on anything less, so the editor felt broken
+ * while the edit underneath it was fine. The pipeline already builds a 540p
+ * H.264 proxy for the face tracker; this puts it where the browser can reach
+ * it. The export is untouched — it reads the original.
+ *
+ * Never fatal. Without it the editor falls back to the source, exactly as
+ * before.
+ */
+async function publishProxy(
+  projectId: string,
+  proxyPath: string | undefined,
+): Promise<{ key: string; url: string; sizeBytes: number } | null> {
+  if (!proxyPath) return null;
+  try {
+    const key = assetKey(projectId, 'proxy', 'preview.mp4');
+    const object = await storage().putFile(key, proxyPath, 'video/mp4');
+    return { key, url: object.url, sizeBytes: object.sizeBytes };
+  } catch (error) {
+    console.warn(`[worker] no preview proxy for ${projectId}: ${String(error).slice(0, 140)}`);
     return null;
   }
 }

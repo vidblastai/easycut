@@ -123,6 +123,14 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
         : null,
     /** True when the newest edit has no finished file yet. See above. */
     exportStale: Boolean(edl) && renderedCurrent === 0,
+    /**
+     * The small copy of the footage, for the editor's live preview.
+     *
+     * The document names the original, because that is what the renderer must
+     * read. A browser cannot scrub a 4K phone recording, so the editor swaps
+     * this in for playback only.
+     */
+    proxyUrl: project.assets.find((a) => a.kind === 'proxy')?.url ?? null,
     edl: edl
       ? {
           id: edl.id,
