@@ -402,6 +402,27 @@ export function ProjectWorkspace({
     [requestExport],
   );
 
+  /*
+   * A project made before the preview copy existed asks for one, once.
+   *
+   * Without it the editor for those projects goes on playing the original
+   * footage — 4K from a phone — which is the difference between an editor that
+   * responds and one that looks broken. The work happens on a worker and the
+   * URL arrives through the polling this page already does.
+   *
+   * ABOVE the loading branch below, and that placement is not cosmetic: a hook
+   * that only runs once the project has loaded is a hook that changes the
+   * order between renders, and React ends the page with "Rendered fewer hooks
+   * than expected" — a blank screen and a client-side exception.
+   */
+  const askedForProxy = useRef(false);
+  useEffect(() => {
+    if (askedForProxy.current) return;
+    if (!state?.edl || state.proxyUrl || state.project.status !== 'ready') return;
+    askedForProxy.current = true;
+    void fetch(`/api/projects/${projectId}/proxy`, { method: 'POST' }).catch(() => {});
+  }, [state?.edl, state?.proxyUrl, state?.project.status, projectId]);
+
   if (!state) {
     return (
       <AppShell recents={recents}>
@@ -423,22 +444,6 @@ export function ProjectWorkspace({
      edit? The second is the API's answer — see `exportStale` on ProjectState. */
   const rendering = state.renders.some((r) => r.status === 'queued' || r.status === 'running');
   const exportStale = state.exportStale;
-
-  /*
-   * A project made before the preview copy existed asks for one, once.
-   *
-   * Without it the editor for those projects goes on playing the original
-   * footage — 4K from a phone — which is the difference between an editor that
-   * responds and one that looks broken. The work happens on a worker and the
-   * URL arrives through the polling this page already does.
-   */
-  const askedForProxy = useRef(false);
-  useEffect(() => {
-    if (askedForProxy.current) return;
-    if (!doc || state.proxyUrl || project.status !== 'ready') return;
-    askedForProxy.current = true;
-    void fetch(`/api/projects/${project.id}/proxy`, { method: 'POST' }).catch(() => {});
-  }, [doc, state.proxyUrl, project.id, project.status]);
 
   /**
    * Where this video is in the four steps.
