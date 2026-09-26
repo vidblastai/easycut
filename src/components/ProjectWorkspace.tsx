@@ -677,7 +677,20 @@ export function ProjectWorkspace({
                 ))}
               </nav>
 
-              <div className="min-w-0 flex-1 overflow-y-auto p-4">
+              {/*
+                * Contained, so the panel's own work stays in the panel.
+                *
+                * Its contents change on the beat of the edit — the word chips
+                * follow the caption on screen, and cards change at cuts. Without
+                * containment every one of those changes asks the browser to
+                * re-check the layout of the whole editor, on the same frame as
+                * the cut itself. `contain` promises it cannot affect anything
+                * outside, and the browser takes the promise.
+                */}
+              <div
+                className="min-w-0 flex-1 overflow-y-auto p-4"
+                style={{ contain: 'layout style paint' }}
+              >
                 {error ? (
                   <p className="mb-3 rounded-xl border border-bad/40 bg-bad/[0.08] px-3 py-2 text-[12.5px] text-bad">
                     {error}

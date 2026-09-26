@@ -4,39 +4,50 @@ import type { Edl } from '../../src/lib/edl/types';
 import { brollCoverage, layoutPlan, lerpRegion, regionStyle } from '../../src/lib/styles/layouts';
 import { cameraFrame, punchScaleAt, sampleTrack } from '../lib/reframe';
 import { ramp } from '../lib/timing';
-import { sourceTimeAt } from '../../src/lib/timeline/source-time';
+import { planPreviewFrame } from '../../src/lib/timeline/preview-plan';
 
 /**
- * The speaker's footage in the EDITOR, as one video element for the whole edit.
+ * The speaker's footage in the EDITOR: two elements, leapfrogging the cuts.
  *
- * ── Why this exists, and why it is not `VideoTrack` ─────────────────────
+ * ── The problem, precisely ──────────────────────────────────────────────
  *
- * In the renderer each segment is its own `<Sequence>` with its own video, and
- * that is correct: a render draws one frame at a time and does not care how
- * many elements there are. In the browser it is the reason the preview froze
- * at every cut, and Remotion's own source says so plainly: when a media
- * element seeks, `bufferUntilFirstFrame` puts the PLAYER into a buffering
- * state — it stops the clock and everything on it until that element produces
- * a frame. A new segment going live is a new element, and a new element seeks.
- * So every cut is a deliberate, unavoidable stall, once per cut, forever.
+ * The renderer gives every segment its own `<Sequence>` and its own video
+ * element. That is right for a render and wrong for a browser: Remotion's
+ * `use-media-playback` calls `bufferUntilFirstFrame` whenever a media element
+ * seeks, which stops the Player's clock until that element produces a frame.
+ * A cut mounts an element, the element seeks, the world stops. Once per cut,
+ * by design.
  *
- * The fix is to take the footage out of Remotion's media system. All the
- * segments come from ONE file, so one element can play all of them: it is
- * mounted for the whole composition, and at a cut it moves its own
- * `currentTime`. Remotion never learns about that seek, so the clock never
- * stops; and because the file is already in memory (see `usePreloadedVideo`)
- * the seek is a memory offset, which lands in a frame or two.
+ * Playing everything through ONE element, seeking it by hand, removed that —
+ * but not the seek itself. An in-memory seek is fast, not free: the decoder
+ * still has to find the keyframe before the target and decode forward to it,
+ * and the picture holds the old frame while it does. On a cut every second or
+ * two, that is exactly the stutter you can see.
  *
- * Everything else about the preview — captions, B-roll, graphics, overlays —
- * stays exactly as it is. This replaces one layer, in the browser only.
+ * ── What this does instead ──────────────────────────────────────────────
+ *
+ * Two elements, and the next cut is already prepared before it arrives. One
+ * plays the current segment. The other sits paused at the FIRST FRAME of the
+ * next one, decoded and ready. At the cut they swap: the standby is already
+ * showing the right frame, so it only has to start playing, and the one that
+ * just finished becomes the standby and goes off to prepare the cut after
+ * that. The seek never happens while anybody is watching.
+ *
+ * This is what a native editor does with its decoders, and it is the only way
+ * to make a cut cost nothing in a browser. Both elements are mounted for the
+ * whole session, so nothing is ever created mid-playback, and Remotion is
+ * never told about any of it — the clock cannot stop for a seek it does not
+ * know happened.
+ *
+ * The renderer is untouched: it still uses `VideoTrack`, one sequence per
+ * segment, and the exported file is unchanged.
  */
 
-/** A gap this big means the edit jumped: a cut, or somebody scrubbing. */
-const SEEK_THRESHOLD_SEC = 0.25;
-/** Below this, leave the element alone and let it play at its own rate. */
-const NUDGE_THRESHOLD_SEC = 0.08;
+/** A gap this big means the edit jumped — a scrub, not playback. */
+const RESYNC_THRESHOLD_SEC = 0.3;
+/** How close to a cut the standby starts being prepared. */
+const PREPARE_AHEAD_SEC = 1.2;
 
-/** The same easing the renderer's video track uses, so the two agree. */
 function ease(t: number): number {
   const x = Math.max(0, Math.min(1, t));
   return x * x * (3 - 2 * x);
@@ -50,27 +61,34 @@ export const PreviewVideoTrack: React.FC<{
 }> = ({ edl, withAudio = false, onMediaError }) => {
   const frame = useCurrentFrame();
   const { fps, width: frameWidth, height: frameHeight } = useVideoConfig();
-  /* The Player's own transport state, so this element starts and stops with
+  /* The Player's own transport state, so these elements start and stop with
      everything else rather than guessing from the frame advancing. */
   const isPlaying = Internals.Timeline.usePlaying();
 
-  const ref = useRef<HTMLVideoElement>(null);
+  const aRef = useRef<HTMLVideoElement>(null);
+  const bRef = useRef<HTMLVideoElement>(null);
+  /** Which element is on screen: the other one is preparing the next cut. */
+  const liveIsA = useRef(true);
+  /** The segment the live element is playing, so a change means a cut. */
+  const liveSegment = useRef<string | null>(null);
+  /** The segment the standby has been prepared for, to prepare it only once. */
+  const readySegment = useRef<string | null>(null);
+
   const outSec = frame / fps;
 
+  /* ---- geometry, identical to the renderer's video track ---- */
   const plan = layoutPlan(edl.format.layout, edl.format);
   const coverage = plan.speakerWithBroll ? brollCoverage(edl.broll, outSec) : 0;
   const region = plan.speakerWithBroll
     ? lerpRegion(plan.speaker, plan.speakerWithBroll, ease(coverage))
     : plan.speaker;
   const inset = coverage > 0.001;
-
   const shaped =
     plan.speakerShape === 'circle'
       ? { borderRadius: '50%', boxShadow: '0 1.2% 3% rgba(0,0,0,.55)' }
       : plan.frameRadius
         ? { borderRadius: `${plan.frameRadius}%` }
         : null;
-
   const viewport = {
     width: Math.max(2, Math.round(frameWidth * region.w)),
     height: Math.max(2, Math.round(frameHeight * region.h)),
@@ -79,49 +97,94 @@ export const PreviewVideoTrack: React.FC<{
   const punch = punchScaleAt(edl.punchIns, outSec, (from, to) => ramp(frame, from * fps, to * fps));
   const camera = cameraFrame(edl, crop, punch, viewport);
 
-  /* Where in the source file this moment of the edit lives. */
-  const { segment, sourceSec } = sourceTimeAt(edl.segments, outSec);
-
   /*
-   * Kept in step by hand, every frame.
+   * Every frame: swap, seek or prepare — whichever this moment calls for.
    *
-   * A layout effect rather than an effect: this runs before the browser
-   * paints, so the picture and the captions over it belong to the same moment
-   * rather than being a frame apart at every cut.
+   * The decision itself lives in `planPreviewFrame`, which is a pure function
+   * with tests of its own: getting it wrong puts the seek back at the cut,
+   * which is the stutter this whole arrangement exists to remove, and that is
+   * not something to leave untested inside an effect.
+   *
+   * A layout effect rather than an effect, so the picture and the captions
+   * over it belong to the same moment rather than being a frame apart.
    */
   useLayoutEffect(() => {
-    const video = ref.current;
-    if (!video || !segment) return;
+    const a = aRef.current;
+    const b = bRef.current;
+    if (!a || !b) return;
 
-    const rate = Math.max(0.0625, segment.speed);
-    if (video.playbackRate !== rate) video.playbackRate = rate;
+    let live = liveIsA.current ? a : b;
+    let standby = liveIsA.current ? b : a;
 
-    const drift = video.currentTime - sourceSec;
-    if (Math.abs(drift) > SEEK_THRESHOLD_SEC) {
-      // A cut, or a scrub. One assignment; no request, because the file is
-      // already in memory.
-      video.currentTime = sourceSec;
-    } else if (!isPlaying && Math.abs(drift) > NUDGE_THRESHOLD_SEC) {
-      // Paused and slightly off — land it exactly, so a still frame is the
-      // frame the timeline says it is.
-      video.currentTime = sourceSec;
+    const plan = planPreviewFrame({
+      segments: edl.segments,
+      outSec,
+      liveSegmentId: liveSegment.current,
+      readySegmentId: readySegment.current,
+      liveTime: live.currentTime,
+      playing: isPlaying,
+      resyncSec: RESYNC_THRESHOLD_SEC,
+      prepareAheadSec: PREPARE_AHEAD_SEC,
+    });
+    if (!plan.segmentId) return;
+
+    if (plan.swap) {
+      // The standby has been sitting on this segment's first frame, decoded.
+      // Swapping is two style changes and a play() — no seek, nothing to wait
+      // for, which is the entire point of keeping a pair.
+      liveIsA.current = !liveIsA.current;
+      const wasLive = live;
+      live = standby;
+      standby = wasLive;
+
+      live.style.opacity = '1';
+      live.style.zIndex = '1';
+      standby.style.opacity = '0';
+      standby.style.zIndex = '0';
+      standby.pause();
+      standby.muted = true;
+      live.muted = !withAudio;
     }
 
-    if (isPlaying && video.paused) {
-      void video.play().catch(() => {
+    if (plan.changed) {
+      liveSegment.current = plan.segmentId;
+      readySegment.current = null;
+    }
+
+    if (live.playbackRate !== plan.speed) live.playbackRate = plan.speed;
+    if (plan.seekTo !== null) live.currentTime = plan.seekTo;
+
+    if (isPlaying && live.paused) {
+      void live.play().catch(() => {
         /* Autoplay refusals are the browser's business, not an edit's. */
       });
-    } else if (!isPlaying && !video.paused) {
-      video.pause();
+    } else if (!isPlaying && !live.paused) {
+      live.pause();
+    }
+
+    if (plan.prepare) {
+      readySegment.current = plan.prepare.id;
+      standby.pause();
+      standby.muted = true;
+      // Decoding this frame now is the work that used to happen AT the cut.
+      standby.currentTime = plan.prepare.at;
+      standby.playbackRate = plan.prepare.speed;
     }
   });
 
-  /* Muted elements are allowed to play without a gesture; an unmuted one is
-     not, so the voice arrives on the first press of play rather than never. */
   useEffect(() => {
-    const video = ref.current;
-    if (video) video.muted = !withAudio;
+    const live = liveIsA.current ? aRef.current : bRef.current;
+    if (live) live.muted = !withAudio;
   }, [withAudio]);
+
+  const videoStyle: React.CSSProperties = {
+    position: 'absolute',
+    width: camera.width,
+    height: camera.height,
+    left: camera.left,
+    top: camera.top,
+    objectFit: 'fill',
+  };
 
   return (
     <AbsoluteFill
@@ -140,21 +203,23 @@ export const PreviewVideoTrack: React.FC<{
           : null),
       }}
     >
+      {/* The pair. Both mounted for the whole session: an element created
+          mid-playback is the thing this exists to avoid. */}
       <video
-        ref={ref}
+        ref={aRef}
         src={edl.source.url}
         preload="auto"
         playsInline
-        muted={!withAudio}
         onError={onMediaError ? () => onMediaError('This browser could not play the preview copy.') : undefined}
-        style={{
-          position: 'absolute',
-          width: camera.width,
-          height: camera.height,
-          left: camera.left,
-          top: camera.top,
-          objectFit: 'fill',
-        }}
+        style={{ ...videoStyle, opacity: 1, zIndex: 1 }}
+      />
+      <video
+        ref={bRef}
+        src={edl.source.url}
+        preload="auto"
+        playsInline
+        muted
+        style={{ ...videoStyle, opacity: 0, zIndex: 0 }}
       />
     </AbsoluteFill>
   );

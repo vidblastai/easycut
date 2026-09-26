@@ -25,6 +25,9 @@ import { findCaptionFont } from '../../src/lib/captions/fonts';
  * how many words are in it, because those come from the cue timing the ASR
  * produced and re-flowing them would desynchronise the whole track.
  */
+/** How far ahead the next card is drawn, invisibly, to be rasterised. */
+const PREWARM_SEC = 0.8;
+
 export const Captions: React.FC<{ edl: Edl; positionY?: number | null; lowDetail?: boolean }> = ({
   edl,
   positionY = null,
@@ -59,7 +62,26 @@ export const Captions: React.FC<{ edl: Edl; positionY?: number | null; lowDetail
   for (const cue of edl.captions) for (const word of cue.words) want(word.style?.fontFamily);
 
   const cue = edl.captions.find((c) => outSec >= c.startSec && outSec < c.endSec);
-  if (!cue) return null;
+
+  /*
+   * The card AFTER this one, drawn early and almost invisibly.
+   *
+   * A caption card is heavy to paint the first time: every word is gradient
+   * text under a chain of drop-shadows, and the browser rasterises all of it
+   * the moment the card appears. Cards change at cuts — the card builder ends
+   * one at every splice — so that cost lands on the same frame as everything
+   * else the cut asks for, and it is visible as a hitch.
+   *
+   * Drawing it a beat early at four thousandths of opacity does the
+   * rasterising then, off the critical frame. It is not visible, it cannot be
+   * interacted with, and when the card's real moment comes the browser already
+   * has the pixels.
+   */
+  const upcoming = lowDetail
+    ? edl.captions.find((c) => c.startSec > outSec && c.startSec - outSec <= PREWARM_SEC)
+    : undefined;
+
+  if (!cue && !upcoming) return null;
 
   // A split screen decides where the words go, not the caption preset: the seam
   // is the one band that covers neither the face above it nor the picture
@@ -67,13 +89,32 @@ export const Captions: React.FC<{ edl: Edl; positionY?: number | null; lowDetail
   const style = positionY === null ? edl.captionStyle : { ...edl.captionStyle, positionY };
 
   return (
-    <CaptionCard
-      cue={cue}
-      style={style}
-      fontStack={fontStack}
-      overrideFonts={overrideFonts}
-      lowDetail={lowDetail}
-    />
+    <>
+      {cue ? (
+        <CaptionCard
+          cue={cue}
+          style={style}
+          fontStack={fontStack}
+          overrideFonts={overrideFonts}
+          lowDetail={lowDetail}
+        />
+      ) : null}
+      {upcoming ? (
+        <div
+          aria-hidden
+          style={{ position: 'absolute', inset: 0, opacity: 0.004, pointerEvents: 'none' }}
+        >
+          <CaptionCard
+            cue={upcoming}
+            style={style}
+            fontStack={fontStack}
+            overrideFonts={overrideFonts}
+            lowDetail={lowDetail}
+            frozen
+          />
+        </div>
+      ) : null}
+    </>
   );
 };
 
@@ -91,12 +132,14 @@ const CaptionCard: React.FC<{
   fontStack: string;
   overrideFonts: Map<string, string>;
   lowDetail?: boolean;
-}> = ({ cue, style, fontStack, overrideFonts, lowDetail = false }) => {
+  /** Draw the card as it will look once it has settled. See PREWARM_SEC. */
+  frozen?: boolean;
+}> = ({ cue, style, fontStack, overrideFonts, lowDetail = false, frozen = false }) => {
   const frame = useCurrentFrame();
   const { fps, height, width } = useVideoConfig();
-  const outSec = frame / fps;
+  const outSec = frozen ? cue.endSec - 0.01 : frame / fps;
   const cueStartFrame = cue.startSec * fps;
-  const sinceCue = frame - cueStartFrame;
+  const sinceCue = frozen ? fps * 2 : frame - cueStartFrame;
 
   const fontSize = height * style.fontSizeRatio;
 
@@ -185,6 +228,7 @@ const CaptionCard: React.FC<{
             fps={fps}
             sinceCue={sinceCue}
             lowDetail={lowDetail}
+            frozen={frozen}
           />
           </React.Fragment>
         ))}
@@ -209,9 +253,11 @@ const Word: React.FC<{
   sinceCue: number;
   /** Draw the cheap version of the effects. See `gradientFilter`. */
   lowDetail?: boolean;
+  /** Skip the arrival animation: this word is being drawn ahead of time. */
+  frozen?: boolean;
 }> = ({
   word, index, lineTwo = false, style, fontStack, overrideFonts, fontSize, maxWidthPx,
-  outSec, frame, fps, sinceCue, lowDetail = false,
+  outSec, frame, fps, sinceCue, lowDetail = false, frozen = false,
 }) => {
   /* The word's own choices over the style's emphasis rule — see
      resolveWordStyle. Computed once, and everything below reads it. */
@@ -224,8 +270,8 @@ const Word: React.FC<{
     word.emphasis,
   );
 
-  const isActive = outSec >= word.startSec && outSec < word.endSec;
-  const hasArrived = outSec >= word.startSec;
+  const isActive = !frozen && outSec >= word.startSec && outSec < word.endSec;
+  const hasArrived = frozen || outSec >= word.startSec;
 
   let opacity = 1;
   let scale = 1;
@@ -268,7 +314,7 @@ const Word: React.FC<{
     case 'word-pop':
     case 'bounce': {
       waiting = !hasArrived;
-      const s = pop(frame - word.startSec * fps, fps, 0, style.animation === 'bounce');
+      const s = frozen ? 1 : pop(frame - word.startSec * fps, fps, 0, style.animation === 'bounce');
       scale = 0.72 + s * 0.28 + (word.emphasis ? 0.08 : 0);
       opacity = Math.min(1, s * 1.6);
       translateY = (1 - s) * fontSize * 0.28;
@@ -277,7 +323,7 @@ const Word: React.FC<{
 
     case 'shake': {
       waiting = !hasArrived;
-      const s = pop(frame - word.startSec * fps, fps, 0, true);
+      const s = frozen ? 1 : pop(frame - word.startSec * fps, fps, 0, true);
       scale = 0.8 + s * 0.2;
       opacity = Math.min(1, s * 1.8);
       // Emphasis words land crooked and settle. Every word doing it is noise.
