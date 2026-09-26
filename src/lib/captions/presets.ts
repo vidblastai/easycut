@@ -66,6 +66,7 @@ export const CAPTION_PRESETS: CaptionPreset[] = [
       background: { color: 'rgba(13,13,16,0.72)', padding: 18, radius: 14 },
       wordBox: null,
       emphasisStyle: null,
+      emphasisOwnLine: false,
     },
   },
   {
@@ -99,6 +100,7 @@ export const CAPTION_PRESETS: CaptionPreset[] = [
       background: { color: 'rgba(0,0,0,0.6)', padding: 12, radius: 8 },
       wordBox: null,
       emphasisStyle: null,
+      emphasisOwnLine: false,
     },
   },
   {
@@ -132,6 +134,7 @@ export const CAPTION_PRESETS: CaptionPreset[] = [
       background: { color: 'rgba(25,25,31,0.82)', padding: 20, radius: 22 },
       wordBox: null,
       emphasisStyle: null,
+      emphasisOwnLine: false,
     },
   },
   {
@@ -165,6 +168,7 @@ export const CAPTION_PRESETS: CaptionPreset[] = [
       background: null,
       wordBox: null,
       emphasisStyle: null,
+      emphasisOwnLine: false,
     },
   },
 
@@ -200,6 +204,7 @@ export const CAPTION_PRESETS: CaptionPreset[] = [
       background: null,
       wordBox: null,
       emphasisStyle: null,
+      emphasisOwnLine: false,
     },
   },
   {
@@ -233,6 +238,7 @@ export const CAPTION_PRESETS: CaptionPreset[] = [
       background: null,
       wordBox: { color: '#9B7BFF', padding: 8, radius: 10 },
       emphasisStyle: null,
+      emphasisOwnLine: false,
     },
   },
   {
@@ -266,6 +272,7 @@ export const CAPTION_PRESETS: CaptionPreset[] = [
       background: null,
       wordBox: null,
       emphasisStyle: null,
+      emphasisOwnLine: false,
     },
   },
   {
@@ -299,6 +306,7 @@ export const CAPTION_PRESETS: CaptionPreset[] = [
       background: null,
       wordBox: null,
       emphasisStyle: null,
+      emphasisOwnLine: false,
     },
   },
   {
@@ -332,6 +340,7 @@ export const CAPTION_PRESETS: CaptionPreset[] = [
       background: null,
       wordBox: null,
       emphasisStyle: null,
+      emphasisOwnLine: false,
     },
   },
 
@@ -348,7 +357,15 @@ export const CAPTION_PRESETS: CaptionPreset[] = [
       fontFamily: 'Anton',
       fontWeight: 400,
       italic: false,
-      fontSizeRatio: 0.068,
+      /*
+       * 0.058, down from 0.068.
+       *
+       * The first cut of this filled the frame edge to edge, which is what a
+       * caption does when it is competing with the face behind it rather than
+       * sitting over it. Smaller also leaves the highlight room to be 1.35×
+       * larger and still be a caption rather than a title card.
+       */
+      fontSizeRatio: 0.058,
       letterSpacing: -0.005,
       /*
        * TIGHT, and that is the whole point of this preset.
@@ -417,6 +434,7 @@ export const CAPTION_PRESETS: CaptionPreset[] = [
         scale: 1.35,
         offsetY: -0.12,
       },
+      emphasisOwnLine: true,
     },
   },
 
@@ -451,6 +469,7 @@ export const CAPTION_PRESETS: CaptionPreset[] = [
       background: null,
       wordBox: null,
       emphasisStyle: null,
+      emphasisOwnLine: false,
     },
   },
   {
@@ -484,6 +503,7 @@ export const CAPTION_PRESETS: CaptionPreset[] = [
       background: null,
       wordBox: null,
       emphasisStyle: null,
+      emphasisOwnLine: false,
     },
   },
   {
@@ -517,6 +537,7 @@ export const CAPTION_PRESETS: CaptionPreset[] = [
       background: { color: '#9B7BFF', padding: 16, radius: 6 },
       wordBox: null,
       emphasisStyle: null,
+      emphasisOwnLine: false,
     },
   },
   {
@@ -550,6 +571,7 @@ export const CAPTION_PRESETS: CaptionPreset[] = [
       background: null,
       wordBox: null,
       emphasisStyle: null,
+      emphasisOwnLine: false,
     },
   },
 
@@ -585,6 +607,7 @@ export const CAPTION_PRESETS: CaptionPreset[] = [
       background: { color: 'rgba(13,13,16,0.86)', padding: 16, radius: 4 },
       wordBox: null,
       emphasisStyle: null,
+      emphasisOwnLine: false,
     },
   },
   {
@@ -618,6 +641,7 @@ export const CAPTION_PRESETS: CaptionPreset[] = [
       background: null,
       wordBox: null,
       emphasisStyle: null,
+      emphasisOwnLine: false,
     },
   },
   {
@@ -651,6 +675,7 @@ export const CAPTION_PRESETS: CaptionPreset[] = [
       background: null,
       wordBox: null,
       emphasisStyle: null,
+      emphasisOwnLine: false,
     },
   },
 ];

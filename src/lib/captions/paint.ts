@@ -234,6 +234,16 @@ export function resolveWordStyle(
  * advance per face, rounded up, catches that while never shrinking a word that
  * would have fitted.
  */
+/**
+ * Enough leading to contain an expressive face's ascenders and descenders.
+ *
+ * 1.45 is measured against the worst of the script faces in the registry, not
+ * guessed: Yellowtail's ink runs about 1.38em from the top of its ascenders to
+ * the bottom of its descenders. The margin above that absorbs the outline and
+ * the first stop of the glow, which are also inside the filter region.
+ */
+const GLYPH_SAFE_LINE_HEIGHT = 1.45;
+
 const AVG_ADVANCE: Record<string, number> = {
   // Scripts are wide and their swashes overhang; assume the worst.
   script: 0.62,
@@ -320,7 +330,29 @@ export function wordStyle(
       word?.fontWeight ?? (emphasis ? Math.min(900, style.fontWeight + 100) : style.fontWeight),
     fontStyle: (word?.italic ?? style.italic) ? 'italic' : 'normal',
     fontSize: scaled,
-    lineHeight: style.lineHeight,
+    /*
+     * A styled word needs a box tall enough to hold its own letters.
+     *
+     * ── Why this clips, which is not obvious ────────────────────────────
+     *
+     * A CSS `filter` establishes a filter region, and Chromium's is the
+     * element's box plus a margin — NOT however far the ink happens to
+     * stretch. Every gradient or glowing word goes through `filter`, so its
+     * paint is cropped to that region.
+     *
+     * The line's own `lineHeight` can be well under 1 (Spotlight uses 0.92 so
+     * a nudged word can cross the line above), and a brush script has huge
+     * ascenders and a descender that dives far below the baseline. Box 0.92em
+     * tall, ink perhaps 1.6em: the filter region sliced the top and bottom off
+     * every letter. In a finished video "BY" rendered with the Y cut through
+     * at both ends.
+     *
+     * So a word with its own styling gets a box sized to its glyphs rather
+     * than to the line's leading. Plain words are untouched — their leading is
+     * the whole point of a tight preset, and nothing clips them because they
+     * have no filter.
+     */
+    lineHeight: word ? Math.max(style.lineHeight, GLYPH_SAFE_LINE_HEIGHT) : style.lineHeight,
     letterSpacing: `${style.letterSpacing}em`,
     // A gradient moves the shadow, glow and outline out of `text-shadow` and
     // into a `filter` chain — see gradientFilter for the two reasons why.

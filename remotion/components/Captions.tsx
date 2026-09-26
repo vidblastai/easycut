@@ -130,8 +130,24 @@ const CaptionCard: React.FC<{
         }}
       >
         {cue.words.map((word, index) => (
-          <Word
-            key={`${cue.id}-${index}`}
+          <React.Fragment key={`${cue.id}-${index}`}>
+            {/*
+              * A full-width, zero-height break.
+              *
+              * The block is a wrapping flex row, and this is how you force a
+              * wrap inside one: an item that is already 100% wide leaves no
+              * room beside it, so the next item starts a new line. Not a
+              * `<br>`, which flex ignores, and not a second block, which would
+              * need its own alignment and gap to stay in step with the first.
+              *
+              * Only before an emphasised word, only when the style asks, and
+              * never as the first item — a break there would open an empty
+              * line above the caption.
+              */}
+            {style.emphasisOwnLine && word.emphasis && index > 0 ? (
+              <span aria-hidden style={{ flexBasis: '100%', height: 0 }} />
+            ) : null}
+            <Word
             word={word}
             index={index}
             style={style}
@@ -144,6 +160,7 @@ const CaptionCard: React.FC<{
             fps={fps}
             sinceCue={sinceCue}
           />
+          </React.Fragment>
         ))}
       </div>
     </AbsoluteFill>

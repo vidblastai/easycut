@@ -130,8 +130,14 @@ export function CaptionPreview({
               const applied = resolveWordStyle(style, null, emphasis);
               const caps = applied?.uppercase ?? style.uppercase;
               return (
+                <React.Fragment key={index}>
+                  {/* The same break the renderer makes — see Captions.tsx. A
+                      picker that shows the highlight inline would be showing a
+                      layout the export does not produce. */}
+                  {style.emphasisOwnLine && emphasis && index > 0 ? (
+                    <span aria-hidden style={{ flexBasis: '100%', height: 0 }} />
+                  ) : null}
                 <span
-                  key={index}
                   style={wordStyle(style, {
                     fontStack,
                     fontSize,
@@ -144,6 +150,7 @@ export function CaptionPreview({
                 >
                   {caps ? word.toUpperCase() : word}
                 </span>
+                </React.Fragment>
               );
             })}
           </div>

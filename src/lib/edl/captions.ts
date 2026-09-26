@@ -44,7 +44,16 @@ export function buildCaptions(options: BuildCaptionsOptions): CaptionCue[] {
 
     const segment = mapper.segmentAt(start);
     placed.push({
-      text: style.uppercase ? word.text.toUpperCase() : word.text,
+      /*
+       * The word is stored AS SPOKEN, not as displayed.
+       *
+       * Casing is a styling decision, so the renderer makes it — and it has to
+       * be able to make it per word: a brush-script highlight opts out of the
+       * line's uppercase, and text already flattened to caps here could never
+       * be opted back out. It also means the description and the SRT read as
+       * sentences rather than as SHOUTING.
+       */
+      text: word.text,
       startSec: start,
       endSec: end,
       emphasis: emphasis.some((e) => word.startSec >= e.startSec - 0.02 && word.endSec <= e.endSec + 0.02),
@@ -92,6 +101,24 @@ export function buildCaptions(options: BuildCaptionsOptions): CaptionCue[] {
 
     bucket.push(word);
 
+    /*
+     * A highlighted word ends its card.
+     *
+     * The style can put the emphasised word on a line of its own, underneath
+     * the plain ones — "WATCHING WAS / entirely". That only reads if the word
+     * is LAST: an emphasised word in the middle leaves the rest of the
+     * sentence stranded below it, which is the opposite of the shape being
+     * aimed for.
+     *
+     * Only when the style actually asks. Presets that merely recolour an
+     * emphasised word want it to stay where it fell in the sentence, and
+     * breaking their cards early would shorten every card for nothing.
+     */
+    if (style.emphasisOwnLine && word.emphasis && bucket.length > 1) {
+      flush();
+      continue;
+    }
+
     const endsClause = /[,.!?;:]$/.test(word.text);
     const atWordLimit = bucket.length >= style.maxWordsPerCue;
     // Break on a clause boundary as soon as the card has some substance, so
@@ -103,27 +130,59 @@ export function buildCaptions(options: BuildCaptionsOptions): CaptionCue[] {
   flush();
 
   // 3. Repair: no orphan single-word cards, and enforce a readable minimum.
-  return repair(cues, options.outputDurationSec, style.maxWordsPerCue);
+  return repair(cues, options.outputDurationSec, style);
 }
 
-function repair(cues: CaptionCue[], durationSec: number, maxWords: number): CaptionCue[] {
+function repair(cues: CaptionCue[], durationSec: number, style: CaptionStyle): CaptionCue[] {
+  const maxWords = style.maxWordsPerCue;
   const result: CaptionCue[] = [];
+  /*
+   * A short word held back because it could not join the card in front of it.
+   * It joins the next card instead, which is the only other place it can go
+   * without undoing the rule that put it here.
+   */
+  let carried: CaptionCue['words'] = [];
 
   for (const cue of cues) {
+    const words = carried.length ? [...carried, ...cue.words] : [...cue.words];
+    carried = [];
+
     const previous = result[result.length - 1];
-    const isOrphan = cue.words.length === 1 && cue.words[0].text.length <= 4;
+    const isOrphan = words.length === 1 && words[0].text.length <= 4;
     const canMerge =
       previous &&
       previous.words.length < maxWords + 1 &&
       cue.startSec - previous.endSec < BREATH_GAP_SEC &&
       cue.endSec - previous.startSec < MAX_CUE_SEC + 0.5;
+    /*
+     * Never tack a word onto a card whose highlight is meant to sit alone
+     * underneath. Doing so puts a plain word after the highlight, which is the
+     * exact shape the flush in step 2 exists to avoid — the merge that tidies
+     * an orphan would quietly undo it on the very cards it matters for.
+     */
+    const wouldStrandTheHighlight =
+      style.emphasisOwnLine && !!previous?.words[previous.words.length - 1]?.emphasis;
 
-    if (isOrphan && canMerge) {
-      previous.words.push(...cue.words);
-      previous.endSec = cue.endSec;
+    if (isOrphan && canMerge && !wouldStrandTheHighlight) {
+      previous!.words.push(...words);
+      previous!.endSec = cue.endSec;
       continue;
     }
-    result.push({ ...cue, words: [...cue.words] });
+    if (isOrphan && wouldStrandTheHighlight) {
+      carried = words;
+      continue;
+    }
+    // A carried word starts earlier than the card it joined, so the card has
+    // to come up when its first word is spoken.
+    result.push({ ...cue, startSec: words[0].startSec, words });
+  }
+  if (carried.length) {
+    result.push({
+      id: `cue-${result.length}`,
+      startSec: carried[0].startSec,
+      endSec: carried[carried.length - 1].endSec,
+      words: carried,
+    });
   }
 
   // Extend short cards into the gap that follows them, never over the next card.

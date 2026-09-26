@@ -282,6 +282,26 @@ export const CaptionStyleSchema = z.object({
    * A word's own `style` still wins: a deliberate choice outranks a rule.
    */
   emphasisStyle: CaptionWordStyleSchema.nullable().default(null),
+  /**
+   * Put the emphasised word on a line of its own, underneath.
+   *
+   * ── Why this is a rule and not a preference ─────────────────────────────
+   *
+   * A word in a different face, a different size and a different colour,
+   * sitting mid-sentence between two words of the base style, reads as a
+   * mistake — the eye takes it for a rendering fault rather than a decision.
+   * Every version of this look in the wild puts the highlight on its own line
+   * BELOW the plain one, and that is what makes it read as designed:
+   *
+   *     WATCHING WAS
+   *       entirely
+   *
+   * It also solves the collision. A script word one and a half times the size
+   * of its neighbours, nudged upward to overlap, has to overlap SOMETHING —
+   * and on its own line that something is empty space above it rather than the
+   * word next to it.
+   */
+  emphasisOwnLine: z.boolean().default(false),
   /** Rounded plate behind just the word being spoken. */
   wordBox: z.object({
     color: z.string(),

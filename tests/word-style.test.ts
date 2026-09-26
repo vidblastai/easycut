@@ -298,3 +298,41 @@ describe('a style’s own rule for emphasised words', () => {
     expect(applied?.gradient).toBeTruthy();
   });
 });
+
+describe('a styled word’s box', () => {
+  /*
+   * The bug this guards: a CSS `filter` crops its element to a region based on
+   * the element's BOX, not on how far the ink reaches. Spotlight sets
+   * lineHeight 0.92 so a nudged word can ride over the line above — and a
+   * brush script's Y dives far below the baseline. The result in a finished
+   * video was every blue word sliced through, top and bottom.
+   */
+  it('is tall enough for a brush script even when the line is tight', () => {
+    const tight = CaptionStyleSchema.parse({ lineHeight: 0.92 });
+    const styled = wordStyle(tight, {
+      fontStack: 'X',
+      fontSize: 62,
+      color: '#fff',
+      emphasis: true,
+      word: { fontFamily: 'Yellowtail', gradient: { from: '#2AB9FB', to: '#24F6FF', angle: 180 } },
+    });
+    expect(Number(styled.lineHeight)).toBeGreaterThanOrEqual(1.4);
+  });
+
+  it('leaves a plain word on the line’s own leading', () => {
+    // Tight leading is the whole point of a preset like Spotlight, and nothing
+    // clips a plain word because it goes through no filter.
+    const tight = CaptionStyleSchema.parse({ lineHeight: 0.92 });
+    const plain = wordStyle(tight, { fontStack: 'X', fontSize: 62, color: '#fff', emphasis: false });
+    expect(plain.lineHeight).toBe(0.92);
+  });
+
+  it('keeps the space between words when the line is tighter than 1', () => {
+    // A negative `gap` is dropped whole — row AND column — so "THE MOST"
+    // rendered as "THEMOST".
+    const gap = String(blockStyle(CaptionStyleSchema.parse({ lineHeight: 0.92 }), { width: 1080, height: 1920 }, 62).gap);
+    const [row, column] = gap.split(' ');
+    expect(parseFloat(row)).toBeGreaterThanOrEqual(0);
+    expect(parseFloat(column)).toBeGreaterThan(0);
+  });
+});

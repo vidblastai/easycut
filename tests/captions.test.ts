@@ -114,3 +114,43 @@ describe('caption building', () => {
     ).toEqual([]);
   });
 });
+
+describe('putting the highlighted word on its own line', () => {
+  const mapper = () => new TimeMapper(layoutSegments([{ sourceStartSec: 0, sourceEndSec: 5 }]));
+  const spec: Array<[string, number, number]> = [
+    ['watching', 0.1, 0.5],
+    ['was', 0.5, 0.8],
+    ['entirely', 0.8, 1.4],
+    ['free', 1.4, 1.8],
+  ];
+
+  it('ends the card on the highlighted word, so it lands last', () => {
+    // The style renders the highlight beneath the plain words. That only reads
+    // as "WATCHING WAS / entirely" if the highlight is the card's LAST word —
+    // one in the middle would strand the rest of the sentence below it.
+    const cues = buildCaptions({
+      words: words(spec),
+      mapper: mapper(),
+      style: CaptionStyleSchema.parse({ maxWordsPerCue: 4, emphasisOwnLine: true }),
+      emphasis: [{ startSec: 0.8, endSec: 1.4 }],
+      outputDurationSec: 5,
+    });
+
+    const card = cues.find((c) => c.words.some((w) => w.emphasis))!;
+    expect(card.words[card.words.length - 1].text).toBe('entirely');
+  });
+
+  it('leaves the word where it fell for styles that only recolour it', () => {
+    // Breaking every card early would shorten them all for no visual gain.
+    const cues = buildCaptions({
+      words: words(spec),
+      mapper: mapper(),
+      style: CaptionStyleSchema.parse({ maxWordsPerCue: 4 }),
+      emphasis: [{ startSec: 0.8, endSec: 1.4 }],
+      outputDurationSec: 5,
+    });
+
+    expect(cues).toHaveLength(1);
+    expect(cues[0].words.map((w) => w.text)).toEqual(['watching', 'was', 'entirely', 'free']);
+  });
+});
