@@ -13,6 +13,7 @@ import { STAGES as PIPELINE_STAGES, STAGE_LABELS } from '@/lib/pipeline/types';
 import { CaptionStudio } from '@/components/captions/CaptionStudio';
 import { WordStyler } from '@/components/captions/WordStyler';
 import { CaptionBand } from '@/components/captions/CaptionPreview';
+import { usePreloadedVideo } from '@/components/editor/use-preloaded-video';
 import { captionPresetFor } from '@/lib/captions/presets';
 import { IconCheck, IconDownload, IconPlus, IconSliders } from '@/components/shell/Icons';
 import { TopbarUpload } from '@/components/shell/UploadEntry';
@@ -391,6 +392,14 @@ export function ProjectWorkspace({
   }, [state?.edl, state?.proxyUrl, state?.project.status, projectId]);
 
   /*
+   * The footage, in memory, before anything plays. See `usePreloadedVideo`.
+   *
+   * This is what makes a cut instant: a seek in a streamed file is a round
+   * trip to the server, and the edit seeks at every cut.
+   */
+  const preload = usePreloadedVideo(state?.proxyUrl ?? null);
+
+  /*
    * The document the preview plays, built ONCE per change.
    *
    * This used to be assembled inline in the render body, which meant a new
@@ -409,10 +418,11 @@ export function ProjectWorkspace({
     const base = workingEdl ?? state?.edl?.document ?? lastDoc.current;
     if (!base) return null;
     const styled = draftCaption ? { ...base, captionStyle: draftCaption } : base;
-    return state?.proxyUrl
-      ? { ...styled, source: { ...styled.source, url: state.proxyUrl } }
+    const previewSource = preload.url ?? state?.proxyUrl;
+    return previewSource
+      ? { ...styled, source: { ...styled.source, url: previewSource } }
       : styled;
-  }, [workingEdl, state?.edl?.document, draftCaption, state?.proxyUrl]);
+  }, [workingEdl, state?.edl?.document, draftCaption, state?.proxyUrl, preload.url]);
 
   if (!state) {
     return (
@@ -565,7 +575,7 @@ export function ProjectWorkspace({
                   three quarters of the screen, which puts the timeline — the
                   entire reason for being on this screen — below the fold. */}
               <div
-                className="max-h-[42vh] overflow-hidden rounded-[14px] bg-black shadow-card sm:max-h-none"
+                className="relative max-h-[42vh] overflow-hidden rounded-[14px] bg-black shadow-card sm:max-h-none"
                 style={{
                   aspectRatio: project.mode === 'short' ? '9 / 16' : '16 / 9',
                   height: '100%',
@@ -573,6 +583,31 @@ export function ProjectWorkspace({
                 }}
               >
                 <LivePreview edl={live} onPlayer={setPlayer} />
+
+                {/*
+                  * Held until the footage is in memory.
+                  *
+                  * The preview is mounted underneath — it needs to be, so it
+                  * can load — but pressing play before the file is down means
+                  * playing it over the network, which stalls at every cut. A
+                  * few seconds of a progress bar buys an edit that plays
+                  * straight through, and it says what it is doing rather than
+                  * leaving somebody to wonder.
+                  */}
+                {!preload.ready ? (
+                  <div className="absolute inset-0 z-20 flex flex-col items-center justify-center gap-3 bg-ink/85 backdrop-blur-sm">
+                    <div className="h-1 w-40 overflow-hidden rounded-full bg-line">
+                      <div
+                        className="h-full rounded-full bg-violet transition-[width] duration-200"
+                        style={{ width: `${Math.max(6, Math.round(preload.progress * 100))}%` }}
+                      />
+                    </div>
+                    <p className="text-[12.5px] font-semibold">Getting your footage ready…</p>
+                    <p className="max-w-[240px] text-center text-[11.5px] leading-snug text-muted">
+                      Loading it once now means it plays straight through the cuts.
+                    </p>
+                  </div>
+                ) : null}
               </div>
             </div>
 
