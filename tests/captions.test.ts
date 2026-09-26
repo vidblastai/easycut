@@ -208,7 +208,7 @@ describe('a highlight that would open a card', () => {
 });
 
 describe('which word gets the highlight', () => {
-  const mapper = () => new TimeMapper(layoutSegments([{ sourceStartSec: 0, sourceEndSec: 6 }]));
+  const mapper = () => new TimeMapper(layoutSegments([{ sourceStartSec: 0, sourceEndSec: 30 }]));
   const spoken: Array<[string, number, number]> = [
     ['you', 0.1, 0.35],
     ['have', 0.35, 0.6],
@@ -217,17 +217,21 @@ describe('which word gets the highlight', () => {
   ];
   const ownLine = (over: object = {}) =>
     CaptionStyleSchema.parse({ maxWordsPerCue: 4, emphasisOwnLine: true, ...over });
+  const lit = (cues: ReturnType<typeof buildCaptions>) =>
+    cues.flatMap((c) => c.words).filter((w) => w.emphasis).map((w) => w.text);
 
-  it('never spends a whole line on a two-letter word', () => {
-    // "to" set in a brush script under the sentence reads as a glitch.
+  it('moves off a two-letter word onto the word beside it', () => {
+    // Real directors mark "to" and "by" constantly. A whole line of brush
+    // script spent on one reads as a fault, so the mark is a PLACE and the
+    // word is chosen near it.
     const cues = buildCaptions({
       words: words(spoken),
       mapper: mapper(),
       style: ownLine(),
       emphasis: [{ startSec: 0.6, endSec: 0.75 }],
-      outputDurationSec: 6,
+      outputDurationSec: 30,
     });
-    expect(cues.flatMap((c) => c.words).filter((w) => w.emphasis)).toEqual([]);
+    expect(lit(cues)).toEqual(['commit']);
   });
 
   it('takes the longest word of the phrase the director marked', () => {
@@ -236,22 +240,44 @@ describe('which word gets the highlight', () => {
       mapper: mapper(),
       style: ownLine(),
       emphasis: [{ startSec: 0.6, endSec: 1.3 }],
-      outputDurationSec: 6,
+      outputDurationSec: 30,
     });
-    const lit = cues.flatMap((c) => c.words).filter((w) => w.emphasis);
-    expect(lit.map((w) => w.text)).toEqual(['commit']);
+    expect(lit(cues)).toEqual(['commit']);
   });
 
-  it('counts letters, not punctuation', () => {
+  it('never highlights a word shorter than the style asks for', () => {
     const cues = buildCaptions({
-      words: words([['scale.', 0.1, 0.7]]),
+      words: words([
+        ['it', 0.1, 0.3],
+        ['is', 0.3, 0.5],
+        ['on', 0.5, 0.7],
+      ]),
       mapper: mapper(),
-      style: ownLine({ emphasisMinChars: 6 }),
-      emphasis: [{ startSec: 0.1, endSec: 0.7 }],
-      outputDurationSec: 6,
+      style: ownLine(),
+      emphasis: [{ startSec: 0.3, endSec: 0.5 }],
+      outputDurationSec: 30,
     });
-    // "scale." is six characters but five letters, so it misses the bar.
-    expect(cues.flatMap((c) => c.words).some((w) => w.emphasis)).toBe(false);
+    expect(lit(cues)).toEqual([]);
+  });
+
+  it('keeps the look going when the director marks nothing usable', () => {
+    // A director that marked only function words used to flatten the whole
+    // video to plain white captions. The cadence pass is what stops that.
+    const spec: Array<[string, number, number]> = [];
+    const sentence = ['nobody', 'talks', 'about', 'the', 'boring', 'middle', 'of', 'building'];
+    for (let i = 0; i < 40; i++) {
+      spec.push([sentence[i % sentence.length], i * 0.45, i * 0.45 + 0.4]);
+    }
+    const cues = buildCaptions({
+      words: words(spec),
+      mapper: mapper(),
+      style: ownLine(),
+      emphasis: [],
+      outputDurationSec: 30,
+    });
+    const marks = lit(cues);
+    expect(marks.length).toBeGreaterThanOrEqual(2);
+    for (const word of marks) expect(word.length).toBeGreaterThanOrEqual(5);
   });
 
   it('still colours the whole phrase for a preset that only recolours', () => {
@@ -260,9 +286,8 @@ describe('which word gets the highlight', () => {
       mapper: mapper(),
       style: CaptionStyleSchema.parse({ maxWordsPerCue: 4 }),
       emphasis: [{ startSec: 0.6, endSec: 1.3 }],
-      outputDurationSec: 6,
+      outputDurationSec: 30,
     });
-    const lit = cues.flatMap((c) => c.words).filter((w) => w.emphasis);
-    expect(lit.map((w) => w.text)).toEqual(['to', 'commit']);
+    expect(lit(cues)).toEqual(['to', 'commit']);
   });
 });

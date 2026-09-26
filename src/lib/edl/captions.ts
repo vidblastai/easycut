@@ -31,12 +31,16 @@ const MIN_CUE_SEC = 0.36;
 const MAX_CUE_SEC = 4.0;
 /** A pause this long ends a card even mid-sentence — it's a natural beat. */
 const BREATH_GAP_SEC = 0.45;
+/** How far from the director's mark a highlight may be moved to find a word. */
+const SPAN_REACH_SEC = 1.6;
+/** The look is a rhythm, so no stretch of caption goes this long unhighlighted. */
+const HIGHLIGHT_EVERY_SEC = 6;
 
 export function buildCaptions(options: BuildCaptionsOptions): CaptionCue[] {
   const { words, mapper, style, emphasis } = options;
 
   // 1. Map every surviving word onto output time, dropping the cut ones.
-  const placed: Array<CaptionWord & { segmentKey: string; spanIndex: number }> = [];
+  const placed: Array<CaptionWord & { segmentKey: string; spanIndex: number; srcSec: number }> = [];
   for (const word of words) {
     const start = mapper.toOutput(word.startSec);
     const end = mapper.toOutput(word.endSec);
@@ -61,12 +65,13 @@ export function buildCaptions(options: BuildCaptionsOptions): CaptionCue[] {
       spanIndex: emphasis.findIndex(
         (e) => word.startSec >= e.startSec - 0.02 && word.endSec <= e.endSec + 0.02,
       ),
+      srcSec: (word.startSec + word.endSec) / 2,
     });
   }
   if (!placed.length) return [];
 
   placed.sort((a, b) => a.startSec - b.startSec);
-  markEmphasis(placed, style);
+  markEmphasis(placed, style, emphasis);
 
   // 2. Group into cards.
   const cues: CaptionCue[] = [];
@@ -181,43 +186,74 @@ export function buildCaptions(options: BuildCaptionsOptions): CaptionCue[] {
 /**
  * Decides which words actually get the highlight.
  *
- * The director marks a SPAN — usually the phrase it wants landed on, which can
- * be several words. What happens to that span depends on what the highlight
- * is:
+ * The director marks a SPAN — the moment it wants landed on. What that turns
+ * into depends on what the highlight IS:
  *
- *  - A preset that recolours a word can colour the whole phrase. Nothing moves,
- *    nothing changes size, and three coloured words in a row read as one
- *    emphasised phrase, which is what the director meant.
+ *  - A preset that recolours a word can colour the whole span. Nothing moves
+ *    or changes size, and three coloured words in a row read as one emphasised
+ *    phrase, which is what the director meant.
  *
  *  - A preset that gives the highlight a line of its own, in another face and
- *    half again as large, cannot. Every word so marked would claim its own
- *    line, and a short one would claim it for nothing: "to" set in a brush
- *    script under a sentence reads as a glitch. So the span gets ONE word —
- *    its longest, and only if that word is long enough to be worth the line.
- *    A span of nothing but small words gets no highlight at all, which is a
- *    plain caption card and perfectly fine.
+ *    half again as large, cannot. Every marked word would claim a line, and a
+ *    short one would claim it for nothing: "to" set in a brush script under
+ *    the sentence reads as a fault.
+ *
+ * For that second kind the span is treated as a PLACE, not a selection. Models
+ * mark function words all the time — a run of real output had the director
+ * choosing "by", "to" and "your" — so what happens here is: look around the
+ * span, and take the longest word near it that is worth the line. Rejecting
+ * the span outright was tried and is worse than either alternative, because a
+ * whole video came back with no highlight anywhere and the look simply
+ * vanished.
+ *
+ * Then a cadence pass fills the gaps. The look is a rhythm — a highlight every
+ * few seconds — and a director having an off run should not flatten it.
  */
 function markEmphasis(
-  placed: Array<CaptionWord & { spanIndex: number }>,
+  placed: Array<CaptionWord & { spanIndex: number; srcSec: number }>,
   style: CaptionStyle,
+  spans: Array<{ startSec: number; endSec: number }>,
 ): void {
   if (!style.emphasisOwnLine) {
     for (const word of placed) word.emphasis = word.spanIndex >= 0;
     return;
   }
 
-  const best = new Map<number, CaptionWord & { spanIndex: number }>();
-  for (const word of placed) {
-    if (word.spanIndex < 0) continue;
-    if (letterCount(word.text) < style.emphasisMinChars) continue;
-    const incumbent = best.get(word.spanIndex);
-    // Longest wins; on a tie the earlier word keeps it, so the highlight lands
-    // as soon in the phrase as it can.
-    if (!incumbent || letterCount(word.text) > letterCount(incumbent.text)) {
-      best.set(word.spanIndex, word);
-    }
+  const worthy = (word: { text: string }) => letterCount(word.text) >= style.emphasisMinChars;
+
+  /*
+   * One word per span. The director's own choice comes first — it marked that
+   * moment for a reason — and only when nothing it marked is worth a line does
+   * the choice widen to the words around it.
+   */
+  for (let span = 0; span < spans.length; span++) {
+    const marked = placed.filter((w) => w.spanIndex === span);
+    if (!marked.length) continue;
+    const middle = (marked[0].srcSec + marked[marked.length - 1].srcSec) / 2;
+    const near = placed.filter(
+      (w) => Math.abs(w.srcSec - middle) <= SPAN_REACH_SEC && !w.emphasis,
+    );
+    const best = pickLongest(marked.filter(worthy)) ?? pickLongest(near.filter(worthy));
+    if (best) best.emphasis = true;
   }
-  for (const word of best.values()) word.emphasis = true;
+
+  /* And a highlight at least every few seconds, wherever one is missing. */
+  const end = placed[placed.length - 1].endSec;
+  for (let from = placed[0].startSec; from < end; from += HIGHLIGHT_EVERY_SEC) {
+    const window = placed.filter((w) => w.startSec >= from && w.startSec < from + HIGHLIGHT_EVERY_SEC);
+    if (!window.length || window.some((w) => w.emphasis)) continue;
+    const best = pickLongest(window.filter(worthy));
+    if (best) best.emphasis = true;
+  }
+}
+
+/** Longest wins; on a tie the earlier word, so a highlight lands promptly. */
+function pickLongest<T extends { text: string }>(words: T[]): T | undefined {
+  let best: T | undefined;
+  for (const word of words) {
+    if (!best || letterCount(word.text) > letterCount(best.text)) best = word;
+  }
+  return best;
 }
 
 /** Letters and digits only: "now," is three characters, not four. */
