@@ -259,8 +259,15 @@ const GLYPH_SAFE_LINE_HEIGHT = 1.45;
  * So a styled word carries padding, and cancels it again with an equal
  * negative margin. The box the browser paints into grows; the space the word
  * occupies on the line does not move by a pixel.
+ *
+ * 0.6em is measured, not guessed. Rendering the five script faces in the
+ * registry at rising bleeds and measuring the ink each one puts on screen:
+ * Yellowtail's "right" was 174px wide at 0.14em and 185px from 0.45em
+ * upward — the 11px missing were the tail of its `t`, sliced off by a
+ * straight vertical edge. Nothing in any face grows past 0.45em, through
+ * 0.6, 0.8 and 1.2, so 0.6 is the measured ceiling plus a third again.
  */
-const GLYPH_BLEED_EM = { block: 0.42, inline: 0.14 };
+const GLYPH_BLEED_EM = { block: 0.6, inline: 0.6 };
 
 const AVG_ADVANCE: Record<string, number> = {
   // Scripts are wide and their swashes overhang; assume the worst.

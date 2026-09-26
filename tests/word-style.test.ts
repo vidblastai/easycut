@@ -319,6 +319,36 @@ describe('a styled word’s box', () => {
     expect(Number(styled.lineHeight)).toBeGreaterThanOrEqual(1.4);
   });
 
+  it('paints into a box wider than the letters, without moving them', () => {
+    // The tail of Yellowtail's `t` reaches past the word's advance width, and
+    // a gradient is painted only inside the element's padding box — so the
+    // tail came out sliced by a straight vertical edge. The padding gives the
+    // paint room; the negative margin gives the space back to the line, so
+    // nothing on screen moves.
+    const styled = wordStyle(CaptionStyleSchema.parse({}), {
+      fontStack: 'X',
+      fontSize: 62,
+      color: '#fff',
+      emphasis: true,
+      word: { fontFamily: 'Yellowtail', gradient: { from: '#2AB9FB', to: '#24F6FF', angle: 180 } },
+    });
+    const pad = String(styled.padding).split(' ').map(parseFloat);
+    const margin = String(styled.margin).split(' ').map(parseFloat);
+    expect(pad.every((v) => v > 0.2)).toBe(true);
+    expect(margin).toEqual(pad.map((v) => -v));
+  });
+
+  it('gives a plate its own padding instead, which is its size', () => {
+    const boxed = wordStyle(CaptionStyleSchema.parse({}), {
+      fontStack: 'X',
+      fontSize: 62,
+      color: '#fff',
+      emphasis: true,
+      word: { box: { color: '#000', radius: 8, padding: 10 } },
+    });
+    expect(String(boxed.padding)).toContain('px');
+  });
+
   it('leaves a plain word on the line’s own leading', () => {
     // Tight leading is the whole point of a preset like Spotlight, and nothing
     // clips a plain word because it goes through no filter.
