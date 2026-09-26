@@ -65,6 +65,7 @@ export const CAPTION_PRESETS: CaptionPreset[] = [
       glow: null,
       background: { color: 'rgba(13,13,16,0.72)', padding: 18, radius: 14 },
       wordBox: null,
+      emphasisStyle: null,
     },
   },
   {
@@ -97,6 +98,7 @@ export const CAPTION_PRESETS: CaptionPreset[] = [
       glow: null,
       background: { color: 'rgba(0,0,0,0.6)', padding: 12, radius: 8 },
       wordBox: null,
+      emphasisStyle: null,
     },
   },
   {
@@ -129,6 +131,7 @@ export const CAPTION_PRESETS: CaptionPreset[] = [
       glow: null,
       background: { color: 'rgba(25,25,31,0.82)', padding: 20, radius: 22 },
       wordBox: null,
+      emphasisStyle: null,
     },
   },
   {
@@ -161,6 +164,7 @@ export const CAPTION_PRESETS: CaptionPreset[] = [
       glow: null,
       background: null,
       wordBox: null,
+      emphasisStyle: null,
     },
   },
 
@@ -195,6 +199,7 @@ export const CAPTION_PRESETS: CaptionPreset[] = [
       glow: null,
       background: null,
       wordBox: null,
+      emphasisStyle: null,
     },
   },
   {
@@ -227,6 +232,7 @@ export const CAPTION_PRESETS: CaptionPreset[] = [
       glow: null,
       background: null,
       wordBox: { color: '#9B7BFF', padding: 8, radius: 10 },
+      emphasisStyle: null,
     },
   },
   {
@@ -259,6 +265,7 @@ export const CAPTION_PRESETS: CaptionPreset[] = [
       glow: { color: 'rgba(100,233,255,0.85)', blur: 26 },
       background: null,
       wordBox: null,
+      emphasisStyle: null,
     },
   },
   {
@@ -291,6 +298,7 @@ export const CAPTION_PRESETS: CaptionPreset[] = [
       glow: null,
       background: null,
       wordBox: null,
+      emphasisStyle: null,
     },
   },
   {
@@ -323,6 +331,7 @@ export const CAPTION_PRESETS: CaptionPreset[] = [
       glow: null,
       background: null,
       wordBox: null,
+      emphasisStyle: null,
     },
   },
 
@@ -386,6 +395,28 @@ export const CAPTION_PRESETS: CaptionPreset[] = [
       glow: null,
       background: null,
       wordBox: null,
+      /*
+       * THE POINT OF THIS PRESET.
+       *
+       * Everything above is a competent heavy caption; this is the part
+       * somebody picks it for. The director already marks the word worth
+       * leaning on, and here that word becomes a brush script, half again as
+       * large, in its own lit gradient, riding up into the line above.
+       *
+       * Lowercase whatever the line says, because a brush script is made of
+       * the strokes that JOIN lowercase letters — set in caps it is a row of
+       * disconnected shapes. Colours sampled off the reference frame: deeper
+       * blue at the top, bright cyan at the bottom, which reads as light
+       * falling from above rather than as a puddle.
+       */
+      emphasisStyle: {
+        fontFamily: 'Yellowtail',
+        uppercase: false,
+        gradient: { from: '#2AB9FB', to: '#24F6FF', angle: 180 },
+        glow: { color: 'rgba(42,214,255,0.55)', blur: 26 },
+        scale: 1.35,
+        offsetY: -0.12,
+      },
     },
   },
 
@@ -419,6 +450,7 @@ export const CAPTION_PRESETS: CaptionPreset[] = [
       glow: null,
       background: null,
       wordBox: null,
+      emphasisStyle: null,
     },
   },
   {
@@ -451,6 +483,7 @@ export const CAPTION_PRESETS: CaptionPreset[] = [
       glow: null,
       background: null,
       wordBox: null,
+      emphasisStyle: null,
     },
   },
   {
@@ -483,6 +516,7 @@ export const CAPTION_PRESETS: CaptionPreset[] = [
       glow: null,
       background: { color: '#9B7BFF', padding: 16, radius: 6 },
       wordBox: null,
+      emphasisStyle: null,
     },
   },
   {
@@ -515,6 +549,7 @@ export const CAPTION_PRESETS: CaptionPreset[] = [
       glow: null,
       background: null,
       wordBox: null,
+      emphasisStyle: null,
     },
   },
 
@@ -549,6 +584,7 @@ export const CAPTION_PRESETS: CaptionPreset[] = [
       glow: null,
       background: { color: 'rgba(13,13,16,0.86)', padding: 16, radius: 4 },
       wordBox: null,
+      emphasisStyle: null,
     },
   },
   {
@@ -581,6 +617,7 @@ export const CAPTION_PRESETS: CaptionPreset[] = [
       glow: null,
       background: null,
       wordBox: null,
+      emphasisStyle: null,
     },
   },
   {
@@ -613,6 +650,7 @@ export const CAPTION_PRESETS: CaptionPreset[] = [
       glow: null,
       background: null,
       wordBox: null,
+      emphasisStyle: null,
     },
   },
 ];

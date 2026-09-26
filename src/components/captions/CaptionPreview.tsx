@@ -2,7 +2,13 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import type { CaptionStyle } from '@/lib/edl/types';
-import { blockStyle, justifyFor, wordColor, wordStyle } from '@/lib/captions/paint';
+import {
+  blockStyle,
+  justifyFor,
+  resolveWordStyle,
+  wordColor,
+  wordStyle,
+} from '@/lib/captions/paint';
 import { fontStackFor } from '@/lib/captions/fonts';
 
 /**
@@ -41,7 +47,16 @@ export function CaptionPreview({
   frameWidth: number;
   frameHeight: number;
   activeWord?: number;
-  emphasisWord?: number;
+  /**
+   * Which word carries the style's emphasis treatment.
+   *
+   * `'last'` rather than an index, because the preview truncates the sample
+   * text to the preset's own `maxWordsPerCue` — so a fixed index points at a
+   * word that a three-word preset has already cut, and the treatment silently
+   * does not appear. That is exactly how a script-highlight preset ended up
+   * looking identical to four plain ones in the picker.
+   */
+  emphasisWord?: number | 'last';
   className?: string;
   /** The footage behind the captions, if there is any. */
   children?: React.ReactNode;
@@ -101,19 +116,33 @@ export function CaptionPreview({
           >
             {words.map((word, index) => {
               const active = index === activeWord;
-              const emphasis = index === emphasisWord;
+              const emphasisAt = emphasisWord === 'last' ? words.length - 1 : emphasisWord;
+              const emphasis = index === emphasisAt;
+              /*
+               * The style's emphasis rule applies HERE too.
+               *
+               * Without it the picker showed a preset whose whole character
+               * is what it does to one word as if it did nothing at all —
+               * the tile for a script-highlight preset was indistinguishable
+               * from four plain ones beside it, so the thing you were
+               * choosing was invisible at the moment of choosing.
+               */
+              const applied = resolveWordStyle(style, null, emphasis);
+              const caps = applied?.uppercase ?? style.uppercase;
               return (
                 <span
                   key={index}
                   style={wordStyle(style, {
                     fontStack,
                     fontSize,
-                    color: wordColor(style, { active, emphasis }),
+                    color: wordColor(style, { active, emphasis, word: applied }),
                     emphasis,
                     boxed: active && style.animation === 'word-box' && Boolean(style.wordBox),
+                    word: applied,
+                    overrideFontStack: applied?.fontFamily ? fontStackFor(applied.fontFamily) : null,
                   })}
                 >
-                  {style.uppercase ? word.toUpperCase() : word}
+                  {caps ? word.toUpperCase() : word}
                 </span>
               );
             })}
@@ -153,6 +182,7 @@ export function CaptionBand({
   frameHeight,
   aspect = '16 / 10',
   activeWord = 1,
+  emphasisWord = -1,
   backdrop,
   className,
 }: {
@@ -163,6 +193,8 @@ export function CaptionBand({
   /** The window's own shape, independent of the video's. */
   aspect?: string;
   activeWord?: number;
+  /** Which word shows the style's emphasis treatment. `'last'` or -1 for none. */
+  emphasisWord?: number | 'last';
   backdrop?: React.ReactNode;
   className?: string;
 }) {
@@ -184,6 +216,7 @@ export function CaptionBand({
           frameWidth={frameWidth}
           frameHeight={frameHeight}
           activeWord={activeWord}
+          emphasisWord={emphasisWord}
         />
       </div>
     </div>

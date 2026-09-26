@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { applyOperations } from '@/lib/edl/operations';
-import { blockStyle, fitScale, wordColor, wordStyle } from '@/lib/captions/paint';
+import { blockStyle, fitScale, resolveWordStyle, wordColor, wordStyle } from '@/lib/captions/paint';
 import { CaptionStyleSchema, type Edl } from '@/lib/edl/types';
+import { CAPTION_PRESETS } from '@/lib/captions/presets';
 
 /**
  * Styling one word differently from the rest of its line.
@@ -253,5 +254,47 @@ describe('keeping a scaled word inside the frame', () => {
     const script = fitScale({ ...fits, requested: 2, group: 'script' });
     const condensed = fitScale({ ...fits, requested: 2, group: 'condensed' });
     expect(condensed).toBeGreaterThan(script);
+  });
+});
+
+describe('a style’s own rule for emphasised words', () => {
+  const rule = { fontFamily: 'Yellowtail', scale: 1.35, uppercase: false };
+  const styled = CaptionStyleSchema.parse({ emphasisStyle: rule });
+
+  it('applies to a word the director marked, with no hand-styling at all', () => {
+    // Without this a preset whose whole character is what it does to ONE word
+    // produced a plain line, and the highlight had to be applied to every
+    // video by hand — the same as not having it.
+    expect(resolveWordStyle(styled, null, true)).toEqual(rule);
+  });
+
+  it('leaves ordinary words alone', () => {
+    expect(resolveWordStyle(styled, null, false)).toBeNull();
+  });
+
+  it('lets a hand-set choice win over the rule, field by field', () => {
+    // Taking a preset's highlight and changing only its colour must not throw
+    // away its face and size.
+    const merged = resolveWordStyle(styled, { color: '#FF0000' }, true);
+    expect(merged).toMatchObject({ color: '#FF0000', fontFamily: 'Yellowtail', scale: 1.35 });
+  });
+
+  it('treats an unset field as unsaid rather than as a reset', () => {
+    const merged = resolveWordStyle(styled, { color: '#FF0000', scale: null }, true);
+    expect(merged?.scale).toBe(1.35);
+  });
+
+  it('returns the word’s own style untouched when there is no rule', () => {
+    const plain = CaptionStyleSchema.parse({});
+    expect(resolveWordStyle(plain, { color: '#FF0000' }, true)).toEqual({ color: '#FF0000' });
+  });
+
+  it('is what makes the Spotlight preset different from a plain caps preset', () => {
+    const spotlight = CAPTION_PRESETS.find((p) => p.id === 'spotlight')!;
+    const applied = resolveWordStyle(spotlight.style, null, true);
+    expect(applied?.fontFamily).toBe('Yellowtail');
+    // Lowercase, or a brush script is a row of disconnected shapes.
+    expect(applied?.uppercase).toBe(false);
+    expect(applied?.gradient).toBeTruthy();
   });
 });

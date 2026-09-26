@@ -195,6 +195,29 @@ export function blockStyle(
 }
 
 /**
+ * What actually applies to this word.
+ *
+ * A word's own style is a deliberate choice about THIS word, so it outranks
+ * the style's rule about emphasised words in general. The rule fills in
+ * whatever the choice left unsaid, which is what lets somebody take a preset's
+ * highlight and change only its colour.
+ */
+export function resolveWordStyle(
+  style: CaptionStyle,
+  word: CaptionWordStyle | null | undefined,
+  emphasis: boolean,
+): CaptionWordStyle | null {
+  const rule = emphasis ? style.emphasisStyle : null;
+  if (!word) return rule;
+  if (!rule) return word;
+  // Only the fields the word actually set win; `undefined` and `null` both
+  // mean "nothing said here", so the rule shows through.
+  const merged: Record<string, unknown> = { ...rule };
+  for (const [k, v] of Object.entries(word)) if (v != null) merged[k] = v;
+  return merged as CaptionWordStyle;
+}
+
+/**
  * How wide a word will be, near enough to keep it on screen.
  *
  * ── Why an estimate rather than a measurement ────────────────────────────

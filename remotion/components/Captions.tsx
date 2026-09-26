@@ -7,6 +7,7 @@ import {
   blockStyle,
   fitScale,
   justifyFor,
+  resolveWordStyle,
   wordColor,
   wordStyle,
 } from '../../src/lib/captions/paint';
@@ -42,14 +43,14 @@ export const Captions: React.FC<{ edl: Edl; positionY?: number | null }> = ({ ed
    * requested here, before a single frame is drawn.
    */
   const overrideFonts = new Map<string, string>();
-  for (const cue of edl.captions) {
-    for (const word of cue.words) {
-      const family = word.style?.fontFamily;
-      if (family && !overrideFonts.has(family)) {
-        overrideFonts.set(family, ensureCaptionFont(family));
-      }
-    }
-  }
+  const want = (family: string | null | undefined) => {
+    if (family && !overrideFonts.has(family)) overrideFonts.set(family, ensureCaptionFont(family));
+  };
+  // The style's own emphasis rule counts: with it, a preset can name a face
+  // that no individual word mentions, and it would otherwise be requested for
+  // the first time on the frame the first emphasised word appears.
+  want(edl.captionStyle.emphasisStyle?.fontFamily);
+  for (const cue of edl.captions) for (const word of cue.words) want(word.style?.fontFamily);
 
   const cue = edl.captions.find((c) => outSec >= c.startSec && outSec < c.endSec);
   if (!cue) return null;
@@ -165,6 +166,10 @@ const Word: React.FC<{
   word, index, style, fontStack, overrideFonts, fontSize, maxWidthPx,
   outSec, frame, fps, sinceCue,
 }) => {
+  /* The word's own choices over the style's emphasis rule — see
+     resolveWordStyle. Computed once, and everything below reads it. */
+  const applied = resolveWordStyle(style, word.style, word.emphasis);
+
   const isActive = outSec >= word.startSec && outSec < word.endSec;
   const hasArrived = outSec >= word.startSec;
 
@@ -175,7 +180,7 @@ const Word: React.FC<{
   const color = wordColor(style, {
     active: isActive,
     emphasis: word.emphasis,
-    word: word.style,
+    word: applied,
   });
   let boxed = false;
 
@@ -236,20 +241,20 @@ const Word: React.FC<{
    * have none of them. So a script word set in caps looks broken, and the
    * whole point of the highlight is lost.
    */
-  const caps = word.style?.uppercase ?? style.uppercase;
+  const caps = applied?.uppercase ?? style.uppercase;
   const text = caps ? word.text.toUpperCase() : word.text;
 
   /* And it may not run off the frame. See `fitScale`. */
-  const scaled = word.style?.scale
+  const scaled = applied?.scale
     ? fitScale({
         text,
         fontSize,
-        requested: word.style.scale,
+        requested: applied.scale,
         maxWidthPx,
-        group: findCaptionFont(word.style.fontFamily ?? style.fontFamily)?.group,
+        group: findCaptionFont(applied.fontFamily ?? style.fontFamily)?.group,
       })
     : undefined;
-  const wordOverride = scaled != null ? { ...word.style, scale: scaled } : word.style;
+  const wordOverride = scaled != null ? { ...applied, scale: scaled } : applied;
 
   return (
     <span
@@ -261,8 +266,8 @@ const Word: React.FC<{
           emphasis: word.emphasis,
           boxed,
           word: wordOverride,
-          overrideFontStack: word.style?.fontFamily
-            ? (overrideFonts.get(word.style.fontFamily) ?? null)
+          overrideFontStack: applied?.fontFamily
+            ? (overrideFonts.get(applied.fontFamily) ?? null)
             : null,
         }),
         opacity,
@@ -278,8 +283,8 @@ const Word: React.FC<{
          * not around where it would have sat.
          */
         transform: [
-          word.style?.offsetY != null ? `translateY(${word.style.offsetY}em)` : '',
-          word.style?.rotate != null ? `rotate(${word.style.rotate}deg)` : '',
+          applied?.offsetY != null ? `translateY(${applied.offsetY}em)` : '',
+          applied?.rotate != null ? `rotate(${applied.rotate}deg)` : '',
           `scale(${scale})`,
           `translateY(${translateY}px)`,
           `rotate(${rotate}deg)`,

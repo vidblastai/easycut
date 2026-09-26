@@ -98,6 +98,21 @@ export function CaptionPicker({
                   frameWidth={frame.w}
                   frameHeight={frame.h}
                   aspect="4 / 3"
+                  /*
+                   * The LAST word carries the style's emphasis treatment.
+                   *
+                   * A preset whose whole character is what it does to ONE word
+                   * looked identical to four plain ones without this — the
+                   * thing being chosen was invisible at the moment of
+                   * choosing. The last word rather than a fixed index,
+                   * because the preview truncates to each preset's own
+                   * maxWordsPerCue — a three-word preset had already cut the
+                   * word a fixed index pointed at, so the treatment silently
+                   * did not appear. Presets with no emphasis rule are
+                   * unaffected: the word renders in the accent colour, as it
+                   * always did.
+                   */
+                  emphasisWord="last"
                   className="w-full bg-ink"
                 />
                 <span className="flex items-center justify-between gap-1 px-2.5 py-2">

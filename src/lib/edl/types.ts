@@ -263,6 +263,25 @@ export const CaptionStyleSchema = z.object({
     padding: z.number(),
     radius: z.number(),
   }).nullable().default(null),
+  /**
+   * What an EMPHASISED word looks like.
+   *
+   * ── Why a whole style and not just a colour ─────────────────────────────
+   *
+   * `emphasisColor` could only ever mean "the same words, in a different
+   * colour". The look people actually ask for — a heavy line interrupted by
+   * one word in a brush script, larger, glowing, crossing the line above — is
+   * six decisions, and none of them is the colour.
+   *
+   * Putting it on the STYLE is what makes it a preset rather than a chore.
+   * The director already marks the word worth leaning on; this says what
+   * happens to it. Without this, picking the preset gave you a plain line and
+   * the highlight had to be applied to every video by hand, one word at a
+   * time — which is the same as not having it.
+   *
+   * A word's own `style` still wins: a deliberate choice outranks a rule.
+   */
+  emphasisStyle: CaptionWordStyleSchema.nullable().default(null),
   /** Rounded plate behind just the word being spoken. */
   wordBox: z.object({
     color: z.string(),
