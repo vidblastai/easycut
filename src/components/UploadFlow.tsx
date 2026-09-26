@@ -10,6 +10,7 @@ import { layoutPlan } from '@/lib/styles/layouts';
 import { IconArrowRight, IconCheck } from '@/components/shell/Icons';
 import { Stepper, type StepKey } from '@/components/shell/Stepper';
 import { readDefaultCaptionPreset } from '@/lib/captions/default-preset';
+import { CaptionPicker } from '@/components/captions/CaptionPicker';
 import { takePendingUpload } from '@/lib/ui/pending-upload';
 
 /**
@@ -111,6 +112,20 @@ export function UploadFlow({ styles, formats }: { styles: StyleOption[]; formats
   const [layers, setLayers] = useState<Record<LayerKey, boolean>>(
     () => Object.fromEntries(LAYERS.map((l) => [l.key, true])) as Record<LayerKey, boolean>,
   );
+  /**
+   * The caption look, chosen here rather than discovered afterwards.
+   *
+   * Null means "whatever the edit style picks", which is what it always did.
+   * Seeded from this browser's saved default so somebody who set one in the
+   * caption gallery does not have to choose it again on every upload.
+   */
+  const [captionPreset, setCaptionPreset] = useState<string | null>(null);
+  useEffect(() => {
+    // On mount, not during render: localStorage is not there on the server and
+    // can throw in a private window, and a mismatch would flash the wrong tile.
+    setCaptionPreset(readDefaultCaptionPreset() ?? null);
+  }, []);
+
   const [note, setNote] = useState('');
 
   const [phase, setPhase] = useState<Phase>('choose');
@@ -211,7 +226,9 @@ export function UploadFlow({ styles, formats }: { styles: StyleOption[]; formats
           styleId: chosen,
           // Whatever this browser last chose in the caption gallery. Absent is
           // fine — the edit style names its own caption look.
-          captionPreset: readDefaultCaptionPreset() ?? undefined,
+          // What was chosen on the Edits step. Absent means the edit style
+          // names its own, which is the behaviour this used to have always.
+          captionPreset: captionPreset ?? undefined,
           inputMode,
           // Only the ones being declined: the default is everything on, and a
           // request that spells out six `true`s says nothing the absence did not.
@@ -440,6 +457,18 @@ export function UploadFlow({ styles, formats }: { styles: StyleOption[]; formats
                 </button>
               ))}
             </div>
+
+            {/* Only when captions are actually going in. Offering a look for a
+                layer somebody has just switched off is offering a decision
+                that cannot matter. */}
+            {layers.captions ? (
+              <CaptionPicker
+                value={captionPreset}
+                onChange={setCaptionPreset}
+                mode={mode}
+                className="mt-7"
+              />
+            ) : null}
 
             {brollWarning ? (
               <p className="mt-3 rounded-xl border border-warn/40 bg-warn/10 px-3.5 py-2.5 text-[12.5px] leading-relaxed text-chalk/90">
