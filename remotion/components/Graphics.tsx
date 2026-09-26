@@ -21,7 +21,11 @@ export const Graphics: React.FC<{ edl: Edl }> = ({ edl }) => {
         const from = Math.round(graphic.outStartSec * fps);
         const durationInFrames = Math.max(1, Math.round((graphic.outEndSec - graphic.outStartSec) * fps));
         return (
-          <Sequence key={graphic.id} from={from} durationInFrames={durationInFrames} layout="none">
+          // No `layout="none"`: in the Player a Sequence that lays itself out is
+          // premounted a second early, so a graphic's image is decoded and its
+          // text laid out before the frame it cuts in on — which is usually a
+          // cut, where there is no budget left to do it.
+          <Sequence key={graphic.id} from={from} durationInFrames={durationInFrames}>
             <GraphicElementView graphic={graphic} durationInFrames={durationInFrames} edl={edl} />
           </Sequence>
         );
@@ -122,7 +126,9 @@ const Chrome: React.FC<{ ctx: RenderContext; accent: string; children: React.Rea
       background: 'rgba(25,25,31,0.92)',
       border: `${Math.max(1, ctx.unit * 1.6)}px solid ${accent}55`,
       borderRadius: ctx.unit * 22,
-      backdropFilter: 'blur(12px)',
+      // No backdrop filter: the plate behind it is already 92% opaque, so the
+      // blur was invisible and the per-frame readback it costs was not.
+
       boxShadow: `0 30px 90px -35px rgba(0,0,0,0.95), 0 0 0 ${ctx.unit * 1}px rgba(255,255,255,0.03) inset`,
     }}
   >

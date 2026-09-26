@@ -9,7 +9,7 @@ import { lifecycleOpacity, pop, seeded } from '../lib/timing';
  * grain. These sit above everything, including B-roll, because they are the
  * video's own chrome rather than part of its content.
  */
-export const Overlays: React.FC<{ edl: Edl }> = ({ edl }) => {
+export const Overlays: React.FC<{ edl: Edl; cheap?: boolean }> = ({ edl, cheap = false }) => {
   const { fps } = useVideoConfig();
 
   return (
@@ -18,8 +18,10 @@ export const Overlays: React.FC<{ edl: Edl }> = ({ edl }) => {
         const from = Math.round(overlay.outStartSec * fps);
         const durationInFrames = Math.max(1, Math.round((overlay.outEndSec - overlay.outStartSec) * fps));
         return (
-          <Sequence key={overlay.id} from={from} durationInFrames={durationInFrames} layout="none">
-            <OverlayView overlay={overlay} durationInFrames={durationInFrames} edl={edl} />
+          // Laid out rather than `layout="none"`, so the Player premounts it a
+          // second early instead of building it on the frame it appears.
+          <Sequence key={overlay.id} from={from} durationInFrames={durationInFrames}>
+            <OverlayView overlay={overlay} durationInFrames={durationInFrames} edl={edl} cheap={cheap} />
           </Sequence>
         );
       })}
@@ -27,10 +29,11 @@ export const Overlays: React.FC<{ edl: Edl }> = ({ edl }) => {
   );
 };
 
-const OverlayView: React.FC<{ overlay: OverlayElement; durationInFrames: number; edl: Edl }> = ({
+const OverlayView: React.FC<{ overlay: OverlayElement; durationInFrames: number; edl: Edl; cheap: boolean }> = ({
   overlay,
   durationInFrames,
   edl,
+  cheap,
 }) => {
   switch (overlay.type) {
     case 'progress-bar':
@@ -44,7 +47,7 @@ const OverlayView: React.FC<{ overlay: OverlayElement; durationInFrames: number;
     case 'vignette':
       return <Vignette opacity={overlay.opacity} />;
     case 'grain':
-      return <Grain opacity={overlay.opacity} />;
+      return <Grain opacity={overlay.opacity} cheap={cheap} />;
     default:
       return null;
   }
@@ -63,7 +66,13 @@ const ProgressBar: React.FC<{ overlay: OverlayElement; edl: Edl }> = ({ overlay,
           position: 'absolute',
           bottom: 0,
           left: 0,
-          width: `${progress * 100}%`,
+          // Full width, scaled down — not a width that grows. A changing width
+          // is a layout pass and a repaint of the bar's glow on every frame of
+          // the video; the same bar drawn once and scaled from its left edge
+          // never leaves the compositor.
+          width: '100%',
+          transformOrigin: '0 50%',
+          transform: `scaleX(${progress})`,
           height: Math.max(4, height * 0.006),
           background: overlay.color,
           opacity: overlay.opacity,
@@ -206,27 +215,71 @@ const Vignette: React.FC<{ opacity: number }> = ({ opacity }) => (
  * The seed is deterministic so a chunked cloud render doesn't show a seam where
  * one worker's noise pattern meets another's.
  */
-const Grain: React.FC<{ opacity: number }> = ({ opacity }) => {
+const Grain: React.FC<{ opacity: number; cheap: boolean }> = ({ opacity, cheap }) =>
+  cheap ? <GrainField opacity={opacity * 0.5} seedFrame={0} blend={false} /> : <MovingGrain opacity={opacity} />;
+
+/**
+ * The export's grain: re-rolled every other frame, and blended.
+ *
+ * Split out so the editor's still version does not read the frame at all. A
+ * component that subscribes to the clock re-renders thirty times a second even
+ * when it has decided to draw the same thing, and this overlay is on for the
+ * whole video.
+ */
+const MovingGrain: React.FC<{ opacity: number }> = ({ opacity }) => {
   const frame = useCurrentFrame();
-  const { width, height } = useVideoConfig();
   // Re-roll only every other frame: 60 Hz noise strobes, 15 Hz noise reads as film.
-  const seedFrame = Math.floor(frame / 2);
+  return <GrainField opacity={opacity} seedFrame={Math.floor(frame / 2)} blend />;
+};
+
+const GrainField: React.FC<{ opacity: number; seedFrame: number; blend: boolean }> = ({
+  opacity,
+  seedFrame,
+  blend,
+}) => {
+  const { width, height } = useVideoConfig();
   const count = 180;
 
+  /*
+   * Why the editor's version holds still, and is not blended.
+   *
+   * This overlay runs for the WHOLE video, not for a moment, and moving grain
+   * is the most expensive thing on the composition: a hundred and eighty SVG
+   * circles given four new attributes fifteen times a second, inside a layer
+   * whose `mix-blend-mode` forces the browser to read back the picture — the
+   * playing video included — and blend it by hand on every single frame. That
+   * is a video the compositor can no longer hand straight to the screen, which
+   * is felt everywhere and worst at a cut, where there is a new frame to blend
+   * and a new caption to draw in the same 33 milliseconds.
+   *
+   * So the preview draws the field once, at a fixed seed, with no blend mode:
+   * a still dusting of grain, memoised, that costs one rasterisation for the
+   * whole session. The export still gets moving, blended film grain.
+   */
+  const dots = React.useMemo(
+    () =>
+      Array.from({ length: count }, (_, i) => (
+        <circle
+          key={i}
+          cx={seeded(`grain-x-${seedFrame}`, i) * width}
+          cy={seeded(`grain-y-${seedFrame}`, i) * height}
+          r={1 + seeded(`grain-r-${seedFrame}`, i) * 1.4}
+          fill="#ffffff"
+          opacity={0.25 + seeded(`grain-o-${seedFrame}`, i) * 0.5}
+        />
+      )),
+    [seedFrame, width, height],
+  );
+
   return (
-    <AbsoluteFill style={{ pointerEvents: 'none', opacity, mixBlendMode: 'overlay' }}>
-      <svg width={width} height={height}>
-        {Array.from({ length: count }).map((_, i) => (
-          <circle
-            key={i}
-            cx={seeded(`grain-x-${seedFrame}`, i) * width}
-            cy={seeded(`grain-y-${seedFrame}`, i) * height}
-            r={1 + seeded(`grain-r-${seedFrame}`, i) * 1.4}
-            fill="#ffffff"
-            opacity={0.25 + seeded(`grain-o-${seedFrame}`, i) * 0.5}
-          />
-        ))}
-      </svg>
+    <AbsoluteFill
+      style={{
+        pointerEvents: 'none',
+        opacity,
+        ...(blend ? { mixBlendMode: 'overlay' as const } : null),
+      }}
+    >
+      <svg width={width} height={height}>{dots}</svg>
     </AbsoluteFill>
   );
 };

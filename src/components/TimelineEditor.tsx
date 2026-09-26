@@ -1412,6 +1412,7 @@ function TimelineEditorImpl({
           {/* playhead, drawn over everything */}
           <div
             ref={lineRef}
+            data-playhead
             className="pointer-events-none absolute top-0 z-30 w-px bg-chalk"
             style={{ left: TRACK_LABEL_W + playhead * pps, height: '100%', boxShadow: '0 0 8px rgba(245,245,247,.5)' }}
           />

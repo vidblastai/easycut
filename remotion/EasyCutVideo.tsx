@@ -101,9 +101,9 @@ export const EasyCutVideo: React.FC<EasyCutVideoProps> = ({ edl, previewAudio = 
       {plan.headline ? <Headline edl={edl} /> : null}
       <Graphics edl={edl} />
       <Captions edl={edl} positionY={plan.captionY} lowDetail={lowDetail} />
-      <Transitions edl={edl} />
-      <Overlays edl={edl} />
-      {edl.watermark ? <Watermark /> : null}
+      <Transitions edl={edl} cheap={lowDetail} />
+      <Overlays edl={edl} cheap={lowDetail} />
+      {edl.watermark ? <Watermark cheap={lowDetail} /> : null}
 
       {previewAudio ? <PreviewAudio edl={edl} fps={fps} withVoice={!lowDetail} /> : null}
     </AbsoluteFill>
@@ -117,6 +117,22 @@ export const EasyCutVideo: React.FC<EasyCutVideoProps> = ({ edl, previewAudio = 
  * `<Audio>` tag), so the music sits at a fixed, already-ducked level. That is
  * close enough to judge an edit by, and the exported file gets the real mix.
  */
+/**
+ * Nothing in the preview mix may stop the picture.
+ *
+ * Remotion pauses the whole Player while any media element is buffering —
+ * sensible for a render, wrong for an editor, and expensive here in
+ * particular: the director puts a whoosh ON the cut, so the element that
+ * mounts and seeks at the worst possible moment is a sound effect. Measured on
+ * a real edit, that was a 27–34ms freeze at every cut and once, where two
+ * effects and a transition landed together, 667ms.
+ *
+ * `pauseWhenBuffering={false}` says: if a sound is not ready, let it be late
+ * or let it be missed. This is the preview; the export mixes the audio with
+ * ffmpeg and cannot drop anything.
+ */
+const PREVIEW_AUDIO = { pauseWhenBuffering: false } as const;
+
 const PreviewAudio: React.FC<{ edl: Edl; fps: number; withVoice?: boolean }> = ({
   edl,
   fps,
@@ -134,6 +150,7 @@ const PreviewAudio: React.FC<{ edl: Edl; fps: number; withVoice?: boolean }> = (
         layout="none"
       >
         <Audio
+          {...PREVIEW_AUDIO}
           src={edl.source.url}
           trimBefore={Math.round(segment.sourceStartSec * fps)}
           trimAfter={Math.ceil(segment.sourceEndSec * fps)}
@@ -144,6 +161,7 @@ const PreviewAudio: React.FC<{ edl: Edl; fps: number; withVoice?: boolean }> = (
 
     {edl.music ? (
       <Audio
+        {...PREVIEW_AUDIO}
         src={edl.music.url}
         loop
         // Pre-ducked: the preview has no compressor, so bias toward the voice.
@@ -165,9 +183,11 @@ const PreviewAudio: React.FC<{ edl: Edl; fps: number; withVoice?: boolean }> = (
           key={`sfx-${cue.id}`}
           from={Math.round(cue.atSec * fps)}
           durationInFrames={Math.max(1, Math.ceil(sfxDurationSec(cue.sound) * fps))}
-          layout="none"
+          // Mounted a second early so the file is loaded and seeked before the
+          // cut it sits on, rather than at it.
+          premountFor={Math.round(fps)}
         >
-          <Audio src={cue.url} volume={Math.pow(10, cue.gainDb / 20)} />
+          <Audio {...PREVIEW_AUDIO} src={cue.url} volume={Math.pow(10, cue.gainDb / 20)} />
         </Sequence>
       ) : null,
     )}

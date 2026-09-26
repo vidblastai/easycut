@@ -50,16 +50,31 @@ export const Captions: React.FC<{ edl: Edl; positionY?: number | null; lowDetail
    * somebody might miss. So every family used anywhere in the track is
    * requested here, before a single frame is drawn.
    */
-  const overrideFonts = new Map<string, string>();
-  const want = (family: string | null | undefined) => {
-    if (family && !overrideFonts.has(family)) overrideFonts.set(family, ensureCaptionFont(family));
-  };
-  // The style's own emphasis rule counts: with it, a preset can name a face
-  // that no individual word mentions, and it would otherwise be requested for
-  // the first time on the frame the first emphasised word appears.
-  want(edl.captionStyle.emphasisStyle?.fontFamily);
-  want(edl.captionStyle.lineTwoStyle?.fontFamily);
-  for (const cue of edl.captions) for (const word of cue.words) want(word.style?.fontFamily);
+  /*
+   * Built once per track, not once per frame.
+   *
+   * Two reasons, and the second is the expensive one. Walking every word of
+   * every cue thirty times a second is work that grows with the length of the
+   * video — a five-minute edit has a couple of thousand words, so this was
+   * tens of thousands of lookups a second to arrive at the same four faces.
+   * And the Map was a NEW object every frame, which is a changed prop on the
+   * caption card, which re-reconciles every word in it — gradients,
+   * drop-shadow chains and all — on frames where nothing about the card
+   * changed. Memoised, the card only re-renders when the card really moves.
+   */
+  const overrideFonts = React.useMemo(() => {
+    const map = new Map<string, string>();
+    const want = (family: string | null | undefined) => {
+      if (family && !map.has(family)) map.set(family, ensureCaptionFont(family));
+    };
+    // The style's own emphasis rule counts: with it, a preset can name a face
+    // that no individual word mentions, and it would otherwise be requested for
+    // the first time on the frame the first emphasised word appears.
+    want(edl.captionStyle.emphasisStyle?.fontFamily);
+    want(edl.captionStyle.lineTwoStyle?.fontFamily);
+    for (const cue of edl.captions) for (const word of cue.words) want(word.style?.fontFamily);
+    return map;
+  }, [edl.captions, edl.captionStyle.emphasisStyle?.fontFamily, edl.captionStyle.lineTwoStyle?.fontFamily]);
 
   const cue = edl.captions.find((c) => outSec >= c.startSec && outSec < c.endSec);
 

@@ -47,6 +47,17 @@ import { planPreviewFrame } from '../../src/lib/timeline/preview-plan';
 const RESYNC_THRESHOLD_SEC = 0.3;
 /** How close to a cut the standby starts being prepared. */
 const PREPARE_AHEAD_SEC = 1.2;
+/**
+ * Not zero, and that is the whole trick.
+ *
+ * A `<video>` at `opacity: 0` is a layer a browser is free to stop compositing,
+ * and one it is no longer compositing is one whose decoded frame it may throw
+ * away — so the standby we carefully parked on the next cut's first frame has
+ * to produce that frame again at the cut, which is the stall we are here to
+ * remove. A hair above zero keeps the layer alive and the frame decoded, and is
+ * invisible under an opaque element covering exactly the same box.
+ */
+const STANDBY_OPACITY = '0.001';
 
 function ease(t: number): number {
   const x = Math.max(0, Math.min(1, t));
@@ -139,7 +150,7 @@ export const PreviewVideoTrack: React.FC<{
 
       live.style.opacity = '1';
       live.style.zIndex = '1';
-      standby.style.opacity = '0';
+      standby.style.opacity = STANDBY_OPACITY;
       standby.style.zIndex = '0';
       standby.pause();
       standby.muted = true;
@@ -177,13 +188,29 @@ export const PreviewVideoTrack: React.FC<{
     if (live) live.muted = !withAudio;
   }, [withAudio]);
 
+  /*
+   * The camera as a transform, not as a box.
+   *
+   * `cameraFrame` gives a rectangle, and writing it to `width`/`height`/`left`/
+   * `top` is a layout pass and a rescale of the video's destination rect on
+   * every frame a punch-in or a reframe is moving — which is most frames, and
+   * a punch-in usually begins ON a cut. The same rectangle expressed as a
+   * translate and a scale from the top-left corner is identical to the pixel
+   * and never leaves the compositor.
+   */
   const videoStyle: React.CSSProperties = {
     position: 'absolute',
-    width: camera.width,
-    height: camera.height,
-    left: camera.left,
-    top: camera.top,
+    left: 0,
+    top: 0,
+    width: viewport.width,
+    height: viewport.height,
     objectFit: 'fill',
+    transformOrigin: '0 0',
+    transform: `translate3d(${camera.left}px, ${camera.top}px, 0) scale(${camera.width / viewport.width}, ${camera.height / viewport.height})`,
+    // Both elements keep their own compositor layer for the whole session, so
+    // the swap at a cut is a layer flip rather than a rasterisation.
+    backfaceVisibility: 'hidden',
+    willChange: 'transform, opacity',
   };
 
   return (
@@ -219,7 +246,7 @@ export const PreviewVideoTrack: React.FC<{
         preload="auto"
         playsInline
         muted
-        style={{ ...videoStyle, opacity: 0, zIndex: 0 }}
+        style={{ ...videoStyle, opacity: Number(STANDBY_OPACITY), zIndex: 0 }}
       />
     </AbsoluteFill>
   );

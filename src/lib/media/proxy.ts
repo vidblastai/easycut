@@ -13,7 +13,16 @@
  */
 export const PREVIEW_PROXY_FILE = 'preview-k12.mp4';
 
-/** Whether a stored proxy was built by the current settings. */
+/**
+ * Whether a stored proxy was built by the current settings.
+ *
+ * Matched on the NAME rather than the whole filename, so the same file in
+ * another container — a VP9 copy, which is the only codec a browser without
+ * proprietary codecs can play, and therefore the only way to test playback in
+ * CI — still counts as current.
+ */
 export function isCurrentProxy(storageKey: string | null | undefined): boolean {
-  return Boolean(storageKey?.endsWith(PREVIEW_PROXY_FILE));
+  if (!storageKey) return false;
+  const stem = PREVIEW_PROXY_FILE.replace(/\.[^.]+$/, '');
+  return new RegExp(`/${stem}\\.[a-z0-9]+$`).test(storageKey) || storageKey.endsWith(PREVIEW_PROXY_FILE);
 }

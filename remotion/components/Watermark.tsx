@@ -21,7 +21,7 @@ import { FONT_FAMILY } from '../lib/fonts';
  * size on a vertical short and a widescreen talk, rather than four times the
  * area on one of them.
  */
-export const Watermark: React.FC = () => {
+export const Watermark: React.FC<{ cheap?: boolean }> = ({ cheap = false }) => {
   const { width, height } = useVideoConfig();
   const short = Math.min(width, height);
 
@@ -43,11 +43,18 @@ export const Watermark: React.FC = () => {
           borderRadius: mark * 0.55,
           // A plate, not bare glyphs: a mark with no ground disappears over a
           // light frame and there is no colour that works over every shot.
-          background: 'rgba(13,13,16,0.42)',
+          background: cheap ? 'rgba(13,13,16,0.66)' : 'rgba(13,13,16,0.42)',
           // `backdropFilter` is supported by the Chromium that renders these
           // frames, and is what keeps the plate legible over busy B-roll
           // without making it opaque enough to read as a UI element.
-          backdropFilter: 'blur(10px)',
+          //
+          // Not in the editor, though. A backdrop filter has to read back the
+          // pixels behind it and blur them again on every frame the picture
+          // changes — which is every frame, for the whole video, and it takes
+          // the playing video off the compositor's fast path to do it. The
+          // preview pays for that mark all day; a slightly darker plate reads
+          // the same at preview size and costs nothing.
+          ...(cheap ? null : { backdropFilter: 'blur(10px)' }),
           boxShadow: 'inset 0 0 0 1px rgba(255,255,255,0.10)',
           opacity: 0.82,
         }}
