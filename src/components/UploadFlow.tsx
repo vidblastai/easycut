@@ -246,7 +246,7 @@ export function UploadFlow({ styles, formats }: { styles: StyleOption[]; formats
       const created = await createResponse.json();
 
       // 2. Upload, reporting real progress via XHR (fetch cannot do upload progress).
-      await uploadWithProgress(created.upload, file, setProgress);
+      await uploadWithRetry(created.upload, file, setProgress);
 
       // 3. Kick off the pipeline and go watch it.
       setPhase('starting');
@@ -653,6 +653,47 @@ function Uploading({ phase, progress, filename }: { phase: Phase; progress: numb
  * progress. On a 2 GB file the difference between a progress bar and a spinner
  * is the difference between waiting and assuming it's broken.
  */
+/** An upload that failed with an HTTP status, so a caller can judge it. */
+class UploadError extends Error {
+  constructor(message: string, readonly status: number) {
+    super(message);
+  }
+}
+
+/** Statuses that mean "the server was not there", not "your file is wrong". */
+const TRANSIENT = new Set([0, 408, 425, 429, 502, 503, 504]);
+
+/**
+ * Sends the file again when the failure was the server's, not the file's.
+ *
+ * The bytes go through the app server, so anything that takes it away for a
+ * moment — a deploy rolling over, an edge blip — lands as a 502 from the proxy
+ * rather than as anything we wrote. Making the person pick their file and fill
+ * the form in again for a ten-second restart is the wrong answer when the
+ * browser still has the file right there.
+ *
+ * A 413 or a 400 is not retried: sending the same too-large file three times
+ * only wastes their upload.
+ */
+async function uploadWithRetry(
+  upload: { method: 'PUT' | 'POST'; url: string; headers: Record<string, string> },
+  file: File,
+  onProgress: (fraction: number) => void,
+): Promise<void> {
+  const delays = [2000, 6000];
+  for (let attempt = 0; ; attempt++) {
+    try {
+      await uploadWithProgress(upload, file, onProgress);
+      return;
+    } catch (error) {
+      const status = error instanceof UploadError ? error.status : 0;
+      if (!TRANSIENT.has(status) || attempt >= delays.length) throw error;
+      onProgress(0);
+      await new Promise((r) => setTimeout(r, delays[attempt]));
+    }
+  }
+}
+
 function uploadWithProgress(
   upload: { method: 'PUT' | 'POST'; url: string; headers: Record<string, string> },
   file: File,
@@ -676,11 +717,32 @@ function uploadWithProgress(
     xhr.onload = () =>
       xhr.status >= 200 && xhr.status < 300
         ? resolve()
-        : reject(new Error(`Upload failed (${xhr.status}). ${xhr.responseText.slice(0, 160)}`));
-    xhr.onerror = () => reject(new Error('Upload failed — check your connection and try again.'));
+        : reject(new UploadError(messageFor(xhr), xhr.status));
+    xhr.onerror = () =>
+      reject(new UploadError('Upload failed — check your connection and try again.', 0));
 
     xhr.send(file);
   });
+}
+
+/**
+ * What to tell the person about a failed upload.
+ *
+ * Our own routes answer `{ error }` and that text is written for them. Anything
+ * else came from the platform's proxy — raw JSON about an application that
+ * failed to respond, which is true and useless — so it gets a plain sentence.
+ */
+function messageFor(xhr: XMLHttpRequest): string {
+  try {
+    const body = JSON.parse(xhr.responseText);
+    if (typeof body?.error === 'string') return body.error;
+  } catch {
+    // Not ours, or not JSON at all.
+  }
+  if (xhr.status >= 500 || xhr.status === 0) {
+    return 'The server dropped the upload. Please try again in a moment.';
+  }
+  return `Upload failed (${xhr.status}).`;
 }
 
 function formatBytes(bytes: number): string {
