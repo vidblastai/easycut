@@ -68,6 +68,8 @@ export const CAPTION_PRESETS: CaptionPreset[] = [
       emphasisStyle: null,
       emphasisOwnLine: false,
       emphasisMinChars: 5,
+      splitLines: false,
+      lineTwoStyle: null,
     },
   },
   {
@@ -103,6 +105,8 @@ export const CAPTION_PRESETS: CaptionPreset[] = [
       emphasisStyle: null,
       emphasisOwnLine: false,
       emphasisMinChars: 5,
+      splitLines: false,
+      lineTwoStyle: null,
     },
   },
   {
@@ -138,6 +142,8 @@ export const CAPTION_PRESETS: CaptionPreset[] = [
       emphasisStyle: null,
       emphasisOwnLine: false,
       emphasisMinChars: 5,
+      splitLines: false,
+      lineTwoStyle: null,
     },
   },
   {
@@ -173,6 +179,8 @@ export const CAPTION_PRESETS: CaptionPreset[] = [
       emphasisStyle: null,
       emphasisOwnLine: false,
       emphasisMinChars: 5,
+      splitLines: false,
+      lineTwoStyle: null,
     },
   },
 
@@ -210,6 +218,8 @@ export const CAPTION_PRESETS: CaptionPreset[] = [
       emphasisStyle: null,
       emphasisOwnLine: false,
       emphasisMinChars: 5,
+      splitLines: false,
+      lineTwoStyle: null,
     },
   },
   {
@@ -245,6 +255,8 @@ export const CAPTION_PRESETS: CaptionPreset[] = [
       emphasisStyle: null,
       emphasisOwnLine: false,
       emphasisMinChars: 5,
+      splitLines: false,
+      lineTwoStyle: null,
     },
   },
   {
@@ -280,6 +292,8 @@ export const CAPTION_PRESETS: CaptionPreset[] = [
       emphasisStyle: null,
       emphasisOwnLine: false,
       emphasisMinChars: 5,
+      splitLines: false,
+      lineTwoStyle: null,
     },
   },
   {
@@ -315,6 +329,8 @@ export const CAPTION_PRESETS: CaptionPreset[] = [
       emphasisStyle: null,
       emphasisOwnLine: false,
       emphasisMinChars: 5,
+      splitLines: false,
+      lineTwoStyle: null,
     },
   },
   {
@@ -350,6 +366,8 @@ export const CAPTION_PRESETS: CaptionPreset[] = [
       emphasisStyle: null,
       emphasisOwnLine: false,
       emphasisMinChars: 5,
+      splitLines: false,
+      lineTwoStyle: null,
     },
   },
 
@@ -445,6 +463,179 @@ export const CAPTION_PRESETS: CaptionPreset[] = [
       },
       emphasisOwnLine: true,
       emphasisMinChars: 5,
+      splitLines: false,
+      lineTwoStyle: null,
+    },
+  },
+
+  {
+    id: 'twotone',
+    name: 'Two-Tone',
+    blurb: 'White over a lit green second line. Two even rows, every card.',
+    family: 'loud',
+    bestFor: 'short',
+    style: {
+      preset: 'twotone',
+      animation: 'word-pop',
+      /*
+       * Saira Condensed at 900, not Anton — measured off the reference. See
+       * the note in src/lib/captions/fonts.ts: this face runs 10.6 character
+       * widths to a cap height against the reference's 10.2, where Anton runs
+       * 8.4 and lands a fifth taller for the same line of text.
+       */
+      fontFamily: 'Saira Condensed',
+      fontWeight: 900,
+      italic: false,
+      fontSizeRatio: 0.046,
+      // The reference sets its letters almost touching. Anything looser and
+      // the two lines stop reading as one block.
+      letterSpacing: -0.012,
+      // The lines nearly touch, which is what makes the pair read as a single
+      // object rather than as two captions that happen to be stacked.
+      lineHeight: 0.86,
+      uppercase: true,
+      // Enough words for two lines with something on each. Three would make
+      // a second line of one word, which is the shape this exists to avoid.
+      maxWordsPerCue: 6,
+      maxLines: 2,
+      align: 'center',
+      positionY: 0.54,
+      widthRatio: 0.9,
+      color: '#FFFFFF',
+      emphasisColor: '#FFFFFF',
+      activeColor: null,
+      gradient: null,
+      stroke: { width: 1.5, color: 'rgba(0,0,0,0.4)' },
+      shadow: { offsetX: 0, offsetY: 5, blur: 16, color: 'rgba(0,0,0,0.55)' },
+      glow: null,
+      background: null,
+      wordBox: null,
+      emphasisStyle: null,
+      emphasisOwnLine: false,
+      emphasisMinChars: 5,
+      /* THE POINT OF THIS PRESET: every card is two lines, the first plain
+         white, the second lit. Split by width so the two are the same length.
+         Colours sampled off the reference frame — pale at the top of the
+         letters, saturated at the bottom, which reads as light from above. */
+      splitLines: true,
+      lineTwoStyle: {
+        gradient: { from: '#C6FFB6', to: '#11FF0D', angle: 180 },
+        glow: { color: 'rgba(74,255,90,0.38)', blur: 20 },
+      },
+    },
+  },
+
+  {
+    id: 'twotone-cyan',
+    name: 'Two-Tone Ice',
+    blurb: 'The same two rows, lit in cyan instead of green.',
+    family: 'loud',
+    bestFor: 'short',
+    style: {
+      preset: 'twotone-cyan',
+      animation: 'word-pop',
+      /*
+       * Saira Condensed at 900, not Anton — measured off the reference. See
+       * the note in src/lib/captions/fonts.ts: this face runs 10.6 character
+       * widths to a cap height against the reference's 10.2, where Anton runs
+       * 8.4 and lands a fifth taller for the same line of text.
+       */
+      fontFamily: 'Saira Condensed',
+      fontWeight: 900,
+      italic: false,
+      fontSizeRatio: 0.046,
+      // The reference sets its letters almost touching. Anything looser and
+      // the two lines stop reading as one block.
+      letterSpacing: -0.012,
+      // The lines nearly touch, which is what makes the pair read as a single
+      // object rather than as two captions that happen to be stacked.
+      lineHeight: 0.86,
+      uppercase: true,
+      // Enough words for two lines with something on each. Three would make
+      // a second line of one word, which is the shape this exists to avoid.
+      maxWordsPerCue: 6,
+      maxLines: 2,
+      align: 'center',
+      positionY: 0.54,
+      widthRatio: 0.9,
+      color: '#FFFFFF',
+      emphasisColor: '#FFFFFF',
+      activeColor: null,
+      gradient: null,
+      stroke: { width: 1.5, color: 'rgba(0,0,0,0.4)' },
+      shadow: { offsetX: 0, offsetY: 5, blur: 16, color: 'rgba(0,0,0,0.55)' },
+      glow: null,
+      background: null,
+      wordBox: null,
+      emphasisStyle: null,
+      emphasisOwnLine: false,
+      emphasisMinChars: 5,
+      /* THE POINT OF THIS PRESET: every card is two lines, the first plain
+         white, the second lit. Split by width so the two are the same length.
+         Colours sampled off the reference frame — pale at the top of the
+         letters, saturated at the bottom, which reads as light from above. */
+      splitLines: true,
+      lineTwoStyle: {
+        gradient: { from: '#C9F5FF', to: '#00C4FF', angle: 180 },
+        glow: { color: 'rgba(42,220,255,0.38)', blur: 20 },
+      },
+    },
+  },
+
+  {
+    id: 'twotone-gold',
+    name: 'Two-Tone Gold',
+    blurb: 'The same two rows, lit in amber. Warmer against skin tones.',
+    family: 'loud',
+    bestFor: 'short',
+    style: {
+      preset: 'twotone-gold',
+      animation: 'word-pop',
+      /*
+       * Saira Condensed at 900, not Anton — measured off the reference. See
+       * the note in src/lib/captions/fonts.ts: this face runs 10.6 character
+       * widths to a cap height against the reference's 10.2, where Anton runs
+       * 8.4 and lands a fifth taller for the same line of text.
+       */
+      fontFamily: 'Saira Condensed',
+      fontWeight: 900,
+      italic: false,
+      fontSizeRatio: 0.046,
+      // The reference sets its letters almost touching. Anything looser and
+      // the two lines stop reading as one block.
+      letterSpacing: -0.012,
+      // The lines nearly touch, which is what makes the pair read as a single
+      // object rather than as two captions that happen to be stacked.
+      lineHeight: 0.86,
+      uppercase: true,
+      // Enough words for two lines with something on each. Three would make
+      // a second line of one word, which is the shape this exists to avoid.
+      maxWordsPerCue: 6,
+      maxLines: 2,
+      align: 'center',
+      positionY: 0.54,
+      widthRatio: 0.9,
+      color: '#FFFFFF',
+      emphasisColor: '#FFFFFF',
+      activeColor: null,
+      gradient: null,
+      stroke: { width: 1.5, color: 'rgba(0,0,0,0.4)' },
+      shadow: { offsetX: 0, offsetY: 5, blur: 16, color: 'rgba(0,0,0,0.55)' },
+      glow: null,
+      background: null,
+      wordBox: null,
+      emphasisStyle: null,
+      emphasisOwnLine: false,
+      emphasisMinChars: 5,
+      /* THE POINT OF THIS PRESET: every card is two lines, the first plain
+         white, the second lit. Split by width so the two are the same length.
+         Colours sampled off the reference frame — pale at the top of the
+         letters, saturated at the bottom, which reads as light from above. */
+      splitLines: true,
+      lineTwoStyle: {
+        gradient: { from: '#FFEDB2', to: '#F08C00', angle: 180 },
+        glow: { color: 'rgba(255,176,35,0.38)', blur: 20 },
+      },
     },
   },
 
@@ -481,6 +672,8 @@ export const CAPTION_PRESETS: CaptionPreset[] = [
       emphasisStyle: null,
       emphasisOwnLine: false,
       emphasisMinChars: 5,
+      splitLines: false,
+      lineTwoStyle: null,
     },
   },
   {
@@ -516,6 +709,8 @@ export const CAPTION_PRESETS: CaptionPreset[] = [
       emphasisStyle: null,
       emphasisOwnLine: false,
       emphasisMinChars: 5,
+      splitLines: false,
+      lineTwoStyle: null,
     },
   },
   {
@@ -551,6 +746,8 @@ export const CAPTION_PRESETS: CaptionPreset[] = [
       emphasisStyle: null,
       emphasisOwnLine: false,
       emphasisMinChars: 5,
+      splitLines: false,
+      lineTwoStyle: null,
     },
   },
   {
@@ -586,6 +783,8 @@ export const CAPTION_PRESETS: CaptionPreset[] = [
       emphasisStyle: null,
       emphasisOwnLine: false,
       emphasisMinChars: 5,
+      splitLines: false,
+      lineTwoStyle: null,
     },
   },
 
@@ -623,6 +822,8 @@ export const CAPTION_PRESETS: CaptionPreset[] = [
       emphasisStyle: null,
       emphasisOwnLine: false,
       emphasisMinChars: 5,
+      splitLines: false,
+      lineTwoStyle: null,
     },
   },
   {
@@ -658,6 +859,8 @@ export const CAPTION_PRESETS: CaptionPreset[] = [
       emphasisStyle: null,
       emphasisOwnLine: false,
       emphasisMinChars: 5,
+      splitLines: false,
+      lineTwoStyle: null,
     },
   },
   {
@@ -693,6 +896,8 @@ export const CAPTION_PRESETS: CaptionPreset[] = [
       emphasisStyle: null,
       emphasisOwnLine: false,
       emphasisMinChars: 5,
+      splitLines: false,
+      lineTwoStyle: null,
     },
   },
 ];

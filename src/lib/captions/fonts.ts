@@ -103,6 +103,23 @@ export const CAPTION_FONTS: CaptionFont[] = [
     group: 'condensed',
   },
   {
+    id: 'Saira Condensed',
+    module: 'SairaCondensed',
+    weights: ['900'],
+    /*
+     * Measured against the reference, not chosen by eye.
+     *
+     * The two-tone look this was added for sets a heavy condensed grotesque
+     * that runs about 10.2 character-widths to one cap height. Anton runs 8.4
+     * and has to be set a fifth larger to fill the same line, which reads as
+     * heavier and taller than the reference; Archivo Black runs 16.8 and
+     * cannot be squeezed into it at all. Saira Condensed at 900 runs 10.6 —
+     * within four per cent — so a line of it lands at the reference's size.
+     */
+    vibe: 'Heavy condensed grotesque. Fills a line at the size it was drawn.',
+    group: 'condensed',
+  },
+  {
     id: 'Bebas Neue',
     module: 'BebasNeue',
     weights: ['400'],

@@ -8,6 +8,7 @@ import {
   fitScale,
   justifyFor,
   resolveWordStyle,
+  splitLineIndex,
   wordColor,
   wordStyle,
 } from '../../src/lib/captions/paint';
@@ -50,6 +51,7 @@ export const Captions: React.FC<{ edl: Edl; positionY?: number | null }> = ({ ed
   // that no individual word mentions, and it would otherwise be requested for
   // the first time on the frame the first emphasised word appears.
   want(edl.captionStyle.emphasisStyle?.fontFamily);
+  want(edl.captionStyle.lineTwoStyle?.fontFamily);
   for (const cue of edl.captions) for (const word of cue.words) want(word.style?.fontFamily);
 
   const cue = edl.captions.find((c) => outSec >= c.startSec && outSec < c.endSec);
@@ -116,6 +118,17 @@ const CaptionCard: React.FC<{
 
   const justify = justifyFor(style);
 
+  /*
+   * Where the card breaks into its two lines, for a style that asks for two.
+   *
+   * Computed once for the card rather than per word, because every word has to
+   * agree about it: the break goes in front of one word and the colour goes on
+   * that word and everything after it.
+   */
+  const splitAt = style.splitLines
+    ? splitLineIndex(cue.words, findCaptionFont(style.fontFamily)?.group)
+    : null;
+
   return (
     <AbsoluteFill style={{ justifyContent: 'flex-start', alignItems: justify }}>
       <div
@@ -144,12 +157,13 @@ const CaptionCard: React.FC<{
               * never as the first item — a break there would open an empty
               * line above the caption.
               */}
-            {style.emphasisOwnLine && word.emphasis && index > 0 ? (
+            {(style.emphasisOwnLine && word.emphasis && index > 0) || index === splitAt ? (
               <span aria-hidden style={{ flexBasis: '100%', height: 0 }} />
             ) : null}
             <Word
             word={word}
             index={index}
+            lineTwo={splitAt !== null && index >= splitAt}
             style={style}
             fontStack={fontStack}
             overrideFonts={overrideFonts}
@@ -170,6 +184,8 @@ const CaptionCard: React.FC<{
 const Word: React.FC<{
   word: CaptionWord;
   index: number;
+  /** This word is on the card's second line, which a split style colours. */
+  lineTwo?: boolean;
   style: CaptionStyle;
   fontStack: string;
   overrideFonts: Map<string, string>;
@@ -180,12 +196,19 @@ const Word: React.FC<{
   fps: number;
   sinceCue: number;
 }> = ({
-  word, index, style, fontStack, overrideFonts, fontSize, maxWidthPx,
+  word, index, lineTwo = false, style, fontStack, overrideFonts, fontSize, maxWidthPx,
   outSec, frame, fps, sinceCue,
 }) => {
   /* The word's own choices over the style's emphasis rule — see
      resolveWordStyle. Computed once, and everything below reads it. */
-  const applied = resolveWordStyle(style, word.style, word.emphasis);
+  const lineStyle = lineTwo ? style.lineTwoStyle : null;
+  /* The line's rule first, then the word's own on top: somebody who recolours
+     one word of the coloured line keeps their colour. */
+  const applied = resolveWordStyle(
+    style,
+    lineStyle ? { ...lineStyle, ...(word.style ?? {}) } : word.style,
+    word.emphasis,
+  );
 
   const isActive = outSec >= word.startSec && outSec < word.endSec;
   const hasArrived = outSec >= word.startSec;
@@ -296,6 +319,7 @@ const Word: React.FC<{
           emphasis: word.emphasis,
           boxed,
           word: wordOverride,
+          group: findCaptionFont(applied?.fontFamily ?? style.fontFamily)?.group,
           overrideFontStack: applied?.fontFamily
             ? (overrideFonts.get(applied.fontFamily) ?? null)
             : null,

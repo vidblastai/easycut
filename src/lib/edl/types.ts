@@ -303,6 +303,25 @@ export const CaptionStyleSchema = z.object({
    */
   emphasisOwnLine: z.boolean().default(false),
   /**
+   * Break every card into two lines and style the second one differently.
+   *
+   * A whole look rather than a tweak: line one in plain white, line two in a
+   * colour, the two set tight enough to read as one block. It is everywhere in
+   * short form because it does two jobs at once — the eye lands on the
+   * coloured half, and a card that always has the same shape stops the caption
+   * jumping about between cards.
+   *
+   * The split is by WIDTH, not by word count: two lines of roughly equal
+   * length look composed, "four words then one" looks like a mistake.
+   *
+   * Distinct from `emphasisOwnLine`, which pulls ONE word out of the sentence
+   * because the director marked it. This colours the back half of every card,
+   * marked or not.
+   */
+  splitLines: z.boolean().default(false),
+  /** How the second line differs. Null with `splitLines` means only the break. */
+  lineTwoStyle: CaptionWordStyleSchema.nullable().default(null),
+  /**
    * The shortest word worth setting in the highlight face.
    *
    * A highlight is a whole line to itself, in another typeface, half again as

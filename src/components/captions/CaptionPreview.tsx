@@ -6,10 +6,11 @@ import {
   blockStyle,
   justifyFor,
   resolveWordStyle,
+  splitLineIndex,
   wordColor,
   wordStyle,
 } from '@/lib/captions/paint';
-import { fontStackFor } from '@/lib/captions/fonts';
+import { findCaptionFont, fontStackFor } from '@/lib/captions/fonts';
 
 /**
  * One held frame of a caption, drawn exactly as the renderer would draw it.
@@ -77,6 +78,9 @@ export function CaptionPreview({
   const words = React.useMemo(() => splitForPreview(text, style.maxWordsPerCue), [text, style.maxWordsPerCue]);
   const fontSize = frameHeight * style.fontSizeRatio;
   const fontStack = fontStackFor(style.fontFamily);
+  const splitAt = style.splitLines
+    ? splitLineIndex(words.map((text) => ({ text })), findCaptionFont(style.fontFamily)?.group)
+    : null;
 
   return (
     <div
@@ -116,6 +120,8 @@ export function CaptionPreview({
           >
             {words.map((word, index) => {
               const active = index === activeWord;
+              /* The same split the renderer makes — see Captions.tsx. */
+              const lineTwo = splitAt !== null && index >= splitAt;
               const emphasisAt = emphasisWord === 'last' ? words.length - 1 : emphasisWord;
               const emphasis = index === emphasisAt;
               /*
@@ -127,14 +133,14 @@ export function CaptionPreview({
                * from four plain ones beside it, so the thing you were
                * choosing was invisible at the moment of choosing.
                */
-              const applied = resolveWordStyle(style, null, emphasis);
+              const applied = resolveWordStyle(style, lineTwo ? style.lineTwoStyle : null, emphasis);
               const caps = applied?.uppercase ?? style.uppercase;
               return (
                 <React.Fragment key={index}>
                   {/* The same break the renderer makes — see Captions.tsx. A
                       picker that shows the highlight inline would be showing a
                       layout the export does not produce. */}
-                  {style.emphasisOwnLine && emphasis && index > 0 ? (
+                  {(style.emphasisOwnLine && emphasis && index > 0) || index === splitAt ? (
                     <span aria-hidden style={{ flexBasis: '100%', height: 0 }} />
                   ) : null}
                 <span
@@ -145,6 +151,7 @@ export function CaptionPreview({
                     emphasis,
                     boxed: active && style.animation === 'word-box' && Boolean(style.wordBox),
                     word: applied,
+                    group: findCaptionFont(applied?.fontFamily ?? style.fontFamily)?.group,
                     overrideFontStack: applied?.fontFamily ? fontStackFor(applied.fontFamily) : null,
                   })}
                 >

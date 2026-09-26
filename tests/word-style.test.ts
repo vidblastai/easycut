@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { applyOperations } from '@/lib/edl/operations';
-import { blockStyle, fitScale, resolveWordStyle, wordColor, wordStyle } from '@/lib/captions/paint';
+import { blockStyle, fitScale, resolveWordStyle, splitLineIndex, wordColor, wordStyle } from '@/lib/captions/paint';
 import { CaptionStyleSchema, type Edl } from '@/lib/edl/types';
 import { CAPTION_PRESETS } from '@/lib/captions/presets';
 
@@ -314,6 +314,7 @@ describe('a styled word’s box', () => {
       fontSize: 62,
       color: '#fff',
       emphasis: true,
+      group: 'script',
       word: { fontFamily: 'Yellowtail', gradient: { from: '#2AB9FB', to: '#24F6FF', angle: 180 } },
     });
     expect(Number(styled.lineHeight)).toBeGreaterThanOrEqual(1.4);
@@ -364,5 +365,36 @@ describe('a styled word’s box', () => {
     const [row, column] = gap.split(' ');
     expect(parseFloat(row)).toBeGreaterThanOrEqual(0);
     expect(parseFloat(column)).toBeGreaterThan(0);
+  });
+});
+
+describe('breaking a card into two lines', () => {
+  const words = (text: string) => text.split(' ').map((t) => ({ text: t }));
+
+  it('splits where the two halves come out the same length', () => {
+    // "WHEN DID YOU LAST" over "ATE A VEGETABLE?" — not four words over three
+    // because of the count, but because those two lines measure the same.
+    const at = splitLineIndex(words('when did you last ate a vegetable?'), 'condensed');
+    expect(at).toBe(4);
+  });
+
+  it('never leaves a line empty', () => {
+    expect(splitLineIndex(words('one'), 'condensed')).toBeNull();
+    expect(splitLineIndex(words('one two'), 'condensed')).toBe(1);
+  });
+
+  it('puts the long word on its own line rather than hanging it off the end', () => {
+    const at = splitLineIndex(words('it is extraordinary'), 'condensed')!;
+    expect(at).toBe(2);
+  });
+
+  it('gives a script word the leading it needs and an upright word tight lines', () => {
+    // A brush script's ink runs far past its em box; a condensed grotesque's
+    // does not, and forcing the same leading on it opens a gap between the two
+    // lines of a stacked caption.
+    const tight = CaptionStyleSchema.parse({ lineHeight: 0.86 });
+    const opts = { fontStack: 'X', fontSize: 62, color: '#fff', emphasis: false, word: { color: '#0f0' } };
+    expect(Number(wordStyle(tight, { ...opts, group: 'script' }).lineHeight)).toBeGreaterThan(1.4);
+    expect(Number(wordStyle(tight, { ...opts, group: 'condensed' }).lineHeight)).toBeLessThan(1.1);
   });
 });

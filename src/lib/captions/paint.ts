@@ -245,6 +245,17 @@ export function resolveWordStyle(
 const GLYPH_SAFE_LINE_HEIGHT = 1.45;
 
 /**
+ * The same guard for everything that is not a script.
+ *
+ * A brush script needs the room: its ascenders and descenders run far past the
+ * em box. A condensed grotesque does not, and forcing 1.45 on it opens a
+ * corridor between the two lines of a stacked caption — the exact gap that
+ * stops a two-line card reading as one block. The ink itself is protected by
+ * the padding above, which is measured and does not depend on this.
+ */
+const UPRIGHT_SAFE_LINE_HEIGHT = 1.02;
+
+/**
  * Room around a styled word for ink the line box does not account for.
  *
  * Leading alone was not enough, and the reason is worth writing down: a
@@ -276,6 +287,43 @@ const AVG_ADVANCE: Record<string, number> = {
   display: 0.56,
   default: 0.54,
 };
+
+/**
+ * Where a card breaks into its two lines.
+ *
+ * By width, not by word count. The look is two stacked lines of similar
+ * length — that is what makes it read as a composed block rather than as text
+ * that happened to wrap — and "SHOULD YOU EVER" over "GO" is neither.
+ *
+ * Widths are estimated from the same average-advance table `fitScale` uses.
+ * Exact measurement would need the font resident and a canvas, which the
+ * renderer has and the picker's tile does not; both have to agree on the split
+ * or the thing somebody picks is not the thing that exports.
+ *
+ * Returns the index of the first word on line two, or null when the card is
+ * too short to split — one word cannot be two lines.
+ */
+export function splitLineIndex(words: Array<{ text: string }>, group?: string): number | null {
+  if (words.length < 2) return null;
+  const advance = AVG_ADVANCE[group ?? 'default'] ?? AVG_ADVANCE.default;
+  // A space costs about a third of a character; without it the split lands one
+  // word early on cards made of short words.
+  const width = (word: { text: string }) => word.text.length * advance + 0.33;
+
+  const total = words.reduce((sum, w) => sum + width(w), 0);
+  let best = 1;
+  let bestGap = Infinity;
+  let running = 0;
+  for (let i = 0; i < words.length - 1; i++) {
+    running += width(words[i]);
+    const gap = Math.abs(running - (total - running));
+    if (gap < bestGap) {
+      bestGap = gap;
+      best = i + 1;
+    }
+  }
+  return best;
+}
 
 export function fitScale(opts: {
   text: string;
@@ -321,6 +369,13 @@ export function wordStyle(
     /** This word's hand-set overrides, if it has any. */
     word?: CaptionWordStyle | null;
     /**
+     * The group of the face this word ends up in, for the leading guard.
+     *
+     * Resolved by the caller for the same reason the stack below is: this file
+     * does not import the font registry.
+     */
+    group?: string;
+    /**
      * The font stack for `word.fontFamily`, resolved by the caller.
      *
      * Resolving it here would mean this file importing the font registry, and
@@ -330,7 +385,7 @@ export function wordStyle(
     overrideFontStack?: string | null;
   },
 ): React.CSSProperties {
-  const { fontStack, fontSize, color, emphasis, boxed = false, word, overrideFontStack } = opts;
+  const { fontStack, fontSize, color, emphasis, boxed = false, word, overrideFontStack, group } = opts;
 
   // Size first: the slant, the nudge and the plate are all expressed relative
   // to the size this word actually ends up at, not the line's.
@@ -377,7 +432,12 @@ export function wordStyle(
      * the whole point of a tight preset, and nothing clips them because they
      * have no filter.
      */
-    lineHeight: word ? Math.max(style.lineHeight, GLYPH_SAFE_LINE_HEIGHT) : style.lineHeight,
+    lineHeight: word
+      ? Math.max(
+          style.lineHeight,
+          group === 'script' ? GLYPH_SAFE_LINE_HEIGHT : UPRIGHT_SAFE_LINE_HEIGHT,
+        )
+      : style.lineHeight,
     letterSpacing: `${style.letterSpacing}em`,
     // A gradient moves the shadow, glow and outline out of `text-shadow` and
     // into a `filter` chain — see gradientFilter for the two reasons why.
