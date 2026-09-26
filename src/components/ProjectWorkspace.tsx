@@ -167,40 +167,7 @@ export function ProjectWorkspace({
    * the picture needs to know which caption is on screen, and asking the thing
    * that is actually painting the frame is the only answer that cannot drift.
    */
-  const [playheadSec, setPlayheadSec] = useState(0);
   const [workingEdl, setWorkingEdl] = useState<Edl | null>(null);
-
-  /* Follow the player's own clock. Keyed on `player` rather than on a ref, for
-     the reason spelled out where that state is declared: the preview is a lazy
-     import and arrives after this component has mounted. */
-  useEffect(() => {
-    if (!player) return;
-    const onFrame = (e: { detail: { frame: number } }) => {
-      // The composition's fps, not a guess: a 24fps upload would otherwise
-      // report the wrong second and select the wrong caption.
-      const fps = lastDoc.current?.format.fps || 30;
-      const at = e.detail.frame / fps;
-
-      /*
-       * Quantised to the CARD, not to the frame.
-       *
-       * The only thing up here that wants the playhead is the word styler,
-       * and what it actually wants is "which caption is on screen". Storing
-       * the raw second meant this component — and therefore the preview, the
-       * timeline, the caption panel and its grid — re-rendered thirty times a
-       * second while the video played, for a value that changes meaningfully
-       * about once a second. Snapping to the start of the card under the
-       * playhead gives the styler the same answer and re-renders only when
-       * the answer changes.
-       */
-      const cues = lastDoc.current?.captions ?? [];
-      const here = cues.find((c) => at >= c.startSec && at < c.endSec);
-      const next = here ? here.startSec : cues.find((c) => c.startSec >= at)?.startSec ?? at;
-      setPlayheadSec((was) => (Math.abs(was - next) < 0.001 ? was : next));
-    };
-    player.addEventListener('frameupdate', onFrame);
-    return () => player.removeEventListener('frameupdate', onFrame);
-  }, [player]);
 
   /**
    * The side panel: what's selected, the caption look, what you've changed.
@@ -697,7 +664,7 @@ export function ProjectWorkspace({
                       <WordStyler
                         edl={live}
                         style={captionStyle}
-                        playheadSec={playheadSec}
+                        player={player}
                         onCommit={applyOperations}
                         busy={busy}
                       />

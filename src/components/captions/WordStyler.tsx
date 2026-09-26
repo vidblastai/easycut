@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
+import type { PlayerRef } from '@remotion/player';
 import { clsx } from 'clsx';
 import { CAPTION_FONTS } from '@/lib/captions/fonts';
 import { fontStackFor } from '@/lib/captions/fonts';
@@ -138,18 +139,42 @@ const QUICK_GRADIENTS = [
 function WordStylerImpl({
   edl,
   style,
-  playheadSec,
+  player,
   onCommit,
   busy = false,
 }: {
   edl: Edl;
   style: CaptionStyle;
-  /** Which caption is on screen — the one whose words are offered. */
-  playheadSec: number;
+  /**
+   * The preview, which this panel follows to know which caption is on screen.
+   *
+   * It listens HERE rather than being handed the time from above. The editor's
+   * top-level component sits over the preview, the timeline and this panel, so
+   * a playhead kept up there re-rendered all three every time it crossed into
+   * a new caption — a visible hitch about once a second, which is exactly what
+   * it looked like.
+   */
+  player: PlayerRef | null;
   onCommit: (operations: EdlOperation[]) => void;
   busy?: boolean;
 }) {
   const [selected, setSelected] = useState<number | null>(null);
+  const [playheadSec, setPlayheadSec] = useState(0);
+
+  const fps = edl.format.fps || 30;
+  useEffect(() => {
+    if (!player) return;
+    const onFrame = (e: { detail: { frame: number } }) => {
+      const at = e.detail.frame / fps;
+      /* Snapped to the card: the panel offers the words of ONE caption, so the
+         only moments worth re-rendering for are the ones where that changes. */
+      const here = edl.captions.find((c) => at >= c.startSec && at < c.endSec);
+      const next = here ? here.startSec : edl.captions.find((c) => c.startSec >= at)?.startSec ?? at;
+      setPlayheadSec((was) => (Math.abs(was - next) < 0.001 ? was : next));
+    };
+    player.addEventListener('frameupdate', onFrame);
+    return () => player.removeEventListener('frameupdate', onFrame);
+  }, [player, fps, edl.captions]);
 
   /*
    * The cue under the playhead, or the next one along.

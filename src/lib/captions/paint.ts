@@ -104,19 +104,29 @@ function gradientFilter(
 
   if (cheap) {
     /*
-     * Nothing at all, while somebody is editing.
+     * Half the passes, all of the look.
      *
      * A filter chain is re-rasterised every frame the word is on screen, and
-     * the ring below is eight passes per word before the glow and the shadow.
-     * At preview size what it buys is a hairline the eye cannot resolve, so
-     * the preview does without and keeps the frames instead. The export draws
-     * the real thing.
+     * the ring below is eight passes per word. Four — the axes, without the
+     * diagonals — read the same at preview size, and the shadow and the glow
+     * are what actually lift the type off the footage, so they stay at full
+     * strength. Dropping them, which an earlier pass did, made the preview
+     * look like a different caption style from the one being exported.
      */
+    if (style.stroke) {
+      const r = Math.max(0.5, (style.stroke.width / 2) * k);
+      const c = style.stroke.color;
+      parts.push(
+        `drop-shadow(${r}px 0 0 ${c})`, `drop-shadow(${-r}px 0 0 ${c})`,
+        `drop-shadow(0 ${r}px 0 ${c})`, `drop-shadow(0 ${-r}px 0 ${c})`,
+      );
+    }
     if (glow) {
-      parts.push(`drop-shadow(0 0 ${glow.blur * 0.5 * k}px ${glow.color})`);
-    } else if (style.shadow) {
+      parts.push(`drop-shadow(0 0 ${glow.blur * k}px ${glow.color})`);
+    }
+    if (style.shadow) {
       const sh = style.shadow;
-      parts.push(`drop-shadow(${sh.offsetX * k}px ${sh.offsetY * k}px ${sh.blur * 0.6 * k}px ${sh.color})`);
+      parts.push(`drop-shadow(${sh.offsetX * k}px ${sh.offsetY * k}px ${sh.blur * k}px ${sh.color})`);
     }
     return parts.length ? parts.join(' ') : undefined;
   }
