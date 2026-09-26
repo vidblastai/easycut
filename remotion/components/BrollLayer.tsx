@@ -31,7 +31,7 @@ export const BrollLayer: React.FC<{ edl: Edl; onMediaError?: (message: string) =
     const durationInFrames = Math.max(1, Math.round((clip.outEndSec - clip.outStartSec) * fps));
 
     return (
-      <Sequence key={clip.id} from={from} durationInFrames={durationInFrames} premountFor={Math.round(fps)}>
+      <Sequence key={clip.id} from={from} durationInFrames={durationInFrames} premountFor={Math.round(fps * 2)}>
         <BrollInsert clip={clip} durationInFrames={durationInFrames} onMediaError={onMediaError} />
       </Sequence>
     );

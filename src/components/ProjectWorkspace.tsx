@@ -1232,6 +1232,7 @@ const LivePreview = React.memo(function LivePreview({
           queueMicrotask(() => setFailed(error.message));
           return <div className="h-full w-full bg-black" />;
         }}
+        logLevel={typeof window !== 'undefined' && window.location.search.includes('playerlog') ? 'verbose' : 'info'}
         acknowledgeRemotionLicense
       />
     </div>

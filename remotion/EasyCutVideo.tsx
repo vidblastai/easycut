@@ -12,6 +12,7 @@ import { Transitions } from './components/Transitions';
 import { Headline } from './components/Headline';
 import { Watermark } from './components/Watermark';
 import { VideoTrack } from './components/VideoTrack';
+import { PreviewVideoTrack } from './components/PreviewVideoTrack';
 
 export interface EasyCutVideoProps {
   edl: Edl;
@@ -76,7 +77,21 @@ export const EasyCutVideo: React.FC<EasyCutVideoProps> = ({ edl, previewAudio = 
    * exactly the frames the insert is up, so one decode serves both states.
    */
   const speakerOnTop = plan.stack === 'over';
-  const speaker = <VideoTrack edl={edl} onMediaError={onMediaError} />;
+  /*
+   * Two ways to show the same footage, and the difference is the cut.
+   *
+   * The renderer wants a sequence per segment: it draws one frame at a time
+   * and does not care how many elements there are. A browser does. Each
+   * sequence is its own video element, a new element seeks, and Remotion stops
+   * the Player's clock until a seeking element produces a frame — a stall at
+   * every cut, by design. So the editor plays one element for the whole edit
+   * and moves its own `currentTime` at the cuts. See PreviewVideoTrack.
+   */
+  const speaker = lowDetail ? (
+    <PreviewVideoTrack edl={edl} withAudio={previewAudio} onMediaError={onMediaError} />
+  ) : (
+    <VideoTrack edl={edl} onMediaError={onMediaError} />
+  );
   const broll = <BrollLayer edl={edl} onMediaError={onMediaError} />;
 
   return (
@@ -90,7 +105,7 @@ export const EasyCutVideo: React.FC<EasyCutVideoProps> = ({ edl, previewAudio = 
       <Overlays edl={edl} />
       {edl.watermark ? <Watermark /> : null}
 
-      {previewAudio ? <PreviewAudio edl={edl} fps={fps} /> : null}
+      {previewAudio ? <PreviewAudio edl={edl} fps={fps} withVoice={!lowDetail} /> : null}
     </AbsoluteFill>
   );
 };
@@ -102,9 +117,16 @@ export const EasyCutVideo: React.FC<EasyCutVideoProps> = ({ edl, previewAudio = 
  * `<Audio>` tag), so the music sits at a fixed, already-ducked level. That is
  * close enough to judge an edit by, and the exported file gets the real mix.
  */
-const PreviewAudio: React.FC<{ edl: Edl; fps: number }> = ({ edl, fps }) => (
+const PreviewAudio: React.FC<{ edl: Edl; fps: number; withVoice?: boolean }> = ({
+  edl,
+  fps,
+  withVoice = true,
+}) => (
   <>
-    {edl.segments.map((segment) => (
+    {/* The voice, one element per segment — unless the single preview video
+        element is already carrying it, in which case a second copy would be
+        both an echo and another thing to seek at every cut. */}
+    {(withVoice ? edl.segments : []).map((segment) => (
       <Sequence
         key={`audio-${segment.id}`}
         from={Math.round(segment.outStartSec * fps)}
