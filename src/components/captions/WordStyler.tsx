@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import type { PlayerRef } from '@remotion/player';
 import { clsx } from 'clsx';
 import { CAPTION_FONTS } from '@/lib/captions/fonts';
@@ -162,14 +162,38 @@ function WordStylerImpl({
   const [playheadSec, setPlayheadSec] = useState(0);
 
   const fps = edl.format.fps || 30;
+  /*
+   * The window the panel is already showing, so playing the video costs
+   * nothing until the card actually changes.
+   *
+   * This runs on every frame of playback. Scanning the whole caption track
+   * twice each time is fine on a twenty-second clip and is thirty thousand
+   * comparisons a second on a five-minute one — for an answer that changes
+   * about once every two seconds. Remembering the span we are inside turns the
+   * common frame into two number comparisons.
+   */
+  const shown = useRef<{ from: number; to: number } | null>(null);
   useEffect(() => {
     if (!player) return;
+    shown.current = null;
     const onFrame = (e: { detail: { frame: number } }) => {
       const at = e.detail.frame / fps;
+      const held = shown.current;
+      if (held && at >= held.from && at < held.to) return;
+
       /* Snapped to the card: the panel offers the words of ONE caption, so the
          only moments worth re-rendering for are the ones where that changes. */
       const here = edl.captions.find((c) => at >= c.startSec && at < c.endSec);
-      const next = here ? here.startSec : edl.captions.find((c) => c.startSec >= at)?.startSec ?? at;
+      if (here) {
+        shown.current = { from: here.startSec, to: here.endSec };
+        setPlayheadSec((was) => (Math.abs(was - here.startSec) < 0.001 ? was : here.startSec));
+        return;
+      }
+      // In a gap: the panel falls forward to the next card, and stays put
+      // until that card starts.
+      const ahead = edl.captions.find((c) => c.startSec >= at);
+      shown.current = { from: at, to: ahead ? ahead.startSec : Number.POSITIVE_INFINITY };
+      const next = ahead ? ahead.startSec : at;
       setPlayheadSec((was) => (Math.abs(was - next) < 0.001 ? was : next));
     };
     player.addEventListener('frameupdate', onFrame);

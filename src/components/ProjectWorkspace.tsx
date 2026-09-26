@@ -12,6 +12,7 @@ import { Stepper, type StepKey } from '@/components/shell/Stepper';
 import { STAGES as PIPELINE_STAGES, STAGE_LABELS } from '@/lib/pipeline/types';
 import { CaptionStudio } from '@/components/captions/CaptionStudio';
 import { WordStyler } from '@/components/captions/WordStyler';
+import { PlaybackMeter } from '@/components/editor/PlaybackMeter';
 import { CaptionBand } from '@/components/captions/CaptionPreview';
 import { usePreloadedVideo } from '@/components/editor/use-preloaded-video';
 import { captionPresetFor } from '@/lib/captions/presets';
@@ -1154,6 +1155,14 @@ const LivePreview = React.memo(function LivePreview({
   const fps = edl.format.fps || 30;
   const [failed, setFailed] = useState<string | null>(null);
 
+  // Kept here as well as handed upward, so the readout below can ask the
+  // player where it is without another render.
+  const playerRef = useRef<PlayerRef | null>(null);
+  const holdPlayer = useCallback((player: PlayerRef | null) => {
+    playerRef.current = player;
+    onPlayer(player);
+  }, [onPlayer]);
+
   /*
    * The canvas the preview is composed on, capped at 720 on the long edge.
    *
@@ -1209,8 +1218,25 @@ const LivePreview = React.memo(function LivePreview({
   // long after the render that created it, where no boundary can see it.
   // The shape belongs to the box this is placed in — two elements both claiming
   // the aspect is how the picture ends up letterboxed inside its own frame.
+  /*
+   * `?perf` in the address bar puts a frame-rate readout over the picture.
+   *
+   * A stutter belongs to a machine, a codec and a file, and none of those can
+   * be reproduced from somewhere else — so when the preview hitches on one
+   * computer and not another, this is what tells us which frames were missed
+   * and whether they were the ones at the cuts.
+   */
+  const showMeter = typeof window !== 'undefined' && window.location.search.includes('perf');
+  const cutsSec = useMemo(() => edl.segments.slice(1).map((seg) => seg.outStartSec), [edl.segments]);
+  const readPlayhead = useCallback(() => {
+    const ref = playerRef.current;
+    return ref ? ref.getCurrentFrame() / fps : 0;
+  }, [fps]);
+
   return (
     <div className="relative h-full w-full bg-black">
+      {showMeter ? <PlaybackMeter cutsSec={cutsSec} playheadSec={readPlayhead} /> : null}
+
       {/* A notice over the picture rather than instead of it. One B-roll insert
           whose URL has gone away should not hide the speaker, and a source the
           browser cannot decode leaves black underneath anyway — so the same
@@ -1226,7 +1252,7 @@ const LivePreview = React.memo(function LivePreview({
       ) : null}
 
       <Player
-        ref={onPlayer}
+        ref={holdPlayer}
         component={EasyCutVideo as never}
         inputProps={inputProps}
         durationInFrames={Math.max(1, Math.round(edl.format.durationSec * fps))}

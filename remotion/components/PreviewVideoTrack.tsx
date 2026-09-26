@@ -45,8 +45,6 @@ import { planPreviewFrame } from '../../src/lib/timeline/preview-plan';
 
 /** A gap this big means the edit jumped — a scrub, not playback. */
 const RESYNC_THRESHOLD_SEC = 0.3;
-/** How close to a cut the standby starts being prepared. */
-const PREPARE_AHEAD_SEC = 1.2;
 /**
  * Not zero, and that is the whole trick.
  *
@@ -135,7 +133,6 @@ export const PreviewVideoTrack: React.FC<{
       liveTime: live.currentTime,
       playing: isPlaying,
       resyncSec: RESYNC_THRESHOLD_SEC,
-      prepareAheadSec: PREPARE_AHEAD_SEC,
     });
     if (!plan.segmentId) return;
 
@@ -219,6 +216,17 @@ export const PreviewVideoTrack: React.FC<{
         ...regionStyle(region),
         backgroundColor: '#000',
         overflow: 'hidden',
+        /*
+         * Keep the pair's z-indexes inside this box.
+         *
+         * The two elements use `zIndex` 0 and 1 to say which of THEM is in
+         * front. Without a stacking context of its own, that 1 is measured
+         * against the whole composition — so the video sorts above the caption
+         * layer and the captions vanish behind the picture. (It only started
+         * mattering when the camera became a transform, which promotes the
+         * element to its own layer; the bug was always there waiting.)
+         */
+        isolation: 'isolate',
         ...shaped,
         ...(inset
           ? {

@@ -28,8 +28,6 @@ export interface PreviewPlanInput {
   playing: boolean;
   /** A gap this big means the edit jumped rather than played. */
   resyncSec?: number;
-  /** How close to a cut the standby starts being prepared. */
-  prepareAheadSec?: number;
 }
 
 export interface PreviewPlan {
@@ -56,7 +54,6 @@ export function planPreviewFrame(input: PreviewPlanInput): PreviewPlan {
     liveTime,
     playing,
     resyncSec = 0.3,
-    prepareAheadSec = 1.2,
   } = input;
 
   const { segment, sourceSec } = sourceTimeAt(segments, outSec);
@@ -88,12 +85,38 @@ export function planPreviewFrame(input: PreviewPlanInput): PreviewPlan {
 
   const index = segments.indexOf(segment);
   const next = segments[index + 1];
-  const untilCut = segment.outEndSec - outSec;
   // After a swap the standby is whatever just finished, so its old parking is
   // meaningless: prepare again for the cut ahead.
   const parked = swap ? null : readySegmentId;
+
+  /*
+   * Prepare the moment we know what is next — not shortly before the cut.
+   *
+   * Parking the standby means seeking it, and a seek is the one thing in here
+   * that costs real time: the decoder has to find a keyframe and decode
+   * forward to the target while the other element is mid-playback. That cost
+   * does not disappear, so the only question is WHEN the viewer pays it.
+   *
+   * It used to be paid a second or so before each cut, which is the worst
+   * possible moment: the picture is steady, the eye is settled, and the hitch
+   * arrives out of nowhere with nothing to explain it. So it read as the edit
+   * stopping just before every new clip — which is exactly what it was.
+   *
+   * Now it is paid at the cut itself, in the same frame as the swap. The
+   * picture is changing completely at that instant anyway, so the one frame
+   * the decoder takes is hidden under the change the viewer is already looking
+   * at. Preparing this early also gives the standby the WHOLE segment to get
+   * ready in rather than 1.2 seconds, so it is more reliably decoded by the
+   * time the cut arrives, not less.
+   *
+   * Not on a frame that is already seeking, though. `changed && !swap` is a
+   * scrub or a jump, where the visible element needs the decoder for the frame
+   * the user is dragging to; asking it to park the standby in the same breath
+   * is two seeks for one frame, and the drag is what has to stay responsive.
+   * The frame after it settles prepares instead.
+   */
   const prepare =
-    next && untilCut <= prepareAheadSec && parked !== next.id
+    next && parked !== next.id && (swap || !changed)
       ? { id: next.id, at: next.sourceStartSec, speed: Math.max(0.0625, next.speed || 1) }
       : null;
 
