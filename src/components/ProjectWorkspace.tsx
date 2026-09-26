@@ -423,6 +423,30 @@ export function ProjectWorkspace({
     void fetch(`/api/projects/${projectId}/proxy`, { method: 'POST' }).catch(() => {});
   }, [state?.edl, state?.proxyUrl, state?.project.status, projectId]);
 
+  /*
+   * The document the preview plays, built ONCE per change.
+   *
+   * This used to be assembled inline in the render body, which meant a new
+   * object on every render of this component — a poll landing, a step
+   * changing — and a new object is a new document as far as the Player is
+   * concerned. It rebuilt the composition, which tore down and recreated the
+   * video element underneath it: the picture froze or went black and the sound
+   * dropped out while the captions, which are plain DOM, carried on as if
+   * nothing had happened.
+   *
+   * Three things fold in here: the timeline's pending operations, the caption
+   * style under the cursor in the picker, and the small preview copy of the
+   * footage that plays in place of the original.
+   */
+  const previewDoc = useMemo(() => {
+    const base = workingEdl ?? state?.edl?.document ?? lastDoc.current;
+    if (!base) return null;
+    const styled = draftCaption ? { ...base, captionStyle: draftCaption } : base;
+    return state?.proxyUrl
+      ? { ...styled, source: { ...styled.source, url: state.proxyUrl } }
+      : styled;
+  }, [workingEdl, state?.edl?.document, draftCaption, state?.proxyUrl]);
+
   if (!state) {
     return (
       <AppShell recents={recents}>
@@ -526,22 +550,9 @@ export function ProjectWorkspace({
      * as "changing the captions does not work", which is a fair reading of a
      * picker that does not change the picture.
      */
-    const base = workingEdl ?? doc;
-    const styled = draftCaption ? { ...base, captionStyle: draftCaption } : base;
-    /* Identity matters here: a new object every render is a new `inputProps`
-       for the Player, which throws away everything memoised inside the
-       composition. */
-    /*
-     * The preview plays the PROXY, the export reads the original.
-     *
-     * The document names the file the renderer must read, which from a phone
-     * is 4K HEVC — a file no browser can scrub. Swapping the URL here, for
-     * playback only, is the difference between an editor that responds and one
-     * that looks broken while the edit underneath it is fine.
-     */
-    const live = state.proxyUrl
-      ? { ...styled, source: { ...styled.source, url: state.proxyUrl } }
-      : styled;
+    /* Built above, and kept stable on purpose — see `previewDoc`. The preview
+       plays the small copy of the footage; the export reads the original. */
+    const live = previewDoc ?? doc;
     return (
       <AppShell
         recents={recents}
