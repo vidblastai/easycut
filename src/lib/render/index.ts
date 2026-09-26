@@ -99,8 +99,9 @@ export async function renderVideo(options: RenderOptions): Promise<RenderResult>
     : { ...options.edl, watermark: options.watermark };
 
   if (options.sourceVideoPath) {
-    assetServer = await startAssetServer(dirname(options.sourceVideoPath));
-    const url = assetServer.urlFor(options.sourceVideoPath);
+    const path = await renderSourceFor(options.sourceVideoPath, edl, options.quality ?? DEFAULT_QUALITY);
+    assetServer = await startAssetServer(dirname(path));
+    const url = assetServer.urlFor(path);
     if (url) edl = { ...edl, source: { ...edl.source, url } };
   }
 
@@ -110,6 +111,75 @@ export async function renderVideo(options: RenderOptions): Promise<RenderResult>
     await assetServer?.close();
   }
 }
+
+
+/**
+ * The file the renderer should actually read frames from.
+ *
+ * Phones record 4K HEVC. The renderer pulls one frame at a time out of
+ * whatever it is given, so on that file every single frame of the export pays
+ * a 4K HEVC decode — for pixels that are then scaled down to 1080. On a small
+ * container the parallel decodes also exhaust its memory, the browser tab dies
+ * part-way through, and it surfaces as a frame that never rendered:
+ *
+ *     waiting for the page to render the React component at frame 179 failed
+ *
+ * So a source materially larger than the export gets transcoded once, and
+ * every frame after that is cheap. Built beside the source and reused, because
+ * changing a caption and exporting again must not pay for it twice.
+ *
+ * Deliberately NOT down to the output's own size: a punch-in crops into the
+ * picture, and it should find real pixels there. One and a half times the
+ * output's long edge is past what any of our zooms reach.
+ *
+ * Every failure here returns the original path. A slower render is a render;
+ * a failed one is not.
+ */
+async function renderSourceFor(sourcePath: string, edl: Edl, quality: RenderQuality): Promise<string> {
+  try {
+    const { probe, makeRenderSource } = await import('@/lib/media/ffmpeg');
+    const { stat } = await import('node:fs/promises');
+
+    const outputLongEdge = Math.max(edl.format.width, edl.format.height) * scaleFor(quality);
+    const wanted = Math.round(outputLongEdge * RENDER_SOURCE_HEADROOM);
+
+    const media = await probe(sourcePath);
+    const sourceLongEdge = Math.max(media.width, media.height);
+    // Only when there is something real to save. A source already near the
+    // output's size would be transcoded for a rounding error.
+    if (sourceLongEdge <= wanted * 1.2) return sourcePath;
+
+    /*
+     * In the project's work directory, not beside the upload: it is a
+     * derivative, it is worth keeping between exports of the same project, and
+     * `cleanupWorkDir` already owns everything under here. Written next to the
+     * upload it would sit on the storage volume forever, unknown to the sweep.
+     */
+    const { mkdir } = await import('node:fs/promises');
+    const { tmpdir } = await import('node:os');
+    const workDir = join(tmpdir(), 'easycut', edl.projectId);
+    await mkdir(workDir, { recursive: true });
+    const target = join(workDir, `render-${wanted}.mp4`);
+    const [existing, original] = await Promise.all([
+      stat(target).catch(() => null),
+      stat(sourcePath).catch(() => null),
+    ]);
+    if (existing && original && existing.mtimeMs >= original.mtimeMs) return target;
+
+    const startedAt = Date.now();
+    await makeRenderSource(sourcePath, target, wanted);
+    console.info(
+      `[render] source ${sourceLongEdge}px → ${wanted}px in ${((Date.now() - startedAt) / 1000).toFixed(1)}s`,
+    );
+    return target;
+  } catch (error) {
+    console.warn(`[render] could not prepare a render source, using the original: ${String(error).slice(0, 160)}`);
+    return sourcePath;
+  }
+}
+
+/** How much bigger than the output the render source is kept. See above. */
+const RENDER_SOURCE_HEADROOM = 1.5;
 
 async function renderWithSource(
   edl: Edl,
@@ -363,6 +433,13 @@ async function renderLocally(
      */
     gopSize: edl.format.fps,
     onProgress: ({ progress }) => onProgress(progress),
+    /*
+     * Remotion's default is 30s per frame, which a single slow decode can
+     * exceed on a busy container — and one frame over the line fails the whole
+     * export. The render source above makes that unlikely; this makes it
+     * survivable.
+     */
+    timeoutInMilliseconds: 120_000,
     browserExecutable: env.render.browserExecutable,
     // Pinned rather than derived from the host's free memory. Remotion's own
     // default is a share of whatever RAM happens to be there, which means the

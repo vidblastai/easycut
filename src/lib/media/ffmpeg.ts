@@ -185,6 +185,45 @@ export async function makeProxy(videoPath: string, outputPath: string, height = 
   ]);
 }
 
+/**
+ * A copy of the source at the resolution the render actually needs.
+ *
+ * The renderer pulls one frame at a time out of the source file. From 4K
+ * HEVC — which is what a phone hands you — that decode is the single most
+ * expensive thing in an export, and it is paid per frame for footage that is
+ * then scaled down to 1080 anyway. On a small container it does not merely go
+ * slowly: parallel 4K decodes exhaust the renderer's memory and the browser
+ * tab dies mid-frame, which surfaces as a frame that never rendered.
+ *
+ * So the source is transcoded once, to H.264 at the size the output can use,
+ * and the render reads from that. `longEdge` is deliberately above the output's
+ * own long edge: a punch-in crops into the picture and zooms, and it should
+ * find real pixels there rather than an upscale.
+ *
+ * CRF 18 at that size is visually transparent, and it is an intermediate — it
+ * is never what anybody downloads.
+ */
+export async function makeRenderSource(
+  videoPath: string,
+  outputPath: string,
+  longEdge: number,
+): Promise<void> {
+  await ffmpeg([
+    '-y', '-i', videoPath,
+    // Scale the LONG edge, whichever way round the footage is, and keep the
+    // other side even (H.264 requires it).
+    '-vf', `scale='if(gt(iw,ih),${longEdge},-2)':'if(gt(iw,ih),-2,${longEdge})':flags=bicubic`,
+    '-c:v', 'libx264',
+    '-preset', 'veryfast',
+    '-crf', '18',
+    '-pix_fmt', 'yuv420p',
+    // The final mix is built from the original audio, so this carries none.
+    '-an',
+    '-movflags', '+faststart',
+    outputPath,
+  ]);
+}
+
 export async function extractFrame(videoPath: string, atSec: number, outputPath: string, width = 640): Promise<void> {
   await ffmpeg([
     '-y',
