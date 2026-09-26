@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { clsx } from 'clsx';
 import { CAPTION_FONTS } from '@/lib/captions/fonts';
 import { fontStackFor } from '@/lib/captions/fonts';
@@ -135,7 +135,7 @@ const QUICK_GRADIENTS = [
   { label: 'Mint', from: '#A7F3D0', to: '#059669' },
 ];
 
-export function WordStyler({
+function WordStylerImpl({
   edl,
   style,
   playheadSec,
@@ -393,3 +393,12 @@ function Chip({
     </button>
   );
 }
+
+
+/*
+ * Memoised. The editor's top-level component re-renders for reasons that have
+ * nothing to do with this panel — a poll landing, a playhead crossing a
+ * caption — and this is heavy enough that re-rendering it for free is not
+ * free at all.
+ */
+export const WordStyler = React.memo(WordStylerImpl);

@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { clsx } from 'clsx';
 import dynamic from 'next/dynamic';
 import type { PlayerRef } from '@remotion/player';
@@ -179,7 +179,24 @@ export function ProjectWorkspace({
       // The composition's fps, not a guess: a 24fps upload would otherwise
       // report the wrong second and select the wrong caption.
       const fps = lastDoc.current?.format.fps || 30;
-      setPlayheadSec(e.detail.frame / fps);
+      const at = e.detail.frame / fps;
+
+      /*
+       * Quantised to the CARD, not to the frame.
+       *
+       * The only thing up here that wants the playhead is the word styler,
+       * and what it actually wants is "which caption is on screen". Storing
+       * the raw second meant this component — and therefore the preview, the
+       * timeline, the caption panel and its grid — re-rendered thirty times a
+       * second while the video played, for a value that changes meaningfully
+       * about once a second. Snapping to the start of the card under the
+       * playhead gives the styler the same answer and re-renders only when
+       * the answer changes.
+       */
+      const cues = lastDoc.current?.captions ?? [];
+      const here = cues.find((c) => at >= c.startSec && at < c.endSec);
+      const next = here ? here.startSec : cues.find((c) => c.startSec >= at)?.startSec ?? at;
+      setPlayheadSec((was) => (Math.abs(was - next) < 0.001 ? was : next));
     };
     player.addEventListener('frameupdate', onFrame);
     return () => player.removeEventListener('frameupdate', onFrame);
@@ -506,6 +523,9 @@ export function ProjectWorkspace({
      */
     const base = workingEdl ?? doc;
     const styled = draftCaption ? { ...base, captionStyle: draftCaption } : base;
+    /* Identity matters here: a new object every render is a new `inputProps`
+       for the Player, which throws away everything memoised inside the
+       composition. */
     /*
      * The preview plays the PROXY, the export reads the original.
      *
@@ -1086,7 +1106,13 @@ const EasyCutVideo = dynamic(
   { ssr: false },
 );
 
-function LivePreview({
+/*
+ * Memoised on `edl` and nothing else.
+ *
+ * The preview is the most expensive thing on the page, and it only depends on
+ * the document. Without this it re-rendered every time anything above it did.
+ */
+const LivePreview = React.memo(function LivePreview({
   edl,
   onPlayer,
 }: {
@@ -1108,6 +1134,28 @@ function LivePreview({
    * the editor stutter. Seven times less work, and at this size nobody can
    * tell. The export renders from the document and is unaffected.
    */
+  /*
+   * One object, not a fresh one per render.
+   *
+   * The Player treats `inputProps` by identity: a new literal on every parent
+   * render is a new document as far as the composition is concerned, and
+   * everything memoised inside it is thrown away. Built here, keyed on the
+   * things that actually change.
+   */
+  const inputProps = useMemo(
+    () =>
+      ({
+        edl,
+        previewAudio: true,
+        // Cheaper type while editing — see `lowDetail` on the composition.
+        lowDetail: true,
+        // Only the preview gets this. A render without it fails loudly on an
+        // undecodable source, which is what you want from a render.
+        onMediaError: (message: string) => setFailed((f) => f ?? message),
+      }) as never,
+    [edl],
+  );
+
   const preview = useMemo(() => {
     const longEdge = Math.max(edl.format.width, edl.format.height);
     const scale = Math.min(1, PREVIEW_LONG_EDGE / longEdge);
@@ -1149,15 +1197,7 @@ function LivePreview({
       <Player
         ref={onPlayer}
         component={EasyCutVideo as never}
-        inputProps={{
-          edl,
-          previewAudio: true,
-          // Cheaper type while editing — see `lowDetail` on the composition.
-          lowDetail: true,
-          // Only the preview gets this. A render without it fails loudly on an
-          // undecodable source, which is what you want from a render.
-          onMediaError: (message: string) => setFailed((f) => f ?? message),
-        } as never}
+        inputProps={inputProps}
         durationInFrames={Math.max(1, Math.round(edl.format.durationSec * fps))}
         fps={fps}
         compositionWidth={preview.width}
@@ -1178,7 +1218,7 @@ function LivePreview({
       />
     </div>
   );
-}
+});
 
 /* ---------------------------------------------------------------- panels */
 

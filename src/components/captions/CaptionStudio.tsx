@@ -50,7 +50,7 @@ const ANIMATION_LABELS: Record<string, string> = {
 
 const SAMPLE = 'This is what your captions will look like';
 
-export function CaptionStudio({
+function CaptionStudioImpl({
   style,
   onChange,
   mode,
@@ -587,3 +587,12 @@ function withAlpha(hex: string, previous: string): string {
   const b = parseInt(hex.slice(5, 7), 16);
   return alpha >= 1 ? hex : `rgba(${r},${g},${b},${alpha})`;
 }
+
+
+/*
+ * Memoised. The editor's top-level component re-renders for reasons that have
+ * nothing to do with this panel — a poll landing, a playhead crossing a
+ * caption — and this is heavy enough that re-rendering it for free is not
+ * free at all.
+ */
+export const CaptionStudio = React.memo(CaptionStudioImpl);

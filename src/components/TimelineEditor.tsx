@@ -119,7 +119,7 @@ const TRACK_LABEL_W = 92;
 const AUTOSCROLL_EDGE_PX = 48;
 const AUTOSCROLL_MAX_PX_PER_FRAME = 18;
 
-export function TimelineEditor({
+function TimelineEditorImpl({
   edl: committedEdl,
   onCommit,
   busy = false,
@@ -131,7 +131,25 @@ export function TimelineEditor({
   const [ops, setOps] = useState<EdlOperation[]>([]);
   const [redoStack, setRedoStack] = useState<EdlOperation[]>([]);
   const [selection, setSelection] = useState<Selection>(null);
+  /*
+   * The playhead moves thirty times a second. React does not have to.
+   *
+   * This used to be plain state written on every `frameupdate`, which
+   * re-rendered the whole timeline — every clip, every caption chip, the ruler
+   * — thirty times a second, on top of whatever the preview was already doing.
+   * That is the single biggest reason the editor stuttered while playing.
+   *
+   * So the frame loop writes the ref, moves the line and rewrites the clock
+   * BY HAND, and only commits to state a few times a second, for the things
+   * that genuinely need to re-render (the autoscroll, a drag, the readouts
+   * that live somewhere else). The line is never behind: it is being set
+   * directly, which is as immediate as it gets.
+   */
   const [playhead, setPlayhead] = useState(0);
+  const playheadRef = useRef(0);
+  const lineRef = useRef<HTMLDivElement | null>(null);
+  const clockRef = useRef<HTMLSpanElement | null>(null);
+  const lastCommit = useRef(0);
   const [pps, setPps] = useState(DEFAULT_PPS);
   const [warning, setWarning] = useState<string | null>(null);
 
@@ -185,15 +203,29 @@ export function TimelineEditor({
   /** Timeline → player. */
   const seek = useCallback((sec: number) => {
     const clamped = Math.max(0, Math.min(duration, sec));
-    setPlayhead(clamped);
+    moveTo(clamped);
     player?.seekTo(Math.round(clamped * fps));
   }, [duration, fps, player]);
+
+  /** Moves the playhead now, and tells React about it a few times a second. */
+  const moveTo = useCallback((sec: number) => {
+    playheadRef.current = sec;
+    if (lineRef.current) lineRef.current.style.left = `${TRACK_LABEL_W + sec * ppsRef.current}px`;
+    if (clockRef.current) clockRef.current.textContent = formatTc(sec);
+    const now = typeof performance !== 'undefined' ? performance.now() : Date.now();
+    // Six times a second is under the eye's threshold for the things that do
+    // re-render, and a fifth of the work.
+    if (now - lastCommit.current >= 160) {
+      lastCommit.current = now;
+      setPlayhead(sec);
+    }
+  }, []);
 
   /** Player → timeline, so playback walks the playhead. */
   useEffect(() => {
     if (!player) return;
 
-    const onFrame = (e: { detail: { frame: number } }) => setPlayhead(e.detail.frame / fps);
+    const onFrame = (e: { detail: { frame: number } }) => moveTo(e.detail.frame / fps);
     const onPlay = () => setPlaying(true);
     const onPause = () => setPlaying(false);
 
@@ -205,7 +237,7 @@ export function TimelineEditor({
       player.removeEventListener('play', onPlay);
       player.removeEventListener('pause', onPause);
     };
-  }, [player, fps]);
+  }, [player, fps, moveTo]);
 
   /**
    * Zooming, anchored.
@@ -1004,7 +1036,7 @@ export function TimelineEditor({
         </button>
 
         <span className="rounded-md bg-ink px-2 py-1 font-mono text-[11px] tabular-nums text-muted">
-          {formatTc(playhead)} / {formatTc(duration)}
+          <span ref={clockRef}>{formatTc(playhead)}</span> / {formatTc(duration)}
         </span>
 
         <div className="mx-1 h-5 w-px bg-line" />
@@ -1379,6 +1411,7 @@ export function TimelineEditor({
 
           {/* playhead, drawn over everything */}
           <div
+            ref={lineRef}
             className="pointer-events-none absolute top-0 z-30 w-px bg-chalk"
             style={{ left: TRACK_LABEL_W + playhead * pps, height: '100%', boxShadow: '0 0 8px rgba(245,245,247,.5)' }}
           />
@@ -2132,3 +2165,12 @@ function nearestIndex(starts: number[], target: number): number {
   for (let i = 0; i < starts.length; i++) if (target >= starts[i]) index = i;
   return index;
 }
+
+
+/*
+ * Memoised. The editor's top-level component re-renders for reasons that have
+ * nothing to do with this panel — a poll landing, a playhead crossing a
+ * caption — and this is heavy enough that re-rendering it for free is not
+ * free at all.
+ */
+export const TimelineEditor = React.memo(TimelineEditorImpl);
