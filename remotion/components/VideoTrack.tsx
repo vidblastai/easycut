@@ -109,10 +109,20 @@ export const VideoTrack: React.FC<{ edl: Edl; onMediaError?: (message: string) =
             key={segment.id}
             from={from}
             durationInFrames={durationInFrames}
-            // Warms the decoder before the cut, so the first frame of each
-            // segment isn't a flash of black on a fast edit. Premounting is a
-            // property of the default absolute-fill layout, so no `layout` here.
-            premountFor={Math.round(fps * 0.5)}
+            /*
+             * Warms the decoder well before the cut.
+             *
+             * Each segment is its own video element, and at a cut the next one
+             * has to be created, fetch its bytes and seek to its start before
+             * it can show a frame — which is a freeze on the cut itself. Half
+             * a second was not enough of a head start on a real edit; a second
+             * and a half lets the element exist, buffer and seek while the
+             * previous clip is still playing.
+             *
+             * Premounting is a property of the default absolute-fill layout,
+             * so no `layout` here.
+             */
+            premountFor={Math.round(fps * 1.5)}
           >
             <AbsoluteFill style={{ overflow: 'hidden' }}>
               <OffthreadVideo

@@ -187,7 +187,24 @@ export async function makeProxy(videoPath: string, outputPath: string, shortSide
     '-c:v', 'libx264',
     '-preset', 'veryfast',
     '-crf', '28',
-    '-g', '48',
+    /*
+     * A keyframe every twelve frames, and this is the whole point of the file.
+     *
+     * A cut in the edit is a SEEK in this file, and a seek can only start at a
+     * keyframe: the decoder jumps to the one before the target and decodes
+     * forward to it. At a keyframe every 48 frames that is up to a second and
+     * a half of frames to chew through before a single one can be shown —
+     * which is the freeze at every cut, paid again for every cut, while the
+     * captions carry on regardless.
+     *
+     * Twelve frames is under half a second of decode in the worst case, and
+     * `-keyint_min` with the scene-cut detector off makes it exact rather
+     * than a suggestion x264 is free to ignore. It costs perhaps a third more
+     * bytes on a file that is under two megabytes.
+     */
+    '-g', '12',
+    '-keyint_min', '12',
+    '-sc_threshold', '0',
     '-c:a', 'aac', '-b:a', '96k',
     '-movflags', '+faststart',
     outputPath,

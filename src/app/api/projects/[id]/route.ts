@@ -4,6 +4,7 @@ import { db, parseJson } from '@/lib/db';
 import { healEdl } from '@/lib/edl/operations';
 import { readStageLog } from '@/worker/process-project';
 import { STAGE_LABELS, type Stage } from '@/lib/pipeline/types';
+import { isCurrentProxy } from '@/lib/media/proxy';
 import { guardProject } from '@/lib/auth';
 import { purgeProject } from '@/worker/sweep';
 
@@ -130,7 +131,12 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
      * read. A browser cannot scrub a 4K phone recording, so the editor swaps
      * this in for playback only.
      */
-    proxyUrl: project.assets.find((a) => a.kind === 'proxy')?.url ?? null,
+    proxyUrl: (() => {
+      const proxy = project.assets.find((a) => a.kind === 'proxy');
+      // A proxy built by older settings is reported as missing, so the editor
+      // asks for a fresh one — see PREVIEW_PROXY_FILE.
+      return proxy && isCurrentProxy(proxy.storageKey) ? proxy.url : null;
+    })(),
     edl: edl
       ? {
           id: edl.id,

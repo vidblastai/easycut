@@ -14,6 +14,7 @@ import { cleanupWorkDir, runPipeline } from '@/lib/pipeline/run';
 import { STAGE_LABELS, type Stage } from '@/lib/pipeline/types';
 import { renderVideo, renderWorkDir } from '@/lib/render';
 import { assetKey, storage } from '@/lib/storage';
+import { isCurrentProxy, PREVIEW_PROXY_FILE } from '@/lib/media/proxy';
 import type { StageLogEntry } from '@/lib/pipeline/types';
 
 /**
@@ -584,7 +585,7 @@ async function publishProxy(
 ): Promise<{ key: string; url: string; sizeBytes: number } | null> {
   if (!proxyPath) return null;
   try {
-    const key = assetKey(projectId, 'proxy', 'preview.mp4');
+    const key = assetKey(projectId, 'proxy', PREVIEW_PROXY_FILE);
     const object = await storage().putFile(key, proxyPath, 'video/mp4');
     return { key, url: object.url, sizeBytes: object.sizeBytes };
   } catch (error) {
@@ -606,7 +607,13 @@ export async function makeProjectProxy(projectId: string): Promise<void> {
   const source = await db.asset.findFirst({ where: { projectId, kind: 'source' } });
   if (!source) return;
   const existing = await db.asset.findFirst({ where: { projectId, kind: 'proxy' } });
-  if (existing) return;
+  // A proxy built by older settings is worse than none: it is the file that
+  // freezes on every cut. Out with it, and build the current one.
+  if (existing && isCurrentProxy(existing.storageKey)) return;
+  if (existing) {
+    await storage().delete(existing.storageKey).catch(() => {});
+    await db.asset.delete({ where: { id: existing.id } }).catch(() => {});
+  }
 
   const { localPathFor } = await import('@/lib/storage');
   const { makeProxy } = await import('@/lib/media/ffmpeg');

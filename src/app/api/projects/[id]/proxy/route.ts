@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { queue } from '@/lib/queue';
 import { guardProject } from '@/lib/auth';
+import { isCurrentProxy } from '@/lib/media/proxy';
 
 export const runtime = 'nodejs';
 
@@ -23,11 +24,14 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
   if (denied) return denied;
 
   const [proxy, source] = await Promise.all([
-    db.asset.findFirst({ where: { projectId: id, kind: 'proxy' }, select: { url: true } }),
+    db.asset.findFirst({ where: { projectId: id, kind: 'proxy' }, select: { url: true, storageKey: true } }),
     db.asset.findFirst({ where: { projectId: id, kind: 'source' }, select: { id: true } }),
   ]);
 
-  if (proxy) return NextResponse.json({ ok: true, ready: true, url: proxy.url });
+  // A proxy from older settings counts as missing — see PREVIEW_PROXY_FILE.
+  if (proxy && isCurrentProxy(proxy.storageKey)) {
+    return NextResponse.json({ ok: true, ready: true, url: proxy.url });
+  }
   // The footage has been swept. Nothing to make a preview from, and saying so
   // beats queueing work that can only fail.
   if (!source) return NextResponse.json({ ok: true, ready: false, reason: 'no-source' });
