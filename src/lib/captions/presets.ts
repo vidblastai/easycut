@@ -328,6 +328,68 @@ export const CAPTION_PRESETS: CaptionPreset[] = [
 
   /* ────────────────────────────────────────────────────────────── loud ─── */
   {
+    id: 'spotlight',
+    name: 'Spotlight',
+    blurb: 'Heavy caps, soft shadow, built for one word in a script to cut across it.',
+    family: 'loud',
+    bestFor: 'short',
+    style: {
+      preset: 'spotlight',
+      animation: 'word-pop',
+      fontFamily: 'Anton',
+      fontWeight: 400,
+      italic: false,
+      fontSizeRatio: 0.068,
+      letterSpacing: -0.005,
+      /*
+       * TIGHT, and that is the whole point of this preset.
+       *
+       * The look it exists for has a script word riding up into the line
+       * above. At a normal 1.1 line height there is a corridor of empty space
+       * between the lines for it to sit politely inside, and "politely inside"
+       * is exactly what it must not look like. At 0.92 the lines are close
+       * enough that a word nudged upward genuinely crosses the one above.
+       */
+      lineHeight: 0.92,
+      uppercase: true,
+      maxWordsPerCue: 3,
+      maxLines: 2,
+      align: 'center',
+      positionY: 0.68,
+      widthRatio: 0.92,
+      color: '#FFFFFF',
+      emphasisColor: '#2AD6FF',
+      activeColor: null,
+      /* Barely a gradient. White to a cool near-white, which reads as light
+         falling across the letters rather than as a coloured fill — the thing
+         that stops heavy white caps looking like a subtitle track. */
+      gradient: { from: '#FFFFFF', to: '#E4EAF4', angle: 180 },
+      /*
+       * A thin outline, not a thick one.
+       *
+       * The references this is built from separate their lines with a soft
+       * shadow and the barest dark edge. A ten-pixel outline — the `impact`
+       * setting — turns the frame into a sticker sheet and flattens the
+       * script word's glow against it.
+       */
+      /*
+       * Barely there, and deliberately so.
+       *
+       * A dark ring fights the glow on a highlighted word: the glow is light
+       * spilling OUT of the letter and the ring is a hard edge stopping it, so
+       * the two cancel and the word reads as outlined rather than lit. The
+       * separation from the footage comes from the shadow below instead, which
+       * sits under the whole line and does not touch the letterform.
+       */
+      stroke: { width: 1.5, color: 'rgba(0,0,0,0.45)' },
+      shadow: { offsetX: 0, offsetY: 7, blur: 22, color: 'rgba(0,0,0,0.55)' },
+      glow: null,
+      background: null,
+      wordBox: null,
+    },
+  },
+
+  {
     id: 'impact',
     name: 'Impact',
     blurb: 'Condensed caps with a thick black outline. Shouts, in a good way.',

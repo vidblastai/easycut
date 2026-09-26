@@ -37,7 +37,7 @@ export interface CaptionFont {
   /** What it is for, in the editor's own words. */
   vibe: string;
   /** Loose grouping for the picker. */
-  group: 'geometric' | 'grotesque' | 'condensed' | 'rounded' | 'serif' | 'display';
+  group: 'geometric' | 'grotesque' | 'condensed' | 'rounded' | 'serif' | 'display' | 'script';
   /**
    * Caps-only faces. Setting `uppercase: false` against one of these is a lie
    * the renderer cannot honour, so the editor stops offering the choice.
@@ -159,6 +159,55 @@ export const CAPTION_FONTS: CaptionFont[] = [
     weights: ['500', '600', '700'],
     vibe: 'Warm reading serif. For long-form where captions are an aid, not a hook.',
     group: 'serif',
+  },
+
+  /* ─────────────────────────────────────────────────────── scripts ───
+   *
+   * The one thing the registry had none of, and the reason a whole family of
+   * looks was impossible: the style where a heavy condensed line is
+   * interrupted by ONE word in a brush script, larger, slanted, in its own
+   * colour. Without a script face the best that could be offered was a
+   * rounded cartoon display face, which reads as a completely different
+   * product.
+   *
+   * These are single-weight by nature — a brush script has one weight, the
+   * one the brush made — so asking for 700 gets you a synthesised fake.
+   * `fontWeight` is deliberately not offered against them in the picker.
+   */
+  {
+    id: 'Yellowtail',
+    module: 'Yellowtail',
+    weights: ['400'],
+    vibe: 'A single brush stroke, heavy and connected. The one-word highlight face.',
+    group: 'script',
+  },
+  {
+    id: 'Kaushan Script',
+    module: 'KaushanScript',
+    weights: ['400'],
+    vibe: 'Brush script with a forward lean. Energetic without being loose.',
+    group: 'script',
+  },
+  {
+    id: 'Pacifico',
+    module: 'Pacifico',
+    weights: ['400'],
+    vibe: 'Rounded surf-shop script. Friendly, wide, very legible small.',
+    group: 'script',
+  },
+  {
+    id: 'Caveat',
+    module: 'Caveat',
+    weights: ['400', '700'],
+    vibe: 'Handwriting rather than lettering — an aside, a note, a correction.',
+    group: 'script',
+  },
+  {
+    id: 'Great Vibes',
+    module: 'GreatVibes',
+    weights: ['400'],
+    vibe: 'Formal copperplate script. For elegance, never for emphasis.',
+    group: 'script',
   },
 ];
 

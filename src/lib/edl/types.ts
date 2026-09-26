@@ -136,6 +136,25 @@ export const CaptionWordStyleSchema = z.object({
    * look from "a coloured word".
    */
   offsetY: z.number().nullable().optional(),
+  /**
+   * Opt this word out of the line's uppercase, or into it.
+   *
+   * A script face in ALL CAPS is not the same look with different letters, it
+   * is a different and much worse one — the connecting strokes a brush script
+   * is made of only exist between lowercase letters. The first render of this
+   * style came back with a capitalised script word and that single fact was
+   * most of why it did not match.
+   */
+  uppercase: z.boolean().nullable().optional(),
+  /**
+   * A coloured bloom around this word only.
+   *
+   * The reference looks this exists for all carry one: a script word in a
+   * bright colour reads as lit rather than merely coloured, and that is the
+   * glow. Without it the word is the right hue and still looks flat beside
+   * the footage.
+   */
+  glow: z.object({ color: z.string(), blur: z.number() }).nullable().optional(),
   /** Drawn behind this word only. Overrides the line's wordBox while active. */
   box: z.object({
     color: z.string(),

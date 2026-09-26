@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { applyOperations } from '@/lib/edl/operations';
-import { wordColor, wordStyle } from '@/lib/captions/paint';
+import { blockStyle, fitScale, wordColor, wordStyle } from '@/lib/captions/paint';
 import { CaptionStyleSchema, type Edl } from '@/lib/edl/types';
 
 /**
@@ -203,5 +203,55 @@ describe('a gradient changes how the outline has to be drawn', () => {
     const s = wordStyle(g, base);
     expect(s.WebkitTextStroke).toBeUndefined();
     expect(String(s.filter)).toContain('drop-shadow');
+  });
+});
+
+describe('the guards a tight, scaled-up look needs', () => {
+  it('keeps a word space when the line height is below 1', () => {
+    /*
+     * `gap` rejects a NEGATIVE value by dropping the whole declaration — both
+     * the row gap and the column gap. A preset with lineHeight 0.92, which a
+     * tight look wants so a nudged word can cross the line above, rendered
+     * "THE MOST" as "THEMOST".
+     */
+    const tight = CaptionStyleSchema.parse({ lineHeight: 0.92 });
+    const g = String(blockStyle(tight, { width: 1080, height: 1920 }, 100).gap);
+    expect(g.startsWith('-')).toBe(false);
+    // The word space must survive: it is the second half of the shorthand.
+    expect(g.split(' ')[1]).toBe('26px');
+  });
+
+  it('still opens the lines up when the line height is above 1', () => {
+    const loose = CaptionStyleSchema.parse({ lineHeight: 1.3 });
+    const g = String(blockStyle(loose, { width: 1080, height: 1920 }, 100).gap);
+    expect(parseFloat(g)).toBeGreaterThan(0);
+  });
+});
+
+describe('keeping a scaled word inside the frame', () => {
+  const fits = { text: 'powerful', fontSize: 130, maxWidthPx: 994, group: 'script' };
+
+  it('leaves a scale that fits exactly as asked', () => {
+    expect(fitScale({ ...fits, requested: 1 })).toBe(1);
+  });
+
+  it('pulls back a scale that would run off the frame', () => {
+    // 1.7 put an eight-letter script word wider than a 1080 frame, and it
+    // rendered cropped through the first and last letters.
+    const s = fitScale({ ...fits, requested: 1.7 });
+    expect(s).toBeLessThan(1.7);
+    expect(s * fits.text.length * fits.fontSize * 0.62).toBeLessThanOrEqual(fits.maxWidthPx + 1);
+  });
+
+  it('never shrinks a highlight below the line it is highlighting', () => {
+    // Smaller than its neighbours is not a highlight; at that point the preset
+    // is wrong rather than the word.
+    expect(fitScale({ ...fits, text: 'extraordinarily', requested: 3 })).toBeGreaterThanOrEqual(1);
+  });
+
+  it('allows a condensed face more letters than a script', () => {
+    const script = fitScale({ ...fits, requested: 2, group: 'script' });
+    const condensed = fitScale({ ...fits, requested: 2, group: 'condensed' });
+    expect(condensed).toBeGreaterThan(script);
   });
 });

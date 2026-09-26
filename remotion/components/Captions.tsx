@@ -5,10 +5,12 @@ import { ensureCaptionFont } from '../lib/fonts';
 import { pop } from '../lib/timing';
 import {
   blockStyle,
+  fitScale,
   justifyFor,
   wordColor,
   wordStyle,
 } from '../../src/lib/captions/paint';
+import { findCaptionFont } from '../../src/lib/captions/fonts';
 
 /**
  * Captions.
@@ -135,6 +137,7 @@ const CaptionCard: React.FC<{
             fontStack={fontStack}
             overrideFonts={overrideFonts}
             fontSize={fontSize}
+            maxWidthPx={width * style.widthRatio}
             outSec={outSec}
             frame={frame}
             fps={fps}
@@ -153,11 +156,15 @@ const Word: React.FC<{
   fontStack: string;
   overrideFonts: Map<string, string>;
   fontSize: number;
+  maxWidthPx: number;
   outSec: number;
   frame: number;
   fps: number;
   sinceCue: number;
-}> = ({ word, index, style, fontStack, overrideFonts, fontSize, outSec, frame, fps, sinceCue }) => {
+}> = ({
+  word, index, style, fontStack, overrideFonts, fontSize, maxWidthPx,
+  outSec, frame, fps, sinceCue,
+}) => {
   const isActive = outSec >= word.startSec && outSec < word.endSec;
   const hasArrived = outSec >= word.startSec;
 
@@ -221,10 +228,28 @@ const Word: React.FC<{
       break;
   }
 
-  // A caps-only face gets uppercased regardless — lowercase in the EDL would
-  // otherwise render as caps anyway and the editor would be describing a
-  // setting that does nothing.
-  const text = style.uppercase ? word.text.toUpperCase() : word.text;
+  /*
+   * A word may opt out of the line's uppercase.
+   *
+   * A brush script in ALL CAPS is not the same look with different letters: a
+   * script is made of the strokes that JOIN lowercase letters, and capitals
+   * have none of them. So a script word set in caps looks broken, and the
+   * whole point of the highlight is lost.
+   */
+  const caps = word.style?.uppercase ?? style.uppercase;
+  const text = caps ? word.text.toUpperCase() : word.text;
+
+  /* And it may not run off the frame. See `fitScale`. */
+  const scaled = word.style?.scale
+    ? fitScale({
+        text,
+        fontSize,
+        requested: word.style.scale,
+        maxWidthPx,
+        group: findCaptionFont(word.style.fontFamily ?? style.fontFamily)?.group,
+      })
+    : undefined;
+  const wordOverride = scaled != null ? { ...word.style, scale: scaled } : word.style;
 
   return (
     <span
@@ -235,7 +260,7 @@ const Word: React.FC<{
           color,
           emphasis: word.emphasis,
           boxed,
-          word: word.style,
+          word: wordOverride,
           overrideFontStack: word.style?.fontFamily
             ? (overrideFonts.get(word.style.fontFamily) ?? null)
             : null,

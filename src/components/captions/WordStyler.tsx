@@ -24,6 +24,97 @@ import type { EdlOperation } from '@/lib/edl/operations';
  * is free and nothing accumulates invisibly.
  */
 
+/**
+ * Whole looks, in one tap.
+ *
+ * ── Why these exist alongside the individual knobs ──────────────────────
+ *
+ * The look people actually point at — a heavy line interrupted by one word in
+ * a brush script, bigger, slanted, glowing, overlapping the line above — is
+ * six separate decisions: face, gradient, size, slant, glow, nudge. Offering
+ * only the six knobs means the look is reachable in principle and reached by
+ * nobody, because you have to already know the recipe.
+ *
+ * Each of these IS the recipe. The knobs underneath stay, for adjusting one
+ * afterwards.
+ *
+ * Every field is spelled out rather than left to fall through, so tapping a
+ * second look REPLACES the first cleanly instead of inheriting half of it.
+ */
+const LOOKS: Array<{ id: string; label: string; hint: string; style: CaptionWordStyle }> = [
+  {
+    id: 'script-pop',
+    label: 'Script pop',
+    hint: 'Brush script, cyan, tucked under the line',
+    style: {
+      fontFamily: 'Yellowtail',
+      // Sampled off the reference frame: deeper blue at the top, bright cyan
+      // at the bottom. The direction matters — flipped, it reads as a puddle
+      // rather than as light coming from above.
+      gradient: { from: '#2AB9FB', to: '#24F6FF', angle: 180 },
+      glow: { color: 'rgba(42,214,255,0.55)', blur: 26 },
+      /*
+       * LOWERCASE, whatever the line says.
+       *
+       * A brush script is made of the strokes that join lowercase letters.
+       * Capitals have none of them, so a script word set in caps is a row of
+       * disconnected shapes — it was the single biggest reason the first
+       * attempt at this look did not match its reference.
+       */
+      uppercase: false,
+      /* 1.35, not 1.7. A script face is much wider per letter than the
+         condensed caps beside it, and at 1.7 an eight-letter word is wider
+         than the frame. The renderer clamps anything that would overflow, but
+         a value that is CONSTANTLY being clamped is a value that lies about
+         what you will get. */
+      scale: 1.35,
+      rotate: null,
+      /* A script sits on its own slanted baseline, so it rides UP into the
+         line above to look tucked in rather than dropped below. */
+      offsetY: -0.12,
+      italic: null,
+      color: null,
+      fontWeight: null,
+      box: null,
+    },
+  },
+  {
+    id: 'chrome',
+    label: 'Chrome',
+    hint: 'Silver fade, same face, same size',
+    style: {
+      gradient: { from: '#FFFFFF', to: '#8E9AAF', angle: 180 },
+      fontFamily: null, glow: null, scale: null, rotate: null, uppercase: null,
+      offsetY: null, italic: null, color: null, fontWeight: null, box: null,
+    },
+  },
+  {
+    id: 'marker',
+    label: 'Marker',
+    hint: 'Handwritten, tilted, in the accent colour',
+    style: {
+      fontFamily: 'Caveat',
+      fontWeight: 700,
+      scale: 1.55,
+      rotate: -4,
+      offsetY: -0.06,
+      gradient: null, glow: null, italic: null, color: null, box: null, uppercase: null,
+    },
+  },
+  {
+    id: 'sticker',
+    label: 'Sticker',
+    hint: 'On its own plate, straight',
+    style: {
+      box: { color: '#9B7BFF', padding: 10, radius: 12 },
+      color: '#0D0D10',
+      scale: 1.1,
+      fontFamily: null, gradient: null, glow: null, rotate: null, uppercase: null,
+      offsetY: null, italic: null, fontWeight: null,
+    },
+  },
+];
+
 /** The presets people reach for, and the reason there is no colour wheel here. */
 const QUICK_COLORS = [
   { label: 'Accent', value: null },
@@ -129,6 +220,21 @@ export function WordStyler({
 
       {word ? (
         <div className="mt-4 space-y-3.5 border-t border-line-soft pt-3.5">
+          <Row label="Look">
+            {LOOKS.map((l) => (
+              <button
+                key={l.id}
+                type="button"
+                disabled={busy}
+                title={l.hint}
+                onClick={() => patch(l.style)}
+                className="rounded-lg bg-charcoal px-2.5 py-1 text-[12px] font-semibold text-muted transition-colors hover:bg-violet-dim hover:text-chalk"
+              >
+                {l.label}
+              </button>
+            ))}
+          </Row>
+
           <Row label="Colour">
             {QUICK_COLORS.map((c) => (
               <button

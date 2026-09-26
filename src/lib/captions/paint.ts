@@ -82,9 +82,15 @@ export function strokeStyle(style: CaptionStyle, fontSize: number): React.CSSPro
  * This applies to the `gradient` preset too, which has carried the first bug
  * since long before per-word styling existed.
  */
-function gradientFilter(style: CaptionStyle, fontSize: number): string | undefined {
+function gradientFilter(
+  style: CaptionStyle,
+  fontSize: number,
+  /** This word's own glow, which replaces the line's. */
+  glowOverride?: { color: string; blur: number } | null,
+): string | undefined {
   const k = fontSize / 62;
   const parts: string[] = [];
+  const glow = glowOverride ?? style.glow;
 
   if (style.stroke) {
     /*
@@ -107,9 +113,10 @@ function gradientFilter(style: CaptionStyle, fontSize: number): string | undefin
       `drop-shadow(${d}px ${-d}px 0 ${c})`, `drop-shadow(${-d}px ${-d}px 0 ${c})`,
     );
   }
-  if (style.glow) {
-    parts.push(`drop-shadow(0 0 ${style.glow.blur * 0.4 * k}px ${style.glow.color})`);
-    parts.push(`drop-shadow(0 0 ${style.glow.blur * k}px ${style.glow.color})`);
+  if (glow) {
+    // Two passes: a tight core and a wide bloom. One pass reads as a blur.
+    parts.push(`drop-shadow(0 0 ${glow.blur * 0.4 * k}px ${glow.color})`);
+    parts.push(`drop-shadow(0 0 ${glow.blur * k}px ${glow.color})`);
   }
   if (style.shadow) {
     const { offsetX, offsetY, blur, color } = style.shadow;
@@ -164,8 +171,17 @@ export function blockStyle(
     flexWrap: 'wrap',
     justifyContent: justifyFor(style),
     alignItems: 'baseline',
-    // Row gap carries the line height; column gap is the word space.
-    gap: `${fontSize * (style.lineHeight - 1) * 0.9}px ${fontSize * 0.26}px`,
+    /*
+     * Row gap carries the line height; column gap is the word space.
+     *
+     * CLAMPED AT ZERO, and that clamp is not cosmetic. A `lineHeight` below 1
+     * — which a tight preset wants, so a nudged word can cross the line above
+     * — made this negative, and `gap` rejects a negative value by dropping the
+     * WHOLE declaration. Both gaps went, so the words in a line ran together:
+     * "THE MOST" rendered as "THEMOST". Leading below 1 is applied by
+     * `lineHeight` on the words themselves, where it belongs.
+     */
+    gap: `${Math.max(0, fontSize * (style.lineHeight - 1) * 0.9)}px ${fontSize * 0.26}px`,
     maxWidth: frame.width * style.widthRatio,
     textAlign: style.align,
     ...(style.background
@@ -176,6 +192,49 @@ export function blockStyle(
         }
       : {}),
   };
+}
+
+/**
+ * How wide a word will be, near enough to keep it on screen.
+ *
+ * ── Why an estimate rather than a measurement ────────────────────────────
+ *
+ * Neither caller can measure. The renderer lays this out in a headless browser
+ * one frame at a time, and reading a width back would mean a layout pass per
+ * word per frame; the picker draws at a fraction of the real size, so its
+ * measurements are not the render's anyway.
+ *
+ * The estimate only has to be good enough to catch the case that actually
+ * ruins a frame: a word scaled up past the edge and cropped mid-letter. The
+ * first render of the script look did exactly that — "powerful" at 1.7× ran
+ * off BOTH sides and lost its first and last letters. A conservative average
+ * advance per face, rounded up, catches that while never shrinking a word that
+ * would have fitted.
+ */
+const AVG_ADVANCE: Record<string, number> = {
+  // Scripts are wide and their swashes overhang; assume the worst.
+  script: 0.62,
+  condensed: 0.42,
+  display: 0.56,
+  default: 0.54,
+};
+
+export function fitScale(opts: {
+  text: string;
+  fontSize: number;
+  requested: number;
+  maxWidthPx: number;
+  /** The font's group, which is what decides how wide its letters run. */
+  group?: string;
+}): number {
+  const { text, fontSize, requested, maxWidthPx, group } = opts;
+  if (!text.length || maxWidthPx <= 0) return requested;
+  const advance = AVG_ADVANCE[group ?? 'default'] ?? AVG_ADVANCE.default;
+  if (text.length * fontSize * requested * advance <= maxWidthPx) return requested;
+  // Never below the line's own size: a highlight word smaller than its
+  // neighbours is not a highlight, and at that point the preset is wrong
+  // rather than the word.
+  return Math.max(1, maxWidthPx / (text.length * fontSize * advance));
 }
 
 /**
@@ -243,8 +302,16 @@ export function wordStyle(
     // A gradient moves the shadow, glow and outline out of `text-shadow` and
     // into a `filter` chain — see gradientFilter for the two reasons why.
     ...(gradient
-      ? { filter: gradientFilter(style, scaled) }
-      : { textShadow: buildTextShadow(style, scaled) }),
+      ? { filter: gradientFilter(style, scaled, word?.glow) }
+      : word?.glow
+        ? {
+            // A glow on a flat-filled word still has to be a filter: a
+            // text-shadow glow would sit under the stroke rather than around
+            // the finished letter.
+            filter: `drop-shadow(0 0 ${word.glow.blur * 0.4 * (scaled / 62)}px ${word.glow.color}) drop-shadow(0 0 ${word.glow.blur * (scaled / 62)}px ${word.glow.color})`,
+            textShadow: buildTextShadow(style, scaled),
+          }
+        : { textShadow: buildTextShadow(style, scaled) }),
     whiteSpace: 'pre',
     ...(transforms.length
       ? {
