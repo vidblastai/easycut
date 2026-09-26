@@ -407,6 +407,22 @@ export function ProjectWorkspace({
   const rendering = state.renders.some((r) => r.status === 'queued' || r.status === 'running');
   const exportStale = state.exportStale;
 
+  /*
+   * A project made before the preview copy existed asks for one, once.
+   *
+   * Without it the editor for those projects goes on playing the original
+   * footage — 4K from a phone — which is the difference between an editor that
+   * responds and one that looks broken. The work happens on a worker and the
+   * URL arrives through the polling this page already does.
+   */
+  const askedForProxy = useRef(false);
+  useEffect(() => {
+    if (askedForProxy.current) return;
+    if (!doc || state.proxyUrl || project.status !== 'ready') return;
+    askedForProxy.current = true;
+    void fetch(`/api/projects/${project.id}/proxy`, { method: 'POST' }).catch(() => {});
+  }, [doc, state.proxyUrl, project.id, project.status]);
+
   /**
    * Where this video is in the four steps.
    *
@@ -1062,6 +1078,9 @@ function sameStyle(a: CaptionStyle, b: CaptionStyle): boolean {
  * no business in the bundle for people who never open the timeline.
  */
 const Player = dynamic(() => import('@remotion/player').then((m) => m.Player), { ssr: false });
+
+/** How big the preview canvas is allowed to get. 720p by the long edge. */
+const PREVIEW_LONG_EDGE = 720;
 const EasyCutVideo = dynamic(
   () => import('@remotion-app/EasyCutVideo').then((m) => m.EasyCutVideo),
   { ssr: false },
@@ -1077,6 +1096,25 @@ function LivePreview({
 }) {
   const fps = edl.format.fps || 30;
   const [failed, setFailed] = useState<string | null>(null);
+
+  /*
+   * The canvas the preview is composed on, capped at 720 on the long edge.
+   *
+   * Every layer sizes itself off `useVideoConfig`, so a smaller canvas scales
+   * the whole composition proportionally — the same edit, the same layout, at
+   * a fraction of the pixels. At 1080×1920 the browser was compositing two
+   * megapixels of video, gradient-filled type and drop-shadows thirty times a
+   * second into a box a few hundred pixels wide, which is most of what made
+   * the editor stutter. Seven times less work, and at this size nobody can
+   * tell. The export renders from the document and is unaffected.
+   */
+  const preview = useMemo(() => {
+    const longEdge = Math.max(edl.format.width, edl.format.height);
+    const scale = Math.min(1, PREVIEW_LONG_EDGE / longEdge);
+    // Even numbers: an odd canvas gives the video a half-pixel to resample.
+    const even = (n: number) => Math.max(2, Math.round((n * scale) / 2) * 2);
+    return { width: even(edl.format.width), height: even(edl.format.height) };
+  }, [edl.format.width, edl.format.height]);
 
   // A preview that cannot play the source used to be a black rectangle and a
   // line in the console. It happens for real reasons — a browser without the
@@ -1114,14 +1152,16 @@ function LivePreview({
         inputProps={{
           edl,
           previewAudio: true,
+          // Cheaper type while editing — see `lowDetail` on the composition.
+          lowDetail: true,
           // Only the preview gets this. A render without it fails loudly on an
           // undecodable source, which is what you want from a render.
           onMediaError: (message: string) => setFailed((f) => f ?? message),
         } as never}
         durationInFrames={Math.max(1, Math.round(edl.format.durationSec * fps))}
         fps={fps}
-        compositionWidth={edl.format.width}
-        compositionHeight={edl.format.height}
+        compositionWidth={preview.width}
+        compositionHeight={preview.height}
         style={{ width: '100%', height: '100%' }}
         // The timeline is the transport; a second set of controls inside the
         // frame would be two things claiming to be in charge.

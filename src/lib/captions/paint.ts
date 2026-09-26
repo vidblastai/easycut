@@ -87,12 +87,29 @@ function gradientFilter(
   fontSize: number,
   /** This word's own glow, which replaces the line's. */
   glowOverride?: { color: string; blur: number } | null,
+  /**
+   * Draw the cheap version.
+   *
+   * The ring below is eight `drop-shadow` passes over every gradient word, and
+   * a browser playing the edit back pays for all of them thirty times a
+   * second. At preview size the difference between eight passes and four is
+   * invisible; the difference in whether the playhead keeps time is not.
+   * Never set by the renderer.
+   */
+  cheap = false,
 ): string | undefined {
   const k = fontSize / 62;
   const parts: string[] = [];
   const glow = glowOverride ?? style.glow;
 
-  if (style.stroke) {
+  if (style.stroke && cheap) {
+    const r = Math.max(0.5, (style.stroke.width / 2) * k);
+    const c = style.stroke.color;
+    parts.push(
+      `drop-shadow(${r}px 0 0 ${c})`, `drop-shadow(${-r}px 0 0 ${c})`,
+      `drop-shadow(0 ${r}px 0 ${c})`, `drop-shadow(0 ${-r}px 0 ${c})`,
+    );
+  } else if (style.stroke) {
     /*
      * HALF the width, and that halving is the difference between matching the
      * line above and looking like a sticker.
@@ -366,6 +383,8 @@ export function wordStyle(
     emphasis: boolean;
     /** The word is sitting on its own plate, which replaces the stroke. */
     boxed?: boolean;
+    /** Draw the cheap version of the effects. See `gradientFilter`. */
+    cheap?: boolean;
     /** This word's hand-set overrides, if it has any. */
     word?: CaptionWordStyle | null;
     /**
@@ -385,7 +404,7 @@ export function wordStyle(
     overrideFontStack?: string | null;
   },
 ): React.CSSProperties {
-  const { fontStack, fontSize, color, emphasis, boxed = false, word, overrideFontStack, group } = opts;
+  const { fontStack, fontSize, color, emphasis, boxed = false, word, overrideFontStack, group, cheap = false } = opts;
 
   // Size first: the slant, the nudge and the plate are all expressed relative
   // to the size this word actually ends up at, not the line's.
@@ -442,7 +461,7 @@ export function wordStyle(
     // A gradient moves the shadow, glow and outline out of `text-shadow` and
     // into a `filter` chain — see gradientFilter for the two reasons why.
     ...(gradient
-      ? { filter: gradientFilter(style, scaled, word?.glow) }
+      ? { filter: gradientFilter(style, scaled, word?.glow, cheap) }
       : word?.glow
         ? {
             // A glow on a flat-filled word still has to be a filter: a

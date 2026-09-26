@@ -592,3 +592,57 @@ async function publishProxy(
     return null;
   }
 }
+
+/**
+ * Builds the editor's preview copy for a project that has none.
+ *
+ * Every project made since the proxy shipped gets one during ingest. The ones
+ * made before it are the reason this exists: their editor would otherwise go
+ * on playing the original 4K file forever, which is the thing that made the
+ * editor feel broken. Queued by the editor the first time it opens one of
+ * them, and a no-op the second time.
+ */
+export async function makeProjectProxy(projectId: string): Promise<void> {
+  const source = await db.asset.findFirst({ where: { projectId, kind: 'source' } });
+  if (!source) return;
+  const existing = await db.asset.findFirst({ where: { projectId, kind: 'proxy' } });
+  if (existing) return;
+
+  const { localPathFor } = await import('@/lib/storage');
+  const { makeProxy } = await import('@/lib/media/ffmpeg');
+  const { mkdir, writeFile, rm } = await import('node:fs/promises');
+  const { tmpdir } = await import('node:os');
+
+  const dir = join(tmpdir(), 'easycut', projectId);
+  await mkdir(dir, { recursive: true });
+
+  let sourcePath = localPathFor(source.storageKey);
+  let fetched: string | null = null;
+  if (!sourcePath) {
+    fetched = join(dir, 'source-for-proxy.mp4');
+    await writeFile(fetched, await storage().get(source.storageKey));
+    sourcePath = fetched;
+  }
+
+  const proxyPath = join(dir, 'proxy.mp4');
+  try {
+    await makeProxy(sourcePath, proxyPath);
+    const object = await publishProxy(projectId, proxyPath);
+    if (!object) return;
+    await db.asset.create({
+      data: {
+        projectId,
+        kind: 'proxy',
+        storageKey: object.key,
+        url: object.url,
+        contentType: 'video/mp4',
+        sizeBytes: object.sizeBytes,
+        durationSec: source.durationSec,
+      },
+    });
+    console.log(`[worker] preview proxy built for ${projectId}`);
+  } finally {
+    await rm(proxyPath, { force: true }).catch(() => {});
+    if (fetched) await rm(fetched, { force: true }).catch(() => {});
+  }
+}

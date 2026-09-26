@@ -31,6 +31,16 @@ export interface EasyCutVideoProps {
    * take down the whole picture while somebody is editing.
    */
   onMediaError?: (message: string) => void;
+  /**
+   * Draw the cheap version of the expensive effects.
+   *
+   * Set only by the browser preview. A gradient caption's outline is eight
+   * `drop-shadow` passes per word, which a render pays once per frame at its
+   * own pace and a browser pays thirty times a second while somebody is
+   * dragging a clip. Four passes at preview size look the same; keeping time
+   * does not.
+   */
+  lowDetail?: boolean;
 }
 
 /**
@@ -51,7 +61,7 @@ export interface EasyCutVideoProps {
  *   8. watermark          — the free tier's mark, above even that, because a
  *                           watermark something else can cover is not one
  */
-export const EasyCutVideo: React.FC<EasyCutVideoProps> = ({ edl, previewAudio = false, onMediaError }) => {
+export const EasyCutVideo: React.FC<EasyCutVideoProps> = ({ edl, previewAudio = false, onMediaError, lowDetail = false }) => {
   const { fps } = useVideoConfig();
 
   const plan = layoutPlan(edl.format.layout, edl.format);
@@ -75,7 +85,7 @@ export const EasyCutVideo: React.FC<EasyCutVideoProps> = ({ edl, previewAudio = 
       {speakerOnTop ? speaker : broll}
       {plan.headline ? <Headline edl={edl} /> : null}
       <Graphics edl={edl} />
-      <Captions edl={edl} positionY={plan.captionY} />
+      <Captions edl={edl} positionY={plan.captionY} lowDetail={lowDetail} />
       <Transitions edl={edl} />
       <Overlays edl={edl} />
       {edl.watermark ? <Watermark /> : null}

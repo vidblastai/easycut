@@ -25,7 +25,11 @@ import { findCaptionFont } from '../../src/lib/captions/fonts';
  * how many words are in it, because those come from the cue timing the ASR
  * produced and re-flowing them would desynchronise the whole track.
  */
-export const Captions: React.FC<{ edl: Edl; positionY?: number | null }> = ({ edl, positionY = null }) => {
+export const Captions: React.FC<{ edl: Edl; positionY?: number | null; lowDetail?: boolean }> = ({
+  edl,
+  positionY = null,
+  lowDetail = false,
+}) => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
   const outSec = frame / fps;
@@ -63,7 +67,13 @@ export const Captions: React.FC<{ edl: Edl; positionY?: number | null }> = ({ ed
   const style = positionY === null ? edl.captionStyle : { ...edl.captionStyle, positionY };
 
   return (
-    <CaptionCard cue={cue} style={style} fontStack={fontStack} overrideFonts={overrideFonts} />
+    <CaptionCard
+      cue={cue}
+      style={style}
+      fontStack={fontStack}
+      overrideFonts={overrideFonts}
+      lowDetail={lowDetail}
+    />
   );
 };
 
@@ -80,7 +90,8 @@ const CaptionCard: React.FC<{
   style: CaptionStyle;
   fontStack: string;
   overrideFonts: Map<string, string>;
-}> = ({ cue, style, fontStack, overrideFonts }) => {
+  lowDetail?: boolean;
+}> = ({ cue, style, fontStack, overrideFonts, lowDetail = false }) => {
   const frame = useCurrentFrame();
   const { fps, height, width } = useVideoConfig();
   const outSec = frame / fps;
@@ -173,6 +184,7 @@ const CaptionCard: React.FC<{
             frame={frame}
             fps={fps}
             sinceCue={sinceCue}
+            lowDetail={lowDetail}
           />
           </React.Fragment>
         ))}
@@ -195,9 +207,11 @@ const Word: React.FC<{
   frame: number;
   fps: number;
   sinceCue: number;
+  /** Draw the cheap version of the effects. See `gradientFilter`. */
+  lowDetail?: boolean;
 }> = ({
   word, index, lineTwo = false, style, fontStack, overrideFonts, fontSize, maxWidthPx,
-  outSec, frame, fps, sinceCue,
+  outSec, frame, fps, sinceCue, lowDetail = false,
 }) => {
   /* The word's own choices over the style's emphasis rule — see
      resolveWordStyle. Computed once, and everything below reads it. */
@@ -319,6 +333,7 @@ const Word: React.FC<{
           emphasis: word.emphasis,
           boxed,
           word: wordOverride,
+          cheap: lowDetail,
           group: findCaptionFont(applied?.fontFamily ?? style.fontFamily)?.group,
           overrideFontStack: applied?.fontFamily
             ? (overrideFonts.get(applied.fontFamily) ?? null)
