@@ -8,6 +8,7 @@ import { CAPTION_PRESETS, captionPresetFor, type CaptionPreset } from '@/lib/cap
 import { CAPTION_FONTS, findCaptionFont } from '@/lib/captions/fonts';
 import { loadAllCaptionFonts, preloadCaptionFonts } from '@/lib/captions/web-fonts';
 import { CaptionBand, CaptionPreview } from './CaptionPreview';
+import { CaptionTile } from './CaptionTile';
 import { IconCheck } from '@/components/shell/Icons';
 
 /**
@@ -404,13 +405,14 @@ function PresetTile({
       {/* The backdrop belongs to the window rather than the cropped frame: a
           band cut out of one gradient is a flat grey, and the whole reason to
           show a backdrop is to judge whether the type survives a busy one. */}
-      <CaptionBand
-        className="block bg-[#101015]"
+      {/* The same pre-rendered still the picker uses — see CaptionTile. Twenty
+          live ones in a panel that sits beside a playing preview is the same
+          cost paid twice. */}
+      <CaptionTile
+        preset={preset.id}
         style={preset.style}
-        text="Captions that look good"
-        frameWidth={frameWidth}
-        frameHeight={frameHeight}
-        backdrop={<Backdrop posterUrl={null} />}
+        frame={{ w: frameWidth, h: frameHeight }}
+        mode={frameWidth < frameHeight ? 'short' : 'long'}
       />
       <span
         className={clsx(

@@ -1,10 +1,9 @@
 'use client';
 
-import React, { useEffect, useMemo } from 'react';
+import React, { useMemo } from 'react';
 import { clsx } from 'clsx';
 import { CAPTION_PRESETS } from '@/lib/captions/presets';
-import { preloadCaptionFonts } from '@/lib/captions/web-fonts';
-import { CaptionBand } from './CaptionPreview';
+import { CaptionTile } from './CaptionTile';
 
 /**
  * Choosing the caption look BEFORE the edit is made.
@@ -48,23 +47,6 @@ export function CaptionPicker({
     [mode],
   );
   const frame = mode === 'short' ? { w: 1080, h: 1920 } : { w: 1920, h: 1080 };
-
-  /*
-   * Ask for every face at once, before any tile needs one.
-   *
-   * Left to itself each tile requests its own family the first time it paints,
-   * so choosing a style kicked off a fresh font fetch and a reflow of the whole
-   * grid — twenty of them, one per click, which is most of what made this feel
-   * slow. One batch up front, and the grid never reflows again.
-   */
-  useEffect(() => {
-    preloadCaptionFonts(shown.map((p) => p.style.fontFamily));
-    preloadCaptionFonts(
-      shown.flatMap((p) =>
-        [p.style.emphasisStyle?.fontFamily, p.style.lineTwoStyle?.fontFamily].filter(Boolean) as string[],
-      ),
-    );
-  }, [shown]);
 
   return (
     <div className={className}>
@@ -122,29 +104,7 @@ export function CaptionPicker({
                   * reason — a different still behind each tile would be
                   * comparing backgrounds.
                   */}
-                <CaptionBand
-                  style={preset.style}
-                  text="Captions that look good"
-                  frameWidth={frame.w}
-                  frameHeight={frame.h}
-                  aspect="4 / 3"
-                  /*
-                   * The LAST word carries the style's emphasis treatment.
-                   *
-                   * A preset whose whole character is what it does to ONE word
-                   * looked identical to four plain ones without this — the
-                   * thing being chosen was invisible at the moment of
-                   * choosing. The last word rather than a fixed index,
-                   * because the preview truncates to each preset's own
-                   * maxWordsPerCue — a three-word preset had already cut the
-                   * word a fixed index pointed at, so the treatment silently
-                   * did not appear. Presets with no emphasis rule are
-                   * unaffected: the word renders in the accent colour, as it
-                   * always did.
-                   */
-                  emphasisWord="last"
-                  className="w-full bg-ink"
-                />
+                <CaptionTile preset={preset.id} frame={frame} style={preset.style} mode={mode} />
                 <span className="flex items-center justify-between gap-1 px-2.5 py-2">
                   <span className="truncate text-[12px] font-bold">{preset.name}</span>
                   {on ? <span aria-hidden className="text-[11px] text-violet">✓</span> : null}

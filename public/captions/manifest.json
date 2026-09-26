@@ -1,0 +1,65 @@
+{
+  "clean-plate": [
+    "short",
+    "long"
+  ],
+  "subtitle": [
+    "long"
+  ],
+  "soft": [
+    "short",
+    "long"
+  ],
+  "podcast": [
+    "long"
+  ],
+  "bold-pop": [
+    "short"
+  ],
+  "highlight-box": [
+    "short"
+  ],
+  "neon": [
+    "short"
+  ],
+  "gradient": [
+    "short"
+  ],
+  "mono": [
+    "short",
+    "long"
+  ],
+  "spotlight": [
+    "short"
+  ],
+  "twotone": [
+    "short"
+  ],
+  "twotone-cyan": [
+    "short"
+  ],
+  "twotone-gold": [
+    "short"
+  ],
+  "impact": [
+    "short"
+  ],
+  "cartoon": [
+    "short"
+  ],
+  "slab": [
+    "short"
+  ],
+  "ticker": [
+    "short"
+  ],
+  "newsroom": [
+    "long"
+  ],
+  "editorial": [
+    "long"
+  ],
+  "memoir": [
+    "long"
+  ]
+}
