@@ -8,7 +8,15 @@ import type { Interval } from '@/lib/timeline/silence';
 import type { MediaInfo } from '@/lib/media/ffmpeg';
 import type { CostLedger } from '@/lib/pricing/cost';
 
-/** The twelve stages, in order. A job records the last one it finished. */
+/**
+ * The stages, in order. A job records the last one it finished.
+ *
+ * There is no render stage. A job's work is the EDIT — the transcript, the
+ * cuts, the plan, the document — and that is what the editor opens. Drawing
+ * the frames is a separate act, asked for by the person when the edit is
+ * theirs, because rendering first means everyone waits for a file most of them
+ * are about to make stale with their first change.
+ */
 export const STAGES = [
   'ingest',
   'transcribe',
@@ -19,7 +27,6 @@ export const STAGES = [
   'reframe',
   'assets',
   'edl',
-  'render',
   'deliver',
   'done',
 ] as const;
@@ -36,23 +43,21 @@ export const STAGE_LABELS: Record<Stage, string> = {
   reframe: 'Keeping you in frame',
   assets: 'Gathering B-roll, icons and music',
   edl: 'Assembling the edit',
-  render: 'Rendering your video',
   deliver: 'Finishing up',
   done: 'Done',
 };
 
 /** Roughly how much of the total wall-clock each stage takes, for the progress bar. */
 export const STAGE_WEIGHTS: Record<Stage, number> = {
-  ingest: 0.08,
-  transcribe: 0.1,
-  silence: 0.02,
-  cleanup: 0.02,
-  direct: 0.16,
-  timeline: 0.02,
-  reframe: 0.06,
-  assets: 0.1,
-  edl: 0.02,
-  render: 0.36,
+  ingest: 0.13,
+  transcribe: 0.16,
+  silence: 0.03,
+  cleanup: 0.03,
+  direct: 0.26,
+  timeline: 0.03,
+  reframe: 0.1,
+  assets: 0.16,
+  edl: 0.04,
   deliver: 0.06,
   done: 0,
 };

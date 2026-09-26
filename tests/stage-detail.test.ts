@@ -98,7 +98,6 @@ describe('what each stage reports', () => {
   });
 
   it('stays silent for a stage whose work happens elsewhere', () => {
-    expect(stageDetail('render', ctx({}))).toBe('');
     expect(stageDetail('deliver', ctx({}))).toBe('');
   });
 

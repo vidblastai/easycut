@@ -137,109 +137,43 @@ export async function processProject(payload: ProcessJobPayload): Promise<void> 
       },
     });
 
-    /* ------------------------------- render ------------------------------- */
-
-    await db.job.update({
-      where: { id: jobId },
-      data: { stage: 'render', progress: 0.62, progressLabel: STAGE_LABELS.render },
-    });
-
-    const render = await db.render.create({
-      data: {
-        projectId,
-        edlId: edlRow.id,
-        aspect: edl.format.aspect,
-        width: edl.format.width,
-        height: edl.format.height,
-        fps: edl.format.fps,
-        status: 'running',
-      },
-    });
-
-    const outputDir = renderWorkDir(projectId, render.id);
-    const rendered = await renderVideo({
-      edl,
-      watermark: (await entitlementsFor(projectId)).watermark,
-      sourceVideoPath: result.context.sourcePath,
-      sourceAudioPath: result.context.mixAudioPath!,
-      musicPath: edl.music ? localMusicPath(edl.music.url) : null,
-      outputDir,
-      onProgress: async (fraction, label) => {
-        await db.render.update({ where: { id: render.id }, data: { progress: fraction } }).catch(() => {});
-        await db.job
-          .update({
-            where: { id: jobId },
-            data: { progress: 0.62 + fraction * 0.32, progressLabel: label },
-          })
-          .catch(() => {});
-      },
-    });
-
     /* ------------------------------ delivery ------------------------------ */
 
+    /*
+     * The job ends with the EDIT, not with a file.
+     *
+     * Rendering here meant everybody waited for a video before they had seen
+     * the edit — and the first change they made in the editor threw that video
+     * away. So the job finishes at the document, the editor opens on it and
+     * plays it live, and the frames are drawn when somebody asks for them.
+     */
     await db.job.update({
       where: { id: jobId },
-      data: { stage: 'deliver', progress: 0.95, progressLabel: STAGE_LABELS.deliver },
+      data: { stage: 'deliver', progress: 0.94, progressLabel: STAGE_LABELS.deliver },
     });
 
-    const driver = storage();
-    const videoKey = assetKey(projectId, 'render', `${render.id}.mp4`);
-    const thumbKey = assetKey(projectId, 'thumbnail', `${render.id}.jpg`);
+    const thumbObject = await makePosterFrame(projectId, edl, result.context.sourcePath);
 
-    const [videoObject, thumbObject] = await Promise.all([
-      driver.putFile(videoKey, rendered.videoPath, 'video/mp4'),
-      driver.putFile(thumbKey, rendered.thumbnailPath, 'image/jpeg').catch(() => null),
-    ]);
-
-    await db.asset.createMany({
-      data: [
-        {
+    if (thumbObject) {
+      await db.asset.create({
+        data: {
           projectId,
-          kind: 'render',
-          storageKey: videoKey,
-          url: videoObject.url,
-          contentType: 'video/mp4',
-          sizeBytes: videoObject.sizeBytes,
-          width: edl.format.width,
-          height: edl.format.height,
-          fps: edl.format.fps,
-          durationSec: edl.format.durationSec,
+          kind: 'thumbnail',
+          storageKey: thumbObject.key,
+          url: thumbObject.url,
+          contentType: 'image/jpeg',
+          sizeBytes: thumbObject.sizeBytes,
         },
-        ...(thumbObject
-          ? [
-              {
-                projectId,
-                kind: 'thumbnail',
-                storageKey: thumbKey,
-                url: thumbObject.url,
-                contentType: 'image/jpeg',
-                sizeBytes: thumbObject.sizeBytes,
-              },
-            ]
-          : []),
-      ],
-    });
-
-    await db.render.update({
-      where: { id: render.id },
-      data: {
-        status: 'succeeded',
-        progress: 1,
-        url: videoObject.url,
-        sizeBytes: videoObject.sizeBytes,
-        durationSec: edl.format.durationSec,
-        renderMs: rendered.renderMs,
-        costUsd: result.costUsd,
-        finishedAt: new Date(),
-      },
-    });
+      });
+    }
 
     await db.project.update({
       where: { id: projectId },
       data: {
         status: 'ready',
         durationSec: edl.format.durationSec,
-        previewUrl: videoObject.url,
+        // No file yet, and that is the normal, finished state of a job now.
+        previewUrl: null,
         thumbnailUrl: thumbObject?.url ?? null,
         socialCaption: edl.deliverable.socialCaption,
         hashtags: stringifyJson(edl.deliverable.hashtags),
@@ -571,4 +505,45 @@ export async function loadSourceFile(storageKey: string): Promise<Buffer> {
   const { localPathFor } = await import('@/lib/storage');
   const local = localPathFor(storageKey);
   return local ? readFile(local) : storage().get(storageKey);
+}
+
+/**
+ * A still from the footage, for the dashboard card and the editor's poster.
+ *
+ * The thumbnail used to be a frame of the rendered video, which no longer
+ * exists at this point. The first moment the edit actually keeps is the honest
+ * substitute: it is the frame the finished video opens on, and it comes out of
+ * the source in well under a second.
+ *
+ * Never fatal. A project without a picture on its card is a cosmetic loss; a
+ * job failed at the last step over one is not.
+ */
+async function makePosterFrame(
+  projectId: string,
+  edl: Edl,
+  sourcePath: string | undefined,
+): Promise<{ key: string; url: string; sizeBytes: number } | null> {
+  if (!sourcePath) return null;
+  try {
+    const { extractFrame } = await import('@/lib/media/ffmpeg');
+    const { join } = await import('node:path');
+    const { mkdir } = await import('node:fs/promises');
+    const { tmpdir } = await import('node:os');
+
+    const dir = join(tmpdir(), 'easycut', projectId);
+    await mkdir(dir, { recursive: true });
+    const framePath = join(dir, 'poster.jpg');
+
+    // Half a second into the first shot the edit keeps: far enough in to be
+    // past a cut or a blink, and it is what the video opens on.
+    const at = (edl.segments[0]?.sourceStartSec ?? 0) + 0.5;
+    await extractFrame(sourcePath, at, framePath, 720);
+
+    const key = assetKey(projectId, 'thumbnail', 'poster.jpg');
+    const object = await storage().putFile(key, framePath, 'image/jpeg');
+    return { key, url: object.url, sizeBytes: object.sizeBytes };
+  } catch (error) {
+    console.warn(`[worker] no poster frame for ${projectId}: ${String(error).slice(0, 140)}`);
+    return null;
+  }
 }

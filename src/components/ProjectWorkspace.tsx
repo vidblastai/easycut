@@ -714,7 +714,7 @@ export function ProjectWorkspace({
 
       <main className="min-w-0 flex-1 px-4 pb-20 sm:px-8">
         <div className="measure">
-          {project.status !== 'ready' || !project.previewUrl ? (
+          {project.status !== 'ready' ? (
             <div className="pt-6">
               <h1 className="text-[26px] font-extrabold">{project.title}</h1>
               <p className="mt-1.5 text-[13px] text-muted">{modeLabel} · {styleName}</p>
@@ -762,19 +762,43 @@ export function ProjectWorkspace({
                   className="relative overflow-hidden rounded-[18px] bg-black shadow-card"
                   style={{ aspectRatio: project.mode === 'short' ? '9 / 16' : '16 / 9' }}
                 >
-                  <video
-                    key={project.previewUrl}
-                    src={project.previewUrl}
-                    poster={project.thumbnailUrl ?? undefined}
-                    controls
-                    playsInline
-                    className="h-full w-full"
-                  />
+                  {/* A file exists only once somebody asks for one. Until
+                      then the picture is a frame of their own footage, and the
+                      edit itself is watched in the editor, which plays it
+                      live. Showing a player with nothing behind it would be a
+                      broken video on a page that says the video is ready. */}
+                  {project.previewUrl ? (
+                    <video
+                      key={project.previewUrl}
+                      src={project.previewUrl}
+                      poster={project.thumbnailUrl ?? undefined}
+                      controls
+                      playsInline
+                      className="h-full w-full"
+                    />
+                  ) : (
+                    <>
+                      {project.thumbnailUrl ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={project.thumbnailUrl}
+                          alt=""
+                          className="h-full w-full object-cover opacity-45"
+                        />
+                      ) : null}
+                      <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 p-6 text-center">
+                        <span className="text-[13px] font-bold">Your edit is ready</span>
+                        <span className="text-[12px] leading-snug text-muted">
+                          Watch it in the editor, or export to get the file.
+                        </span>
+                      </div>
+                    </>
+                  )}
 
                   {/* On the picture, not beside it: somebody checking their
                       video looks at the video, and a caveat in the margin is
                       a caveat nobody reads. */}
-                  {exportStale ? (
+                  {exportStale && project.previewUrl ? (
                     <span className="pointer-events-none absolute inset-x-0 top-0 bg-ink/85 px-3 py-2 text-center text-[12px] font-semibold text-warn backdrop-blur">
                       {rendering ? 'Making the new version…' : 'This is the cut before your last changes'}
                     </span>
@@ -803,7 +827,7 @@ export function ProjectWorkspace({
                         say so. Offering a download of an older cut under the
                         word "Export" is the one outcome worth any amount of
                         extra UI to avoid. */}
-                    {exportStale ? (
+                    {!project.previewUrl || exportStale ? (
                       <button
                         type="button"
                         disabled={busy || rendering || footageGone}
@@ -813,11 +837,13 @@ export function ProjectWorkspace({
                       >
                         <IconDownload className="h-[19px] w-[19px] flex-none" />
                         <span>
-                          {rendering ? 'Making your video…' : 'Render this edit'}
+                          {rendering ? 'Making your video…' : 'Export video'}
                           <i className="mt-0.5 block text-[11.5px] font-medium not-italic text-ink/[.62]">
                             {rendering
-                              ? 'The file below is the previous cut'
-                              : 'Your changes are not in the file below yet'}
+                              ? 'Drawing every frame — this takes a minute'
+                              : project.previewUrl
+                                ? 'Your changes are not in the file below yet'
+                                : `1080p MP4${doc ? ` · ${doc.format.width}×${doc.format.height}` : ''}`}
                           </i>
                         </span>
                       </button>
