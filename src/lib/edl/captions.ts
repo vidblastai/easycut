@@ -114,8 +114,49 @@ export function buildCaptions(options: BuildCaptionsOptions): CaptionCue[] {
      * emphasised word want it to stay where it fell in the sentence, and
      * breaking their cards early would shorten every card for nothing.
      */
-    if (style.emphasisOwnLine && word.emphasis && bucket.length > 1) {
-      flush();
+    if (style.emphasisOwnLine && word.emphasis) {
+      if (bucket.length > 1) {
+        flush();
+        continue;
+      }
+      /*
+       * It opened the card, so there is nothing above it to sit under.
+       *
+       * Left alone it would head a card and the plain words would follow it
+       * ACROSS the line — which is what shipped: "right NOW", the script word
+       * first and inline, the one shape this rule exists to prevent. So it
+       * goes back onto the card in front of it, where it becomes that card's
+       * last word and lands on the line below. If it cannot (a cut between
+       * them, too long a pause, a card already full or already ending on a
+       * highlight) it stays a card of its own — one word alone reads fine;
+       * one word leading a line does not.
+       */
+      const target = cues[cues.length - 1];
+      const before = placed[i - 1];
+      const fits =
+        target &&
+        before &&
+        before.segmentKey === word.segmentKey &&
+        word.startSec - target.endSec <= BREATH_GAP_SEC &&
+        word.endSec - target.startSec <= MAX_CUE_SEC + 0.5 &&
+        // The highlight sits on a line of its own, so the plain line still
+        // holds no more words than the style asked for — one over the card
+        // limit here costs the reader nothing.
+        target.words.length <= style.maxWordsPerCue &&
+        !target.words[target.words.length - 1].emphasis;
+
+      if (fits) {
+        target.words.push({
+          text: word.text,
+          startSec: word.startSec,
+          endSec: word.endSec,
+          emphasis: true,
+        });
+        target.endSec = word.endSec;
+        bucket = [];
+      } else {
+        flush();
+      }
       continue;
     }
 

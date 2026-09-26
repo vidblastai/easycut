@@ -244,6 +244,24 @@ export function resolveWordStyle(
  */
 const GLYPH_SAFE_LINE_HEIGHT = 1.45;
 
+/**
+ * Room around a styled word for ink the line box does not account for.
+ *
+ * Leading alone was not enough, and the reason is worth writing down: a
+ * gradient word is painted by clipping a background to its letters
+ * (`background-clip: text`), and a background is painted over the element's
+ * PADDING BOX. A filter's region is measured from the same box. Neither has
+ * any idea how far the letters actually reach — that comes from the font's
+ * declared metrics, which a brush script overshoots in both directions. Where
+ * the box stops, the gradient stops, and the letter is simply cut off: in a
+ * finished video the tail of a `g` ended in a straight horizontal edge.
+ *
+ * So a styled word carries padding, and cancels it again with an equal
+ * negative margin. The box the browser paints into grows; the space the word
+ * occupies on the line does not move by a pixel.
+ */
+const GLYPH_BLEED_EM = { block: 0.42, inline: 0.14 };
+
 const AVG_ADVANCE: Record<string, number> = {
   // Scripts are wide and their swashes overhang; assume the worst.
   script: 0.62,
@@ -375,6 +393,17 @@ export function wordStyle(
           // is exactly what makes an overlapping word possible without
           // shoving its neighbours sideways.
           display: 'inline-block',
+        }
+      : {}),
+    /*
+     * See GLYPH_BLEED_EM. Only for a word with styling of its own — a plain
+     * word is painted with a flat fill that cannot be clipped this way — and
+     * never with a plate, whose own padding IS its size.
+     */
+    ...(word && !box
+      ? {
+          padding: `${GLYPH_BLEED_EM.block}em ${GLYPH_BLEED_EM.inline}em`,
+          margin: `${-GLYPH_BLEED_EM.block}em ${-GLYPH_BLEED_EM.inline}em`,
         }
       : {}),
     ...(box

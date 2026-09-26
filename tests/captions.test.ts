@@ -154,3 +154,55 @@ describe('putting the highlighted word on its own line', () => {
     expect(cues[0].words.map((w) => w.text)).toEqual(['watching', 'was', 'entirely', 'free']);
   });
 });
+
+describe('a highlight that would open a card', () => {
+  it('goes back onto the card before it instead of leading one', () => {
+    // What shipped: "right NOW", the script word first and inline. A highlight
+    // that opens a card has nothing above it to sit under, so the rule that
+    // puts it on the line below silently did nothing.
+    const mapper = new TimeMapper(layoutSegments([{ sourceStartSec: 0, sourceEndSec: 6 }]));
+    const cues = buildCaptions({
+      words: words([
+        ['you', 0.1, 0.35],
+        ['can', 0.35, 0.6],
+        ['start', 0.6, 0.95],
+        ['right', 0.95, 1.3],
+        ['now', 1.3, 1.7],
+      ]),
+      mapper,
+      style: CaptionStyleSchema.parse({ maxWordsPerCue: 3, emphasisOwnLine: true }),
+      emphasis: [{ startSec: 0.95, endSec: 1.3 }],
+      outputDurationSec: 6,
+    });
+
+    const card = cues.find((c) => c.words.some((w) => w.emphasis))!;
+    expect(card.words.map((w) => w.text)).toEqual(['you', 'can', 'start', 'right']);
+    // And nothing plain may follow it on that card.
+    expect(card.words[card.words.length - 1].emphasis).toBe(true);
+  });
+
+  it('leaves it alone on its own card when it cannot go back', () => {
+    // A cut between the two: joining them would put a card across the splice.
+    const mapper = new TimeMapper(
+      layoutSegments([
+        { sourceStartSec: 0, sourceEndSec: 1 },
+        { sourceStartSec: 5, sourceEndSec: 7 },
+      ]),
+    );
+    const cues = buildCaptions({
+      words: words([
+        ['you', 0.1, 0.4],
+        ['can', 0.4, 0.9],
+        ['right', 5.05, 5.4],
+        ['now', 5.4, 5.9],
+      ]),
+      mapper,
+      style: CaptionStyleSchema.parse({ maxWordsPerCue: 3, emphasisOwnLine: true }),
+      emphasis: [{ startSec: 5.05, endSec: 5.4 }],
+      outputDurationSec: 7,
+    });
+
+    const card = cues.find((c) => c.words.some((w) => w.emphasis))!;
+    expect(card.words.map((w) => w.text)).toEqual(['right']);
+  });
+});

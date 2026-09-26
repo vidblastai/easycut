@@ -194,6 +194,19 @@ const Word: React.FC<{
   let scale = 1;
   let translateY = 0;
   let rotate = 0;
+  /*
+   * A word that has not been spoken yet still takes up its space.
+   *
+   * The card is centred, so a word that is absent from the layout and then
+   * added shoves everything already on screen sideways: the first word appeared
+   * in the middle, slid left when the second arrived, slid again for the third.
+   * Watching it, the line never stops moving and the eye never settles.
+   *
+   * Holding the space means every word appears where it will stay. Hidden
+   * rather than transparent, because a glow or a stroke drawn at zero opacity
+   * still costs a composited layer per word.
+   */
+  let waiting = false;
   const color = wordColor(style, {
     active: isActive,
     emphasis: word.emphasis,
@@ -217,7 +230,7 @@ const Word: React.FC<{
 
     case 'word-pop':
     case 'bounce': {
-      if (!hasArrived) return null;
+      waiting = !hasArrived;
       const s = pop(frame - word.startSec * fps, fps, 0, style.animation === 'bounce');
       scale = 0.72 + s * 0.28 + (word.emphasis ? 0.08 : 0);
       opacity = Math.min(1, s * 1.6);
@@ -226,7 +239,7 @@ const Word: React.FC<{
     }
 
     case 'shake': {
-      if (!hasArrived) return null;
+      waiting = !hasArrived;
       const s = pop(frame - word.startSec * fps, fps, 0, true);
       scale = 0.8 + s * 0.2;
       opacity = Math.min(1, s * 1.8);
@@ -236,7 +249,7 @@ const Word: React.FC<{
     }
 
     case 'typewriter':
-      if (!hasArrived) return null;
+      waiting = !hasArrived;
       break;
 
     case 'line-fade':
@@ -288,6 +301,7 @@ const Word: React.FC<{
             : null,
         }),
         opacity,
+        ...(waiting ? { visibility: 'hidden' as const } : {}),
         /*
          * The animation's transform and the word's own are composed HERE,
          * rather than one overwriting the other.
