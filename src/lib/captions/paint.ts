@@ -55,6 +55,71 @@ export function strokeStyle(style: CaptionStyle, fontSize: number): React.CSSPro
 }
 
 /**
+ * Outline, glow and drop shadow for glyphs filled with a GRADIENT.
+ *
+ * ── Two things a gradient breaks, both found in a rendered frame ─────────
+ *
+ * A gradient fill is not a fill. It is a background image clipped to the
+ * glyphs, with `color: transparent` so it shows through. That breaks the two
+ * tools this file otherwise uses:
+ *
+ *  1. `-webkit-text-stroke` draws centred on the letter's outline, half inside
+ *     the glyph. Normally the fill paints over that inner half; a transparent
+ *     fill hides nothing, so the stroke eats inward until a bold face is a
+ *     dark blob with slivers of gradient left in the middle.
+ *
+ *  2. `text-shadow` is painted BETWEEN the element's background and its text.
+ *     So shadow copies land ON TOP of the clipped gradient and hide it
+ *     completely — swapping the stroke for shadow offsets turned the blob into
+ *     a solid slab, which is how this was diagnosed.
+ *
+ * `drop-shadow` is the one that works: it is a filter over the element as
+ * already painted — gradient included — and it composites underneath. Repeated
+ * at eight offsets it makes an outline that follows the letterform without
+ * touching it. Four offsets is visibly square on a curve; sixteen costs paint
+ * time for a difference invisible at caption size.
+ *
+ * This applies to the `gradient` preset too, which has carried the first bug
+ * since long before per-word styling existed.
+ */
+function gradientFilter(style: CaptionStyle, fontSize: number): string | undefined {
+  const k = fontSize / 62;
+  const parts: string[] = [];
+
+  if (style.stroke) {
+    /*
+     * HALF the width, and that halving is the difference between matching the
+     * line above and looking like a sticker.
+     *
+     * `-webkit-text-stroke` is centred on the outline, so a width of 8 puts
+     * only 4 outside the glyph. `drop-shadow` expands the silhouette by its
+     * full radius. Using the authored width directly made a gradient word's
+     * outline twice as heavy as the identical outline on the words beside it,
+     * which is obvious the moment the two sit on the same frame.
+     */
+    const r = Math.max(0.5, (style.stroke.width / 2) * k);
+    const d = r * 0.7071; // diagonals, so the ring is round rather than a plus
+    const c = style.stroke.color;
+    parts.push(
+      `drop-shadow(${r}px 0 0 ${c})`, `drop-shadow(${-r}px 0 0 ${c})`,
+      `drop-shadow(0 ${r}px 0 ${c})`, `drop-shadow(0 ${-r}px 0 ${c})`,
+      `drop-shadow(${d}px ${d}px 0 ${c})`, `drop-shadow(${-d}px ${d}px 0 ${c})`,
+      `drop-shadow(${d}px ${-d}px 0 ${c})`, `drop-shadow(${-d}px ${-d}px 0 ${c})`,
+    );
+  }
+  if (style.glow) {
+    parts.push(`drop-shadow(0 0 ${style.glow.blur * 0.4 * k}px ${style.glow.color})`);
+    parts.push(`drop-shadow(0 0 ${style.glow.blur * k}px ${style.glow.color})`);
+  }
+  if (style.shadow) {
+    const { offsetX, offsetY, blur, color } = style.shadow;
+    parts.push(`drop-shadow(${offsetX * k}px ${offsetY * k}px ${blur * k}px ${color})`);
+  }
+
+  return parts.length ? parts.join(' ') : undefined;
+}
+
+/**
  * A gradient fill has to be clipped to the glyphs, which means no flat colour.
  *
  * `override` is a word's own gradient, which wins over the line's — that is
@@ -155,6 +220,13 @@ export function wordStyle(
   const scaled = fontSize * (word?.scale ?? 1);
   const box = word?.box ?? (boxed ? style.wordBox : null);
 
+  /*
+   * A gradient — the line's or this word's — changes how the outline has to be
+   * drawn. See `fauxStroke`. Deciding it here, once, is what keeps the two
+   * callers (the renderer and the live preview) showing the same thing.
+   */
+  const gradient = word?.gradient ?? style.gradient;
+
   const transforms = [
     word?.offsetY != null ? `translateY(${word.offsetY}em)` : '',
     word?.rotate != null ? `rotate(${word.rotate}deg)` : '',
@@ -168,7 +240,11 @@ export function wordStyle(
     fontSize: scaled,
     lineHeight: style.lineHeight,
     letterSpacing: `${style.letterSpacing}em`,
-    textShadow: buildTextShadow(style, scaled),
+    // A gradient moves the shadow, glow and outline out of `text-shadow` and
+    // into a `filter` chain — see gradientFilter for the two reasons why.
+    ...(gradient
+      ? { filter: gradientFilter(style, scaled) }
+      : { textShadow: buildTextShadow(style, scaled) }),
     whiteSpace: 'pre',
     ...(transforms.length
       ? {
@@ -189,7 +265,11 @@ export function wordStyle(
           // once reads as a mistake.
           WebkitTextStroke: undefined,
         }
-      : strokeStyle(style, scaled)),
+      : gradient
+        ? // The outline is already in the text-shadow above; a real stroke on
+          // top of it would be the blob this exists to avoid.
+          {}
+        : strokeStyle(style, scaled)),
     ...fillStyle(style, word?.color ?? color, word?.gradient),
   };
 }

@@ -152,3 +152,56 @@ describe('which colour wins', () => {
     expect(wordColor(style, { active: false, emphasis: false })).toBe(style.color);
   });
 });
+
+describe('a gradient changes how the outline has to be drawn', () => {
+  const base = { fontStack: 'X', fontSize: 62, color: '#FFFFFF', emphasis: false };
+  const outlined = CaptionStyleSchema.parse({ stroke: { width: 8, color: '#000000' } });
+
+  it('uses a real stroke when the glyphs have a solid fill', () => {
+    const s = wordStyle(outlined, base);
+    expect(s.WebkitTextStroke).toBe('8px #000000');
+    expect(s.filter).toBeUndefined();
+  });
+
+  it('drops the real stroke once a gradient fills the glyphs', () => {
+    // A centred stroke over a TRANSPARENT fill eats inward with nothing to
+    // cover it, and a bold face becomes a dark blob. Found in a rendered frame.
+    const s = wordStyle(outlined, {
+      ...base,
+      word: { gradient: { from: '#7DD3FC', to: '#2563EB', angle: 180 } },
+    });
+    expect(s.WebkitTextStroke).toBeUndefined();
+    expect(String(s.filter)).toContain('drop-shadow');
+  });
+
+  it('moves the shadow out of text-shadow, which would cover the gradient', () => {
+    // `text-shadow` paints BETWEEN the background and the text, so on clipped
+    // glyphs it hides the gradient completely.
+    const s = wordStyle(outlined, {
+      ...base,
+      word: { gradient: { from: '#7DD3FC', to: '#2563EB', angle: 180 } },
+    });
+    expect(s.textShadow).toBeUndefined();
+  });
+
+  it('halves the width, because drop-shadow expands by its full radius', () => {
+    // A centred 8px stroke puts 4px outside the glyph. Using 8 here made a
+    // gradient word twice as heavy as the identical outline beside it.
+    const s = wordStyle(outlined, {
+      ...base,
+      word: { gradient: { from: '#7DD3FC', to: '#2563EB', angle: 180 } },
+    });
+    expect(String(s.filter)).toContain('drop-shadow(4px 0 0 #000000)');
+  });
+
+  it('applies to a line-level gradient too, not only a word’s', () => {
+    // The `gradient` preset carried this bug since long before per-word styling.
+    const g = CaptionStyleSchema.parse({
+      stroke: { width: 8, color: '#000000' },
+      gradient: { from: '#A', to: '#B', angle: 180 },
+    });
+    const s = wordStyle(g, base);
+    expect(s.WebkitTextStroke).toBeUndefined();
+    expect(String(s.filter)).toContain('drop-shadow');
+  });
+});
