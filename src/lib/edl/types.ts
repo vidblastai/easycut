@@ -302,6 +302,19 @@ export const CaptionStyleSchema = z.object({
    * word next to it.
    */
   emphasisOwnLine: z.boolean().default(false),
+  /**
+   * The shortest word worth setting in the highlight face.
+   *
+   * A highlight is a whole line to itself, in another typeface, half again as
+   * large. Spend that on "to" and it reads as a glitch: the line below the
+   * sentence holds a word carrying none of its meaning, blown up and
+   * flourished for no reason. Five letters is where a word starts to look
+   * like the point of the sentence rather than a joint in it.
+   *
+   * Only consulted where the highlight owns a line — a preset that merely
+   * recolours a word can recolour any word it likes.
+   */
+  emphasisMinChars: z.number().int().min(1).max(20).default(5),
   /** Rounded plate behind just the word being spoken. */
   wordBox: z.object({
     color: z.string(),

@@ -206,3 +206,63 @@ describe('a highlight that would open a card', () => {
     expect(card.words.map((w) => w.text)).toEqual(['right']);
   });
 });
+
+describe('which word gets the highlight', () => {
+  const mapper = () => new TimeMapper(layoutSegments([{ sourceStartSec: 0, sourceEndSec: 6 }]));
+  const spoken: Array<[string, number, number]> = [
+    ['you', 0.1, 0.35],
+    ['have', 0.35, 0.6],
+    ['to', 0.6, 0.75],
+    ['commit', 0.75, 1.3],
+  ];
+  const ownLine = (over: object = {}) =>
+    CaptionStyleSchema.parse({ maxWordsPerCue: 4, emphasisOwnLine: true, ...over });
+
+  it('never spends a whole line on a two-letter word', () => {
+    // "to" set in a brush script under the sentence reads as a glitch.
+    const cues = buildCaptions({
+      words: words(spoken),
+      mapper: mapper(),
+      style: ownLine(),
+      emphasis: [{ startSec: 0.6, endSec: 0.75 }],
+      outputDurationSec: 6,
+    });
+    expect(cues.flatMap((c) => c.words).filter((w) => w.emphasis)).toEqual([]);
+  });
+
+  it('takes the longest word of the phrase the director marked', () => {
+    const cues = buildCaptions({
+      words: words(spoken),
+      mapper: mapper(),
+      style: ownLine(),
+      emphasis: [{ startSec: 0.6, endSec: 1.3 }],
+      outputDurationSec: 6,
+    });
+    const lit = cues.flatMap((c) => c.words).filter((w) => w.emphasis);
+    expect(lit.map((w) => w.text)).toEqual(['commit']);
+  });
+
+  it('counts letters, not punctuation', () => {
+    const cues = buildCaptions({
+      words: words([['scale.', 0.1, 0.7]]),
+      mapper: mapper(),
+      style: ownLine({ emphasisMinChars: 6 }),
+      emphasis: [{ startSec: 0.1, endSec: 0.7 }],
+      outputDurationSec: 6,
+    });
+    // "scale." is six characters but five letters, so it misses the bar.
+    expect(cues.flatMap((c) => c.words).some((w) => w.emphasis)).toBe(false);
+  });
+
+  it('still colours the whole phrase for a preset that only recolours', () => {
+    const cues = buildCaptions({
+      words: words(spoken),
+      mapper: mapper(),
+      style: CaptionStyleSchema.parse({ maxWordsPerCue: 4 }),
+      emphasis: [{ startSec: 0.6, endSec: 1.3 }],
+      outputDurationSec: 6,
+    });
+    const lit = cues.flatMap((c) => c.words).filter((w) => w.emphasis);
+    expect(lit.map((w) => w.text)).toEqual(['to', 'commit']);
+  });
+});

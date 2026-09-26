@@ -67,6 +67,7 @@ export const CAPTION_PRESETS: CaptionPreset[] = [
       wordBox: null,
       emphasisStyle: null,
       emphasisOwnLine: false,
+      emphasisMinChars: 5,
     },
   },
   {
@@ -101,6 +102,7 @@ export const CAPTION_PRESETS: CaptionPreset[] = [
       wordBox: null,
       emphasisStyle: null,
       emphasisOwnLine: false,
+      emphasisMinChars: 5,
     },
   },
   {
@@ -135,6 +137,7 @@ export const CAPTION_PRESETS: CaptionPreset[] = [
       wordBox: null,
       emphasisStyle: null,
       emphasisOwnLine: false,
+      emphasisMinChars: 5,
     },
   },
   {
@@ -169,6 +172,7 @@ export const CAPTION_PRESETS: CaptionPreset[] = [
       wordBox: null,
       emphasisStyle: null,
       emphasisOwnLine: false,
+      emphasisMinChars: 5,
     },
   },
 
@@ -205,6 +209,7 @@ export const CAPTION_PRESETS: CaptionPreset[] = [
       wordBox: null,
       emphasisStyle: null,
       emphasisOwnLine: false,
+      emphasisMinChars: 5,
     },
   },
   {
@@ -239,6 +244,7 @@ export const CAPTION_PRESETS: CaptionPreset[] = [
       wordBox: { color: '#9B7BFF', padding: 8, radius: 10 },
       emphasisStyle: null,
       emphasisOwnLine: false,
+      emphasisMinChars: 5,
     },
   },
   {
@@ -273,6 +279,7 @@ export const CAPTION_PRESETS: CaptionPreset[] = [
       wordBox: null,
       emphasisStyle: null,
       emphasisOwnLine: false,
+      emphasisMinChars: 5,
     },
   },
   {
@@ -307,6 +314,7 @@ export const CAPTION_PRESETS: CaptionPreset[] = [
       wordBox: null,
       emphasisStyle: null,
       emphasisOwnLine: false,
+      emphasisMinChars: 5,
     },
   },
   {
@@ -341,6 +349,7 @@ export const CAPTION_PRESETS: CaptionPreset[] = [
       wordBox: null,
       emphasisStyle: null,
       emphasisOwnLine: false,
+      emphasisMinChars: 5,
     },
   },
 
@@ -435,6 +444,7 @@ export const CAPTION_PRESETS: CaptionPreset[] = [
         offsetY: -0.12,
       },
       emphasisOwnLine: true,
+      emphasisMinChars: 5,
     },
   },
 
@@ -470,6 +480,7 @@ export const CAPTION_PRESETS: CaptionPreset[] = [
       wordBox: null,
       emphasisStyle: null,
       emphasisOwnLine: false,
+      emphasisMinChars: 5,
     },
   },
   {
@@ -504,6 +515,7 @@ export const CAPTION_PRESETS: CaptionPreset[] = [
       wordBox: null,
       emphasisStyle: null,
       emphasisOwnLine: false,
+      emphasisMinChars: 5,
     },
   },
   {
@@ -538,6 +550,7 @@ export const CAPTION_PRESETS: CaptionPreset[] = [
       wordBox: null,
       emphasisStyle: null,
       emphasisOwnLine: false,
+      emphasisMinChars: 5,
     },
   },
   {
@@ -572,6 +585,7 @@ export const CAPTION_PRESETS: CaptionPreset[] = [
       wordBox: null,
       emphasisStyle: null,
       emphasisOwnLine: false,
+      emphasisMinChars: 5,
     },
   },
 
@@ -608,6 +622,7 @@ export const CAPTION_PRESETS: CaptionPreset[] = [
       wordBox: null,
       emphasisStyle: null,
       emphasisOwnLine: false,
+      emphasisMinChars: 5,
     },
   },
   {
@@ -642,6 +657,7 @@ export const CAPTION_PRESETS: CaptionPreset[] = [
       wordBox: null,
       emphasisStyle: null,
       emphasisOwnLine: false,
+      emphasisMinChars: 5,
     },
   },
   {
@@ -676,6 +692,7 @@ export const CAPTION_PRESETS: CaptionPreset[] = [
       wordBox: null,
       emphasisStyle: null,
       emphasisOwnLine: false,
+      emphasisMinChars: 5,
     },
   },
 ];

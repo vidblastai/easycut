@@ -36,7 +36,7 @@ export function buildCaptions(options: BuildCaptionsOptions): CaptionCue[] {
   const { words, mapper, style, emphasis } = options;
 
   // 1. Map every surviving word onto output time, dropping the cut ones.
-  const placed: Array<CaptionWord & { segmentKey: string }> = [];
+  const placed: Array<CaptionWord & { segmentKey: string; spanIndex: number }> = [];
   for (const word of words) {
     const start = mapper.toOutput(word.startSec);
     const end = mapper.toOutput(word.endSec);
@@ -56,13 +56,17 @@ export function buildCaptions(options: BuildCaptionsOptions): CaptionCue[] {
       text: word.text,
       startSec: start,
       endSec: end,
-      emphasis: emphasis.some((e) => word.startSec >= e.startSec - 0.02 && word.endSec <= e.endSec + 0.02),
+      emphasis: false,
       segmentKey: segment?.id ?? 'none',
+      spanIndex: emphasis.findIndex(
+        (e) => word.startSec >= e.startSec - 0.02 && word.endSec <= e.endSec + 0.02,
+      ),
     });
   }
   if (!placed.length) return [];
 
   placed.sort((a, b) => a.startSec - b.startSec);
+  markEmphasis(placed, style);
 
   // 2. Group into cards.
   const cues: CaptionCue[] = [];
@@ -172,6 +176,53 @@ export function buildCaptions(options: BuildCaptionsOptions): CaptionCue[] {
 
   // 3. Repair: no orphan single-word cards, and enforce a readable minimum.
   return repair(cues, options.outputDurationSec, style);
+}
+
+/**
+ * Decides which words actually get the highlight.
+ *
+ * The director marks a SPAN — usually the phrase it wants landed on, which can
+ * be several words. What happens to that span depends on what the highlight
+ * is:
+ *
+ *  - A preset that recolours a word can colour the whole phrase. Nothing moves,
+ *    nothing changes size, and three coloured words in a row read as one
+ *    emphasised phrase, which is what the director meant.
+ *
+ *  - A preset that gives the highlight a line of its own, in another face and
+ *    half again as large, cannot. Every word so marked would claim its own
+ *    line, and a short one would claim it for nothing: "to" set in a brush
+ *    script under a sentence reads as a glitch. So the span gets ONE word —
+ *    its longest, and only if that word is long enough to be worth the line.
+ *    A span of nothing but small words gets no highlight at all, which is a
+ *    plain caption card and perfectly fine.
+ */
+function markEmphasis(
+  placed: Array<CaptionWord & { spanIndex: number }>,
+  style: CaptionStyle,
+): void {
+  if (!style.emphasisOwnLine) {
+    for (const word of placed) word.emphasis = word.spanIndex >= 0;
+    return;
+  }
+
+  const best = new Map<number, CaptionWord & { spanIndex: number }>();
+  for (const word of placed) {
+    if (word.spanIndex < 0) continue;
+    if (letterCount(word.text) < style.emphasisMinChars) continue;
+    const incumbent = best.get(word.spanIndex);
+    // Longest wins; on a tie the earlier word keeps it, so the highlight lands
+    // as soon in the phrase as it can.
+    if (!incumbent || letterCount(word.text) > letterCount(incumbent.text)) {
+      best.set(word.spanIndex, word);
+    }
+  }
+  for (const word of best.values()) word.emphasis = true;
+}
+
+/** Letters and digits only: "now," is three characters, not four. */
+function letterCount(text: string): number {
+  return text.replace(/[^\p{L}\p{N}]/gu, '').length;
 }
 
 function repair(cues: CaptionCue[], durationSec: number, style: CaptionStyle): CaptionCue[] {
