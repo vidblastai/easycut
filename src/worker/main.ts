@@ -87,7 +87,8 @@ export async function main(): Promise<void> {
   console.log(`  director : ${
     director === 'anthropic' ? env.llm.model
     : director === 'gemini' ? env.llm.geminiModel
-    : 'rule-based (no DEEPGRAM/GEMINI/ANTHROPIC key)'}`);
+    : director === 'wavespeed' ? `${env.llm.wavespeedModel} (via WaveSpeed)`
+    : 'rule-based (no director key configured)'}`);
   console.log(`  workers  : ${env.queue.concurrency}`);
 
   // A worker in its own terminal with an in-process queue is a worker that will
