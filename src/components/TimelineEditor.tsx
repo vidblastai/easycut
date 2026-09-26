@@ -1552,26 +1552,61 @@ const SpeechTrack = React.memo(function SpeechTrack({ edl, pps }: { edl: Edl; pp
     });
   }, [edl.captions, edl.format.durationSec]);
 
+  /*
+   * Drawn into a canvas, not into 1,400 spans.
+   *
+   * This used to be one `<span>` per bar in a flex row — up to fourteen
+   * hundred of them, which is most of the DOM on the page and, worse, fourteen
+   * hundred flex items the browser has to lay out again every time anything in
+   * the timeline invalidates layout. Scrolling, zooming and dragging all do.
+   * One canvas is one node and one paint, and it is redrawn only when the
+   * speech or the zoom actually changes.
+   */
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const width = Math.max(1, Math.round(edl.format.durationSec * pps));
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas || !bars.length) return;
+
+    // Canvases have a maximum size and a long edit is wider than it; the bars
+    // are a texture rather than a measurement, so drawing at a capped width
+    // and letting CSS stretch it is exact enough and much cheaper.
+    const drawWidth = Math.min(width, 4000);
+    const height = canvas.clientHeight || 28;
+    const dpr = Math.min(2, typeof window === 'undefined' ? 1 : window.devicePixelRatio || 1);
+    canvas.width = Math.round(drawWidth * dpr);
+    canvas.height = Math.round(height * dpr);
+
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    ctx.scale(dpr, dpr);
+    ctx.clearRect(0, 0, drawWidth, height);
+    ctx.fillStyle = 'rgba(155,123,255,0.4)';
+
+    const step = drawWidth / bars.length;
+    const barWidth = Math.max(1, step - 1);
+    for (let i = 0; i < bars.length; i++) {
+      const h = Math.min(0.92, bars[i]) * height;
+      ctx.fillRect(i * step, (height - h) / 2, barWidth, h);
+    }
+  }, [bars, width]);
+
   if (!bars.length) return null;
 
-  // The width has to be the video's duration in timeline pixels, not the lane's.
-  // `inset-0` stretched the bars across whatever width the lane happened to
-  // have, so on any window wider than the edit the speech carried on for
-  // seconds after the last clip ended — a waveform that disagrees with the
-  // clips above it is worse than no waveform, because people trim against it.
+  // The width has to be the video's duration in timeline pixels, not the
+  // lane's. `inset-0` stretched the bars across whatever width the lane
+  // happened to have, so on any window wider than the edit the speech carried
+  // on for seconds after the last clip ended — a waveform that disagrees with
+  // the clips above it is worse than no waveform, because people trim against
+  // it.
   return (
-    <div
-      className="pointer-events-none absolute inset-y-0 left-0 flex items-center gap-px overflow-hidden px-px opacity-40"
-      style={{ width: edl.format.durationSec * pps }}
-    >
-      {bars.map((h, i) => (
-        <span
-          key={i}
-          className="flex-1 rounded-[1px] bg-violet"
-          style={{ height: `${Math.min(92, h * 100)}%`, minWidth: 1 }}
-        />
-      ))}
-    </div>
+    <canvas
+      ref={canvasRef}
+      aria-hidden
+      className="pointer-events-none absolute inset-y-0 left-0 h-full"
+      style={{ width }}
+    />
   );
 });
 

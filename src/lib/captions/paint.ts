@@ -102,14 +102,26 @@ function gradientFilter(
   const parts: string[] = [];
   const glow = glowOverride ?? style.glow;
 
-  if (style.stroke && cheap) {
-    const r = Math.max(0.5, (style.stroke.width / 2) * k);
-    const c = style.stroke.color;
-    parts.push(
-      `drop-shadow(${r}px 0 0 ${c})`, `drop-shadow(${-r}px 0 0 ${c})`,
-      `drop-shadow(0 ${r}px 0 ${c})`, `drop-shadow(0 ${-r}px 0 ${c})`,
-    );
-  } else if (style.stroke) {
+  if (cheap) {
+    /*
+     * Nothing at all, while somebody is editing.
+     *
+     * A filter chain is re-rasterised every frame the word is on screen, and
+     * the ring below is eight passes per word before the glow and the shadow.
+     * At preview size what it buys is a hairline the eye cannot resolve, so
+     * the preview does without and keeps the frames instead. The export draws
+     * the real thing.
+     */
+    if (glow) {
+      parts.push(`drop-shadow(0 0 ${glow.blur * 0.5 * k}px ${glow.color})`);
+    } else if (style.shadow) {
+      const sh = style.shadow;
+      parts.push(`drop-shadow(${sh.offsetX * k}px ${sh.offsetY * k}px ${sh.blur * 0.6 * k}px ${sh.color})`);
+    }
+    return parts.length ? parts.join(' ') : undefined;
+  }
+
+  if (style.stroke) {
     /*
      * HALF the width, and that halving is the difference between matching the
      * line above and looking like a sticker.
