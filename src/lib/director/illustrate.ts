@@ -113,7 +113,7 @@ Draw it so it CAN pivot, or the motion exposes it:
 
 1. **FILL EACH BEAT, EDGE TO EDGE.** This drawing IS the whole screen — there is no background behind it and nothing around it. The backdrop must reach all four edges of the strip with no margin at all, and the subject of a beat spans at least 800 of the ${CANVAS} units across, centred. A composition sitting small in the middle of a panel is unusable: it is full-screen on a phone, so anything at half scale is a postage stamp.
 2. Shapes only: path, circle, ellipse, rect, line, polyline, polygon, g. \`linearGradient\` and \`radialGradient\` in a \`<defs>\` are fine and worth using.
-3. **No \`<text>\`.** Words are drawn by the renderer in the video's own typeface. Leave room for them in the lower part of each beat.
+3. **No \`<text>\`, and no lettering of any kind.** Not a label, not a number on a dial, not a word on a screen. The video's own captions are the only words on screen, and they are drawn by the renderer over the lower part of the frame. A drawing that spells something out ends up saying it twice, half a beat apart.
 4. No \`<filter>\`, no \`<image>\`, no CSS \`filter\`, no blend modes, no \`<animate>\`. They are stripped, and a drawing that relied on them arrives broken.
 5. Every shape gets an explicit \`fill\` (or \`fill="none"\` with a \`stroke\`). An inherited fill renders black.
 6. **50 to 140 shapes across the whole strip.** That is the line between clipart and illustration, and it is worth spending.
@@ -267,9 +267,10 @@ export async function drawScene(request: IllustrationRequest): Promise<Illustrat
 
 ${
     words
-      ? `Words the renderer will draw on top afterwards (do NOT draw them, just leave the lower fifth of each beat clear): ${words}`
-      : 'No words on this one — the drawing carries it alone.'
+      ? `What is being shown, for your understanding only — do NOT draw these words or any others: ${words}`
+      : ''
   }
+The video's captions run along the lower part of the frame over your drawing, so **keep the bottom fifth of every beat clear of anything important**. Do not draw the caption yourself.
 
 ${guideAsPrompt(guide, ['palette', 'rendering', 'lighting', 'ground_rule'])}
 

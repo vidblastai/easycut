@@ -8,7 +8,7 @@ import { LOOK_META } from '../../src/lib/scenes/looks';
 import { styleGuideFor } from '../../src/lib/scenes/style-guides';
 import type { Arrange, Look, LookContext } from '../looks/contract';
 import { NeonProps } from '../looks/neon';
-import { Illustration, artSettlesAt, stageAt, stageStartsAt } from './Illustration';
+import { Illustration } from './Illustration';
 
 /**
  * Faceless animation: the scenes that replace the picture.
@@ -155,7 +155,7 @@ const Arrangement: React.FC<{ ctx: LookContext; look: Look }> = ({ ctx, look }) 
    * gradient is a video of title cards. The words are still there; they are
    * just the size a caption should be.
    */
-  if (sceneIsDrawn(scene)) return <Drawn ctx={ctx} look={look} centred={centred} />;
+  if (sceneIsDrawn(scene)) return <Drawn ctx={ctx} look={look} />;
 
   switch (scene.kind) {
     case 'big-number': {
@@ -220,37 +220,22 @@ const Arrangement: React.FC<{ ctx: LookContext; look: Look }> = ({ ctx, look }) 
 /**
  * A scene the model drew.
  *
- * The drawing assembles first, filling most of the frame, and the words come
- * in AFTER it has settled — never alongside. Two things arriving at once on a
- * full-screen insert gives the eye nowhere to go, and the reference edits all
- * do it in this order: the picture, then the line about it.
+ * The drawing is the entire scene: it fills the frame, it is its own
+ * background, and it carries no words at all.
  *
- * The bottom third is kept for the type, which is also what the drawing pass
- * is told to leave emptier, so the two agree about where the words go.
+ * It used to carry a caption. The caption sat perfectly still over a moving
+ * picture, which reads as a subtitle that forgot to animate — "make sure
+ * there's no text like this that is just static and standing there". Taking it
+ * out costs nothing, because the video's real captions are already running and
+ * they now have nothing to collide with: `sceneHasText()` reports false for a
+ * drawn scene, so they play over it exactly as they play over the footage.
+ *
+ * The scene's own words are still in the document. The editor shows them and
+ * the illustrator is briefed with them; they are simply never rendered.
  */
-const Drawn: React.FC<{ ctx: LookContext; look: Look; centred: React.CSSProperties }> = ({ ctx, look, centred }) => {
-  const frame = useCurrentFrame();
+const Drawn: React.FC<{ ctx: LookContext; look: Look }> = ({ ctx, look }) => {
   const { scene } = ctx;
   const art = scene.art!;
-  const items = scene.items.filter((item) => item.trim());
-
-  const settled = artSettlesAt(art, 1);
-
-  /*
-   * The caption follows the beat.
-   *
-   * Where the drawing travels through several beats, the words travel with it:
-   * one line per beat, changing as the camera arrives. That is the shape the
-   * reference edit has — "it's not about money", then, a beat further down the
-   * board, "it's all about timing" — and a single fixed caption over a moving
-   * sequence undoes most of what the sequence was for.
-   *
-   * Keyed on the beat so React remounts the line and it re-animates in rather
-   * than the text swapping underneath a settled element.
-   */
-  const stage = art.stages > 1 ? stageAt(art, 1, ctx.durationInFrames, frame) : 0;
-  const perBeat = art.stages > 1 && items.length >= art.stages;
-  const caption = perBeat ? items[Math.min(stage, items.length - 1)] : scene.headline;
 
   return (
     <AbsoluteFill>
@@ -270,33 +255,6 @@ const Drawn: React.FC<{ ctx: LookContext; look: Look; centred: React.CSSProperti
         durationInFrames={ctx.durationInFrames}
         seed={scene.id}
       />
-      <AbsoluteFill
-        style={{
-          ...centred,
-          flexDirection: 'column',
-          gap: ctx.unit * 24,
-          // The words sit over the picture, in the lower part of the frame the
-          // drawing was told to leave clear.
-          justifyContent: 'flex-end',
-          paddingBottom: ctx.unit * 150,
-        }}
-      >
-      {caption ? (
-        // Never `hero`, whatever the kind: the picture is the hero here, and a
-        // headline at hero size next to a drawing fights it for the frame.
-        <look.Title
-          key={perBeat ? `beat-${stage}` : 'headline'}
-          ctx={ctx}
-          text={caption}
-          // The beat's own start, not zero: the look's slots read the scene's
-          // frame counter, so a remount alone would find the entry long over.
-          at={perBeat ? stageStartsAt(art, 1, ctx.durationInFrames, stage) + 6 : settled}
-        />
-      ) : null}
-      {!perBeat && items.length && scene.kind !== 'big-number' ? (
-        <DrawnLabels ctx={ctx} look={look} items={items.slice(0, 3)} at={settled + 5} />
-      ) : null}
-      </AbsoluteFill>
       <Props ctx={ctx} look={look} />
     </AbsoluteFill>
   );
@@ -311,40 +269,6 @@ const Drawn: React.FC<{ ctx: LookContext; look: Look; centred: React.CSSProperti
  * same thing, and where no icon resolved it is a grey dot that reads as a
  * loading state.
  */
-const DrawnLabels: React.FC<{ ctx: LookContext; look: Look; items: string[]; at: number }> = ({
-  ctx,
-  look,
-  items,
-  at,
-}) => {
-  const frame = useCurrentFrame();
-  const meta = LOOK_META[look.id];
-
-  return (
-    <div style={{ display: 'flex', gap: ctx.unit * 44, justifyContent: 'center', flexWrap: 'wrap' }}>
-      {items.map((item, i) => {
-        const entry = riseIn(frame, at + stagger(i), ctx.unit * 16, 9);
-        return (
-          <span
-            key={`${item}-${i}`}
-            style={{
-              fontSize: ctx.unit * 32,
-              fontWeight: 700,
-              letterSpacing: '-0.01em',
-              color: meta.dim,
-              textAlign: 'center',
-              opacity: entry.opacity,
-              transform: transformOf(entry),
-            }}
-          >
-            {item}
-          </span>
-        );
-      })}
-    </div>
-  );
-};
-
 /**
  * A path reads across a wide frame and down a tall one.
  *

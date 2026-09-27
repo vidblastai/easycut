@@ -13,6 +13,25 @@ This file is the measured record of four reference edits the user supplied,
 plus the rules that came out of reading them frame by frame. Numbers here were
 counted off real 30fps frames, not guessed.
 
+## A drawn scene carries no words
+
+The drawing renders no headline, no labels, no lettering of any kind. It used
+to carry a caption under the picture and the note was exact — *"no text like
+this that is just static and standing there"*. A line of type holding still
+over a moving picture reads as a subtitle that forgot to animate.
+
+Taking it out costs nothing, because the video's real captions are already
+running. `sceneHasText()` returns false for any scene with `art`, so the
+captions play over a drawing exactly as they play over the footage — one set
+of moving words instead of two, one of them frozen.
+
+The scene's own words stay in the document: the editor shows them, and the
+illustrator is briefed with them so it knows what the shot is about. They are
+simply never rendered. The drawing prompt bans lettering outright — not a
+label, not a number on a dial, not a word on a screen — and asks for the
+bottom fifth of every beat to stay clear, because that is where the captions
+land.
+
 ## One background, and the drawing is it
 
 The bug worth naming, because it was invisible to me and instant to the user:

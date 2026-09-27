@@ -21,6 +21,9 @@ import { SAMPLE_EDL } from '../remotion/sample-edl';
 const OUT = 'out/scene-clips';
 const SOURCE_FILE = 'out/fixture.mp4';
 
+/** Spoken over the scene, so the clip shows the captions doing their job. */
+const CAPTION_WORDS = 'You do not need a team'.split(' ');
+
 const CONTENT: Partial<Record<SceneKind, { headline: string; items: string[] }>> = {
   'kinetic-text': { headline: 'You do not need a team', items: [] },
   compare: { headline: 'Before and after', items: ['Six hours', 'Four minutes'] },
@@ -78,7 +81,23 @@ async function main() {
           reason: 'clip',
         },
       ],
-      captions: [],
+      // The scene draws no words of its own now, so the only type on screen
+      // is the video's captions — and a clip without them is not the thing.
+      captions: CAPTION_WORDS.length
+        ? [
+            {
+              id: 'cue-0',
+              startSec: 0.3,
+              endSec: seconds,
+              words: CAPTION_WORDS.map((text, i) => ({
+                text,
+                startSec: 0.3 + i * ((seconds - 0.6) / CAPTION_WORDS.length),
+                endSec: 0.3 + (i + 1) * ((seconds - 0.6) / CAPTION_WORDS.length),
+                emphasis: text === 'team',
+              })),
+            },
+          ]
+        : [],
       broll: [],
       graphics: [],
       overlays: [],

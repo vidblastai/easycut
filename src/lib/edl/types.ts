@@ -587,6 +587,19 @@ export type AnimatedScene = z.infer<typeof AnimatedSceneSchema>;
  * the captions stay.
  */
 export function sceneHasText(scene: AnimatedScene): boolean {
+  /*
+   * A drawn scene never puts words on screen.
+   *
+   * It used to, and the result was a line of type sitting perfectly still over
+   * a moving picture, which reads as a caption that forgot to animate. The
+   * scene's own words are still in the document — the editor shows them, and
+   * the illustrator is briefed with them — they are simply not rendered.
+   *
+   * Which means the captions have nothing to collide with, so they play over
+   * the drawing like they do over the footage. That is the whole trade: one
+   * set of moving words instead of two sets, one of them frozen.
+   */
+  if (sceneIsDrawn(scene)) return false;
   return Boolean(scene.headline.trim()) || scene.items.some((item) => item.trim());
 }
 

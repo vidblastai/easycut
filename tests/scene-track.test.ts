@@ -72,3 +72,28 @@ describe('who gets to put words on the screen', () => {
     expect(sceneHasText(scene({ headline: '   ', items: ['  '] }))).toBe(false);
   });
 });
+
+describe('a drawn scene shows no words, so the captions may', () => {
+  const art = {
+    viewBox: '0 0 1000 3556',
+    defs: '',
+    motion: [],
+    stages: 2,
+    parts: [
+      { markup: '<circle cx="500" cy="500" r="200" fill="#111"/>', stage: 0, depth: 0.5, enter: 'pop' as const, idle: 'bob' as const, hasPivot: false, pivot: { x: 500, y: 500 } },
+    ],
+  };
+
+  it('stands the captions down under a scene that letters its own words', () => {
+    // The icon fallback still sets type, and two sets of words half a beat
+    // apart is the reason that rule exists.
+    expect(sceneHasText(scene({ headline: 'You do not need a team' }))).toBe(true);
+  });
+
+  it('lets the captions run over a drawing, whatever words the scene carries', () => {
+    // The words stay in the document for the editor and for the illustrator's
+    // brief. They are simply never rendered, so there is nothing to collide.
+    expect(sceneHasText(scene({ headline: 'You do not need a team', art }))).toBe(false);
+    expect(sceneHasText(scene({ headline: '', items: ['one', 'two'], art }))).toBe(false);
+  });
+});
