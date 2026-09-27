@@ -27,7 +27,9 @@ export default {
         bad: '#FF7B7B',
       },
       fontFamily: {
-        sans: ['var(--font-jakarta)', 'Plus Jakarta Sans', 'system-ui', 'sans-serif'],
+        // The extended face second: it carries the accented glyphs the Latin
+        // subset leaves out, and the browser only reaches for it there.
+        sans: ['var(--font-jakarta)', 'var(--font-jakarta-ext)', 'Plus Jakarta Sans', 'system-ui', 'sans-serif'],
       },
       fontSize: {
         display: ['48px', { lineHeight: '56px', letterSpacing: '-0.03em', fontWeight: '700' }],

@@ -7,7 +7,7 @@ import { selectMusic } from '@/lib/assets/music';
 import { searchStock, isStockConfigured, type StockClip } from '@/lib/assets/broll';
 import { sfxDefaultGain, sfxUrl, type SfxName } from '@/lib/assets/sfx';
 import type { CostLedger } from '@/lib/pricing/cost';
-import type { Edl } from '@/lib/edl/types';
+import { iconRowY, type Edl } from '@/lib/edl/types';
 
 /**
  * Resolves every placeholder in an EDL into a real URL.
@@ -210,7 +210,16 @@ export async function resolveAssets(
         })
         .filter((card): card is NonNullable<typeof card> => card !== null),
     }))
-    .filter((cue) => cue.cards.length > 0);
+    .filter((cue) => cue.cards.length > 0)
+    // Re-placed for the cards that SURVIVED. A card's size depends on how many
+    // share its row, and the row's height is what keeps it clear of the
+    // captions — so a three-card row that lost one to a failed lookup would
+    // otherwise sit at the height a smaller card needed, with the words
+    // running through the two that are left.
+    .map((cue) => ({
+      ...cue,
+      y: iconRowY(edl.captionStyle, cue.cards.length, edl.format.width, edl.format.height),
+    }));
 
   const droppedCards =
     edl.icons.reduce((n, cue) => n + cue.cards.length, 0) - icons.reduce((n, cue) => n + cue.cards.length, 0);

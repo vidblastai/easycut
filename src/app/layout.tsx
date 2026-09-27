@@ -1,14 +1,40 @@
 import type { Metadata, Viewport } from 'next';
-import { Plus_Jakarta_Sans } from 'next/font/google';
+import localFont from 'next/font/local';
 import './globals.css';
 import { ClerkProvider } from '@clerk/nextjs';
 
 const authEnabled = Boolean(process.env.CLERK_SECRET_KEY);
 
-const jakarta = Plus_Jakarta_Sans({
-  subsets: ['latin'],
-  weight: ['400', '500', '600', '700', '800'],
+/**
+ * The brand face, from disk rather than from Google.
+ *
+ * `next/font/google` fetches the family at BUILD time, which makes every
+ * deploy depend on fonts.googleapis.com answering correctly from the build
+ * host — and it stopped doing that, twice in a row, with a null-dereference
+ * inside Next's font loader rather than anything resembling a network error.
+ * A build that cannot run because a CDN is having a bad day is not a build.
+ *
+ * Plus Jakarta Sans is a VARIABLE font, so the entire weight range 400–800
+ * lives in one 27 KB file. Two files, then: the Latin subset and the extended
+ * one, 49 KB in total for the whole interface, committed rather than fetched.
+ *
+ * Two faces rather than one with `unicode-range`, because `next/font/local`
+ * applies its `declarations` to every source it is given and these two need
+ * different ranges. Listing both in the stack gets the same result by the
+ * plainer route: the extended file simply has the glyphs the Latin one does
+ * not, so the browser falls through to it for those and nowhere else.
+ */
+const jakarta = localFont({
+  src: './fonts/PlusJakartaSans-latin.woff2',
+  weight: '400 800',
   variable: '--font-jakarta',
+  display: 'swap',
+});
+
+const jakartaExtended = localFont({
+  src: './fonts/PlusJakartaSans-latin-ext.woff2',
+  weight: '400 800',
+  variable: '--font-jakarta-ext',
   display: 'swap',
 });
 
@@ -31,7 +57,7 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={jakarta.variable}>
+    <html lang="en" className={`${jakarta.variable} ${jakartaExtended.variable}`}>
       <body className="min-h-screen bg-ink font-sans text-chalk antialiased">
         {/* Only wraps when Clerk is configured — an unconfigured ClerkProvider
             throws at render, which would break `git clone && npm run dev`. */}
