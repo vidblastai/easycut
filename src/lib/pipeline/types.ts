@@ -69,6 +69,8 @@ export interface PipelineRequest {
   styleId: string;
   /** The caption look, when the user chose one. Null takes the edit style's. */
   captionPreset?: string | null;
+  /** The world the animated scenes are drawn in. Null takes the edit style's. */
+  sceneLook?: string | null;
   inputMode: 'raw' | 'roughcut';
   userNote?: string;
   /**

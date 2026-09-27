@@ -70,6 +70,13 @@ model Project {
   // two lists independent — see src/lib/captions/presets.ts.
   captionPreset String?
 
+  // The world the animated scenes are drawn in, when the user picked one.
+  // Null means "whatever this edit style defaults to" — same contract as the
+  // caption look above, and for the same reason: the layer that takes the
+  // whole frame should not be chosen as a side effect of how the talking head
+  // is cropped. See src/lib/scenes/style-guides.ts.
+  sceneLook String?
+
   // Optional free-text steer, e.g. "focus on the pricing section".
   userNote String?
 

@@ -7,6 +7,7 @@ import { FORMAT_PRESETS, getStyle } from '@/lib/styles/presets';
 import { findCaptionPreset } from '@/lib/captions/presets';
 import { currentUserId, ensureUser, isAuthEnabled } from '@/lib/auth';
 import { LAYER_NAMES, type LayerName } from '@/lib/edl/layers';
+import { SCENE_LOOKS } from '@/lib/edl/types';
 
 export const runtime = 'nodejs';
 
@@ -16,6 +17,7 @@ const CreateProjectSchema = z.object({
   styleId: z.string().default('clean'),
   /** The caption look, when the picker set a default. Omitted takes the style's. */
   captionPreset: z.string().optional(),
+  sceneLook: z.string().optional(),
   inputMode: z.enum(['raw', 'roughcut']).default('raw'),
   /**
    * Layers the person declined, before anything is made.
@@ -75,6 +77,9 @@ export async function POST(request: Request) {
       ),
       captionPreset: input.captionPreset && findCaptionPreset(input.captionPreset)
         ? input.captionPreset
+        : null,
+      sceneLook: input.sceneLook && (SCENE_LOOKS as readonly string[]).includes(input.sceneLook)
+        ? input.sceneLook
         : null,
       inputMode: input.inputMode,
       userNote: input.userNote,

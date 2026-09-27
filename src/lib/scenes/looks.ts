@@ -40,6 +40,16 @@ export interface LookMeta {
   ink: string;
   dim: string;
   /**
+   * Light or dark, derived from the ground the drawing sits on.
+   *
+   * The picker leads with this because it is the only thing anybody asks
+   * first — "I want to see it in the dark style" — and a list of five proper
+   * nouns does not answer it. Derived rather than written down for the same
+   * reason the swatch is: two places holding the same fact is one place
+   * holding it wrong.
+   */
+  tone: 'light' | 'dark';
+  /**
    * How the scene meets the footage either side of it.
    *
    * Three of the four cut hard, and that is most of why the reference edits
@@ -51,7 +61,7 @@ export interface LookMeta {
   entry: 'cut' | 'fade';
 }
 
-const NAMED: Record<SceneLook, Omit<LookMeta, 'swatch'>> = {
+const NAMED: Record<SceneLook, Omit<LookMeta, 'swatch' | 'tone'>> = {
   studio: {
     id: 'studio',
     name: 'Studio',
@@ -95,8 +105,25 @@ const NAMED: Record<SceneLook, Omit<LookMeta, 'swatch'>> = {
 };
 
 export const LOOK_META: Record<SceneLook, LookMeta> = Object.fromEntries(
-  SCENE_LOOKS.map((id) => [id, { ...NAMED[id], swatch: STYLE_GUIDES[id].accent }]),
+  SCENE_LOOKS.map((id) => [
+    id,
+    { ...NAMED[id], swatch: STYLE_GUIDES[id].accent, tone: toneOf(STYLE_GUIDES[id].ground) },
+  ]),
 ) as Record<SceneLook, LookMeta>;
+
+/**
+ * Light or dark, measured off the ground colour.
+ *
+ * Perceptual weights rather than a plain average: `#EFF0F4` and `#05060F` are
+ * obvious either way, but a saturated mid-tone ground is not, and green reads
+ * far lighter than blue at the same number.
+ */
+function toneOf(ground: string): 'light' | 'dark' {
+  const hex = ground.replace('#', '');
+  const to = (at: number) => parseInt(hex.slice(at, at + 2), 16) / 255;
+  const luma = 0.2126 * to(0) + 0.7152 * to(2) + 0.0722 * to(4);
+  return luma > 0.5 ? 'light' : 'dark';
+}
 
 /** For the picker, in the order it should offer them. */
 export const LOOK_LIST: LookMeta[] = SCENE_LOOKS.map((id) => LOOK_META[id]);

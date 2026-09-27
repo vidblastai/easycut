@@ -102,3 +102,65 @@ describe('splitFigure', () => {
     expect(splitFigure('most of them', 'never post').value).toBe('most of them');
   });
 });
+
+/**
+ * Picking the world the scenes are drawn in, instead of inheriting it.
+ *
+ * This used to arrive as a side effect: the edit style named a look, so
+ * choosing "Clean" because of how it crops a talking head also decided that
+ * every full-screen insert would be white. The override is the fix, and these
+ * are the properties that make it safe to expose in the picker.
+ */
+describe('choosing a scene look', () => {
+  it('overrides the edit style, and leaves everything else alone', async () => {
+    const { styleFor, getStyle } = await import('../src/lib/styles/presets');
+    const base = getStyle('clean');
+    expect(base.sceneLook).toBe('studio');
+
+    const dark = styleFor('clean', null, 'archive');
+    expect(dark.sceneLook).toBe('archive');
+    expect(dark.layout).toBe(base.layout);
+    expect(dark.accent).toBe(base.accent);
+  });
+
+  it('takes the style-s own look when nothing was chosen', async () => {
+    const { styleFor, getStyle } = await import('../src/lib/styles/presets');
+    expect(styleFor('punchy').sceneLook).toBe(getStyle('punchy').sceneLook);
+    expect(styleFor('punchy', null, null).sceneLook).toBe(getStyle('punchy').sceneLook);
+  });
+
+  it('ignores a look that no longer exists rather than failing the render', async () => {
+    // A months-old project holding a retired id should cost the user a
+    // preference, not the video.
+    const { styleFor, getStyle } = await import('../src/lib/styles/presets');
+    expect(styleFor('clean', null, 'vaporwave').sceneLook).toBe(getStyle('clean').sceneLook);
+  });
+
+  it('carries both overrides at once', async () => {
+    const { styleFor } = await import('../src/lib/styles/presets');
+    const both = styleFor('clean', 'impact', 'neon');
+    expect(both.sceneLook).toBe('neon');
+    expect(both.captionStyle.preset).toBe('impact');
+  });
+
+  it('sorts every look into light or dark, from the ground it draws on', async () => {
+    const { LOOK_LIST } = await import('../src/lib/scenes/looks');
+    const { STYLE_GUIDES } = await import('../src/lib/scenes/style-guides');
+
+    // The picker groups by this, so a wrong answer sends somebody looking for
+    // the dark style under "Light".
+    for (const look of LOOK_LIST) {
+      expect(['light', 'dark']).toContain(look.tone);
+    }
+    expect(LOOK_LIST.find((l) => l.id === 'neon')?.tone).toBe('dark');
+    expect(LOOK_LIST.find((l) => l.id === 'archive')?.tone).toBe('dark');
+    expect(LOOK_LIST.find((l) => l.id === 'editorial')?.tone).toBe('dark');
+    expect(LOOK_LIST.find((l) => l.id === 'gallery')?.tone).toBe('light');
+    expect(LOOK_LIST.find((l) => l.id === 'studio')?.tone).toBe('light');
+
+    // And both groups have something in them, or the control is a lie.
+    expect(LOOK_LIST.some((l) => l.tone === 'dark')).toBe(true);
+    expect(LOOK_LIST.some((l) => l.tone === 'light')).toBe(true);
+    expect(STYLE_GUIDES.neon.ground).toBeTruthy();
+  });
+});

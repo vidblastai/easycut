@@ -12,6 +12,7 @@ import { Stepper, type StepKey } from '@/components/shell/Stepper';
 import { readDefaultCaptionPreset } from '@/lib/captions/default-preset';
 import { CaptionPicker } from '@/components/captions/CaptionPicker';
 import { takePendingUpload } from '@/lib/ui/pending-upload';
+import { ScenePicker } from '@/components/scenes/ScenePicker';
 
 /**
  * The upload wizard: one question per screen.
@@ -121,6 +122,15 @@ export function UploadFlow({ styles, formats }: { styles: StyleOption[]; formats
    * caption gallery does not have to choose it again on every upload.
    */
   const [captionPreset, setCaptionPreset] = useState<string | null>(null);
+  /**
+   * The world the animated scenes get drawn in.
+   *
+   * Same contract as the caption look, and here for the same reason: it used
+   * to be a side effect of the edit style, so the only way to see the dark one
+   * was to render a video you did not want and read the source to find out why
+   * it came out white.
+   */
+  const [sceneLook, setSceneLook] = useState<string | null>(null);
   useEffect(() => {
     // On mount, not during render: localStorage is not there on the server and
     // can throw in a private window, and a mismatch would flash the wrong tile.
@@ -230,6 +240,7 @@ export function UploadFlow({ styles, formats }: { styles: StyleOption[]; formats
           // What was chosen on the Edits step. Absent means the edit style
           // names its own, which is the behaviour this used to have always.
           captionPreset: captionPreset ?? undefined,
+          sceneLook: sceneLook ?? undefined,
           inputMode,
           // Only the ones being declined: the default is everything on, and a
           // request that spells out six `true`s says nothing the absence did not.
@@ -469,6 +480,11 @@ export function UploadFlow({ styles, formats }: { styles: StyleOption[]; formats
                 mode={mode}
                 className="mt-7"
               />
+            ) : null}
+
+            {/* Same rule: only where the layer is actually going in. */}
+            {layers.scenes ? (
+              <ScenePicker value={sceneLook} onChange={setSceneLook} className="mt-7" />
             ) : null}
 
             {brollWarning ? (

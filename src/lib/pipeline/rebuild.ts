@@ -42,6 +42,7 @@ export interface RebuildInput {
   styleId: string;
   /** The caption look, when the user chose one. Null takes the edit style's. */
   captionPreset?: string | null;
+  sceneLook?: string | null;
   mode: FormatMode;
   /** Override the format's default aspect, e.g. exporting 1:1 from a short. */
   aspect?: Aspect;
@@ -53,7 +54,7 @@ export interface RebuildInput {
 }
 
 export async function rebuildEdl(input: RebuildInput): Promise<Edl> {
-  const style = styleFor(input.styleId, input.captionPreset);
+  const style = styleFor(input.styleId, input.captionPreset, input.sceneLook);
   const aspect = input.aspect ?? FORMAT_PRESETS[input.mode].aspect;
   const ceiling = input.maxDurationSec ?? FORMAT_PRESETS[input.mode].maxDurationSec;
 

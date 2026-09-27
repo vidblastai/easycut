@@ -1,4 +1,4 @@
-import type { Aspect, CaptionStyle, Layout, SceneLook, TransitionType } from '@/lib/edl/types';
+import { SCENE_LOOKS, type Aspect, type CaptionStyle, type Layout, type SceneLook, type TransitionType } from '@/lib/edl/types';
 import { findCaptionPreset } from '@/lib/captions/presets';
 
 /**
@@ -809,14 +809,27 @@ export function getStyle(id: string): StylePreset {
  * express. An unknown or absent preset id falls back to the edit style's own,
  * so a stale id in the database is a default rather than a crash.
  */
-export function styleFor(styleId: string, captionPreset?: string | null): StylePreset {
-  const style = getStyle(styleId);
-  if (!captionPreset) return style;
+export function styleFor(
+  styleId: string,
+  captionPreset?: string | null,
+  sceneLook?: string | null,
+): StylePreset {
+  const base = getStyle(styleId);
 
-  const caption = findCaptionPreset(captionPreset);
-  if (!caption) return style;
+  // Both overrides are validated rather than trusted, and an unknown one falls
+  // back to the style's own pick rather than failing the render: a stale id in
+  // a months-old project should cost you a preference, not the video.
+  const caption = captionPreset ? findCaptionPreset(captionPreset) : null;
+  const look = sceneLook && (SCENE_LOOKS as readonly string[]).includes(sceneLook)
+    ? (sceneLook as SceneLook)
+    : null;
 
-  return { ...style, captionStyle: { ...caption.style } };
+  if (!caption && !look) return base;
+  return {
+    ...base,
+    ...(caption ? { captionStyle: { ...caption.style } } : {}),
+    ...(look ? { sceneLook: look } : {}),
+  };
 }
 
 /* --------------------------------------------------------------- formats */

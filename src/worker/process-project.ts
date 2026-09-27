@@ -58,6 +58,7 @@ export async function processProject(payload: ProcessJobPayload): Promise<void> 
         mode: project.mode as 'short' | 'long',
         styleId: project.styleId,
         captionPreset: project.captionPreset,
+        sceneLook: project.sceneLook,
         inputMode: project.inputMode as 'raw' | 'roughcut',
         userNote: project.userNote ?? undefined,
         layersOff: parseLayersOff(project.layersOff),
