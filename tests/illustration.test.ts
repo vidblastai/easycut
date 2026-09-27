@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { isDrawn, parseIllustration } from '@/lib/assets/illustration';
+import { auditIllustration, isDrawn, parseIllustration } from '@/lib/assets/illustration';
 
 /**
  * The drawing parser's job is to be suspicious.
@@ -62,8 +62,10 @@ describe('splitting a drawing into its parts', () => {
   });
 
   it('caps the number of parts', () => {
-    const many = Array.from({ length: 14 }, (_, i) => `<g>${shape(i)}</g>`).join('');
-    expect(parseIllustration(svg(many))?.parts.length).toBeLessThanOrEqual(8);
+    // Higher than it was, because a part is now a piece of one BEAT rather
+    // than of the whole scene — three beats of four pieces is normal.
+    const many = Array.from({ length: 30 }, (_, i) => `<g>${shape(i)}</g>`).join('');
+    expect(parseIllustration(svg(many))?.parts.length).toBeLessThanOrEqual(14);
   });
 });
 
@@ -190,5 +192,103 @@ describe('gradients', () => {
     expect(markupOf(first)).toContain('url(#scene-0-wall)');
     expect(second?.defs).toContain('id="scene-1-wall"');
     expect(markupOf(first)).not.toContain('url(#scene-1-wall)');
+  });
+});
+
+describe('beats', () => {
+  const beat = (stage: number, i: number) => `<g data-stage="${stage}">${shape(i)}</g>`;
+
+  it('counts the beats and keeps the parts in beat order', () => {
+    const art = parseIllustration(svg(beat(2, 1) + beat(0, 2) + beat(1, 3)));
+    expect(art?.stages).toBe(3);
+    expect(art?.parts.map((p) => p.stage)).toEqual([0, 1, 2]);
+  });
+
+  it('is one beat when nothing says otherwise', () => {
+    expect(parseIllustration(svg(`<g>${shape(1)}</g>`))?.stages).toBe(1);
+  });
+
+  it('drops a beat past the ceiling rather than pacing it into nothing', () => {
+    const art = parseIllustration(svg(beat(0, 1) + beat(9, 2)));
+    expect(art?.stages).toBe(1);
+    expect(art?.parts).toHaveLength(1);
+  });
+});
+
+describe('auditing a drawing before it is used', () => {
+  // Enough shapes to clear the clipart floor, spanning its own square.
+  const beatAt = (stage: number, extra = '') =>
+    `<g data-stage="${stage}" ${extra}><rect x="60" y="${stage * 1000 + 100}" width="880" height="700" fill="#ddd"/>` +
+    Array.from(
+      { length: 16 },
+      (_, i) => `<circle cx="${80 + i * 55}" cy="${stage * 1000 + 450}" r="60" fill="#333"/>`,
+    ).join('') +
+    `<path d="M100 ${stage * 1000 + 800} L900 ${stage * 1000 + 800}" stroke="#333" fill="none"/></g>`;
+
+  const sound = () =>
+    parseIllustration(
+      `<svg viewBox="0 0 1000 3000">${beatAt(0)}${beatAt(1)}${beatAt(2)}` +
+        `<g data-stage="0" data-enter="draw"><path d="M500 900 L500 1100" stroke="#333" fill="none"/></g></svg>`,
+    )!;
+
+  it('passes a drawing that is put together properly', () => {
+    expect(auditIllustration(sound(), 3)).toEqual([]);
+  });
+
+  it('complains when a beat is drawn outside its own band', () => {
+    const art = parseIllustration(`<svg viewBox="0 0 1000 3000">${beatAt(0)}${beatAt(0).replace('data-stage="0"', 'data-stage="2"')}</svg>`)!;
+    expect(auditIllustration(art, 3).join(' ')).toContain('outside its own band');
+  });
+
+  it('complains when a beat does not fill its square', () => {
+    // Plenty of shapes, all of them crowded into the middle of the square.
+    const small =
+      `<g data-stage="0"><rect x="460" y="460" width="80" height="80" fill="#111"/>` +
+      Array.from({ length: 16 }, (_, i) => `<circle cx="${470 + i}" cy="${480 + i}" r="8" fill="#333"/>`).join('') +
+      `</g>`;
+    const art = parseIllustration(`<svg viewBox="0 0 1000 2000">${small}${beatAt(1)}</svg>`)!;
+    expect(auditIllustration(art, 2).join(' ')).toContain('fill the square');
+  });
+
+  it('complains when something rotates with no pivot', () => {
+    const art = parseIllustration(
+      `<svg viewBox="0 0 1000 2000">${beatAt(0, 'data-idle="tick"')}${beatAt(1)}</svg>`,
+    )!;
+    expect(auditIllustration(art, 2).join(' ')).toContain('data-pivot');
+  });
+
+  it('accepts a rotating part that states its pivot', () => {
+    const art = parseIllustration(
+      `<svg viewBox="0 0 1000 2000">${beatAt(0, 'data-idle="tick" data-pivot="500 450"')}${beatAt(1)}` +
+        `<g data-stage="0" data-enter="draw"><path d="M500 900 L500 1100" stroke="#333" fill="none"/></g></svg>`,
+    )!;
+    expect(auditIllustration(art, 2).join(' ')).not.toContain('data-pivot');
+  });
+
+  it('complains when there is no connector between beats', () => {
+    const art = parseIllustration(`<svg viewBox="0 0 1000 2000">${beatAt(0)}${beatAt(1)}</svg>`)!;
+    expect(auditIllustration(art, 2).join(' ')).toContain('no connector');
+  });
+
+  it('complains when a single beat came back and more were asked for', () => {
+    const art = parseIllustration(`<svg viewBox="0 0 1000 1000">${beatAt(0)}</svg>`)!;
+    expect(auditIllustration(art, 3).join(' ')).toContain('only one beat');
+  });
+});
+
+describe('an empty beat', () => {
+  it('is caught, because the camera pans down to it and finds nothing', () => {
+    // Every other check passes: the backdrop spans the full width and the
+    // coordinates sit in the right band. Only a count of the beat's own
+    // shapes finds it, which is how one shipped.
+    const full = (stage: number) =>
+      `<g data-stage="${stage}" data-depth="0.6">` +
+      Array.from({ length: 16 }, (_, i) => `<circle cx="${80 + i * 55}" cy="${stage * 1000 + 450}" r="60" fill="#333"/>`).join('') +
+      `</g><g data-stage="${stage}" data-depth="0.5"><rect x="60" y="${stage * 1000 + 100}" width="880" height="200" fill="#ccc"/><circle cx="500" cy="${stage * 1000 + 200}" r="50" fill="#444"/><path d="M100 ${stage * 1000 + 300} L900 ${stage * 1000 + 300}" stroke="#333" fill="none"/></g>` +
+      `<g data-stage="${stage}" data-depth="0.7"><rect x="200" y="${stage * 1000 + 600}" width="600" height="120" fill="#bbb"/><circle cx="500" cy="${stage * 1000 + 660}" r="40" fill="#555"/><path d="M250 ${stage * 1000 + 700} L750 ${stage * 1000 + 700}" stroke="#222" fill="none"/></g>`;
+    const bare = `<g data-stage="1" data-depth="0.05"><rect x="0" y="1000" width="1000" height="1000" fill="#eee"/></g>`;
+    const art = parseIllustration(`<svg viewBox="0 0 1000 2000">${full(0)}${bare}` +
+      `<g data-stage="0" data-enter="draw"><path d="M500 900 L500 1100" stroke="#333" fill="none"/></g></svg>`)!;
+    expect(auditIllustration(art, 2).join(' ')).toContain('nearly empty');
   });
 });

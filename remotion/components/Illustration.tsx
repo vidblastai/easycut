@@ -1,36 +1,40 @@
 import React from 'react';
 import { useCurrentFrame } from 'remotion';
 import type { ArtIdle, ArtPart, Illustration as Art } from '../../src/lib/assets/illustration';
-import { easeOutCubic, easeOutSoftBack, kf, stagger } from '../lib/motion';
+import { easeOutCubic, easeOutExpo, easeOutSoftBack, kf, stagger } from '../lib/motion';
 import { seeded } from '../lib/timing';
 
 /**
- * The drawing, arriving in pieces and then refusing to sit still.
+ * The drawing: a sequence of beats the camera travels through.
  *
- * ── The note this was rebuilt to answer ─────────────────────────────────
+ * ── The two notes this answers ──────────────────────────────────────────
  *
- * "It should not be like a still image. It's just an animation, and then it's
- * sitting there until the motion graphics finish." That was exactly right, and
- * it is what a naive assemble-then-hold produces: every piece lands inside the
- * first second and the remaining three are a PNG.
+ * First: "it should not be like a still image… it's sitting there until the
+ * motion graphics finish." Answered by the camera and the idle motion below,
+ * which never stop.
  *
- * Reading the reference edits frame by frame, nothing in them is ever still.
- * Over four seconds of a wallet on a desk the camera pushes in the whole time,
- * the notes slide out one at a time, a dashed arrow draws itself across the
- * board, and the clock's hands turn. There is no hold. So there are three
- * layers of motion here, and only the first one ends:
+ * Then: "it's just an animated picture. It should make an arrow go down, and
+ * the thing that was on screen swipes up and away, and down there is the next
+ * thing." That one is structural, and it is the difference between a picture
+ * that moves and a scene that HAPPENS.
  *
- *   1. **Entry.** Each part arrives, five frames after the last.
- *   2. **Camera.** A slow push and drift across the whole scene, from the
- *      first frame to the last, with no keyframes and no settle — the moment
- *      it stops, the frame reads as a photograph.
- *   3. **Idle.** Once a part has landed it keeps moving on its own: a bob, a
- *      sway, a turn. Small enough not to be distracting, large enough that the
- *      eye never decides the picture has finished.
+ * So a drawing is no longer one composition. It is a tall canvas with its
+ * beats stacked down it — beat 0 in the top 1000 units, beat 1 in the next
+ * 1000 — and the camera travels down it as the voice moves on. Nothing fades
+ * out: the previous beat leaves upward because the camera left it behind,
+ * which is exactly what the reference edits do, and it is why they read as
+ * something happening rather than as a slide changing.
  *
- * Parallax ties the first two together. Each part carries a depth, and the
- * camera's drift is multiplied by it, so near things travel further than far
- * things. That is what makes a flat SVG read as a space rather than a sticker.
+ * Three layers of motion, and only the first ends:
+ *
+ *   1. **Entry.** Each piece of a beat arrives, five frames after the last.
+ *   2. **Travel.** The camera pans from beat to beat, and pushes in slowly the
+ *      whole time it is on any of them. It never settles — the instant it
+ *      stops, the frame reads as a photograph.
+ *   3. **Idle.** A piece that has landed keeps moving on its own.
+ *
+ * Parallax ties them together: each piece carries a depth, and the camera's
+ * drift is multiplied by it, so near things travel further than far things.
  *
  * ── What it will not do ─────────────────────────────────────────────────
  *
@@ -45,19 +49,29 @@ import { seeded } from '../lib/timing';
 
 export type { Illustration as Art } from '../../src/lib/assets/illustration';
 
-/** Frames between one piece landing and the next starting. */
+/** Frames between one piece of a beat landing and the next starting. */
 const PART_STAGGER = 5;
 
 /** How long a piece takes to arrive. */
 const ENTER_FRAMES = 12;
 
+/**
+ * The pan between two beats.
+ *
+ * Short on purpose. The camera crosses the boundary between two squares, and
+ * however continuous the backdrop is, the moment in the middle belongs to
+ * neither beat — so it wants to be over quickly. Fourteen frames read as a
+ * dissolve through an empty frame; ten reads as a move.
+ */
+const TRAVEL_FRAMES = 10;
+
 export const Illustration: React.FC<{
   art: Art;
-  /** Frame the first part arrives on, relative to the scene. */
+  /** Frame the first beat starts on, relative to the scene. */
   at: number;
   /** Rendered width and height, in pixels. */
   size: number;
-  /** How long the scene runs, so the camera can pace itself across all of it. */
+  /** How long the scene runs, so the beats can be paced across all of it. */
   durationInFrames: number;
   /** Anything seeded — drift direction, idle phases — hangs off this. */
   seed: string;
@@ -65,25 +79,27 @@ export const Illustration: React.FC<{
   const frame = useCurrentFrame();
 
   /*
-   * The drawing's own centre, read off the viewBox.
+   * The window is ONE beat, not the whole strip.
    *
-   * Everything is scaled and rotated about it, so a piece grows into place
-   * rather than growing out of the drawing's top-left corner — which is what
-   * an unqualified `scale()` on an SVG group does, and which looks like a bug
-   * every single time.
+   * The drawing's viewBox spans every beat stacked vertically; what the viewer
+   * sees is a square window onto it, and the camera slides the content under
+   * that window. Rendering the whole strip would draw three beats at a third
+   * of the size each, which is the bug you get for free if you pass the
+   * drawing's own viewBox straight through.
    */
-  const [minX, minY, width, height] = parseViewBox(art.viewBox);
+  const [minX, minY, width] = parseViewBox(art.viewBox);
+  const band = bandHeight(art, width);
   const cx = minX + width / 2;
-  const cy = minY + height / 2;
 
-  const camera = cameraAt(frame, durationInFrames, width, height, seed);
+  const plan = planStages(art.stages, at, durationInFrames);
+  const camera = cameraAt(frame, plan, band, width, seed);
 
   return (
     <svg
-      viewBox={art.viewBox}
+      viewBox={`${minX} ${minY} ${width} ${band}`}
       width={size}
       height={size}
-      style={{ overflow: 'visible', display: 'block' }}
+      style={{ overflow: 'hidden', display: 'block' }}
     >
       {/*
         Gradients first, and outside the camera group: a `<defs>` is never
@@ -92,20 +108,27 @@ export const Illustration: React.FC<{
       */}
       {art.defs ? <defs dangerouslySetInnerHTML={{ __html: art.defs }} /> : null}
       {/*
-        The camera is one group around everything, not a transform per part.
-        A push applied per part would scale each piece about its own centre and
-        the composition would come apart as it zoomed.
+        The camera is one group around everything, not a transform per part: a
+        push applied per part would scale each piece about its own centre and
+        the composition would come apart as it zoomed. The push is taken about
+        the middle of the beat CURRENTLY under the window, which is the pan
+        offset plus half a band — otherwise beat three zooms toward beat one.
       */}
-      <g transform={about(cx, cy, `scale(${camera.scale.toFixed(4)})`)}>
+      <g
+        transform={
+          `translate(0 ${(-camera.y).toFixed(2)}) ` +
+          about(cx, minY + camera.y + band / 2, `scale(${camera.scale.toFixed(4)})`)
+        }
+      >
         {art.parts.map((part, i) => (
           <Part
             key={i}
             part={part}
             index={i}
-            at={at + stagger(i, PART_STAGGER)}
+            at={partStartsAt(art, part, i, plan)}
             frame={frame}
             camera={camera}
-            height={height}
+            band={band}
             width={width}
             seed={seed}
           />
@@ -115,40 +138,132 @@ export const Illustration: React.FC<{
   );
 };
 
+/* ------------------------------------------------------------------ beats */
+
+interface StagePlan {
+  /** Frame each beat takes over on. */
+  startsAt: number[];
+  /** How long each beat holds, travel included. */
+  length: number;
+}
+
+/**
+ * When each beat gets the screen.
+ *
+ * Evenly, because the drawing does not know what is being said over which part
+ * of it — and an uneven split guessed from part counts is worse than no guess,
+ * since a beat with one big object in it needs as long to read as a beat with
+ * four small ones.
+ */
+function planStages(stages: number, at: number, durationInFrames: number): StagePlan {
+  const count = Math.max(1, stages);
+  // The last beat keeps a moment of its own at the end rather than running to
+  // the cut, so the scene never leaves mid-move.
+  const usable = Math.max(count * (TRAVEL_FRAMES + 10), durationInFrames - at - 6);
+  const length = usable / count;
+  return { startsAt: Array.from({ length: count }, (_, i) => at + i * length), length };
+}
+
+/**
+ * When a piece arrives, which is not simply its beat's start.
+ *
+ * A connector — the arrow that leads down to the next beat — has to be drawn
+ * BEFORE the camera follows it, or it explains a move that already happened.
+ * So it starts most of the way through its own beat, just ahead of the travel.
+ * Everything else staggers from the top of the beat.
+ */
+function partStartsAt(art: Art, part: ArtPart, index: number, plan: StagePlan): number {
+  const start = plan.startsAt[Math.min(part.stage, plan.startsAt.length - 1)];
+  if (part.enter === 'draw' && part.stage < art.stages - 1) {
+    return start + plan.length * 0.62;
+  }
+  /*
+   * A beat's pieces start arriving DURING the pan, not after it.
+   *
+   * Waiting for the camera to land means the viewer watches an empty square
+   * slide into place and then fill up, which is two events where there should
+   * be one. Starting them three frames in means the beat is already forming as
+   * it arrives — the way a whip pan onto a set that is already dressed reads.
+   */
+  const within = art.parts.filter((other) => other.stage === part.stage).indexOf(part);
+  const lead = part.stage === 0 ? 0 : 3;
+  return start + lead + stagger(within < 0 ? index : within, PART_STAGGER);
+}
+
 interface Camera {
   scale: number;
-  /** Where the camera has travelled to, in viewBox units. */
-  x: number;
+  /** Where the camera has travelled to down the strip, in viewBox units. */
   y: number;
+  /** Drift within the current beat, which parallax is measured against. */
+  driftX: number;
+  driftY: number;
 }
 
 /**
  * The move that never stops.
  *
- * No keyframe table on purpose: a table implies an end, and this is the one
- * thing in the renderer that must still be going when the scene cuts away.
- * The drift direction is seeded off the scene id so two scenes in one video do
- * not push the same way, and so a resumed render produces identical pixels.
+ * Two motions added together: a pan that steps from beat to beat, and a push
+ * and drift that runs continuously underneath it. The push is deliberately not
+ * a keyframe table — a table implies an end, and this is the one thing in the
+ * renderer that must still be going when the scene cuts away.
  */
-function cameraAt(frame: number, durationInFrames: number, width: number, height: number, seed: string): Camera {
-  const through = durationInFrames > 0 ? frame / durationInFrames : 0;
-  const angle = seeded(seed, 0) * Math.PI * 2;
+function cameraAt(frame: number, plan: StagePlan, band: number, width: number, seed: string): Camera {
+  let stage = 0;
+  for (let i = plan.startsAt.length - 1; i >= 0; i--) {
+    if (frame >= plan.startsAt[i]) {
+      stage = i;
+      break;
+    }
+  }
+
+  /*
+   * The pan: expo out, so it leaves hard and arrives soft.
+   *
+   * That asymmetry is what makes the outgoing beat read as being LEFT BEHIND
+   * rather than as sliding away politely — the same curve every whip pan in
+   * the reference edits uses.
+   */
+  const travel =
+    stage === 0
+      ? 0
+      : kf(
+          frame,
+          [
+            [plan.startsAt[stage], stage - 1],
+            [plan.startsAt[stage] + TRAVEL_FRAMES, stage],
+          ],
+          easeOutExpo,
+        );
+
+  const into = Math.min(1, Math.max(0, frame - plan.startsAt[stage]) / Math.max(1, plan.length));
+  const angle = seeded(seed, stage) * Math.PI * 2;
 
   return {
-    /*
-     * 14% over the scene, whatever its length — a fixed per-frame rate would
-     * make a six-second scene end up twice as close as a three-second one.
-     *
-     * These numbers were raised after watching a render: at 8% and 5% the move
-     * was real but too slow to read, and four seconds of it still looked like
-     * a still frame. The reference edits push and travel far more than feels
-     * reasonable written down, and that is what keeps them alive.
-     */
-    scale: 1.02 + through * 0.14,
-    x: Math.cos(angle) * width * 0.1 * through,
-    y: Math.sin(angle) * height * 0.1 * through,
+    // Resets each beat: a push that accumulated across three beats would end
+    // the scene cropped into a corner of the last one.
+    scale: 1.02 + into * 0.1,
+    y: travel * band,
+    driftX: Math.cos(angle) * width * 0.07 * into,
+    driftY: Math.sin(angle) * band * 0.05 * into,
   };
 }
+
+/**
+ * One beat's height.
+ *
+ * A model that claims three beats but draws a square canvas has put them side
+ * by side or on top of each other; showing a third of that square would crop
+ * the drawing to a letterbox slot. Where the arithmetic gives a band that is
+ * far from square, the canvas is trusted over the claim.
+ */
+function bandHeight(art: Art, width: number): number {
+  const [, , , height] = parseViewBox(art.viewBox);
+  const stages = Math.max(1, art.stages);
+  const band = height / stages;
+  return band > width * 0.55 ? band : height;
+}
+
+/* ------------------------------------------------------------------ parts */
 
 const Part: React.FC<{
   part: ArtPart;
@@ -157,13 +272,13 @@ const Part: React.FC<{
   frame: number;
   camera: Camera;
   width: number;
-  height: number;
+  band: number;
   seed: string;
-}> = ({ part, index, at, frame, camera, width, height, seed }) => {
-  const entry = enterOf(part, frame, at, width, height);
+}> = ({ part, index, at, frame, camera, width, band, seed }) => {
+  const entry = enterOf(part, frame, at, width, band);
 
   /*
-   * Parallax: the camera's travel, weighted by how near the piece is.
+   * Parallax: the camera's drift, weighted by how near the piece is.
    *
    * Depth 0.5 is the picture plane and moves with the camera exactly; a
    * foreground piece overshoots it and a background piece lags, which is the
@@ -171,10 +286,10 @@ const Part: React.FC<{
    * canvas tears the composition apart within a second.
    */
   const lean = (part.depth - 0.5) * 1.5;
-  const parallaxX = -camera.x * lean;
-  const parallaxY = -camera.y * lean;
+  const parallaxX = -camera.driftX * lean;
+  const parallaxY = -camera.driftY * lean;
 
-  const idle = idleOf(part.idle, frame, at, index, width, height, seed);
+  const idle = idleOf(part.idle, frame, at, index, width, band, seed);
 
   /*
    * Everything pivots on the PIECE, not on the canvas.
@@ -221,18 +336,18 @@ interface Pose {
 }
 
 /** How a piece arrives, per the hint it was drawn with. */
-function enterOf(part: ArtPart, frame: number, at: number, width: number, height: number): Pose {
+function enterOf(part: ArtPart, frame: number, at: number, width: number, band: number): Pose {
   const t = kf(frame, [[at, 0], [at + ENTER_FRAMES, 1]], part.enter === 'grow' ? easeOutCubic : easeOutSoftBack);
   const fade = kf(frame, [[at, 0], [at + Math.round(ENTER_FRAMES * 0.5), 1]], easeOutCubic);
   const rest: Pose = { opacity: fade, x: 0, y: 0, scale: 1, rotate: 0 };
 
   switch (part.enter) {
     case 'rise':
-      return { ...rest, y: height * 0.06 * (1 - t) };
+      return { ...rest, y: band * 0.09 * (1 - t) };
     case 'slide-left':
-      return { ...rest, x: width * 0.16 * (1 - t) };
+      return { ...rest, x: width * 0.2 * (1 - t) };
     case 'slide-right':
-      return { ...rest, x: -width * 0.16 * (1 - t) };
+      return { ...rest, x: -width * 0.2 * (1 - t) };
     case 'grow':
       return { ...rest, scale: 0.4 + 0.6 * t };
     case 'draw':
@@ -246,11 +361,11 @@ function enterOf(part: ArtPart, frame: number, at: number, width: number, height
 }
 
 /**
- * What a piece does for the rest of the scene.
+ * What a piece does for the rest of its beat.
  *
- * Periods are deliberately coprime-ish and seeded per part, so four pieces
- * bobbing together never sync up into one pulsing blob — which is what a
- * shared clock produces and it looks far worse than no idle at all.
+ * Periods are seeded per part, so four pieces bobbing together never sync up
+ * into one pulsing blob — which is what a shared clock produces and it looks
+ * far worse than no idle at all.
  */
 function idleOf(
   kind: ArtIdle,
@@ -258,7 +373,7 @@ function idleOf(
   at: number,
   index: number,
   width: number,
-  height: number,
+  band: number,
   seed: string,
 ): Pose {
   const rest: Pose = { opacity: 1, x: 0, y: 0, scale: 1, rotate: 0 };
@@ -270,36 +385,76 @@ function idleOf(
   if (strength <= 0) return rest;
 
   const phase = seeded(seed, index + 11) * Math.PI * 2;
-  // Short enough that a full cycle happens inside a three-second insert: a
-  // ninety-frame period on a ninety-frame scene is a slow slide, not a float.
+  // Short enough that a full cycle happens inside a three-second beat: a
+  // ninety-frame period on a ninety-frame beat is a slow slide, not a float.
   const period = 38 + seeded(seed, index + 23) * 26;
   const wave = Math.sin((frame / period) * Math.PI * 2 + phase);
 
   switch (kind) {
     case 'bob':
-      return { ...rest, y: wave * height * 0.022 * strength };
+      return { ...rest, y: wave * band * 0.022 * strength };
     case 'drift':
       return {
         ...rest,
         x: wave * width * 0.026 * strength,
-        y: Math.cos((frame / (period * 1.3)) * Math.PI * 2 + phase) * height * 0.016 * strength,
+        y: Math.cos((frame / (period * 1.3)) * Math.PI * 2 + phase) * band * 0.016 * strength,
       };
     case 'sway':
       return { ...rest, rotate: wave * 2.4 * strength };
     case 'pulse':
       return { ...rest, scale: 1 + wave * 0.035 * strength };
+    case 'tick': {
+      /*
+       * A hand, not a turntable.
+       *
+       * Real hands step and overshoot. A smooth rotation on a clock is the
+       * single clearest tell that a "clock" is a disc with lines on it, and it
+       * was the first thing wrong with ours. Six degrees a step, ten frames
+       * apart, settling hard.
+       */
+      const step = Math.floor((frame - at) / 10);
+      const intoStep = ((frame - at) % 10) / 10;
+      const settle = 1 - Math.pow(1 - Math.min(1, intoStep * 2.2), 3);
+      return { ...rest, rotate: (step + settle) * 6 * strength };
+    }
     case 'spin':
-      // Continuous, not a wave: hands on a clock, a gear, a loading ring. One
-      // turn every eight seconds at 30fps.
-      return { ...rest, rotate: (frame - at) * 1.5 * strength };
+      // Continuous, not a wave: a gear, a loading ring, a globe.
+      return { ...rest, rotate: (frame - at) * 1.2 * strength };
     default:
       return rest;
   }
 }
 
-/** When it has done assembling, so the caller knows where its own beats start. */
+/** When the first beat has assembled, so a caption knows where to start. */
 export function artSettlesAt(art: Art, at: number): number {
-  return at + stagger(Math.max(0, art.parts.length - 1), PART_STAGGER) + ENTER_FRAMES;
+  const first = art.parts.filter((part) => part.stage === 0).length || art.parts.length;
+  return at + stagger(Math.max(0, first - 1), PART_STAGGER) + ENTER_FRAMES;
+}
+
+/**
+ * Which beat is on screen at a frame, so a caption can change with it.
+ *
+ * Exported rather than worked out by the caller, because the pacing lives here
+ * and two implementations of it would drift apart the first time either moved.
+ */
+export function stageAt(art: Art, at: number, durationInFrames: number, frame: number): number {
+  const plan = planStages(art.stages, at, durationInFrames);
+  for (let i = plan.startsAt.length - 1; i >= 0; i--) {
+    if (frame >= plan.startsAt[i]) return i;
+  }
+  return 0;
+}
+
+/**
+ * The frame a beat takes over on.
+ *
+ * A caption that changes with the beat has to animate IN on that frame — a
+ * `key` remount alone is not enough, because the look's slots read the scene's
+ * own frame counter and would find the entry long finished.
+ */
+export function stageStartsAt(art: Art, at: number, durationInFrames: number, stage: number): number {
+  const plan = planStages(art.stages, at, durationInFrames);
+  return plan.startsAt[Math.min(Math.max(0, stage), plan.startsAt.length - 1)];
 }
 
 /** `transform` about a point, which SVG has no shorthand for. */

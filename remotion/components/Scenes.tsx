@@ -7,7 +7,7 @@ import { lookFor } from '../looks';
 import { LOOK_META } from '../../src/lib/scenes/looks';
 import type { Arrange, Look, LookContext } from '../looks/contract';
 import { NeonProps } from '../looks/neon';
-import { Illustration, artSettlesAt } from './Illustration';
+import { Illustration, artSettlesAt, stageAt, stageStartsAt } from './Illustration';
 
 /**
  * Faceless animation: the scenes that replace the picture.
@@ -213,6 +213,7 @@ const Arrangement: React.FC<{ ctx: LookContext; look: Look }> = ({ ctx, look }) 
  * is told to leave emptier, so the two agree about where the words go.
  */
 const Drawn: React.FC<{ ctx: LookContext; look: Look; centred: React.CSSProperties }> = ({ ctx, look, centred }) => {
+  const frame = useCurrentFrame();
   const { scene } = ctx;
   const art = scene.art!;
   const items = scene.items.filter((item) => item.trim());
@@ -221,6 +222,22 @@ const Drawn: React.FC<{ ctx: LookContext; look: Look; centred: React.CSSProperti
   // same way in 9:16 and 16:9 instead of overflowing one of them.
   const size = Math.min(ctx.width * 0.94, ctx.height * 0.62);
   const settled = artSettlesAt(art, 1);
+
+  /*
+   * The caption follows the beat.
+   *
+   * Where the drawing travels through several beats, the words travel with it:
+   * one line per beat, changing as the camera arrives. That is the shape the
+   * reference edit has — "it's not about money", then, a beat further down the
+   * board, "it's all about timing" — and a single fixed caption over a moving
+   * sequence undoes most of what the sequence was for.
+   *
+   * Keyed on the beat so React remounts the line and it re-animates in rather
+   * than the text swapping underneath a settled element.
+   */
+  const stage = art.stages > 1 ? stageAt(art, 1, ctx.durationInFrames, frame) : 0;
+  const perBeat = art.stages > 1 && items.length >= art.stages;
+  const caption = perBeat ? items[Math.min(stage, items.length - 1)] : scene.headline;
 
   return (
     <AbsoluteFill style={{ ...centred, flexDirection: 'column', gap: ctx.unit * 30 }}>
@@ -234,12 +251,19 @@ const Drawn: React.FC<{ ctx: LookContext; look: Look; centred: React.CSSProperti
         durationInFrames={ctx.durationInFrames}
         seed={scene.id}
       />
-      {scene.headline ? (
+      {caption ? (
         // Never `hero`, whatever the kind: the picture is the hero here, and a
         // headline at hero size next to a drawing fights it for the frame.
-        <look.Title ctx={ctx} text={scene.headline} at={settled} />
+        <look.Title
+          key={perBeat ? `beat-${stage}` : 'headline'}
+          ctx={ctx}
+          text={caption}
+          // The beat's own start, not zero: the look's slots read the scene's
+          // frame counter, so a remount alone would find the entry long over.
+          at={perBeat ? stageStartsAt(art, 1, ctx.durationInFrames, stage) + 6 : settled}
+        />
       ) : null}
-      {items.length && scene.kind !== 'big-number' ? (
+      {!perBeat && items.length && scene.kind !== 'big-number' ? (
         <DrawnLabels ctx={ctx} look={look} items={items.slice(0, 3)} at={settled + 5} />
       ) : null}
       <Props ctx={ctx} look={look} />

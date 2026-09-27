@@ -44,6 +44,32 @@ Rules that came out of getting this wrong:
   icon beside an illustration of the same thing is a second, worse drawing of
   it, and an unresolved one is a grey dot that reads as a loading state.
 
+### Look at it before using it
+
+*"Make sure to render the icons before, so they actually make sense"* — the
+complaint was a clock whose hands were not attached to it. We cannot see the
+picture, but most of what goes wrong is structural and IS visible in the
+markup, so `auditIllustration()` checks and one repair round fixes it:
+
+- a beat drawn outside its own band
+- a beat that does not fill its square
+- **a beat that is nearly empty** — the one that shipped: a third beat holding
+  only the backdrop and a plinth, so the camera panned down to an empty room.
+  It passes every other check, which is why the count is of the beat's OWN
+  shapes, in front of the backdrop
+- anything that spins, ticks or sways without a `data-pivot`
+- no connector between beats
+- too few shapes to be an illustration
+
+The repair sends the original, the brief and the fault list back, and **keeps
+the first drawing unless the second one has fewer faults**. A second attempt is
+not automatically an improvement.
+
+Things that pivot need drawing so they CAN pivot, and the prompt says so
+explicitly: a clock hand is a tapered solid shape starting AT the pin, in its
+own group, with a cap circle over the join — not a pie wedge, not a thin line
+the colour of the dial.
+
 ### What the drawing pass needs to be told
 
 Measured over several rounds with `scripts/draw-scene.ts`:
@@ -69,8 +95,43 @@ Measured over several rounds with `scripts/draw-scene.ts`:
   define `#wall` and the second one fills with the first one's gradient.
 - **40–110 shapes, and say so.** That number is the line between a clipart
   symbol and an illustration, and asking for it visibly doubles the detail.
-- Cost is real: roughly **$0.11 and 60 seconds per drawing**, run in parallel,
-  so about $0.65 on a six-scene video.
+- Cost is real and has grown with the detail: roughly **$0.30–$0.50 and two to
+  four minutes per drawing**, including the repair round. `MAX_DRAWN_SCENES`
+  caps it at the first four scenes of a video and the rest fall back to the
+  icon layout, which bounds one upload at about two dollars.
+
+## A scene is a SEQUENCE, not a picture that moves
+
+The third correction, and the structural one: *"it's just an animated picture.
+It should make an arrow go down, and the thing that was on screen swipes up and
+away, and down there is the next thing."*
+
+So a drawing is a **tall strip with its beats stacked down it** — beat 0 in the
+top 1000 units, beat 1 in the next 1000 — and the camera travels down it as the
+voice moves on. Nothing fades out: the previous beat leaves upward because the
+camera left it behind. Three beats is the default.
+
+A dashed connector leads from each beat into the next, drawn just BEFORE the
+camera follows it (`partStartsAt` puts it at 62% of its beat). It is the piece
+that turns two beats into one sequence, and the audit fails a drawing without
+one.
+
+What the prompt has to say, or the model returns a picture anyway:
+
+- **Describe the sequence as a progression**, not a layout. `sequenceFor()`
+  does this per kind — "the first thing alone, then an arrow down, then the
+  second thing alone — **never the two side by side**". Without that last
+  clause a `compare` comes back as two objects in one square.
+- **Each beat is drawn inside its own square**, with explicit y ranges.
+- **One backdrop spans the WHOLE strip.** The camera crosses the boundary
+  between two squares, so a backdrop that stops at the end of a beat leaves
+  the screen blank for half a second mid-pan.
+- Keep the pan short (10 frames) and start the next beat's pieces 3 frames
+  into it, so the beat is already forming as it arrives.
+
+Where the scene has one item per beat, the **caption follows the beat** —
+"it's not about money", then, further down the board, "it's all about timing".
+A fixed caption over a travelling sequence undoes most of what it was for.
 
 ## It must never stop moving
 

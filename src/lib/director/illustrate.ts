@@ -1,5 +1,5 @@
 import { env } from '@/lib/config/env';
-import { parseIllustration, isDrawn, type Illustration } from '@/lib/assets/illustration';
+import { auditIllustration, parseIllustration, isDrawn, type Illustration } from '@/lib/assets/illustration';
 import type { AnimatedScene, SceneLook } from '@/lib/edl/types';
 import { LOOK_META } from '@/lib/scenes/looks';
 import { wavespeedPriceFor } from './wavespeed';
@@ -39,52 +39,76 @@ import { wavespeedPriceFor } from './wavespeed';
 
 const API_BASE = 'https://llm.wavespeed.ai/v1';
 
-/** The coordinate space every drawing is asked for, so the renderer can size it. */
+/** One beat's square. The strip is this tall per beat. */
 const CANVAS = 1000;
+const TWO = CANVAS * 2;
+/** Three beats, which is the default the prompt is written around. */
+const TALL = CANVAS * 3;
 
-const SYSTEM = `You draw the illustration for one moment of a video, as a single SVG.
+const SYSTEM = `You draw one moment of a video as a single SVG — not a picture, but a short sequence that plays out.
 
-It is shown full-screen for a few seconds while someone talks over it. It IS the shot — there is no footage behind it and nothing else on screen but a couple of words. So it has to carry the frame on its own: an icon floating in space does not, and neither does a diagram nobody can read in three seconds.
+It is shown full-screen for a few seconds while someone talks over it. It IS the shot: there is no footage behind it and nothing else on screen but a few words. So it has to carry the frame on its own, and it has to HAPPEN rather than sit there.
 
-Draw the THING being talked about. If the sentence is about a phone, draw the phone. About money, draw notes, a card, a stack of coins. About time, draw the clock. Concrete objects and simple scenes beat abstract shapes every time, and both beat a symbol.
+## The sequence
 
-**Output ONE <svg> element and nothing else.** No prose, no code fence, no explanation.
+The canvas is a tall strip with the beats of the sequence stacked down it, and the camera travels down the strip as the voice moves on. Beat 0 is the top ${CANVAS}x${CANVAS} square, beat 1 is the next one down, and so on.
 
-## Structure — this is what makes it move
+\`<svg viewBox="0 0 ${CANVAS} ${TALL}" xmlns="http://www.w3.org/2000/svg">\` for three beats — height is ${CANVAS} per beat.
 
-\`<svg viewBox="0 0 ${CANVAS} ${CANVAS}" xmlns="http://www.w3.org/2000/svg">\`
+**Two or three beats.** Each one is a thing the viewer looks at, and then leaves behind. What the camera does at the end of a beat is follow an arrow down to the next one, so the beat that was on screen slides up and out and the next thing rises into view. Think:
 
-The top-level children are groups, in the order they should appear on screen. **Four to six of them.** Each is a piece a viewer would notice arriving on its own — the desk, then the laptop, then the chart on its screen, then the arrow pointing at it. The renderer brings them in one at a time, five frames apart, and animates each one for the rest of the shot, so a drawing in one group is a still image and fails.
+- beat 0: a wallet, notes sliding out of it
+- an arrow curving down out of beat 0
+- beat 1: a single note, alone
+- another arrow down
+- beat 2: a clock
 
-Every group carries four attributes:
+That is a sequence. "A wallet, a note and a clock arranged side by side" is not — it is a picture, and it is the thing to avoid.
 
-\`<g id="part-2" data-depth="0.7" data-enter="rise" data-idle="bob" data-pivot="520 430"> … </g>\`
+**Each beat is drawn INSIDE its own square.** Beat 1's shapes have y coordinates between ${CANVAS} and ${TWO}, beat 2's between ${TWO} and ${TALL}. Nothing straddles a boundary except a connector.
 
-- **data-depth** — 0 is far behind, 1 is right up at the lens, 0.5 is the picture plane. The camera pushes in and drifts across the whole shot, and near things travel further than far things: this attribute is the entire reason a flat drawing reads as a space. **Give your parts different depths.** Background wash 0.1, the main object 0.5, something small in front 0.85.
-- **data-enter** — \`pop\` (scales up), \`rise\` (up from below), \`slide-left\` / \`slide-right\`, \`grow\` (from small), \`draw\` (a stroke draws itself end to end).
-- **data-idle** — what it does for the REST of the shot, after it arrives: \`bob\` (floats), \`drift\`, \`sway\` (rocks a degree or two), \`pulse\` (breathes), \`spin\` (turns continuously — clock hands, a gear, a ring), \`none\`.
-- **data-pivot** — \`"x y"\`, the point this piece turns and scales about, in the same units as the drawing. **Get this right for anything that spins or sways**: a clock's hands pivot on the pin at the centre of its face, not on the middle of the canvas. Without it the piece swings around the whole picture in a wide circle instead of turning on the spot. Omit it for a full-width background.
+## The groups
 
-Use \`spin\` where something genuinely rotates, and put it in its OWN group so only that piece turns: clock hands are a part with the pin as their pivot, the clock face is a different part. Same for anything that should swing, tick or orbit.
+Every top-level \`<g>\` is one piece, in the order it should appear. Three to five per beat.
 
-**Include one connector.** A dashed curve, an arrow, a bracket or an underline that links two parts of the drawing, as its own group with \`data-enter="draw"\` and \`fill="none"\`. It draws itself on, and it is most of what makes these read as made rather than generated.
+\`<g data-stage="1" data-depth="0.7" data-enter="rise" data-idle="bob" data-pivot="520 1430"> … </g>\`
+
+- **data-stage** — which beat it belongs to. 0, 1 or 2.
+- **data-depth** — 0 is far behind, 1 is right at the lens, 0.5 is the picture plane. The camera pushes and drifts within each beat, and near things travel further than far things: this is what makes a flat drawing read as a space. Give the pieces of a beat DIFFERENT depths.
+- **data-enter** — \`pop\`, \`rise\` (up from below), \`slide-left\` / \`slide-right\`, \`grow\`, \`draw\` (a stroke draws itself end to end).
+- **data-idle** — what it does for the rest of its beat: \`bob\`, \`drift\`, \`sway\`, \`pulse\`, \`tick\` (steps round like a clock hand), \`spin\` (turns continuously — a gear, a ring), \`none\`.
+- **data-pivot** — \`"x y"\` in canvas coordinates, the point this piece turns and scales about. **Required on anything that ticks, spins or sways.** A clock's hands pivot on the pin at the centre of the dial. Get this wrong and the hand does not turn on the clock, it swings around the frame on its own — which is the single ugliest failure this drawing can have.
+
+**A connector between every pair of beats.** A dashed curve with an arrowhead, leading from the bottom of one beat into the top of the next, as its own group with \`data-stage\` set to the beat it leads FROM, \`data-enter="draw"\` and \`fill="none"\`. It draws itself just before the camera follows it. This is the piece that turns two beats into one sequence, so do not leave it out.
+
+## Anything that pivots
+
+Draw it so it CAN pivot, or the motion exposes it:
+
+- A clock hand is a TAPERED SOLID SHAPE — a polygon or path, wide at the pin and narrow at the tip, in a colour that contrasts with the dial. Not a pie wedge, not a thin line the same colour as the face. Draw both hands, at different lengths and angles, both starting exactly at the pin.
+- Its group's pivot is the pin. Put the hands in their own group; the dial, the bezel and the marks are a different group and do not move.
+- A hand must visibly attach: it starts AT the pin coordinates, and a small cap circle is drawn over the join so the two hands and the pin read as one mechanism.
+- Same for a gear (pivot at its centre), a swinging sign (pivot at its hook), a needle (pivot at its base).
 
 ## Hard requirements
 
-1. **FILL THE CANVAS.** The drawing's bounding box must span at least 800 of the 1000 units across, and be centred left-to-right. A composition sitting small in the middle is the most common thing that comes back and it is unusable: this is shown full-screen on a phone, so anything drawn at half scale is a postage stamp in an empty frame. Work out roughly where your shapes land and push them out. Keep 40 units of margin, no more.
+1. **FILL EACH BEAT'S SQUARE.** The drawing in a beat spans at least 800 of the ${CANVAS} units across and is centred left to right. A composition sitting small in the middle is unusable: this is full-screen on a phone, so anything at half scale is a postage stamp in an empty frame.
 2. Shapes only: path, circle, ellipse, rect, line, polyline, polygon, g. \`linearGradient\` and \`radialGradient\` in a \`<defs>\` are fine and worth using.
-3. **No \`<text>\`.** Words are drawn by the renderer in the video's own typeface. If a label belongs on the drawing, leave room for it instead.
-4. No \`<filter>\`, no \`<image>\`, no CSS \`filter\`, no blend modes, no \`<animate>\`. They are stripped out, and a drawing that depended on them arrives broken.
+3. **No \`<text>\`.** Words are drawn by the renderer in the video's own typeface. Leave room for them in the lower part of each beat.
+4. No \`<filter>\`, no \`<image>\`, no CSS \`filter\`, no blend modes, no \`<animate>\`. They are stripped, and a drawing that relied on them arrives broken.
 5. Every shape gets an explicit \`fill\` (or \`fill="none"\` with a \`stroke\`). An inherited fill renders black.
-6. **40 to 110 shapes.** This is the number that separates a clipart symbol from an illustration, and it is worth spending: take the time to build the object properly rather than suggesting it.
+6. **50 to 140 shapes across the whole strip.** That is the line between clipart and illustration, and it is worth spending.
 
 ## Craft
 
+- **One background for the WHOLE strip, and it must be continuous.** Make the first group a backdrop that spans every beat — full width, from y=0 to the bottom of the last beat — with \`data-stage="0"\` and \`data-depth="0.05"\`. The camera pans down between beats and travels over the boundary, so a backdrop that stops at the end of a beat leaves the screen blank for half a second. Give it something to look at all the way down: a wall that changes tone, a floor line that runs through, a soft pool of light under each object, a grid, a drift of texture dots, a long soft gradient.
+- **Then give each beat its own ground.** A surface the object stands on, a shadow under it, a horizon behind it. An object floating on a flat colour is the most common thing that makes these look cheap.
 - **Build volume from flat shapes.** A lit face and a shadowed one. A darker plane where a surface turns away. A cast shadow as a low-opacity ellipse underneath — without one, everything floats.
-- **Detail the object the way it really is.** A clock has a bezel, a face, an inner ring, hour marks, two hands and a pin. A banknote has a border, a portrait oval, a denomination block, a guilloche line. Three or four of those details is the difference between "a clock" and a clock.
-- Keep strokes to one or two weights throughout, 6–14 units, \`stroke-linecap="round"\`.
-- Use the palette you are given and stay in it. The accent is a spot colour — one or two elements, not the whole drawing.
-- Compose to the centre; sit the mass between y=80 and y=800, and leave the bottom fifth emptier, because that is where the caption goes.`;
+- **Detail the object the way it really is.** A clock has a bezel, a dial, an inner ring, twelve marks, two hands and a cap. A banknote has a border, a portrait oval, a denomination block, a guilloche line. Three or four of those is the difference between "a clock" and a clock.
+- One or two stroke weights throughout, 6–14 units, \`stroke-linecap="round"\`.
+- Stay in the palette you are given. The accent is a spot colour — one or two elements a beat, not the whole drawing.
+
+**Output ONE <svg> element and nothing else.** No prose, no code fence, no explanation.`;
 
 export interface IllustrationRequest {
   /** Namespaces the drawing's gradient ids, so two scenes cannot collide. */
@@ -146,6 +170,21 @@ export function isIllustratorConfigured(): boolean {
  * sequence they would add most of a minute to a render for no reason. Each
  * settles on its own, so one slow or failed drawing never holds up the rest.
  */
+/**
+ * How many scenes in one video get a drawing.
+ *
+ * A three-beat strip with a hundred shapes and a repair round is about fifty
+ * cents and three minutes of model time. Six of them is three dollars on a
+ * single upload, which is more than the rest of the pipeline costs put
+ * together — so the first few scenes get the drawing and the rest fall back to
+ * the icon layout, which still works and still reads.
+ *
+ * The first few rather than a spread on purpose: attention is highest early,
+ * and a video whose best scene is its ninetieth second has spent the money in
+ * the wrong place.
+ */
+export const MAX_DRAWN_SCENES = 4;
+
 export async function illustrateScenes(
   scenes: AnimatedScene[],
   lineFor: (scene: AnimatedScene) => string,
@@ -159,7 +198,7 @@ export async function illustrateScenes(
   }
 
   const results = await Promise.all(
-    scenes.map(async (scene) => ({
+    scenes.slice(0, MAX_DRAWN_SCENES).map(async (scene) => ({
       id: scene.id,
       result: await drawScene({
         id: scene.id,
@@ -180,6 +219,34 @@ export async function illustrateScenes(
   }
 
   return { drawn, costUsd, errors };
+}
+
+/** Beats per drawing. Two is thin, four cannot be read in a four-second insert. */
+const STAGES = 3;
+
+/**
+ * What the sequence should be, per shape of explanation.
+ *
+ * Phrased as a progression rather than as a layout, because the failure this
+ * is guarding against is the model arranging three things side by side and
+ * calling it a sequence — which is a picture, and the whole point of the beats
+ * is that the camera LEAVES one to find the next.
+ */
+function sequenceFor(kind: string): string {
+  switch (kind) {
+    case 'compare':
+      return 'the first thing alone, then an arrow down, then the second thing alone — never the two side by side';
+    case 'journey':
+      return 'one step per beat, in order, each one leading down to the next';
+    case 'stack':
+      return 'the foundation, then what sits on it, then what sits on that';
+    case 'big-number':
+      return 'the thing the figure is about, then what it becomes, then the consequence';
+    case 'orbit':
+      return 'the whole thing, then one part of it close up, then another';
+    default:
+      return 'the situation, then what changes, then where it ends up';
+  }
 }
 
 export async function drawScene(request: IllustrationRequest): Promise<IllustrationResult> {
@@ -212,7 +279,7 @@ Palette: ${palette.swatch.join(', ')}
 Accent (use sparingly, one or two elements): ${accent}
 Style: ${palette.note}
 
-Draw what is being described, in ${request.kind === 'compare' ? 'two halves, the two things side by side' : request.kind === 'journey' ? 'a left-to-right progression' : 'one centred composition'}. Return only the <svg>.`;
+Draw this as ${STAGES} beats: ${sequenceFor(request.kind)}. Return only the <svg>.`;
 
   try {
     const response = await fetch(`${API_BASE}/chat/completions`, {
@@ -230,7 +297,9 @@ Draw what is being described, in ${request.kind === 'compare' ? 'two halves, the
         // Raised for the detail the craft notes ask for: a hundred shapes
         // with gradients runs past six thousand, and a drawing that runs out
         // of tokens arrives without its closing tags and is refused whole.
-        max_tokens: 9000,
+        // A three-beat strip with 140 shapes runs long; a drawing that hits
+        // the ceiling arrives without its closing tags and is refused whole.
+        max_tokens: 16000,
         // Higher than the selection pass on purpose: that one is a judgement
         // with a right answer, this one is drawing, and a cautious drawing is
         // a boring one.
@@ -253,17 +322,102 @@ Draw what is being described, in ${request.kind === 'compare' ? 'two halves, the
       ((body.usage?.prompt_tokens ?? 0) / 1_000_000) * pricing.inputPerMTok +
       ((body.usage?.completion_tokens ?? 0) / 1_000_000) * pricing.outputPerMTok;
 
-    const illustration = parseIllustration(body.choices?.[0]?.message?.content ?? '', request.id ?? '');
-    if (!isDrawn(illustration)) {
+    const drawn = body.choices?.[0]?.message?.content ?? '';
+    const illustration = parseIllustration(drawn, request.id ?? '');
+    if (!illustration || !isDrawn(illustration)) {
       return { illustration: null, costUsd, error: 'illustration came back empty or too sparse to use' };
     }
 
-    return { illustration, costUsd };
+    /*
+     * Look at it before using it, and send it back if it is wrong.
+     *
+     * "Make sure to render the icons before, so they actually make sense" —
+     * and the specific complaint was a clock whose hands were not attached to
+     * it. We cannot see the picture, but the things that go wrong here are
+     * structural and ARE visible in the markup: a hand that rotates with no
+     * pivot, a beat drawn outside its own band, a composition occupying a
+     * corner of the square. One repair round fixes most of them, costs a few
+     * cents, and the original is kept if the repair comes back worse — a
+     * second attempt is not automatically a better one.
+     */
+    const problems = auditIllustration(illustration, STAGES);
+    if (!problems.length) return { illustration, costUsd };
+
+    const repair = await repairScene(request, brief, drawn, problems, model);
+    return {
+      illustration: repair.illustration ?? illustration,
+      costUsd: costUsd + repair.costUsd,
+      error: repair.illustration ? undefined : `kept the first drawing; ${problems[0]}`,
+    };
   } catch (error) {
     return {
       illustration: null,
       costUsd: 0,
       error: error instanceof Error ? error.message : String(error),
     };
+  }
+}
+
+/**
+ * One round of "here is what is wrong with it, draw it again".
+ *
+ * Deliberately not a conversation: the original brief and the drawing go back
+ * with a list of faults, and whatever comes out is audited the same way. If it
+ * is not better than what went in, the caller keeps the original — a second
+ * attempt is not automatically an improvement, and shipping a worse drawing
+ * because it was newer is a trap worth naming.
+ */
+async function repairScene(
+  request: IllustrationRequest,
+  brief: string,
+  drawn: string,
+  problems: string[],
+  model: string,
+): Promise<{ illustration: Illustration | null; costUsd: number }> {
+  try {
+    const response = await fetch(`${API_BASE}/chat/completions`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', authorization: `Bearer ${env.llm.wavespeedKey!}` },
+      body: JSON.stringify({
+        model,
+        messages: [
+          { role: 'system', content: SYSTEM },
+          { role: 'user', content: brief },
+          { role: 'assistant', content: drawn },
+          {
+            role: 'user',
+            content:
+              `Not right yet. Fix these and return the whole corrected <svg>, nothing else:\n\n` +
+              problems.map((problem, i) => `${i + 1}. ${problem}`).join('\n') +
+              `\n\nKeep everything that already works — the subject, the palette, the parts that are drawn well. Change only what is listed.`,
+          },
+        ],
+        max_tokens: 16000,
+        // Lower than the first pass: this one is a correction against a list,
+        // not an invention, and a creative repair tends to fix the fault by
+        // drawing something else entirely.
+        temperature: 0.4,
+      }),
+    });
+
+    if (!response.ok) return { illustration: null, costUsd: 0 };
+
+    const body = (await response.json()) as {
+      choices?: Array<{ message?: { content?: string } }>;
+      usage?: { prompt_tokens?: number; completion_tokens?: number };
+    };
+    const pricing = wavespeedPriceFor(model);
+    const costUsd =
+      ((body.usage?.prompt_tokens ?? 0) / 1_000_000) * pricing.inputPerMTok +
+      ((body.usage?.completion_tokens ?? 0) / 1_000_000) * pricing.outputPerMTok;
+
+    const fixed = parseIllustration(body.choices?.[0]?.message?.content ?? '', request.id ?? '');
+    if (!fixed || !isDrawn(fixed)) return { illustration: null, costUsd };
+
+    // Only kept if it actually has fewer faults than the drawing it replaces.
+    const after = auditIllustration(fixed, STAGES).length;
+    return { illustration: after < problems.length ? fixed : null, costUsd };
+  } catch {
+    return { illustration: null, costUsd: 0 };
   }
 }

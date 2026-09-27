@@ -29,15 +29,33 @@ import { sanitiseSvg } from './icons';
 export const ART_ENTERS = ['pop', 'rise', 'slide-left', 'slide-right', 'grow', 'draw'] as const;
 export type ArtEnter = (typeof ART_ENTERS)[number];
 
-export const ART_IDLES = ['none', 'bob', 'sway', 'spin', 'pulse', 'drift'] as const;
+export const ART_IDLES = ['none', 'bob', 'sway', 'spin', 'tick', 'pulse', 'drift'] as const;
 export type ArtIdle = (typeof ART_IDLES)[number];
 
 export interface ArtPart {
   markup: string;
+  /**
+   * Which beat of the scene this piece belongs to.
+   *
+   * A scene is a sequence, not a picture. The drawing is one tall canvas with
+   * the beats stacked down it — beat 0 in the top 1000 units, beat 1 in the
+   * next 1000 — and the camera travels down it as the voice moves on. So the
+   * previous beat does not fade out, it leaves upward, which is what makes it
+   * read as something happening rather than as a slide changing.
+   */
+  stage: number;
   /** 0 = far background, 1 = foreground. Half means "on the picture plane". */
   depth: number;
   enter: ArtEnter;
   idle: ArtIdle;
+  /**
+   * Whether the pivot was stated or measured.
+   *
+   * Only the audit cares: a measured pivot is fine for a piece that bobs, and
+   * a guess for a clock hand is the difference between it turning on its pin
+   * and swinging around the frame, so a rotating piece must state one.
+   */
+  hasPivot: boolean;
   /**
    * The point this piece turns and scales about, in viewBox units.
    *
@@ -54,8 +72,10 @@ export interface ArtPart {
 }
 
 export interface Illustration {
-  /** The coordinate space the parts are drawn in, e.g. "0 0 1000 1000". */
+  /** The coordinate space the parts are drawn in, e.g. "0 0 1000 3000". */
   viewBox: string;
+  /** How many beats the camera travels through. At least one. */
+  stages: number;
   /**
    * The drawing's gradients, kept whole.
    *
@@ -69,8 +89,16 @@ export interface Illustration {
   parts: ArtPart[];
 }
 
-/** Parts beyond this are past the point where a viewer reads them arriving. */
-const MAX_PARTS = 8;
+/**
+ * Parts beyond this are past the point where a viewer reads them arriving.
+ *
+ * Higher than it was, because a part is now a piece of ONE BEAT rather than of
+ * the whole scene: three beats of four pieces each is a normal drawing.
+ */
+const MAX_PARTS = 14;
+
+/** Beats beyond this cannot each get long enough on screen to be read. */
+const MAX_STAGES = 4;
 
 /** Below this there is no drawing, only a stray tag or two. */
 const MIN_MARKUP = 24;
@@ -137,7 +165,11 @@ export function parseIllustration(markup: string, idPrefix = ''): Illustration |
 
   const parts = splitTopLevelGroups(inner)
     .map((group) => toPart(group, centre))
-    .filter((part): part is ArtPart => part !== null);
+    .filter((part): part is ArtPart => part !== null)
+    .filter((part) => part.stage < MAX_STAGES)
+    // In beat order, so the renderer can walk them without sorting per frame,
+    // and so a model that lists its connectors last still animates in order.
+    .sort((a, b) => a.stage - b.stage);
 
   if (!parts.length) {
     // A drawing with no groups is still a drawing. It arrives in one piece
@@ -146,11 +178,19 @@ export function parseIllustration(markup: string, idPrefix = ''): Illustration |
     // first attempt.
     const whole = inner.trim();
     return whole.length >= MIN_MARKUP
-      ? { viewBox, defs, parts: [{ markup: whole, depth: 0.5, enter: 'pop', idle: 'bob', pivot: centre }] }
+      ? {
+          viewBox,
+          defs,
+          stages: 1,
+          parts: [
+            { markup: whole, stage: 0, depth: 0.5, enter: 'pop', idle: 'bob', hasPivot: false, pivot: centre },
+          ],
+        }
       : null;
   }
 
-  return { viewBox, defs, parts: parts.slice(0, MAX_PARTS) };
+  const kept = parts.slice(0, MAX_PARTS);
+  return { viewBox, defs, stages: kept.reduce((most, p) => Math.max(most, p.stage + 1), 1), parts: kept };
 }
 
 /** Prefix every id the drawing declares, and every reference to one. */
@@ -178,6 +218,7 @@ function toPart(group: string, centre: { x: number; y: number }): ArtPart | null
 
   return {
     markup: fallbackEnter === 'draw' ? normaliseStrokeLengths(body) : body,
+    stage: Math.max(0, Math.floor(Number(attr(body, 'data-stage') ?? '0')) || 0),
     depth,
     enter: fallbackEnter,
     idle,
@@ -185,8 +226,32 @@ function toPart(group: string, centre: { x: number; y: number }): ArtPart | null
     // matters more than it looks: `data-pivot` is the attribute the model
     // forgets most often, and a forgotten one used to send a spinning piece
     // orbiting the whole picture.
+    hasPivot: readPivot(attr(body, 'data-pivot')) !== null,
     pivot: readPivot(attr(body, 'data-pivot')) ?? estimatePivot(body) ?? centre,
   };
+}
+
+function attr(markup: string, name: string): string | null {
+  // Only the group's OWN opening tag: a nested child's data-depth is not this
+  // part's, and matching anywhere in the body would pick up the wrong one.
+  const open = markup.match(/^<g\b[^>]*>/i)?.[0] ?? '';
+  return open.match(new RegExp(`${name}\\s*=\\s*["']([^"']*)["']`, 'i'))?.[1] ?? null;
+}
+
+function pick<T extends string>(value: string | null, allowed: readonly T[], fallback: T): T {
+  const found = allowed.find((option) => option === value?.trim().toLowerCase());
+  return found ?? fallback;
+}
+
+function clamp01(value: number, fallback: number): number {
+  return Number.isFinite(value) ? Math.min(1, Math.max(0, value)) : fallback;
+}
+
+/** Strokes with nothing filled: a connector rather than an object. */
+function looksLikeStroke(markup: string): boolean {
+  const filled = /fill\s*=\s*["'](?!none)[^"']+["']/i.test(markup);
+  const stroked = /stroke\s*=\s*["'](?!none)[^"']+["']/i.test(markup);
+  return stroked && !filled;
 }
 
 /** `data-pivot="640 320"`, or null when it was not given or makes no sense. */
@@ -208,14 +273,31 @@ function readPivot(value: string | null): { x: number; y: number } | null {
  * between a clock hand turning on its pin and swinging around the frame.
  */
 function estimatePivot(markup: string): { x: number; y: number } | null {
-  const xs: number[] = [];
-  const ys: number[] = [];
+  const points = coordinatesOf(markup);
+  if (points.length < 2) return null;
+  const xs = points.map((point) => point.x);
+  const ys = points.map((point) => point.y);
+  return {
+    x: (Math.min(...xs) + Math.max(...xs)) / 2,
+    y: (Math.min(...ys) + Math.max(...ys)) / 2,
+  };
+}
 
+/**
+ * Every coordinate a fragment mentions.
+ *
+ * A real bounding box would need a laid-out document, which a frame-by-frame
+ * renderer does not have when it needs one. This is the cheap approximation:
+ * gather the coordinates the shapes are written with. Path data is read as a
+ * flat run of x,y pairs — wrong for relative commands and for the radii inside
+ * an arc, but every caller only needs to know roughly where the piece is, and
+ * roughly is the difference between a clock hand turning on its pin and
+ * swinging around the frame.
+ */
+function coordinatesOf(markup: string): Array<{ x: number; y: number }> {
+  const points: Array<{ x: number; y: number }> = [];
   const push = (x: number, y: number) => {
-    if (Number.isFinite(x) && Number.isFinite(y)) {
-      xs.push(x);
-      ys.push(y);
-    }
+    if (Number.isFinite(x) && Number.isFinite(y)) points.push({ x, y });
   };
 
   for (const [, cx, cy] of markup.matchAll(/<(?:circle|ellipse)\b[^>]*?\bcx="(-?[\d.]+)"[^>]*?\bcy="(-?[\d.]+)"/gi)) {
@@ -241,40 +323,13 @@ function estimatePivot(markup: string): { x: number; y: number } | null {
     for (let i = 0; i + 1 < numbers.length; i += 2) push(numbers[i], numbers[i + 1]);
   }
 
-  if (xs.length < 2) return null;
-  return {
-    x: (Math.min(...xs) + Math.max(...xs)) / 2,
-    y: (Math.min(...ys) + Math.max(...ys)) / 2,
-  };
+  return points;
 }
 
 function readViewBox(viewBox: string): [number, number, number, number] {
   const parts = viewBox.trim().split(/[\s,]+/).map(Number);
   if (parts.length !== 4 || parts.some((n) => !Number.isFinite(n))) return [0, 0, 1000, 1000];
   return parts as [number, number, number, number];
-}
-
-function attr(markup: string, name: string): string | null {
-  // Only the group's OWN opening tag: a nested child's data-depth is not this
-  // part's, and matching anywhere in the body would pick up the wrong one.
-  const open = markup.match(/^<g\b[^>]*>/i)?.[0] ?? '';
-  return open.match(new RegExp(`${name}\\s*=\\s*["']([^"']*)["']`, 'i'))?.[1] ?? null;
-}
-
-function pick<T extends string>(value: string | null, allowed: readonly T[], fallback: T): T {
-  const found = allowed.find((option) => option === value?.trim().toLowerCase());
-  return found ?? fallback;
-}
-
-function clamp01(value: number, fallback: number): number {
-  return Number.isFinite(value) ? Math.min(1, Math.max(0, value)) : fallback;
-}
-
-/** Strokes with nothing filled: a connector rather than an object. */
-function looksLikeStroke(markup: string): boolean {
-  const filled = /fill\s*=\s*["'](?!none)[^"']+["']/i.test(markup);
-  const stroked = /stroke\s*=\s*["'](?!none)[^"']+["']/i.test(markup);
-  return stroked && !filled;
 }
 
 /**
@@ -323,4 +378,116 @@ export function isDrawn(illustration: Illustration | null): boolean {
   const markup = illustration.parts.map((part) => part.markup).join('');
   const shapes = (markup.match(/<(path|circle|rect|line|polyline|polygon|ellipse)\b/gi) ?? []).length;
   return markup.length > 120 && shapes >= 3;
+}
+
+/**
+ * What is wrong with a drawing, in the words the model needs to fix it.
+ *
+ * "Render the icons before, so they actually make sense" — the note that
+ * prompted this. We cannot look at the picture, but most of what goes wrong is
+ * structural and IS visible from the markup: a hand that spins without a
+ * pivot, a beat drawn in the wrong band, a composition that occupies a corner.
+ * Each of these has a matching symptom on screen, and every one of them has
+ * shipped at least once.
+ *
+ * Returns an empty list when the drawing is sound. Anything it does return is
+ * fed straight back to the model as a repair brief, so the wording is aimed at
+ * the model rather than at a log reader.
+ */
+export function auditIllustration(art: Illustration, expectedStages: number): string[] {
+  const problems: string[] = [];
+  const [, , width, height] = readViewBox(art.viewBox);
+  const band = height / Math.max(1, art.stages);
+
+  if (art.stages < 2 && expectedStages >= 2) {
+    problems.push(
+      `The drawing has only one beat. It needs ${expectedStages}: a tall canvas with each beat in its own ${width}-unit square, and data-stage set on every group.`,
+    );
+  }
+
+  if (art.stages > 1 && band < width * 0.55) {
+    problems.push(
+      `The canvas is ${width}x${height} but claims ${art.stages} beats, which leaves each beat a letterbox slot. Height must be ${width} per beat.`,
+    );
+  }
+
+  for (const [stage, parts] of groupByStage(art.parts)) {
+    const box = extentOf(parts);
+    if (!box) continue;
+
+    const top = stage * band;
+    if (box.minY < top - band * 0.15 || box.maxY > top + band * 1.15) {
+      problems.push(
+        `Beat ${stage} is drawn at y ${Math.round(box.minY)}–${Math.round(box.maxY)}, outside its own band (${Math.round(top)}–${Math.round(top + band)}). Every shape of a beat belongs inside its square.`,
+      );
+    }
+
+    /*
+     * An empty beat.
+     *
+     * The one that got through: a three-beat strip whose last beat held only
+     * the backdrop and a plinth, so the camera panned down to an empty room
+     * and sat there. It passes every other check — the backdrop spans the full
+     * width, the coordinates are in the right band — which is why the count has
+     * to be of the beat's OWN shapes.
+     */
+    const drawn = parts
+      .filter((part) => part.depth > 0.15)
+      .map((part) => part.markup)
+      .join('');
+    const shapesHere = (drawn.match(/<(path|circle|rect|line|polyline|polygon|ellipse)\b/gi) ?? []).length;
+    // Counted in shapes rather than in groups: a beat can legitimately be two
+    // well-drawn pieces, and it can just as easily be six empty ones.
+    if (shapesHere < 10) {
+      problems.push(
+        `Beat ${stage} is nearly empty — only ${shapesHere} shapes in front of the backdrop. The camera pans down to it and finds an empty room. Every beat needs its own subject, drawn properly.`,
+      );
+      continue;
+    }
+
+    if (box.maxX - box.minX < width * 0.55) {
+      problems.push(
+        `Beat ${stage} only spans ${Math.round(box.maxX - box.minX)} of ${width} units across. It is shown full-screen, so it has to fill the square — at least 800 wide.`,
+      );
+    }
+  }
+
+  const unpinned = art.parts.filter(
+    (part) => (part.idle === 'spin' || part.idle === 'tick' || part.idle === 'sway') && !part.hasPivot,
+  );
+  if (unpinned.length) {
+    problems.push(
+      `${unpinned.length} group${unpinned.length === 1 ? '' : 's'} rotate (spin/tick/sway) without a data-pivot. A hand or gear with no pivot swings around the frame instead of turning on the spot — give each one the exact point it turns about.`,
+    );
+  }
+
+  if (!art.parts.some((part) => part.enter === 'draw') && art.stages > 1) {
+    problems.push('There is no connector. Each beat needs a dashed arrow leading down into the next, with data-enter="draw" and fill="none".');
+  }
+
+  const shapes = (art.parts.map((p) => p.markup).join('').match(/<(path|circle|rect|line|polyline|polygon|ellipse)\b/gi) ?? []).length;
+  if (shapes < 34) {
+    problems.push(`Only ${shapes} shapes in the whole strip. It reads as clipart — build the objects properly, 50 or more.`);
+  }
+
+  return problems;
+}
+
+function groupByStage(parts: ArtPart[]): Array<[number, ArtPart[]]> {
+  const byStage = new Map<number, ArtPart[]>();
+  for (const part of parts) {
+    const list = byStage.get(part.stage) ?? [];
+    list.push(part);
+    byStage.set(part.stage, list);
+  }
+  return [...byStage.entries()].sort((a, b) => a[0] - b[0]);
+}
+
+/** The bounding box of some parts, from the same coordinate scan as the pivot. */
+function extentOf(parts: ArtPart[]): { minX: number; maxX: number; minY: number; maxY: number } | null {
+  const points = parts.flatMap((part) => coordinatesOf(part.markup));
+  if (points.length < 2) return null;
+  const xs = points.map((p) => p.x);
+  const ys = points.map((p) => p.y);
+  return { minX: Math.min(...xs), maxX: Math.max(...xs), minY: Math.min(...ys), maxY: Math.max(...ys) };
 }

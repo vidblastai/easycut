@@ -7,7 +7,7 @@ import { direct, planWindows } from '@/lib/director';
 import { designScenes, isScenePassConfigured, type PlannedScene } from '@/lib/director/scenes';
 import { buildEdl } from '@/lib/edl/builder';
 import { stripLayers } from '@/lib/edl/layers';
-import { illustrateScenes, isIllustratorConfigured } from '@/lib/director/illustrate';
+import { illustrateScenes, isIllustratorConfigured, MAX_DRAWN_SCENES } from '@/lib/director/illustrate';
 import { fallbackScene } from '@/lib/edl/scene-fallback';
 import { ASPECT_DIMENSIONS, type Aspect, type Edl } from '@/lib/edl/types';
 import {
@@ -642,7 +642,11 @@ async function drawScenes(ctx: PipelineContext): Promise<void> {
   if (missing > 0) {
     ctx.degraded.push(
       `${missing} scene${missing === 1 ? '' : 's'} drawn from icons instead of an illustration` +
-        (errors.length ? ` (${errors[0]})` : ''),
+        (ctx.edl.scenes.length > MAX_DRAWN_SCENES
+          ? ` (only the first ${MAX_DRAWN_SCENES} are illustrated)`
+          : errors.length
+            ? ` (${errors[0]})`
+            : ''),
     );
   }
 }

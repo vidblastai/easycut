@@ -68,7 +68,8 @@ async function main() {
       console.log(
         `  ${name.padEnd(12)} ${parts.length} parts, ${markup.length} chars, ` +
           `${seconds}s, $${result.costUsd.toFixed(4)}\n` +
-          `  ${' '.repeat(12)} ${parts.map((p) => `${p.depth}·${p.enter}·${p.idle}`).join('  ')}`,
+          `  ${' '.repeat(12)} ${result.illustration.stages} beats · ` +
+          parts.map((p) => `[${p.stage}]${p.enter}/${p.idle}${p.hasPivot ? '\u2713' : ''}`).join(' '),
       );
 
       // Each part gets a visible outline in the debug page so a "drawing" that
@@ -77,7 +78,7 @@ async function main() {
         join(OUT, `${name}.html`),
         `<!doctype html><meta charset="utf-8"><title>${name}</title>
 <body style="margin:0;display:grid;place-items:center;min-height:100vh;background:${GROUND[job.look]}">
-<svg viewBox="${viewBox}" width="720" height="720">${markup}</svg>`,
+<svg viewBox="${viewBox}" width="${Math.round(720 / (result.illustration.stages || 1))}" height="720">${markup}</svg>`,
       );
       await writeFile(
         join(OUT, `${name}.svg`),

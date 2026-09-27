@@ -526,6 +526,8 @@ export const AnimatedSceneSchema = z.object({
       viewBox: z.string(),
       /** The drawing's gradients; every `url(#…)` in the parts points here. */
       defs: z.string().default(''),
+      /** How many beats the camera travels through. At least one. */
+      stages: z.number().int().min(1).default(1),
       /*
        * A part is an object, but a bare string is still accepted and widened.
        *
@@ -539,16 +541,22 @@ export const AnimatedSceneSchema = z.object({
         z.union([
           z.string().transform((markup) => ({
             markup,
+            stage: 0,
             depth: 0.5,
             enter: 'pop' as const,
             idle: 'bob' as const,
+            hasPivot: false,
             pivot: { x: 500, y: 500 },
           })),
           z.object({
             markup: z.string(),
+            /** Which beat this piece belongs to; the camera travels between them. */
+            stage: z.number().int().min(0).default(0),
             depth: z.number().min(0).max(1).default(0.5),
             enter: z.enum(ART_ENTERS).default('pop'),
             idle: z.enum(ART_IDLES).default('bob'),
+            /** Whether the pivot was stated by the model or measured for it. */
+            hasPivot: z.boolean().default(false),
             /** Where the piece turns and scales about, in viewBox units. */
             pivot: z
               .object({ x: z.number(), y: z.number() })

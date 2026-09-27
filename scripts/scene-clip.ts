@@ -1,4 +1,4 @@
-import { mkdir, readFile } from 'node:fs/promises';
+import { mkdir, readFile, readdir } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 import '../src/lib/config/load-env';
 import { parseIllustration, type Illustration } from '../src/lib/assets/illustration';
@@ -27,6 +27,13 @@ const CONTENT: Partial<Record<SceneKind, { headline: string; items: string[] }>>
   'big-number': { headline: '95% of your ideas', items: ['never get posted'] },
 };
 
+/** The most recent drawing for a look, whatever `draw-scene.ts` numbered it. */
+async function findDrawing(look: SceneLook): Promise<string | null> {
+  const files = await readdir('out/drawings').catch(() => [] as string[]);
+  const match = files.filter((name) => name.endsWith(`-${look}.svg`)).sort().pop();
+  return match ? readFile(`out/drawings/${match}`, 'utf8').catch(() => null) : null;
+}
+
 async function main() {
   await mkdir(OUT, { recursive: true });
   const look = (process.argv[2] as SceneLook) ?? 'studio';
@@ -34,10 +41,10 @@ async function main() {
   const seconds = Number(process.argv[4] ?? 5);
   if (!SCENE_LOOKS.includes(look)) throw new Error(`Unknown look ${look}`);
 
-  const drawing = await readFile(
-    `out/drawings/${['studio', 'neon', 'gallery', 'archive'].indexOf(look)}-${look}.svg`,
-    'utf8',
-  ).catch(() => null);
+  // Found by look rather than by index: `draw-scene.ts` numbers its output by
+  // the order the jobs finished, so a fixed index silently reads the wrong
+  // file — or none, and the clip quietly renders the icon fallback instead.
+  const drawing = await findDrawing(look);
   const art: Illustration | null = drawing ? parseIllustration(drawing, look) : null;
   console.log(art ? `drawing: ${art.parts.length} parts` : 'drawing: none (icon fallback)');
 

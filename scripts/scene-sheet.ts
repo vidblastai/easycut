@@ -3,7 +3,7 @@ import { join, resolve } from 'node:path';
 import '../src/lib/config/load-env';
 import { EdlSchema, SCENE_KINDS, SCENE_LOOKS, type SceneKind, type SceneLook } from '../src/lib/edl/types';
 import { env } from '../src/lib/config/env';
-import { readFile } from 'node:fs/promises';
+import { readFile, readdir } from 'node:fs/promises';
 import { parseIllustration, type Illustration } from '../src/lib/assets/illustration';
 import { startAssetServer } from '../src/lib/render/asset-server';
 import { SAMPLE_EDL } from '../remotion/sample-edl';
@@ -93,8 +93,12 @@ async function main() {
   // Any drawings lying about from `draw-scene.ts` get rendered in place of the
   // icon layout, so the sheet shows what a real scene looks like rather than
   // only the fallback.
+  const drawings = await readdir('out/drawings').catch(() => [] as string[]);
   for (const id of SCENE_LOOKS) {
-    const file = (await readFile(`out/drawings/${['studio', 'neon', 'gallery', 'archive'].indexOf(id)}-${id}.svg`, 'utf8').catch(() => null));
+    // Matched by look rather than by index: `draw-scene.ts` numbers its output
+    // by the order the jobs finished, so a fixed index reads the wrong file.
+    const name = drawings.filter((file) => file.endsWith(`-${id}.svg`)).sort().pop();
+    const file = name ? await readFile(`out/drawings/${name}`, 'utf8').catch(() => null) : null;
     ART[id] = file ? parseIllustration(file, id) : null;
   }
   console.log(`drawings found: ${Object.entries(ART).filter(([, a]) => a).map(([k]) => k).join(', ') || 'none'}`);
