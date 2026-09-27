@@ -1,3 +1,4 @@
+import type { PlannedScene } from '@/lib/director/scenes';
 import type { DirectorPlan } from '@/lib/director/schema';
 import type { LayerName } from '@/lib/edl/layers';
 import type { Edl } from '@/lib/edl/types';
@@ -120,6 +121,8 @@ export interface PipelineContext {
   cleanupFindings?: CleanupFinding[];
   cleanupRemovals?: Interval[];
   plan?: DirectorPlan;
+  /** Chosen by the scene pass, placed onto the timeline by the EDL builder. */
+  scenes?: PlannedScene[];
   edl?: Edl;
 
   /** Layers skipped because a provider was missing or failed. */

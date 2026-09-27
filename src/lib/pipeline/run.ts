@@ -4,7 +4,7 @@ import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { env } from '@/lib/config/env';
 import { direct, planWindows } from '@/lib/director';
-import { designMotionGraphics, isMotionPassConfigured, withMotionGraphics } from '@/lib/director/motion';
+import { designScenes, isScenePassConfigured, type PlannedScene } from '@/lib/director/scenes';
 import { buildEdl } from '@/lib/edl/builder';
 import { stripLayers } from '@/lib/edl/layers';
 import { ASPECT_DIMENSIONS, type Aspect, type Edl } from '@/lib/edl/types';
@@ -321,20 +321,21 @@ async function stageDirect(ctx: PipelineContext): Promise<void> {
   }
 
   /*
-   * A second, small pass for the motion graphics, on a stronger model.
+   * A second pass, on a stronger model, for the faceless scenes.
    *
-   * Deliberately after the main plan and deliberately non-fatal: a counter
-   * running up to the figure somebody just said is the best thing in the edit
-   * when it lands and completely optional when it does not. If this call
-   * fails, the video keeps the graphics the director already chose and nobody
-   * is told about a garnish that did not arrive.
+   * This is the one judgement in the pipeline worth paying for. A scene takes
+   * the speaker off the screen, so choosing the wrong passage is actively
+   * worse than choosing none — and the right passage is the best thing in the
+   * video. See `director/scenes.ts` for what it is actually asked.
+   *
+   * Non-fatal by design: if it fails, the edit is the edit, with footage where
+   * a drawing would have been, and nobody is told about a scene that did not
+   * arrive.
    */
-  if (isMotionPassConfigured() && result.provider !== 'heuristic') {
-    const motion = await designMotionGraphics(ctx.transcript, ctx.plan, targetDurationSec);
-    if (motion.graphics.length) {
-      ctx.plan = withMotionGraphics(ctx.plan, motion.graphics);
-      ctx.ledger.add('director', motion.costUsd, `motion:${motion.model}`);
-    }
+  if (isScenePassConfigured() && result.provider !== 'heuristic') {
+    const pass = await designScenes(ctx.transcript, ctx.plan, targetDurationSec);
+    ctx.scenes = pass.scenes;
+    if (pass.costUsd > 0) ctx.ledger.add('director', pass.costUsd, `scenes:${pass.model}`);
   }
 }
 
@@ -437,6 +438,7 @@ async function stageTimeline(ctx: PipelineContext): Promise<void> {
     captionStyle: ctx.style.captionStyle,
     broll: [],
     graphics: [],
+    scenes: [],
     overlays: [],
     transitions: [],
     punchIns: [],
@@ -499,6 +501,7 @@ async function stageAssets(ctx: PipelineContext): Promise<void> {
     fps: Math.min(30, Math.round(ctx.media.fps) || 30),
     transcript: ctx.transcript,
     plan: ctx.plan,
+    scenes: ctx.scenes ?? [],
     segments: ctx.edl.segments,
     source: ctx.edl.source,
     reframe: ctx.edl.reframe,

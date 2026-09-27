@@ -8,6 +8,7 @@ import { BrollLayer } from './components/BrollLayer';
 import { Captions } from './components/Captions';
 import { Graphics } from './components/Graphics';
 import { Overlays } from './components/Overlays';
+import { Scenes } from './components/Scenes';
 import { Transitions } from './components/Transitions';
 import { Headline } from './components/Headline';
 import { Watermark } from './components/Watermark';
@@ -98,6 +99,12 @@ export const EasyCutVideo: React.FC<EasyCutVideoProps> = ({ edl, previewAudio = 
     <AbsoluteFill style={{ backgroundColor: '#0D0D10', fontFamily: FONT_FAMILY }}>
       {speakerOnTop ? broll : speaker}
       {speakerOnTop ? speaker : broll}
+      {/* Above the footage and the B-roll, because a scene REPLACES the
+          picture rather than sitting on it — that is what separates a faceless
+          animation from the six overlay graphics below. Still under the
+          captions: the words stay on screen over a scene, which is most of why
+          a faceless edit is watchable with the sound off. */}
+      <Scenes edl={edl} />
       {plan.headline ? <Headline edl={edl} /> : null}
       <Graphics edl={edl} />
       <Captions edl={edl} positionY={plan.captionY} lowDetail={lowDetail} />

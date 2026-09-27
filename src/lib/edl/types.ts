@@ -429,6 +429,67 @@ export const GraphicElementSchema = z.object({
 });
 export type GraphicElement = z.infer<typeof GraphicElementSchema>;
 
+/* ------------------------------------------------------------------ scenes */
+
+/**
+ * A faceless animation: a complete picture that REPLACES the frame.
+ *
+ * Everything else in this file decorates the speaker. A scene does not — for
+ * the seconds it is on, the speaker is gone and what you see is a made thing
+ * with its own background, built out of the words being said over it. It is
+ * B-roll that we draw instead of buying, and for a channel with no face in it
+ * that is not a garnish, it is the video.
+ *
+ * ── Why a fixed vocabulary and not free-form ────────────────────────────
+ *
+ * The obvious design is to let the model describe any animation it likes and
+ * render whatever comes back. That produces a renderer that must execute
+ * arbitrary generated code, output nobody can predict or re-render the same
+ * way twice, and — the part that actually decides it — animation with no
+ * house style, because every scene was invented from scratch. Six kinds, each
+ * properly art-directed once, gives a model a real choice to make (which shape
+ * does this sentence actually have?) and gives the channel a look.
+ */
+export const SCENE_KINDS = [
+  'kinetic-text', // the phrase itself, landing word by word
+  'journey',      // a path drawn across the frame, waypoints lighting up
+  'compare',      // the frame split in two: this against that
+  'orbit',        // one idea in the middle, its parts arriving around it
+  'stack',        // layers settling on top of each other
+  'big-number',   // one figure, filling the frame
+] as const;
+export type SceneKind = (typeof SCENE_KINDS)[number];
+
+/** What is behind it. All of these move; none of them cost a repaint. */
+export const SCENE_BACKDROPS = ['gradient', 'grid', 'dots', 'rays', 'solid'] as const;
+export type SceneBackdrop = (typeof SCENE_BACKDROPS)[number];
+
+export const AnimatedSceneSchema = z.object({
+  id: z.string(),
+  outStartSec: z.number().nonnegative(),
+  outEndSec: z.number().nonnegative(),
+  kind: z.enum(SCENE_KINDS),
+  backdrop: z.enum(SCENE_BACKDROPS).default('gradient'),
+  /** The phrase being said, in the speaker's own words. Two to six words. */
+  headline: z.string().default(''),
+  /** Meaning depends on the kind: waypoints, the two sides, the layers. */
+  items: z.array(z.string()).default([]),
+  /** Iconify concepts, one per item where the kind shows icons. */
+  iconQueries: z.array(z.string()).default([]),
+  /**
+   * The icons as SVG markup, fetched and stripped at build time.
+   *
+   * Markup rather than URLs because Remotion's `<Img>` cannot decode these in
+   * headless Chromium — see `assets/icons.ts`. Nulls are fine: every scene
+   * kind reads without icons.
+   */
+  iconSvgs: z.array(z.string().nullable()).default([]),
+  accent: z.string().default('#9B7BFF'),
+  /** Kept so the editor can show why this moment was chosen. */
+  reason: z.string().default(''),
+});
+export type AnimatedScene = z.infer<typeof AnimatedSceneSchema>;
+
 /* ---------------------------------------------------------------- overlays */
 
 export const OVERLAY_TYPES = ['lower-third', 'progress-bar', 'chapter-card', 'end-card', 'watermark', 'vignette', 'grain'] as const;
@@ -575,6 +636,7 @@ export const EdlSchema = z.object({
   captionStyle: CaptionStyleSchema,
   broll: z.array(BrollClipSchema).default([]),
   graphics: z.array(GraphicElementSchema).default([]),
+  scenes: z.array(AnimatedSceneSchema).default([]),
   overlays: z.array(OverlayElementSchema).default([]),
   transitions: z.array(TransitionCueSchema).default([]),
   punchIns: z.array(PunchInSchema).default([]),

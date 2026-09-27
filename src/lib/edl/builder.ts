@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import type { DirectorPlan } from '@/lib/director/schema';
+import type { PlannedScene } from '@/lib/director/scenes';
 import type { FormatMode, StylePreset } from '@/lib/styles/presets';
 import { pacingFor } from '@/lib/styles/presets';
 import { layoutPlan } from '@/lib/styles/layouts';
@@ -18,6 +19,7 @@ import {
   type SfxCue,
   type TransitionCue,
   type TransitionType,
+  type AnimatedScene,
 } from './types';
 
 /**
@@ -42,6 +44,8 @@ export interface BuildEdlInput {
   fps: number;
   transcript: Transcript;
   plan: DirectorPlan;
+  /** Passages the scene pass chose, in SOURCE time. Empty is normal. */
+  scenes?: PlannedScene[];
   segments: Segment[];
   source: Edl['source'];
   reframe: Edl['reframe'];
@@ -82,6 +86,10 @@ export function buildEdl(input: BuildEdlInput): Edl {
 
   const graphics = placeGraphics(plan, mapper, durationSec, broll, style.accent);
 
+  /* --------------------------------- scenes -------------------------------- */
+
+  const scenes = placeScenes(input.scenes ?? [], mapper, durationSec, broll, style.accent);
+
   /* ------------------------------ punch-ins ------------------------------- */
 
   const punchIns = placePunchIns(plan, mapper, durationSec, broll, pacing.punchInScale, input.reframe);
@@ -117,6 +125,7 @@ export function buildEdl(input: BuildEdlInput): Edl {
     captionStyle: style.captionStyle,
     broll,
     graphics,
+    scenes,
     overlays,
     transitions,
     punchIns,
@@ -251,6 +260,56 @@ function fillBrollGaps(clips: BrollClip[], durationSec: number, maxRunSec: numbe
   if (durationSec - cursor > 0.4) cover(cursor, durationSec);
 
   return out.sort((a, b) => a.outStartSec - b.outStartSec);
+}
+
+/* ---------------------------------------------------------------- scenes */
+
+/**
+ * Put the chosen scenes on the finished timeline.
+ *
+ * The pass chose passages in the SOURCE, and by the time we get here the cut
+ * has removed some of what was between them, so every boundary has to be
+ * mapped. A scene that kept its source timestamps would drift further out of
+ * sync with the voice with every removal before it — and a faceless scene that
+ * is out of sync with the voice is the whole feature failing.
+ */
+export function placeScenes(
+  planned: PlannedScene[],
+  mapper: TimeMapper,
+  durationSec: number,
+  broll: BrollClip[],
+  accent: string,
+): AnimatedScene[] {
+  const scenes: AnimatedScene[] = [];
+
+  for (const cue of planned) {
+    const start = mapper.toOutputClamped(cue.startSec);
+    const end = Math.min(durationSec - 0.2, mapper.toOutputClamped(cue.endSec));
+    // The cut may have removed most of the passage this scene was chosen for,
+    // in which case there is no longer a moment to cover.
+    if (end - start < 1.6) continue;
+
+    // A scene already replaces the frame; B-roll under it would never be seen.
+    if (broll.some((b) => start < b.outEndSec && end > b.outStartSec)) continue;
+    if (scenes.some((s) => start < s.outEndSec + 1 && end > s.outStartSec - 1)) continue;
+
+    scenes.push({
+      id: `scene-${scenes.length}`,
+      outStartSec: start,
+      outEndSec: end,
+      kind: cue.kind,
+      backdrop: cue.backdrop,
+      headline: cue.headline,
+      items: cue.items,
+      iconQueries: cue.iconQueries,
+      // Fetched later, in the asset stage — this is the deterministic half.
+      iconSvgs: cue.iconQueries.map(() => null),
+      accent,
+      reason: cue.reason,
+    });
+  }
+
+  return scenes;
 }
 
 /* -------------------------------------------------------------- graphics */

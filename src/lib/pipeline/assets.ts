@@ -1,5 +1,5 @@
 import { env } from '@/lib/config/env';
-import { resolveIcon } from '@/lib/assets/icons';
+import { fetchIconMarkup, resolveIcon } from '@/lib/assets/icons';
 import { generateImage, isImageGenConfigured } from '@/lib/assets/images';
 import { selectMusic } from '@/lib/assets/music';
 import { searchStock, isStockConfigured, type StockClip } from '@/lib/assets/broll';
@@ -36,7 +36,7 @@ export async function resolveAssets(
   const imageBudget = options.mode === 'short' ? 1 : 2;
   let imagesGenerated = 0;
 
-  const [brollResults, graphicResults, music] = await Promise.all([
+  const [brollResults, graphicResults, sceneIcons, music] = await Promise.all([
     /* -------------------------------- b-roll ------------------------------- */
     Promise.all(
       edl.broll.map(async (clip) => {
@@ -70,6 +70,27 @@ export async function resolveAssets(
         // Text-only graphics (stats, lists, quotes) need no asset at all.
         return { graphic, url: null, costUsd: 0, source: 'text' as const };
       }),
+    ),
+
+    /* -------------------------------- scenes ------------------------------- */
+    /*
+     * A scene's icons are a nice-to-have, not a requirement.
+     *
+     * Every scene kind draws without them — a chip falls back to a dot — so a
+     * lookup that finds nothing costs the scene nothing, which is the right
+     * trade when the alternative is an icon that means something else. Icons
+     * are free and keyless, so this is one round trip per label.
+     */
+    Promise.all(
+      edl.scenes.map((scene) =>
+        Promise.all(
+          scene.iconQueries.map(async (query) => {
+            if (!query.trim()) return null;
+            const icon = await resolveIcon(query, scene.accent).catch(() => null);
+            return icon ? await fetchIconMarkup(icon.url) : null;
+          }),
+        ),
+      ),
     ),
 
     /* -------------------------------- music -------------------------------- */
@@ -150,8 +171,18 @@ export async function resolveAssets(
     degraded.push('music (library is empty — add tracks to content/music/manifest.json)');
   }
 
+  const scenes = edl.scenes.map((scene, i) => ({
+    ...scene,
+    // Padded to the item count, so a scene with four labels and two icons
+    // draws the two it has rather than reading past the end of the array.
+    iconSvgs: scene.items.map((_, k) => sceneIcons[i]?.[k] ?? null),
+  }));
+
   return {
-    edl: { ...edl, broll, graphics, sfx, music: musicTrack, degraded: [...edl.degraded, ...degraded] },
+    edl: {
+      ...edl, broll, graphics, scenes, sfx, music: musicTrack,
+      degraded: [...edl.degraded, ...degraded],
+    },
     degraded,
   };
 }

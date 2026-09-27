@@ -1264,6 +1264,38 @@ function TimelineEditorImpl({
             })}
           </Track>
 
+          {/*
+            Scenes, shown rather than editable — for now.
+
+            A scene is the one thing on this timeline that takes the speaker off
+            the screen, so the first question anybody has is "where does it do
+            that, and what does it say while it does". That is what this row
+            answers. Dragging and trimming them needs the same reducer support
+            every other clip track has and is not here yet; deleting one is a
+            re-run away.
+          */}
+          {edl.scenes.length ? (
+            <Track label="Scenes" labelHint={`${edl.scenes.length}`}>
+              {edl.scenes.map((scene) => {
+                const left = scene.outStartSec * pps;
+                const width = Math.max(8, (scene.outEndSec - scene.outStartSec) * pps);
+                return (
+                  <div
+                    key={scene.id}
+                    title={`${scene.kind} · ${scene.headline}${scene.reason ? `\n${scene.reason}` : ''}`}
+                    style={{ left: TRACK_LABEL_W + left, width }}
+                    className="absolute top-1 bottom-1 overflow-hidden rounded-md border border-violet/60 bg-violet/20 px-2 py-1 text-left"
+                  >
+                    <span className="block truncate text-[10px] font-bold uppercase tracking-wider text-violet">
+                      {scene.kind}
+                    </span>
+                    <span className="block truncate text-[11px] text-chalk">{scene.headline}</span>
+                  </div>
+                );
+              })}
+            </Track>
+          ) : null}
+
           <Track label="B-roll" labelHint={`${edl.broll.length}`}>
             {edl.broll.map((clip) => {
               const g = geometry(clip.id, clip.outStartSec, clip.outEndSec);

@@ -119,3 +119,50 @@ async function fetchWithTimeout(url: string): Promise<Response> {
     clearTimeout(timer);
   }
 }
+
+/**
+ * The icon as markup, not as a URL.
+ *
+ * Remotion's `<Img>` runs `decode()` on what it loads, and headless Chromium
+ * refuses to decode these SVGs — the render dies with "The source image cannot
+ * be decoded" and takes the frame with it. Fetching the markup once, here, and
+ * inlining it into the composition sidesteps the image pipeline entirely: the
+ * renderer draws vector markup that is already in the document, with no network
+ * call, no decode, and nothing to fail halfway through a cloud render.
+ *
+ * ── On inlining third-party markup ──────────────────────────────────────
+ *
+ * This goes into a page as HTML, so it is stripped to the parts an icon needs.
+ * Anything that could execute — a script, an event handler, an external
+ * reference, a foreignObject — is removed rather than trusted, because the
+ * only thing standing between this and the editor's DOM is this function.
+ */
+export async function fetchIconMarkup(url: string): Promise<string | null> {
+  try {
+    const response = await fetch(url, { signal: AbortSignal.timeout(6000) });
+    if (!response.ok) return null;
+    const body = await response.text();
+    return sanitiseSvg(body);
+  } catch {
+    return null;
+  }
+}
+
+/** Keep the drawing, drop everything that could do something. */
+export function sanitiseSvg(markup: string): string | null {
+  const match = markup.match(/<svg[\s\S]*<\/svg>/i);
+  if (!match) return null;
+
+  const cleaned = match[0]
+    .replace(/<script[\s\S]*?<\/script>/gi, '')
+    .replace(/<foreignObject[\s\S]*?<\/foreignObject>/gi, '')
+    .replace(/<!\[CDATA\[[\s\S]*?\]\]>/gi, '')
+    .replace(/<!--[\s\S]*?-->/g, '')
+    // Event handlers, in any spelling of the quotes or none.
+    .replace(/\son[a-z]+\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]+)/gi, '')
+    // Anything that could fetch or navigate: javascript:, data:, external refs.
+    .replace(/\s(?:href|xlink:href)\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]+)/gi, '');
+
+  // A drawing with no drawing in it is not worth inlining.
+  return /<(path|circle|rect|line|polyline|polygon|ellipse|g)\b/i.test(cleaned) ? cleaned : null;
+}
