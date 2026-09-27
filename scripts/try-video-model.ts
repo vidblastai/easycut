@@ -21,10 +21,11 @@ const API_BASE = 'https://api.wavespeed.ai/api/v3';
 const OUT = 'out/model-test';
 
 const PROMPT =
-  'Flat vector motion graphics, exactly the style of the reference image. ' +
-  'A wall clock stands on a white marble plinth in a bright fogged colonnade. ' +
-  'The clock hands sweep forward. The camera pushes in slowly and pans down. ' +
-  'Clean flat shapes, no photorealism, no text, no letters, no watermark.';
+  process.env.MOTION_PROMPT ??
+  'Dark neon motion graphics, exactly the style and palette of the reference image. ' +
+    'A glowing outlined figure stands alone between two faint dashed silhouettes on a near-black ground. ' +
+    'The glow pulses, the dashed outlines fade away one at a time, the camera pushes in slowly. ' +
+    'Flat vector neon line art, deep navy and violet, no photorealism, no new text, no watermark.';
 
 async function main() {
   await mkdir(OUT, { recursive: true });
@@ -40,13 +41,23 @@ async function main() {
   const png = await readFile(refPath);
   const dataUri = `data:image/png;base64,${png.toString('base64')}`;
 
+  /*
+   * The two shapes of this API.
+   *
+   * A reference-to-video model takes an `images` array — several pictures that
+   * define a style or a character. An image-to-video model takes one `image`
+   * and animates that exact frame. Which one a model wants is in its schema,
+   * and the only reliable tell from the path is the segment itself.
+   */
+  const wantsMany = model.includes('reference-to-video');
   const input: Record<string, unknown> = {
     prompt: PROMPT,
-    images: [dataUri],
+    ...(wantsMany ? { images: [dataUri] } : { image: dataUri }),
     duration: 5,
-    aspect_ratio: '9:16',
     resolution: '720p',
   };
+  // Not every model takes one, and an unknown key is a 400 on most of them.
+  if (!model.includes('ltx') && !model.includes('pixverse')) input.aspect_ratio = '9:16';
 
   const started = Date.now();
   const submit = await fetch(`${API_BASE}/${model}`, {
