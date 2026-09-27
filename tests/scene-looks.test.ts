@@ -1,0 +1,104 @@
+import { describe, expect, it } from 'vitest';
+import { applyOperations } from '@/lib/edl/operations';
+import { SCENE_LOOKS, type AnimatedScene, type Edl } from '@/lib/edl/types';
+import { LOOK_LIST, LOOK_META } from '@/lib/scenes/looks';
+import { STYLE_LIST } from '@/lib/styles/presets';
+import { splitFigure } from '../remotion/components/Scenes';
+
+const scene = (over: Partial<AnimatedScene> = {}): AnimatedScene => ({
+  id: 'sc1', outStartSec: 4, outEndSec: 8, kind: 'kinetic-text', look: 'studio', backdrop: 'gradient',
+  headline: 'You do not need a team', items: [], iconQueries: [], iconSvgs: [],
+  accent: '#9B7BFF', reason: '', ...over,
+});
+
+const edl = (scenes: AnimatedScene[]) =>
+  ({
+    format: { durationSec: 30, width: 1080, height: 1920, fps: 30, aspect: '9:16', layout: 'full' },
+    segments: [{ id: 'a', sourceStartSec: 0, sourceEndSec: 30, outStartSec: 0, outEndSec: 30, speed: 1, reason: 'keep', text: '' }],
+    scenes, captions: [], broll: [], graphics: [], overlays: [], transitions: [],
+    punchIns: [], sfx: [], captionStyle: { emphasisColor: '#9B7BFF' }, degraded: [],
+  }) as unknown as Edl;
+
+describe('look metadata', () => {
+  it('describes every look exactly once', () => {
+    expect(LOOK_LIST).toHaveLength(SCENE_LOOKS.length);
+    expect(new Set(LOOK_LIST.map((l) => l.id)).size).toBe(SCENE_LOOKS.length);
+    for (const id of SCENE_LOOKS) expect(LOOK_META[id].id).toBe(id);
+  });
+
+  it('gives every look a name, a blurb and a swatch the picker can draw', () => {
+    for (const look of LOOK_LIST) {
+      expect(look.name.length).toBeGreaterThan(2);
+      expect(look.bestFor.length).toBeGreaterThan(10);
+      expect(look.swatch).toMatch(/^#[0-9A-Fa-f]{6}$/);
+    }
+  });
+
+  it('keeps most looks on a hard cut', () => {
+    // If this ever flips to mostly-fade, the scenes will have quietly stopped
+    // reading as edited — a dissolve eats a quarter of a two-second insert.
+    expect(LOOK_LIST.filter((l) => l.entry === 'cut').length).toBeGreaterThan(LOOK_LIST.length / 2);
+  });
+});
+
+describe('styles name a look', () => {
+  it('every style picks one that exists', () => {
+    for (const style of STYLE_LIST) {
+      expect(SCENE_LOOKS).toContain(style.sceneLook);
+    }
+  });
+
+  it('the styles between them use more than one world', () => {
+    // A single look across fourteen styles would mean the axis is decorative.
+    expect(new Set(STYLE_LIST.map((s) => s.sceneLook)).size).toBeGreaterThan(1);
+  });
+});
+
+describe('scene.look', () => {
+  it('changes every scene at once, not just the selected one', () => {
+    const before = edl([scene({ id: 'a' }), scene({ id: 'b' }), scene({ id: 'c' })]);
+    const after = applyOperations(before, [{ op: 'scene.look', look: 'archive' }]).edl;
+    expect(after.scenes.map((s) => s.look)).toEqual(['archive', 'archive', 'archive']);
+  });
+
+  it('is one undo step for what the user did once', () => {
+    const before = edl([scene({ id: 'a' }), scene({ id: 'b' })]);
+    const after = applyOperations(before, [{ op: 'scene.look', look: 'neon' }]).edl;
+    // Same document identity rules as any other op: the change is applied
+    // immutably, so the previous state is intact for the undo stack.
+    expect(before.scenes.every((s) => s.look === 'studio')).toBe(true);
+    expect(after.scenes.every((s) => s.look === 'neon')).toBe(true);
+  });
+
+  it('does nothing harmful on a video with no scenes', () => {
+    expect(applyOperations(edl([]), [{ op: 'scene.look', look: 'gallery' }]).edl.scenes).toEqual([]);
+  });
+});
+
+describe('a hand-added scene joins the world already on screen', () => {
+  it('takes the look of the scenes beside it', () => {
+    const before = edl([scene({ id: 'a', look: 'archive' })]);
+    const after = applyOperations(before, [
+      { op: 'clip.add', track: 'scenes', atSec: 20, durationSec: 3, value: 'A new line', id: 'sc-new' },
+    ]).edl;
+    expect(after.scenes.find((s) => s.id === 'sc-new')?.look).toBe('archive');
+  });
+});
+
+describe('splitFigure', () => {
+  it('pulls a percentage off its sentence', () => {
+    expect(splitFigure('95% of your ideas', '')).toEqual({ value: '95%', label: 'of your ideas' });
+  });
+
+  it('keeps a magnitude suffix with the figure', () => {
+    expect(splitFigure('63K followers', '').value).toBe('63K');
+  });
+
+  it('falls back to the scene item when the headline is only a figure', () => {
+    expect(splitFigure('12', 'hours a day')).toEqual({ value: '12', label: 'hours a day' });
+  });
+
+  it('leaves a figureless headline alone', () => {
+    expect(splitFigure('most of them', 'never post').value).toBe('most of them');
+  });
+});

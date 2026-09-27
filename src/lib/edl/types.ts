@@ -464,11 +464,34 @@ export type SceneKind = (typeof SCENE_KINDS)[number];
 export const SCENE_BACKDROPS = ['gradient', 'grid', 'dots', 'rays', 'solid'] as const;
 export type SceneBackdrop = (typeof SCENE_BACKDROPS)[number];
 
+/**
+ * The world a scene is drawn in.
+ *
+ * A look is a separate axis from a kind, and keeping them apart is the whole
+ * reason the scene renderer stays a readable size. A KIND is the shape of the
+ * explanation — one phrase, one figure, parts around a centre — and comes from
+ * what is being said. A LOOK is ground, type, chrome and how things arrive,
+ * and comes from the video's style. Every kind renders in every look, because
+ * a kind arranges slots and a look supplies them.
+ *
+ * The four are drawn from four reference edits, and each one is a different
+ * genre of channel rather than a different palette of the same one:
+ *
+ *   studio   near-white product UI: cards, avatars, rings, hairline borders
+ *   neon     dark glow: one lit glyph, a huge gradient title, drifting props
+ *   gallery  a bright fogged colonnade, objects arriving on a plinth
+ *   archive  cinematic amber, film-strip bars, a push-in that never stops
+ */
+export const SCENE_LOOKS = ['studio', 'neon', 'gallery', 'archive'] as const;
+export type SceneLook = (typeof SCENE_LOOKS)[number];
+
 export const AnimatedSceneSchema = z.object({
   id: z.string(),
   outStartSec: z.number().nonnegative(),
   outEndSec: z.number().nonnegative(),
   kind: z.enum(SCENE_KINDS),
+  /** The world it is drawn in. See SCENE_LOOKS. */
+  look: z.enum(SCENE_LOOKS).default('studio'),
   backdrop: z.enum(SCENE_BACKDROPS).default('gradient'),
   /** The phrase being said, in the speaker's own words. Two to six words. */
   headline: z.string().default(''),

@@ -3,7 +3,7 @@ import { applyOperations } from '@/lib/edl/operations';
 import { sceneHasText, type AnimatedScene, type Edl } from '@/lib/edl/types';
 
 const scene = (over: Partial<AnimatedScene> = {}): AnimatedScene => ({
-  id: 'sc1', outStartSec: 4, outEndSec: 8, kind: 'kinetic-text', backdrop: 'gradient',
+  id: 'sc1', outStartSec: 4, outEndSec: 8, kind: 'kinetic-text', look: 'studio', backdrop: 'gradient',
   headline: 'You do not need a team', items: [], iconQueries: [], iconSvgs: [],
   accent: '#9B7BFF', reason: '', ...over,
 });

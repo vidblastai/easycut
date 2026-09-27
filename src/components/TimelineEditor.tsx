@@ -6,7 +6,8 @@ import { clsx } from 'clsx';
 import type { PlayerRef } from '@remotion/player';
 import { applyOperations, describeOperation, type ClipTrack, type EdlOperation } from '@/lib/edl/operations';
 import { reorderIndexFor, resolveDrag, snapPointsFor, type DragKind } from '@/lib/timeline/drag';
-import { TRANSITION_TYPES, type Edl } from '@/lib/edl/types';
+import { SCENE_KINDS, TRANSITION_TYPES, type Edl } from '@/lib/edl/types';
+import { LOOK_LIST } from '@/lib/scenes/looks';
 
 /**
  * The timeline editor.
@@ -1915,6 +1916,82 @@ function Inspector({
           placeholder="Caption underneath"
           className="mt-2 w-full rounded-lg border border-line bg-ink px-3 py-2 text-xs outline-none focus:border-violet"
         />
+      </div>
+    );
+  }
+
+  if (selection.kind === 'scenes') {
+    const scene = edl.scenes.find((c) => c.id === selection.id);
+    if (!scene) return null;
+    return (
+      <div>
+        <h4 className="text-[11px] font-bold uppercase tracking-wider text-muted/70">Animated scene</h4>
+        {scene.reason ? <p className="mt-1 text-[11px] leading-snug text-faint">{scene.reason}</p> : null}
+
+        <input
+          key={`${scene.id}-h`}
+          defaultValue={scene.headline}
+          onBlur={(e) => onChange({ op: 'clip.update', track: 'scenes', id: scene.id, patch: { headline: e.target.value } })}
+          placeholder="The line this scene says"
+          className="mt-2 w-full rounded-lg border border-line bg-ink px-3 py-2 text-sm outline-none focus:border-violet"
+        />
+        <textarea
+          key={`${scene.id}-i`}
+          defaultValue={scene.items.join('\n')}
+          onBlur={(e) =>
+            onChange({
+              op: 'clip.update',
+              track: 'scenes',
+              id: scene.id,
+              // One per line is the only editing shape that works here: these
+              // are waypoints, sides of a comparison or layers depending on the
+              // kind, and a comma-separated field would swallow the commas that
+              // belong inside an item.
+              patch: { items: e.target.value.split('\n').map((line) => line.trim()).filter(Boolean) },
+            })
+          }
+          rows={4}
+          placeholder={'One item per line'}
+          className="mt-2 w-full resize-none rounded-lg border border-line bg-ink px-3 py-2 text-xs outline-none focus:border-violet"
+        />
+
+        <h5 className="mt-3 text-[11px] font-bold uppercase tracking-wider text-muted/70">Shape</h5>
+        <div className="mt-1.5 flex flex-wrap gap-1.5">
+          {SCENE_KINDS.map((kind) => (
+            <button
+              key={kind}
+              type="button"
+              onClick={() => onChange({ op: 'clip.update', track: 'scenes', id: scene.id, patch: { kind } })}
+              className={clsx(
+                'rounded border px-2 py-0.5 text-[11px] font-semibold',
+                scene.kind === kind ? 'border-violet text-violet' : 'border-line text-muted hover:text-chalk',
+              )}
+            >
+              {kind}
+            </button>
+          ))}
+        </div>
+
+        <h5 className="mt-3 text-[11px] font-bold uppercase tracking-wider text-muted/70">
+          Animation style <span className="font-normal normal-case text-faint">· all scenes</span>
+        </h5>
+        <div className="mt-1.5 flex flex-wrap gap-1.5">
+          {LOOK_LIST.map((look) => (
+            <button
+              key={look.id}
+              type="button"
+              title={look.bestFor}
+              onClick={() => onChange({ op: 'scene.look', look: look.id })}
+              className={clsx(
+                'flex items-center gap-1.5 rounded border px-2 py-0.5 text-[11px] font-semibold capitalize',
+                scene.look === look.id ? 'border-violet text-violet' : 'border-line text-muted hover:text-chalk',
+              )}
+            >
+              <span className="h-2 w-2 rounded-full" style={{ background: look.swatch }} />
+              {look.name}
+            </button>
+          ))}
+        </div>
       </div>
     );
   }

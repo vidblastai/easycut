@@ -1,4 +1,4 @@
-import type { Aspect, CaptionStyle, Layout, TransitionType } from '@/lib/edl/types';
+import type { Aspect, CaptionStyle, Layout, SceneLook, TransitionType } from '@/lib/edl/types';
 import { findCaptionPreset } from '@/lib/captions/presets';
 
 /**
@@ -48,6 +48,16 @@ export interface StylePreset {
   bestFor: string;
   accent: string;
   /**
+   * The world this style's animated scenes are drawn in.
+   *
+   * Separate from `layout` and from `captionPreset` because it answers a
+   * different question: those two decide how the SPEAKER is framed and
+   * lettered, and this one decides what replaces them. A documentary wants
+   * warm film grain over its inserts and a money channel wants dark glow, and
+   * neither preference follows from how the talking head is cropped.
+   */
+  sceneLook: SceneLook;
+  /**
    * How the frame is divided. The picker draws this and the composition renders
    * it, from this one value — see src/lib/styles/layouts.ts.
    */
@@ -85,6 +95,7 @@ export interface StylePreset {
 const RAW_PRESETS: Record<StyleId, Omit<StylePreset, 'captionStyle'>> = {
   clean: {
     id: 'clean',
+    sceneLook: 'studio',
     name: 'Clean',
     tagline: 'Let the message carry it.',
     bestFor: 'Founders, coaches, anyone who wants to look credible rather than loud.',
@@ -124,6 +135,7 @@ const RAW_PRESETS: Record<StyleId, Omit<StylePreset, 'captionStyle'>> = {
 
   punchy: {
     id: 'punchy',
+    sceneLook: 'neon',
     name: 'Punchy',
     tagline: 'Built to stop the scroll.',
     bestFor: 'Short-form creators who need retention in the first two seconds.',
@@ -177,6 +189,7 @@ const RAW_PRESETS: Record<StyleId, Omit<StylePreset, 'captionStyle'>> = {
      * camera being knocked.
      */
     id: 'reaction',
+    sceneLook: 'neon',
     name: 'Reaction',
     tagline: 'Full frame while you talk, in the corner while they look.',
     bestFor: 'Commentary, hot takes, reacting to something — anything where the point is you responding to it.',
@@ -233,6 +246,7 @@ const RAW_PRESETS: Record<StyleId, Omit<StylePreset, 'captionStyle'>> = {
    */
   commentary: {
     id: 'commentary',
+    sceneLook: 'studio',
     name: 'Commentary',
     tagline: 'The thing you are talking about fills the screen. You watch from the corner.',
     bestFor: 'Reacting to an article, a clip or a screenshot — where what you are discussing is worth looking at the whole time.',
@@ -287,6 +301,7 @@ const RAW_PRESETS: Record<StyleId, Omit<StylePreset, 'captionStyle'>> = {
    */
   news: {
     id: 'news',
+    sceneLook: 'studio',
     name: 'Bulletin',
     tagline: 'A headline across the top, the story underneath.',
     bestFor: 'Explaining something that happened — announcements, updates, anything where the headline IS the hook.',
@@ -339,6 +354,7 @@ const RAW_PRESETS: Record<StyleId, Omit<StylePreset, 'captionStyle'>> = {
    */
   stacked: {
     id: 'stacked',
+    sceneLook: 'studio',
     name: 'Chaptered',
     tagline: 'A title card every few seconds, so it never feels long.',
     bestFor: 'Lists, steps and multi-part stories — anything with more than one beat to get through.',
@@ -393,6 +409,7 @@ const RAW_PRESETS: Record<StyleId, Omit<StylePreset, 'captionStyle'>> = {
    */
   tutorial: {
     id: 'tutorial',
+    sceneLook: 'studio',
     name: 'Screencast',
     tagline: 'The screen fills the frame. You narrate from the corner.',
     bestFor: 'Walkthroughs, demos and how-tos — anything where the thing on screen is the lesson.',
@@ -449,6 +466,7 @@ const RAW_PRESETS: Record<StyleId, Omit<StylePreset, 'captionStyle'>> = {
    */
   essay: {
     id: 'essay',
+    sceneLook: 'archive',
     name: 'Essay',
     tagline: 'Letterboxed, unhurried, the words in the bar underneath.',
     bestFor: 'Long arguments and deep dives — where the point is the thinking, not the pace.',
@@ -496,6 +514,7 @@ const RAW_PRESETS: Record<StyleId, Omit<StylePreset, 'captionStyle'>> = {
      picture running underneath the whole time, the words on the seam. */
   split: {
     id: 'split',
+    sceneLook: 'gallery',
     name: 'Split screen',
     tagline: 'Your face on top, something to watch underneath.',
     bestFor: 'Anything people scroll past on mute — the bottom half is what stops the thumb.',
@@ -550,6 +569,7 @@ const RAW_PRESETS: Record<StyleId, Omit<StylePreset, 'captionStyle'>> = {
   },
   documentary: {
     id: 'documentary',
+    sceneLook: 'archive',
     name: 'Documentary',
     tagline: 'Cinematic, patient, considered.',
     bestFor: 'Storytelling, interviews, brand films.',
@@ -589,6 +609,7 @@ const RAW_PRESETS: Record<StyleId, Omit<StylePreset, 'captionStyle'>> = {
 
   explainer: {
     id: 'explainer',
+    sceneLook: 'studio',
     name: 'Explainer',
     tagline: 'Every idea gets a picture.',
     bestFor: 'Teaching, how-tos, product walkthroughs.',
@@ -628,6 +649,7 @@ const RAW_PRESETS: Record<StyleId, Omit<StylePreset, 'captionStyle'>> = {
 
   podcast: {
     id: 'podcast',
+    sceneLook: 'archive',
     name: 'Podcast',
     tagline: 'Long conversations, watchable.',
     bestFor: 'Interviews and long-form talking head.',
@@ -669,6 +691,7 @@ const RAW_PRESETS: Record<StyleId, Omit<StylePreset, 'captionStyle'>> = {
      what you are talking about, and neither one ever cuts away. */
   sidebar: {
     id: 'sidebar',
+    sceneLook: 'studio',
     name: 'Side by side',
     tagline: 'You on the left, what you mean on the right.',
     bestFor: 'Walkthroughs, teardowns, anything where the thing matters as much as the talking.',
@@ -707,6 +730,7 @@ const RAW_PRESETS: Record<StyleId, Omit<StylePreset, 'captionStyle'>> = {
   },
   vlog: {
     id: 'vlog',
+    sceneLook: 'gallery',
     name: 'Vlog',
     tagline: 'Loose, warm, personal.',
     bestFor: 'Day-in-the-life, updates, casual pieces to camera.',

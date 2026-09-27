@@ -5,6 +5,7 @@ import {
   CaptionWordStyleSchema,
   GRAPHIC_TYPES,
   TRANSITION_TYPES,
+  SCENE_LOOKS,
   EdlSchema,
   type CaptionCue,
   type Edl,
@@ -144,6 +145,17 @@ export const EdlOperationSchema = z.discriminatedUnion('op', [
   z.object({ op: z.literal('music.gain'), gainDb: z.number().min(-60).max(6) }),
   z.object({ op: z.literal('music.remove') }),
   z.object({ op: z.literal('transition.set'), id: z.string(), type: z.enum(TRANSITION_TYPES) }),
+
+  /*
+   * The world every animated scene is drawn in.
+   *
+   * One operation for the whole track rather than a patch per scene, because
+   * the look is the video's identity, not a property of one clip: two scenes
+   * ninety seconds apart in different worlds reads as a mistake every time,
+   * and doing it as four `clip.update`s would also leave four separate steps
+   * in the undo stack for what the user experienced as one decision.
+   */
+  z.object({ op: z.literal('scene.look'), look: z.enum(SCENE_LOOKS) }),
 ]);
 
 export type EdlOperation = z.infer<typeof EdlOperationSchema>;
@@ -380,7 +392,13 @@ function applyOne(edl: Edl, op: EdlOperation): Edl {
         // inspector afterwards, and an empty one would draw nothing at all.
         return { ...edl, scenes: [...edl.scenes, {
           id, outStartSec: start, outEndSec: end,
-          kind: 'kinetic-text' as const, backdrop: 'gradient' as const,
+          kind: 'kinetic-text' as const,
+          // Inherits the world the video's other scenes are drawn in. A
+          // hand-added scene in a different look than the two either side of
+          // it would read as a mistake, and the user never asked to change
+          // the style by adding a clip.
+          look: edl.scenes[0]?.look ?? 'studio',
+          backdrop: 'gradient' as const,
           headline: op.value || 'Your line here',
           items: [], iconQueries: [], iconSvgs: [],
           accent: edl.captionStyle.emphasisColor,
@@ -543,6 +561,9 @@ function applyOne(edl: Edl, op: EdlOperation): Edl {
         ...edl,
         transitions: edl.transitions.map((t) => (t.id === op.id ? { ...t, type: op.type } : t)),
       };
+
+    case 'scene.look':
+      return { ...edl, scenes: edl.scenes.map((scene) => ({ ...scene, look: op.look })) };
   }
 }
 
@@ -1062,6 +1083,7 @@ export function describeOperation(op: EdlOperation): string {
     case 'music.gain': return 'Changed the music level';
     case 'music.remove': return 'Removed the music';
     case 'transition.set': return `Changed a transition to ${op.type}`;
+    case 'scene.look': return `Changed the animation style to ${op.look}`;
   }
 }
 

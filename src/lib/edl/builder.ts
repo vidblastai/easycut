@@ -21,6 +21,7 @@ import {
   type TransitionCue,
   type TransitionType,
   type AnimatedScene,
+  type SceneLook,
 } from './types';
 
 /**
@@ -89,7 +90,7 @@ export function buildEdl(input: BuildEdlInput): Edl {
 
   /* --------------------------------- scenes -------------------------------- */
 
-  const scenes = placeScenes(input.scenes ?? [], mapper, durationSec, broll, style.accent);
+  const scenes = placeScenes(input.scenes ?? [], mapper, durationSec, broll, style.accent, style.sceneLook);
 
   /*
    * A video always leaves here with at least one scene in it.
@@ -111,7 +112,7 @@ export function buildEdl(input: BuildEdlInput): Edl {
    */
   const sceneNotes: string[] = [];
   if (!scenes.length) {
-    const rescued = fallbackScene(transcript, mapper, durationSec, broll, style.accent);
+    const rescued = fallbackScene(transcript, mapper, durationSec, broll, style.accent, style.sceneLook);
     if (rescued) {
       scenes.push(rescued);
       // Recorded, because "the model chose this" and "nothing else was left"
@@ -311,6 +312,7 @@ export function placeScenes(
   durationSec: number,
   broll: BrollClip[],
   accent: string,
+  look: SceneLook,
 ): AnimatedScene[] {
   const scenes: AnimatedScene[] = [];
 
@@ -330,6 +332,7 @@ export function placeScenes(
       outStartSec: start,
       outEndSec: end,
       kind: cue.kind,
+      look,
       backdrop: cue.backdrop,
       headline: cue.headline,
       items: cue.items,

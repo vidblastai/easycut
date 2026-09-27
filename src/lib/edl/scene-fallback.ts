@@ -1,6 +1,6 @@
 import type { TimeMapper } from '@/lib/timeline/time-mapper';
 import { deriveSentences, type Transcript } from '@/lib/transcribe/types';
-import type { AnimatedScene, BrollClip, SceneKind } from './types';
+import type { AnimatedScene, BrollClip, SceneKind, SceneLook } from './types';
 
 /**
  * One scene, guaranteed, without asking a model anything.
@@ -170,6 +170,8 @@ export function fallbackScene(
   durationSec: number,
   broll: BrollClip[],
   accent: string,
+  /** The world to draw it in. A rescued scene still belongs to the style. */
+  look: SceneLook = 'studio',
 ): AnimatedScene | null {
   /*
    * Derive the sentences if the transcript arrived without them.
@@ -239,6 +241,7 @@ export function fallbackScene(
     outStartSec: best.startSec,
     outEndSec: best.endSec,
     kind: best.kind,
+    look,
     backdrop: best.kind === 'big-number' ? 'rays' : 'gradient',
     headline: best.headline,
     items: best.items,
