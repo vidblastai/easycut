@@ -1,5 +1,5 @@
 import type { TimeMapper } from '@/lib/timeline/time-mapper';
-import type { Transcript } from '@/lib/transcribe/types';
+import { deriveSentences, type Transcript } from '@/lib/transcribe/types';
 import type { AnimatedScene, BrollClip, SceneKind } from './types';
 
 /**
@@ -168,16 +168,37 @@ export function fallbackScene(
   broll: BrollClip[],
   accent: string,
 ): AnimatedScene | null {
-  const sentences = transcript.sentences ?? [];
+  /*
+   * Derive the sentences if the transcript arrived without them.
+   *
+   * Every provider is supposed to fill this in, and returning null when one
+   * did not was the last silent way for a video to end up with no scene: no
+   * error, no log line, just nothing. Words are always there, and grouping
+   * them is the same work the transcribers do.
+   */
+  const sentences = transcript.sentences?.length
+    ? transcript.sentences
+    : deriveSentences(transcript.words ?? []);
   if (!sentences.length) return null;
 
   const candidates: Candidate[] = [];
+
+  /*
+   * The hook is a share of the video, not a fixed two and a half seconds.
+   *
+   * On a twenty-second video those seconds are the speaker earning attention
+   * and a scene has no business there. On a six-second one they are half the
+   * film, and protecting them plus requiring a readable 2.4 seconds leaves
+   * nowhere legal to put anything — so the clip gets no scene for a reason
+   * that has nothing to do with what is in it.
+   */
+  const hook = Math.min(HOOK_SEC, durationSec * 0.15);
 
   for (const sentence of sentences) {
     const shape = shapeOf(sentence.text);
     if (!shape) continue;
 
-    const start = Math.max(HOOK_SEC, mapper.toOutputClamped(sentence.startSec));
+    const start = Math.max(hook, mapper.toOutputClamped(sentence.startSec));
     const spoken = Math.min(durationSec - 0.3, mapper.toOutputClamped(sentence.endSec));
     if (spoken <= start) continue;
 

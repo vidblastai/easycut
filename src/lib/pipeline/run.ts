@@ -638,7 +638,11 @@ async function stageFinaliseEdl(ctx: PipelineContext): Promise<void> {
     ctx.degraded.push(`budget: dropped ${step} to stay under $${degradation.estimate.budgetUsd}`);
   }
 
-  ctx.edl.degraded = dedupe(ctx.degraded);
+  // Merged, not replaced. The builder writes notes of its own onto the
+  // document — which scene it had to choose itself, and why — and overwriting
+  // this with the pipeline's list threw them away, so a video could report
+  // nothing at all about a layer that had just made a decision.
+  ctx.edl.degraded = dedupe([...ctx.edl.degraded, ...ctx.degraded]);
   ctx.ledger.add('render', degradation.estimate.lines.render, env.render.driver);
   ctx.ledger.add('storage', degradation.estimate.lines.storage, env.storage.driver);
 }

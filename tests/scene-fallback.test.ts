@@ -109,3 +109,28 @@ describe('choosing a scene without asking a model', () => {
     expect(fallbackScene(empty, mapper, 30, [], '#9B7BFF')).toBeNull();
   });
 });
+
+describe('a transcript that arrived without sentence breaks', () => {
+  it('still produces a scene', () => {
+    // Providers are supposed to fill `sentences` in. Returning null when one
+    // did not was the last silent path to a video with no scene in it.
+    let t = 0;
+    const words = 'You can eat the leaves, the stem, and the flowers. It tastes like spinach.'
+      .split(/\s+/)
+      .map((text) => {
+        const w = { text, startSec: t, endSec: t + 0.3, confidence: 1, speaker: 0, isFiller: false, endsSentence: text.endsWith('.') };
+        t += 0.34;
+        return w;
+      });
+    const segments = [{
+      id: 's0', sourceStartSec: 0, sourceEndSec: t, outStartSec: 0, outEndSec: t,
+      speed: 1, reason: 'keep' as const, text: '',
+    }];
+    const scene = fallbackScene(
+      { words, sentences: [], language: 'en' } as unknown as Transcript,
+      new TimeMapper(segments as never),
+      t, [], '#9B7BFF',
+    );
+    expect(scene).not.toBeNull();
+  });
+});
