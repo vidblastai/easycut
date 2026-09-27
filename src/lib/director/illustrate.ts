@@ -1,7 +1,7 @@
 import { env } from '@/lib/config/env';
 import { auditIllustration, parseIllustration, isDrawn, type Illustration } from '@/lib/assets/illustration';
 import type { AnimatedScene, SceneLook } from '@/lib/edl/types';
-import { LOOK_META } from '@/lib/scenes/looks';
+import { guideAsPrompt, styleGuideFor } from '@/lib/scenes/style-guides';
 import { wavespeedPriceFor } from './wavespeed';
 
 /**
@@ -79,6 +79,17 @@ Every top-level \`<g>\` is one piece, in the order it should appear. Three to fi
 - **data-idle** — what it does for the rest of its beat: \`bob\`, \`drift\`, \`sway\`, \`pulse\`, \`tick\` (steps round like a clock hand), \`spin\` (turns continuously — a gear, a ring), \`none\`.
 - **data-pivot** — \`"x y"\` in canvas coordinates, the point this piece turns and scales about. **Required on anything that ticks, spins or sways.** A clock's hands pivot on the pin at the centre of the dial. Get this wrong and the hand does not turn on the clock, it swings around the frame on its own — which is the single ugliest failure this drawing can have.
 
+## One line per beat, saying what moves
+
+Right after the opening \`<svg>\` tag, before the groups, put one \`<desc>\` per beat:
+
+\`<desc data-stage="0">The glow pulses brighter and the two dashed silhouettes fade away one at a time.</desc>\`
+
+One sentence each. Say only what physically CHANGES — not what the picture contains, not the mood, not the camera. These lines are handed to a video model that can already see the drawing, so describing the subject to it makes it draw a second copy of the subject; the change is the only thing it cannot work out for itself. One or two changes, no more, and make them visible in three seconds.
+
+Good: "The hands sweep forward a quarter turn and the pendulum swings."
+Bad: "A clock sits on a plinth in a bright room, conveying the passage of time."
+
 **A connector between every pair of beats.** A dashed curve with an arrowhead, leading from the bottom of one beat into the top of the next, as its own group with \`data-stage\` set to the beat it leads FROM, \`data-enter="draw"\` and \`fill="none"\`. It draws itself just before the camera follows it. This is the piece that turns two beats into one sequence, so do not leave it out.
 
 ## Anything that pivots
@@ -128,36 +139,6 @@ export interface IllustrationResult {
   costUsd: number;
   error?: string;
 }
-
-/**
- * The colours a drawing is allowed to use, per world.
- *
- * Handed to the model as a short list rather than described in words, because
- * "warm and cinematic" produces a different palette every run and the four
- * scenes in one video then look like they came from four different videos.
- */
-const PALETTES: Record<SceneLook, { ground: string; swatch: string[]; note: string }> = {
-  studio: {
-    ground: '#FCFCFD',
-    swatch: ['#0D0D10', '#3A3A46', '#8A8A96', '#E8E8EE', '#FFFFFF'],
-    note: 'Clean product illustration on near-white. Soft neutral fills, one hairline outline weight, generous rounded corners.',
-  },
-  neon: {
-    ground: '#05060F',
-    swatch: ['#FFFFFF', '#B9C3F0', '#4B5BD0', '#1A1F44', '#0A0D22'],
-    note: 'Glowing shapes on near-black. Bright rim-lit edges against dark bodies. No dark-on-dark detail — it disappears.',
-  },
-  gallery: {
-    ground: '#EFF0F4',
-    swatch: ['#22222A', '#6E7180', '#B7BAC6', '#E4E6EC', '#FFFFFF'],
-    note: 'A solid object lit from above, standing on a plinth. Grey marble neutrals, a soft contact shadow under it.',
-  },
-  archive: {
-    ground: '#0B0710',
-    swatch: ['#F6EAD2', '#E0A94E', '#9A6B2A', '#4A2E12', '#160D06'],
-    note: 'Warm amber and cream on near-black, like an object lit by a single lamp. Deep shadows, gold highlights.',
-  },
-};
 
 export function isIllustratorConfigured(): boolean {
   return Boolean(env.llm.wavespeedKey && env.llm.motionModel);
@@ -255,7 +236,7 @@ export async function drawScene(request: IllustrationRequest): Promise<Illustrat
     return { illustration: null, costUsd: 0, error: 'no illustration model configured' };
   }
 
-  const palette = PALETTES[request.look] ?? PALETTES.studio;
+  const guide = styleGuideFor(request.look);
 
   /*
    * Inside a world, the world's colour wins.
@@ -267,17 +248,17 @@ export async function drawScene(request: IllustrationRequest): Promise<Illustrat
    * a neutral world built to carry one saturated colour, so the brand's own
    * accent is exactly what should appear in it.
    */
-  const accent = request.look === 'studio' ? request.accent : LOOK_META[request.look].swatch;
   const words = [request.headline, ...request.items].filter(Boolean).join(' · ');
 
   const brief = `Being said over this shot: "${request.line}"
 
-${words ? `Words the renderer will put on top (do NOT draw them, just leave room): ${words}` : 'No words on this one — the drawing carries it alone.'}
+${
+    words
+      ? `Words the renderer will draw on top afterwards (do NOT draw them, just leave the lower fifth of each beat clear): ${words}`
+      : 'No words on this one — the drawing carries it alone.'
+  }
 
-Background it sits on: ${palette.ground}
-Palette: ${palette.swatch.join(', ')}
-Accent (use sparingly, one or two elements): ${accent}
-Style: ${palette.note}
+${guideAsPrompt(guide, ['palette', 'rendering', 'lighting', 'ground_rule'])}
 
 Draw this as ${STAGES} beats: ${sequenceFor(request.kind)}. Return only the <svg>.`;
 

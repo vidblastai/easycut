@@ -13,6 +13,28 @@ This file is the measured record of four reference edits the user supplied,
 plus the rules that came out of reading them frame by frame. Numbers here were
 counted off real 30fps frames, not guessed.
 
+## One style guide per look
+
+`src/lib/scenes/style-guides.ts` is the single description of a visual world,
+and three readers depend on it: Opus when it draws a scene, Seedance when it
+animates one, and the picker somebody chooses a style from in the app. Three
+descriptions of one style is three styles — the drawing prompt's palette had
+already drifted from the renderer's, and a test caught `studio` being violet
+in one file and green in the other.
+
+A guide is written in terms a model can act on, never in adjectives: named
+colours with hex values ("#1A1F44 — the body of an object, nearly black"), a
+rendering rule, a lighting rule, a ground rule, a motion character, a camera
+language, and a list of what this world never contains. "Warm and cinematic"
+gives a different picture every run; the guide gives the same one.
+
+`guideAsPrompt()` trims it per reader — an SVG has no camera, a video has no
+stroke weight. `LOOK_META` takes its swatch from the guide rather than
+declaring its own, so there is one number.
+
+**Adding a style is adding an entry here.** The prompts, the renderer and the
+picker all pick it up.
+
 ## The picture comes first
 
 The mistake this feature made on its first two passes, both times: it filled
@@ -43,6 +65,32 @@ Rules that came out of getting this wrong:
 - **Under a drawing, items are plain labels.** Not the look's icon chips: an
   icon beside an illustration of the same thing is a second, worse drawing of
   it, and an unresolved one is a grey dot that reads as a loading state.
+
+### Animating a beat instead of playing it back
+
+Five models went through the same frame of the neon look. Every one animated
+it well and every one destroyed rendered type within two seconds. That settles
+the shape of the video path rather than leaving it a preference: Opus draws
+the beat, it is rendered to a plate **with no words on it**, Seedance animates
+the plate, and Remotion draws the caption on top afterwards. The model never
+sees a letter, so it never gets the chance to melt one.
+
+The prompt (`director/animate.ts`) says four things and nothing else:
+
+- **MOTION** — one or two physical changes, and it comes from Opus, via a
+  `<desc data-stage="N">` in the drawing. Only the illustrator knows which
+  group is a clock hand and which is a background.
+- **CAMERA** — one named move, from the style guide.
+- **STYLE** — the guide's own words, so the world cannot drift.
+- **NEVER** — the specific failures these models have, not generic negatives.
+
+The thing NOT to do is describe the subject. The model can already see it, and
+restating it is what made Seedance draw a second figure beside ours.
+
+Pricing: Seedance bills per five-second block and the catalogue's `base_price`
+is the **480p** rate. At 720p it is double — $1.00 per 5s for 2.0 Fast, $1.80
+for 2.5. `billableSeconds()` rounds up to the block and the renderer trims,
+which is both cheaper and better: the last half second is where drift shows.
 
 ### Look at it before using it
 

@@ -74,6 +74,18 @@ export interface ArtPart {
 export interface Illustration {
   /** The coordinate space the parts are drawn in, e.g. "0 0 1000 3000". */
   viewBox: string;
+  /**
+   * What physically happens in each beat, one line each, written by the model
+   * that drew it.
+   *
+   * This is what gets handed to the video model when a scene is animated
+   * rather than played back as vectors. It has to come from the illustrator
+   * because only the illustrator knows which group is a clock hand and which
+   * is a background — a prompt written from the outside can only describe the
+   * picture, and describing the picture to an image-to-video model is how you
+   * get a second copy of the subject drawn beside the first.
+   */
+  motion: string[];
   /** How many beats the camera travels through. At least one. */
   stages: number;
   /**
@@ -160,7 +172,10 @@ export function parseIllustration(markup: string, idPrefix = ''): Illustration |
   // Pulled out before the split, and kept: gradients are referenced from
   // inside the parts and have to survive as a unit.
   const defs = (body.match(/<defs\b[\s\S]*?<\/defs>/gi) ?? []).join('');
-  const inner = body.replace(/<defs\b[\s\S]*?<\/defs>/gi, '');
+  const motion = readMotion(body);
+  const inner = body
+    .replace(/<defs\b[\s\S]*?<\/defs>/gi, '')
+    .replace(/<desc\b[\s\S]*?<\/desc>/gi, '');
 
   const [vbX, vbY, vbW, vbH] = readViewBox(viewBox);
   const centre = { x: vbX + vbW / 2, y: vbY + vbH / 2 };
@@ -183,6 +198,7 @@ export function parseIllustration(markup: string, idPrefix = ''): Illustration |
       ? {
           viewBox,
           defs,
+          motion,
           stages: 1,
           parts: [
             { markup: whole, stage: 0, depth: 0.5, enter: 'pop', idle: 'bob', hasPivot: false, pivot: centre },
@@ -192,7 +208,36 @@ export function parseIllustration(markup: string, idPrefix = ''): Illustration |
   }
 
   const kept = trimToCap(parts);
-  return { viewBox, defs, stages: kept.reduce((most, p) => Math.max(most, p.stage + 1), 1), parts: kept };
+  return {
+    viewBox,
+    defs,
+    motion,
+    stages: kept.reduce((most, p) => Math.max(most, p.stage + 1), 1),
+    parts: kept,
+  };
+}
+
+/**
+ * The per-beat motion lines, from `<desc data-stage="0">…</desc>`.
+ *
+ * `<desc>` rather than an attribute because these are sentences, and an
+ * attribute holding a sentence is a quoting accident waiting to happen. It is
+ * legal SVG, it never renders, and it is stripped out of the parts before they
+ * reach the document.
+ */
+function readMotion(markup: string): string[] {
+  const lines: string[] = [];
+  for (const [, stage, text] of markup.matchAll(
+    /<desc\b[^>]*\bdata-stage=["'](\d+)["'][^>]*>([\s\S]*?)<\/desc>/gi,
+  )) {
+    const index = Number(stage);
+    if (Number.isFinite(index) && index >= 0 && index < MAX_STAGES) {
+      lines[index] = text.replace(/\s+/g, ' ').trim();
+    }
+  }
+  // Holes are normal — a model that labelled two of three beats should not
+  // produce `undefined` in a prompt.
+  return Array.from({ length: lines.length }, (_, i) => lines[i] ?? '');
 }
 
 /** Prefix every id the drawing declares, and every reference to one. */
@@ -414,8 +459,27 @@ export function auditIllustration(art: Illustration, expectedStages: number): st
   }
 
   for (const [stage, parts] of groupByStage(art.parts)) {
-    const box = extentOf(parts);
-    if (!box) continue;
+    /*
+     * The backdrop is exempt from everything below.
+     *
+     * It is REQUIRED to span the whole strip — the camera pans across the join
+     * between beats — so measuring a beat's extent with it included says every
+     * beat is drawn outside its own band. Two rules this file adds in the same
+     * breath, and they contradict each other unless the backdrop is set aside
+     * first.
+     */
+    const subject = parts.filter((part) => part.depth > 0.15);
+    const box = extentOf(subject);
+    if (!box) {
+      // Nothing but backdrop in this beat. Skipping here is how an empty beat
+      // used to get through: it has no extent to measure, so every check that
+      // measures one passed it.
+      problems.push(
+        `Beat ${stage} has nothing in it but the backdrop. The camera pans down to it and finds an empty room — ` +
+          `every beat needs its own subject, drawn properly.`,
+      );
+      continue;
+    }
 
     const top = stage * band;
     if (box.minY < top - band * 0.15 || box.maxY > top + band * 1.15) {
@@ -433,10 +497,7 @@ export function auditIllustration(art: Illustration, expectedStages: number): st
      * width, the coordinates are in the right band — which is why the count has
      * to be of the beat's OWN shapes.
      */
-    const drawn = parts
-      .filter((part) => part.depth > 0.15)
-      .map((part) => part.markup)
-      .join('');
+    const drawn = subject.map((part) => part.markup).join('');
     const shapesHere = (drawn.match(/<(path|circle|rect|line|polyline|polygon|ellipse)\b/gi) ?? []).length;
     // Counted in shapes rather than in groups: a beat can legitimately be two
     // well-drawn pieces, and it can just as easily be six empty ones.
@@ -461,6 +522,29 @@ export function auditIllustration(art: Illustration, expectedStages: number): st
     problems.push(
       `${unpinned.length} group${unpinned.length === 1 ? '' : 's'} rotate (spin/tick/sway) without a data-pivot. A hand or gear with no pivot swings around the frame instead of turning on the spot — give each one the exact point it turns about.`,
     );
+  }
+
+  /*
+   * The backdrop has to run the whole strip.
+   *
+   * The camera pans across the boundary between two beats, so a backdrop that
+   * stops at the end of a beat leaves the screen blank for a third of a second
+   * mid-move. It is the most visible remaining fault in a finished scene and
+   * it is invisible in any single frame of it.
+   */
+  if (art.stages > 1) {
+    const backdrops = art.parts.filter((part) => part.depth <= 0.15);
+    const covers = backdrops.some((part) => {
+      const box = extentOf([part]);
+      return box ? box.maxY - box.minY > height * 0.8 : false;
+    });
+    if (!covers) {
+      problems.push(
+        `No backdrop runs the full height of the strip (y 0 to ${Math.round(height)}). The camera pans between beats and ` +
+          `crosses the join, so it needs one continuous background group at data-depth="0.05" spanning every beat — ` +
+          `a wall, a floor line, a long gradient, a field of texture dots.`,
+      );
+    }
   }
 
   if (!art.parts.some((part) => part.enter === 'draw') && art.stages > 1) {

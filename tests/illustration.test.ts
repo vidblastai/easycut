@@ -225,9 +225,12 @@ describe('auditing a drawing before it is used', () => {
     ).join('') +
     `<path d="M100 ${stage * 1000 + 800} L900 ${stage * 1000 + 800}" stroke="#333" fill="none"/></g>`;
 
+  // One backdrop spanning every beat, because the camera pans across the join.
+  const backdrop = `<g data-stage="0" data-depth="0.05"><rect x="0" y="0" width="1000" height="3000" fill="#eee"/></g>`;
+
   const sound = () =>
     parseIllustration(
-      `<svg viewBox="0 0 1000 3000">${beatAt(0)}${beatAt(1)}${beatAt(2)}` +
+      `<svg viewBox="0 0 1000 3000">${backdrop}${beatAt(0)}${beatAt(1)}${beatAt(2)}` +
         `<g data-stage="0" data-enter="draw"><path d="M500 900 L500 1100" stroke="#333" fill="none"/></g></svg>`,
     )!;
 
@@ -289,7 +292,7 @@ describe('an empty beat', () => {
     const bare = `<g data-stage="1" data-depth="0.05"><rect x="0" y="1000" width="1000" height="1000" fill="#eee"/></g>`;
     const art = parseIllustration(`<svg viewBox="0 0 1000 2000">${full(0)}${bare}` +
       `<g data-stage="0" data-enter="draw"><path d="M500 900 L500 1100" stroke="#333" fill="none"/></g></svg>`)!;
-    expect(auditIllustration(art, 2).join(' ')).toContain('nearly empty');
+    expect(auditIllustration(art, 2).join(' ')).toContain('nothing in it but the backdrop');
   });
 });
 
@@ -306,5 +309,71 @@ describe('trimming a drawing that came back too big', () => {
     expect(art.parts.some((part) => part.stage === 1)).toBe(true);
     expect(art.parts.some((part) => part.stage === 2)).toBe(true);
     expect(art.stages).toBe(3);
+  });
+});
+
+describe('the motion line for each beat', () => {
+  it('reads one <desc> per beat, in beat order', () => {
+    const art = parseIllustration(
+      `<svg viewBox="0 0 1000 2000">` +
+        `<desc data-stage="1">The hands sweep forward a quarter turn.</desc>` +
+        `<desc data-stage="0">The glow pulses and the silhouettes fade away.</desc>` +
+        `<g data-stage="0">${shape(1)}</g><g data-stage="1">${shape(2)}</g></svg>`,
+    );
+    expect(art?.motion).toEqual([
+      'The glow pulses and the silhouettes fade away.',
+      'The hands sweep forward a quarter turn.',
+    ]);
+  });
+
+  it('keeps <desc> out of the drawing', () => {
+    // It is legal SVG and never renders, but it would be inlined into a part
+    // and end up in the document for no reason.
+    const art = parseIllustration(
+      `<svg viewBox="0 0 1000 1000"><desc data-stage="0">Something moves.</desc><g>${shape(1)}</g></svg>`,
+    );
+    expect(markupOf(art)).not.toContain('Something moves');
+  });
+
+  it('leaves a gap rather than a hole when a beat was not labelled', () => {
+    // `undefined` would reach a prompt as the word "undefined".
+    const art = parseIllustration(
+      `<svg viewBox="0 0 1000 2000"><desc data-stage="1">Only this one.</desc>` +
+        `<g data-stage="0">${shape(1)}</g><g data-stage="1">${shape(2)}</g></svg>`,
+    );
+    expect(art?.motion).toEqual(['', 'Only this one.']);
+  });
+
+  it('is empty when the model did not write any', () => {
+    expect(parseIllustration(svg(`<g>${shape(1)}</g>`))?.motion).toEqual([]);
+  });
+});
+
+describe('the backdrop that has to run the whole strip', () => {
+  const body = (stage: number) =>
+    Array.from({ length: 16 }, (_, i) => `<circle cx="${80 + i * 55}" cy="${stage * 1000 + 450}" r="60" fill="#333"/>`).join('');
+  const beat = (stage: number) => `<g data-stage="${stage}" data-depth="0.5">${body(stage)}</g>`;
+  const connector = `<g data-stage="0" data-enter="draw"><path d="M500 900 L500 1100" stroke="#333" fill="none"/></g>`;
+
+  it('complains when every backdrop stops at its own beat', () => {
+    // The pan crosses the join and finds nothing there. Invisible in any
+    // single frame, obvious for a third of a second in the clip.
+    const perBeat = (stage: number) =>
+      `<g data-stage="${stage}" data-depth="0.05"><rect x="0" y="${stage * 1000}" width="1000" height="1000" fill="#eee"/></g>`;
+    const art = parseIllustration(
+      `<svg viewBox="0 0 1000 2000">${perBeat(0)}${beat(0)}${perBeat(1)}${beat(1)}${connector}</svg>`,
+    )!;
+    expect(auditIllustration(art, 2).join(' ')).toContain('full height of the strip');
+  });
+
+  it('accepts one backdrop that spans every beat', () => {
+    const whole = `<g data-stage="0" data-depth="0.05"><rect x="0" y="0" width="1000" height="2000" fill="#eee"/></g>`;
+    const art = parseIllustration(`<svg viewBox="0 0 1000 2000">${whole}${beat(0)}${beat(1)}${connector}</svg>`)!;
+    expect(auditIllustration(art, 2).join(' ')).not.toContain('full height of the strip');
+  });
+
+  it('does not ask a single-beat drawing for one', () => {
+    const art = parseIllustration(`<svg viewBox="0 0 1000 1000">${beat(0)}</svg>`)!;
+    expect(auditIllustration(art, 1).join(' ')).not.toContain('full height of the strip');
   });
 });

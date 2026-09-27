@@ -3,6 +3,7 @@
 // carry the alias. With `@/` here the whole composition fails to bundle, which
 // shows up as a still sheet that silently renders nothing new.
 import { SCENE_LOOKS, type SceneLook } from '../edl/types';
+import { STYLE_GUIDES } from './style-guides';
 
 /**
  * What a look is called and when to reach for it.
@@ -20,7 +21,13 @@ export interface LookMeta {
   name: string;
   /** One line, in the user's language. */
   bestFor: string;
-  /** The colour the picker draws the chip in. */
+  /**
+   * The colour the picker draws the chip in.
+   *
+   * Taken from the style guide rather than written here, because it was
+   * written here and drifted: the picker showed `studio` as green while the
+   * drawing prompt was told the accent was violet. One number, one place.
+   */
   swatch: string;
   /**
    * Type colours, for captions drawn outside the look's own components.
@@ -44,14 +51,13 @@ export interface LookMeta {
   entry: 'cut' | 'fade';
 }
 
-export const LOOK_META: Record<SceneLook, LookMeta> = {
+const NAMED: Record<SceneLook, Omit<LookMeta, 'swatch'>> = {
   studio: {
     id: 'studio',
     name: 'Studio',
     ink: '#0D0D10',
     dim: '#8A8A96',
     bestFor: 'Software, coaching, anything you want to look like a real product.',
-    swatch: '#34D171',
     entry: 'cut',
   },
   neon: {
@@ -60,7 +66,6 @@ export const LOOK_META: Record<SceneLook, LookMeta> = {
     ink: '#FFFFFF',
     dim: '#9AA3C4',
     bestFor: 'Money, mindset and meme edits — loud, dark, built for the scroll.',
-    swatch: '#B14BFF',
     entry: 'cut',
   },
   gallery: {
@@ -69,7 +74,6 @@ export const LOOK_META: Record<SceneLook, LookMeta> = {
     ink: '#22222A',
     dim: '#7C7C88',
     bestFor: 'Comparisons and before/after — objects arriving on a plinth.',
-    swatch: '#C0A062',
     entry: 'cut',
   },
   archive: {
@@ -78,10 +82,13 @@ export const LOOK_META: Record<SceneLook, LookMeta> = {
     ink: '#F6EAD2',
     dim: '#C9A268',
     bestFor: 'Storytelling, history, documentary — warm, heavy, cinematic.',
-    swatch: '#E0A94E',
     entry: 'fade',
   },
 };
+
+export const LOOK_META: Record<SceneLook, LookMeta> = Object.fromEntries(
+  SCENE_LOOKS.map((id) => [id, { ...NAMED[id], swatch: STYLE_GUIDES[id].accent }]),
+) as Record<SceneLook, LookMeta>;
 
 /** For the picker, in the order it should offer them. */
 export const LOOK_LIST: LookMeta[] = SCENE_LOOKS.map((id) => LOOK_META[id]);

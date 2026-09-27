@@ -528,6 +528,8 @@ export const AnimatedSceneSchema = z.object({
       defs: z.string().default(''),
       /** How many beats the camera travels through. At least one. */
       stages: z.number().int().min(1).default(1),
+      /** What physically happens in each beat, for the animation prompt. */
+      motion: z.array(z.string()).default([]),
       /*
        * A part is an object, but a bare string is still accepted and widened.
        *

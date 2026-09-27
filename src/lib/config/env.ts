@@ -169,6 +169,14 @@ export const env = {
   genvideo: {
     enabled: bool('GENERATED_BROLL', false),
     model: str('GENERATED_BROLL_MODEL') ?? 'lightricks/ltx-2-fast/text-to-video',
+    /*
+     * The model that animates a drawn scene into footage.
+     *
+     * Seedance 2.0 Fast by default: 2.5 is visibly better and costs $1.80 per
+     * five seconds against $1.00, which on a four-scene video is $7.20 against
+     * $4 for a gap that barely shows on a three-second insert.
+     */
+    sceneModel: str('SCENE_VIDEO_MODEL') ?? 'bytedance/seedance-2.0-fast/image-to-video',
     /** Never more than this many per video, whatever the director asks for. */
     maxPerVideo: num('GENERATED_BROLL_MAX', 2),
   },

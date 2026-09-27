@@ -63,13 +63,16 @@ async function main() {
         return;
       }
 
-      const { viewBox, defs, parts } = result.illustration;
+      const { viewBox, defs, parts, motion } = result.illustration;
       const markup = defs + parts.map((part) => part.markup).join('\n');
       console.log(
         `  ${name.padEnd(12)} ${parts.length} parts, ${markup.length} chars, ` +
           `${seconds}s, $${result.costUsd.toFixed(4)}\n` +
           `  ${' '.repeat(12)} ${result.illustration.stages} beats · ` +
-          parts.map((p) => `[${p.stage}]${p.enter}/${p.idle}${p.hasPivot ? '\u2713' : ''}`).join(' '),
+          parts.map((p) => `[${p.stage}]${p.enter}/${p.idle}${p.hasPivot ? '\u2713' : ''}`).join(' ') +
+          // The lines that get handed to the video model. Printed because a
+          // missing one is invisible until an animation comes back generic.
+          motion.map((line, i) => `\n  ${' '.repeat(12)} motion[${i}] ${line || '(none)'}`).join(''),
       );
 
       // Each part gets a visible outline in the debug page so a "drawing" that
