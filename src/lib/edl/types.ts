@@ -507,6 +507,20 @@ export const AnimatedSceneSchema = z.object({
    * kind reads without icons.
    */
   iconSvgs: z.array(z.string().nullable()).default([]),
+  /**
+   * The drawing, in the pieces it should arrive in.
+   *
+   * Authored by the motion model (see `director/illustrate.ts`) and split into
+   * top-level groups at build time, so the renderer can bring one part in
+   * every few frames instead of fading a flat picture up. Null is a normal
+   * state, not an error: the scene falls back to its icons, which is worse but
+   * works, and nothing about the drawing pass is allowed to cost a scene its
+   * existence.
+   */
+  art: z
+    .object({ viewBox: z.string(), parts: z.array(z.string()) })
+    .nullable()
+    .default(null),
   accent: z.string().default('#9B7BFF'),
   /** Kept so the editor can show why this moment was chosen. */
   reason: z.string().default(''),
@@ -524,6 +538,20 @@ export type AnimatedScene = z.infer<typeof AnimatedSceneSchema>;
  */
 export function sceneHasText(scene: AnimatedScene): boolean {
   return Boolean(scene.headline.trim()) || scene.items.some((item) => item.trim());
+}
+
+/**
+ * Whether the drawing is carrying this scene, rather than the words.
+ *
+ * Where this is true the layout demotes the type — a small line under a
+ * picture instead of a headline filling the frame. The rule exists because the
+ * failure mode of a generated animation is that everything becomes a caption:
+ * a scene whose content is three words set large is not a motion graphic, it
+ * is a title card, and a video made of title cards is the thing this feature
+ * was supposed to replace.
+ */
+export function sceneIsDrawn(scene: AnimatedScene): boolean {
+  return Boolean(scene.art && scene.art.parts.length);
 }
 
 /* ---------------------------------------------------------------- overlays */

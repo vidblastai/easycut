@@ -247,6 +247,7 @@ export function fallbackScene(
     items: best.items,
     iconQueries: best.iconQueries,
     iconSvgs: best.items.map(() => null),
+    art: null,
     accent,
     reason: 'Chosen from the transcript because the scene pass returned nothing placeable.',
   };

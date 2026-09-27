@@ -337,6 +337,9 @@ export function placeScenes(
       headline: cue.headline,
       items: cue.items,
       iconQueries: cue.iconQueries,
+      // Drawn later, in the assets stage: the selection pass says WHERE and
+      // WHAT, the illustration pass draws it.
+      art: null,
       // Fetched later, in the asset stage — this is the deterministic half.
       iconSvgs: cue.iconQueries.map(() => null),
       accent,

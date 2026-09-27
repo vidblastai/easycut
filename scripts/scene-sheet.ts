@@ -3,6 +3,8 @@ import { join, resolve } from 'node:path';
 import '../src/lib/config/load-env';
 import { EdlSchema, SCENE_KINDS, SCENE_LOOKS, type SceneKind, type SceneLook } from '../src/lib/edl/types';
 import { env } from '../src/lib/config/env';
+import { readFile } from 'node:fs/promises';
+import { parseIllustration } from '../src/lib/assets/illustration';
 import { startAssetServer } from '../src/lib/render/asset-server';
 import { SAMPLE_EDL } from '../remotion/sample-edl';
 
@@ -38,6 +40,9 @@ const CONTENT: Record<SceneKind, { headline: string; items: string[] }> = {
   'big-number': { headline: '95% of your ideas', items: ['never get posted'] },
 };
 
+/** A drawing from `scripts/draw-scene.ts`, when one has been made for this look. */
+let ART: Record<string, { viewBox: string; parts: string[] } | null> = {};
+
 function edlFor(look: SceneLook, kind: SceneKind) {
   const content = CONTENT[kind];
   return EdlSchema.parse({
@@ -57,6 +62,7 @@ function edlFor(look: SceneLook, kind: SceneKind) {
         items: content.items,
         iconQueries: content.items.map(() => ''),
         iconSvgs: content.items.map(() => null),
+        art: ART[look] ?? null,
         accent: '#9B7BFF',
         reason: 'sheet',
       },
@@ -84,6 +90,15 @@ async function main() {
 
   // The programmatic API, not the CLI: `remotion still` runs a version check
   // that trips over this repo's zod pin, and the renderer itself is fine.
+  // Any drawings lying about from `draw-scene.ts` get rendered in place of the
+  // icon layout, so the sheet shows what a real scene looks like rather than
+  // only the fallback.
+  for (const id of SCENE_LOOKS) {
+    const file = (await readFile(`out/drawings/${['studio', 'neon', 'gallery', 'archive'].indexOf(id)}-${id}.svg`, 'utf8').catch(() => null));
+    ART[id] = file ? parseIllustration(file) : null;
+  }
+  console.log(`drawings found: ${Object.entries(ART).filter(([, a]) => a).map(([k]) => k).join(', ') || 'none'}`);
+
   const assets = await startAssetServer(process.cwd());
   SOURCE = assets.urlFor(resolve(SOURCE_FILE)) ?? '';
   if (!SOURCE) throw new Error(`Cannot serve ${SOURCE_FILE}`);

@@ -1,11 +1,13 @@
 import React from 'react';
 import { AbsoluteFill, Sequence, useCurrentFrame, useVideoConfig } from 'remotion';
-import type { AnimatedScene, Edl } from '../../src/lib/edl/types';
+import { sceneIsDrawn, type AnimatedScene, type Edl } from '../../src/lib/edl/types';
 import { FONT_FAMILY } from '../lib/fonts';
-import { easeOutCubic, kf } from '../lib/motion';
+import { easeOutCubic, kf, riseIn, stagger, transformOf } from '../lib/motion';
 import { lookFor } from '../looks';
+import { LOOK_META } from '../../src/lib/scenes/looks';
 import type { Arrange, Look, LookContext } from '../looks/contract';
 import { NeonProps } from '../looks/neon';
+import { Illustration, artSettlesAt } from './Illustration';
 
 /**
  * Faceless animation: the scenes that replace the picture.
@@ -127,6 +129,18 @@ const Arrangement: React.FC<{ ctx: LookContext; look: Look }> = ({ ctx, look }) 
     gap: ctx.unit * 46,
   };
 
+  /*
+   * A drawing outranks the layout.
+   *
+   * When the illustration pass has drawn this scene, the picture IS the scene
+   * and everything else is a label under it — and that is a correction, not a
+   * preference. Left to arrange slots, every kind here fills the frame with
+   * type, and a video whose animated inserts are all big words set on a
+   * gradient is a video of title cards. The words are still there; they are
+   * just the size a caption should be.
+   */
+  if (sceneIsDrawn(scene)) return <Drawn ctx={ctx} look={look} centred={centred} />;
+
   switch (scene.kind) {
     case 'big-number': {
       const { value, label } = splitFigure(scene.headline, items[0] ?? '');
@@ -185,6 +199,86 @@ const Arrangement: React.FC<{ ctx: LookContext; look: Look }> = ({ ctx, look }) 
         </AbsoluteFill>
       );
   }
+};
+
+/**
+ * A scene the model drew.
+ *
+ * The drawing assembles first, filling most of the frame, and the words come
+ * in AFTER it has settled — never alongside. Two things arriving at once on a
+ * full-screen insert gives the eye nowhere to go, and the reference edits all
+ * do it in this order: the picture, then the line about it.
+ *
+ * The bottom third is kept for the type, which is also what the drawing pass
+ * is told to leave emptier, so the two agree about where the words go.
+ */
+const Drawn: React.FC<{ ctx: LookContext; look: Look; centred: React.CSSProperties }> = ({ ctx, look, centred }) => {
+  const { scene } = ctx;
+  const art = scene.art!;
+  const items = scene.items.filter((item) => item.trim());
+
+  // Square, sized off the SHORT side of the frame, so one drawing composes the
+  // same way in 9:16 and 16:9 instead of overflowing one of them.
+  const size = Math.min(ctx.width * 0.94, ctx.height * 0.62);
+  const settled = artSettlesAt(art, 1);
+
+  return (
+    <AbsoluteFill style={{ ...centred, flexDirection: 'column', gap: ctx.unit * 30 }}>
+      <Illustration art={art} at={1} size={size} />
+      {scene.headline ? (
+        // Never `hero`, whatever the kind: the picture is the hero here, and a
+        // headline at hero size next to a drawing fights it for the frame.
+        <look.Title ctx={ctx} text={scene.headline} at={settled} />
+      ) : null}
+      {items.length && scene.kind !== 'big-number' ? (
+        <DrawnLabels ctx={ctx} look={look} items={items.slice(0, 3)} at={settled + 5} />
+      ) : null}
+      <Props ctx={ctx} look={look} />
+    </AbsoluteFill>
+  );
+};
+
+/**
+ * The items under a drawing: words only, no chips.
+ *
+ * A look's `Group` slot draws each item as an icon in a circle, which is right
+ * when the icons ARE the picture and wrong here — under an illustration that
+ * already shows the things, an icon chip is a second, worse drawing of the
+ * same thing, and where no icon resolved it is a grey dot that reads as a
+ * loading state.
+ */
+const DrawnLabels: React.FC<{ ctx: LookContext; look: Look; items: string[]; at: number }> = ({
+  ctx,
+  look,
+  items,
+  at,
+}) => {
+  const frame = useCurrentFrame();
+  const meta = LOOK_META[look.id];
+
+  return (
+    <div style={{ display: 'flex', gap: ctx.unit * 44, justifyContent: 'center', flexWrap: 'wrap' }}>
+      {items.map((item, i) => {
+        const entry = riseIn(frame, at + stagger(i), ctx.unit * 16, 9);
+        return (
+          <span
+            key={`${item}-${i}`}
+            style={{
+              fontSize: ctx.unit * 32,
+              fontWeight: 700,
+              letterSpacing: '-0.01em',
+              color: meta.dim,
+              textAlign: 'center',
+              opacity: entry.opacity,
+              transform: transformOf(entry),
+            }}
+          >
+            {item}
+          </span>
+        );
+      })}
+    </div>
+  );
 };
 
 /**

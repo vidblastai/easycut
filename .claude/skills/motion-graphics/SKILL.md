@@ -13,6 +13,58 @@ This file is the measured record of four reference edits the user supplied,
 plus the rules that came out of reading them frame by frame. Numbers here were
 counted off real 30fps frames, not guessed.
 
+## The picture comes first
+
+The mistake this feature made on its first two passes, both times: it filled
+the frame with **type**. Every kind arranged words, the looks styled words
+beautifully, and the result was a video whose animated inserts were title
+cards. The user's correction was blunt and right — *"we want icons and
+illustrations, not just text."*
+
+So there are now two ways a scene can be drawn, and the first one wins:
+
+1. **Illustrated** (`scene.art`). The motion model draws the thing being
+   described as an SVG, in `<g id="part-N">` groups, and the renderer brings
+   the parts in one at a time. The picture fills the frame; the words become a
+   caption under it. `Drawn` in `Scenes.tsx`, ahead of the kind switch.
+2. **Icons and type** (no `art`). The original slot layout. It is the FALLBACK
+   — what a scene looks like when the drawing pass failed — and it must stay
+   good, because it is what ships when the model is down.
+
+Rules that came out of getting this wrong:
+
+- **Words are labels, not content.** headline ≤ 6 words, items 1–2 words each,
+  enforced in `sanitiseScenes` rather than asked for in the prompt. A model
+  that has just read a transcript will hand back the whole sentence.
+- **At least one scene per video should have no words at all.**
+- **Nothing arrives alongside the drawing.** The art assembles, and the type
+  comes in after it settles (`artSettlesAt`). Two things at once on a
+  full-screen insert gives the eye nowhere to go.
+- **Under a drawing, items are plain labels.** Not the look's icon chips: an
+  icon beside an illustration of the same thing is a second, worse drawing of
+  it, and an unresolved one is a grey dot that reads as a loading state.
+
+### What the drawing pass needs to be told
+
+Measured over several rounds with `scripts/draw-scene.ts`:
+
+- **"Fill the canvas"** is the single highest-value instruction. Left to
+  itself the model composes small and centred, which on a phone is a postage
+  stamp in an empty frame. Give it a number: the bounding box spans ≥800 of
+  1000 units.
+- **Ask for parts, explicitly and with a reason.** Without "the renderer brings
+  them in one at a time" it returns one group and the drawing can only fade.
+- **Ban `<text>`.** Otherwise it letters the drawing itself, in a different
+  typeface, and the scene ends up saying everything twice.
+- **Hand it a literal palette**, five hex values. "Warm and cinematic" produces
+  a different palette every call and four scenes in one video then look like
+  four different videos.
+- **Inside a world, the world's colour wins.** The brand accent goes to
+  `studio` only; everywhere else the look's own swatch is the accent, or you
+  get a violet arrow in a gold documentary frame.
+- Cost is real: roughly **$0.06 and 30 seconds per drawing**, run in parallel,
+  so about $0.35 on a six-scene video.
+
 ## The one architectural rule
 
 **A look is not a kind.** Two axes, kept apart:
@@ -122,11 +174,28 @@ that drifts.
 3. Register it in `remotion/looks/index.ts`.
 4. Give it a line in the `look` enum description in
    `src/lib/director/scenes.ts` so the model knows when to choose it.
-5. Render a still at the midpoint and look at it before claiming it works:
-   `npx tsx scripts/scene-still.ts <look> <kind>`.
+5. Add its palette to `PALETTES` in `src/lib/director/illustrate.ts`, or the
+   model will draw it in the default world's colours.
+6. Render stills and look at them before claiming it works:
+   `npx tsx scripts/scene-sheet.ts [look] [kind] [frame]`.
 
 ## Verifying
 
-Render stills, do not reason about it. A scene that is broken is usually
-broken visibly and instantly — lost centring, clipped text, an invisible
-element. `scripts/scene-still.ts` writes a PNG per look/kind pair.
+Render stills, do not reason about it. Every failure this layer has had was
+invisible in the diff and obvious in a PNG: a dial that positioned itself
+against the whole frame, a rule scaled by a string's length running off the
+edge, a headline stacked one word per line, a flex `gap` in `em` resolving
+against the container's font size so a headline rendered as one unbroken word.
+
+    npx tsx scripts/draw-scene.ts ["a line"] [look]   # ask the model to draw
+    npx tsx scripts/scene-sheet.ts [look] [kind]      # every look x every kind
+
+`scene-sheet` picks up whatever `draw-scene` left in `out/drawings/`, so the
+sheet shows illustrated scenes rather than only the icon fallback.
+
+**Read the output, do not grep it for failures.** A bundling error kills the
+script before it renders anything, so a run that reported "0 failures" was
+once a run that rendered nothing at all and left yesterday's PNGs in place.
+The specific trap: `src/` modules imported by the Remotion bundle must use
+RELATIVE imports — Remotion's webpack config does not carry the `@/` alias,
+and one `@/` import in a shared file fails the whole composition silently.

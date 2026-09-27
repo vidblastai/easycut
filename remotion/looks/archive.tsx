@@ -125,7 +125,9 @@ const Title: React.FC<{ ctx: LookContext; text: string; at: number; hero?: boole
         // In ems, not units: the gap between groups IS the space between words,
         // and a fixed pixel gap reads as a double space at small sizes and as a
         // missing one at large.
-        gap: `${ctx.unit * 2}px 0.3em`,
+        // Derived from the type size, in pixels: `em` here would resolve
+        // against the container's font size, not the words'.
+        gap: `${size * 0.06}px ${size * 0.28}px`,
         maxWidth: ctx.width * 0.86,
       }}
     >

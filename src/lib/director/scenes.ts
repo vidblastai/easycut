@@ -63,6 +63,8 @@ const SYSTEM = `You pick the moments in a talking-head video that should become 
 
 A scene REPLACES the speaker. For as long as it is on, the viewer sees a drawn picture and hears a voice. You are looking for the passages where the words describe something the eye could hold better than the ear can, and where losing the speaker for a few seconds costs nothing.
 
+**The scene is a PICTURE, not a slide of text.** An illustrator draws the thing being described afterwards, from your choice; you are writing the caption that goes under the drawing, not the drawing itself. So prefer passages with something in them you could DRAW — an object, a place, a process, a contrast you can see. A sentence whose only content is an abstract claim can still be a scene, but it is the weakest kind, and a video whose scenes are all of them is a video of title cards.
+
 **Work in two steps, in this order.** First read the whole transcript and list, in "considered", every passage that has one of the six shapes below — one short line each, naming the passage and the shape. Then choose the best ones, up to the budget, and write those into "scenes". Do the listing first and do it honestly: the way this task goes wrong is deciding "nothing here" before looking, and a transcript almost always has more shapes in it than the budget allows.
 
 A passage qualifies only if it has a SHAPE. There are six, and they are your six scene kinds:
@@ -82,12 +84,13 @@ Note how low the bar for kinetic-text is, deliberately: one short line that IS t
 
 Rules that matter as much as the choice:
 
-1. **Use the speaker's own words.** headline and items come from what is actually said, trimmed — not paraphrased, not improved, not summarised into marketing language. If the animation says something the voice does not, the video sounds like two people.
+1. **Use the speaker's own words, and few of them.** headline and items are lifted from what is actually said, trimmed — not paraphrased, not improved, not summarised into marketing language. If the animation says something the voice does not, the video sounds like two people.
+1b. **Keep the words short.** headline is at most SIX words, and four is better; items are one or two words each. These are labels on a picture, and anything longer stops being a label and starts being a paragraph on screen. Where the drawing will say it on its own, leave headline empty — a scene with no words at all is a good scene, not an incomplete one, and at least one scene in a video should be that.
 2. **Fit the window to the sentence.** startSec and endSec must cover the passage that describes the scene and stop when it does. Never run past the end of the thought.
 3. **Never cover a hook.** The opening seconds are the speaker earning attention. Leave them alone.
 4. **Never two scenes back to back.** Leave at least four seconds of speaker between them, or the video stops being a talking-head video.
 5. **items must match the kind.** journey and stack: the steps in order. compare: exactly two. orbit: the parts, three to five. big-number: one item, the label under the figure. kinetic-text: empty.
-6. **iconQueries** are one concrete noun each, parallel to items — "rocket", "shield", "clock", "credit card". Leave an entry empty if nothing concrete fits; a wrong icon is worse than none.
+6. **iconQueries** are one concrete noun each, parallel to items — "rocket", "shield", "clock", "credit card". Leave an entry empty if nothing concrete fits; a wrong icon is worse than none. These are the fallback for when the illustrator cannot draw the scene, so name the most literal object in the sentence.
 7. **backdrop** sets the mood: gradient (default, calm), grid (technical, product), dots (light, friendly), rays (energy, a reveal), solid (when the content is busy and needs room).`;
 
 function briefFor(transcript: Transcript, plan: DirectorPlan, sourceSec: number, budget: number): string {
@@ -310,6 +313,15 @@ async function askForScenes(
  * one over the opening seconds where the speaker is still earning attention.
  * Checking is cheap; a video that drops the presenter for eleven seconds is not.
  */
+/** Keep the first n words, dropping any punctuation left dangling at the cut. */
+export function trimToWords(n: number): (text: string) => string {
+  return (text) => {
+    const words = text.trim().split(/\s+/).filter(Boolean);
+    if (words.length <= n) return text.trim();
+    return words.slice(0, n).join(' ').replace(/[,;:\-–—]$/, '');
+  };
+}
+
 export function sanitiseScenes(scenes: PlannedScene[], sourceDurationSec: number): PlannedScene[] {
   const HOOK_SEC = 2.5;
   const GAP_SEC = 4;
@@ -340,11 +352,17 @@ export function sanitiseScenes(scenes: PlannedScene[], sourceDurationSec: number
       : clipped.kind === 'kinetic-text' ? clipped.headline.trim().length > 0
       : items.length >= 2;
 
-    kept.push(
-      usable
-        ? { ...clipped, items }
-        : { ...clipped, kind: 'kinetic-text', items: [], iconQueries: [] },
-    );
+    const trimmed = usable
+      ? { ...clipped, items: items.map(trimToWords(3)) }
+      : { ...clipped, kind: 'kinetic-text' as const, items: [], iconQueries: [] };
+
+    // The word budget, enforced rather than asked for.
+    //
+    // The prompt says six words; a model that has just read a transcript
+    // returns the whole sentence often enough that the difference shows up as
+    // an insert with a paragraph set across it. Truncating here is blunt, but
+    // a label cut short still reads as a label, and a paragraph never does.
+    kept.push({ ...trimmed, headline: trimToWords(6)(trimmed.headline) });
   }
 
   return kept;

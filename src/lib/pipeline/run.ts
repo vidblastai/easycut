@@ -7,6 +7,7 @@ import { direct, planWindows } from '@/lib/director';
 import { designScenes, isScenePassConfigured, type PlannedScene } from '@/lib/director/scenes';
 import { buildEdl } from '@/lib/edl/builder';
 import { stripLayers } from '@/lib/edl/layers';
+import { illustrateScenes, isIllustratorConfigured } from '@/lib/director/illustrate';
 import { fallbackScene } from '@/lib/edl/scene-fallback';
 import { ASPECT_DIMENSIONS, type Aspect, type Edl } from '@/lib/edl/types';
 import {
@@ -594,6 +595,65 @@ async function stageAssets(ctx: PipelineContext): Promise<void> {
 
   ctx.edl = resolved.edl;
   ctx.degraded.push(...resolved.degraded);
+
+  await drawScenes(ctx);
+}
+
+/**
+ * Opus draws each scene, after the track has settled.
+ *
+ * Here rather than earlier because this is the first point where the scenes
+ * are final: placed in output time, survivors of `stripLayers`, and including
+ * the rescued one. Drawing them in the selection pass would mean paying for
+ * art on scenes that are then dropped, and drawing them before the rescue
+ * would leave the one scene most likely to be the ONLY scene as the only one
+ * without a picture.
+ *
+ * Nothing in here can fail the stage. A scene with no drawing falls back to
+ * its icons and its words, which is the layout this feature shipped with — so
+ * the worst case of the whole illustration pass is the previous version of it.
+ */
+async function drawScenes(ctx: PipelineContext): Promise<void> {
+  if (!ctx.edl?.scenes.length || !ctx.transcript) return;
+  if (!isIllustratorConfigured()) {
+    ctx.degraded.push('scene illustrations (no motion model configured)');
+    return;
+  }
+
+  const mapper = new TimeMapper(ctx.edl.segments);
+  const transcript = ctx.transcript;
+
+  const { drawn, costUsd, errors } = await illustrateScenes(ctx.edl.scenes, (scene) =>
+    // What is actually being SAID under this scene, in source time — the
+    // drawing has to illustrate the sentence, and the scene's own headline is
+    // at most a handful of words off it.
+    spokenBetween(transcript, mapper.toSource(scene.outStartSec), mapper.toSource(scene.outEndSec)) ||
+    [scene.headline, ...scene.items].filter(Boolean).join('. '),
+  );
+
+  if (costUsd > 0) ctx.ledger.add('director', costUsd, 'scene art');
+
+  ctx.edl = {
+    ...ctx.edl,
+    scenes: ctx.edl.scenes.map((scene) => ({ ...scene, art: drawn.get(scene.id) ?? null })),
+  };
+
+  const missing = ctx.edl.scenes.length - drawn.size;
+  if (missing > 0) {
+    ctx.degraded.push(
+      `${missing} scene${missing === 1 ? '' : 's'} drawn from icons instead of an illustration` +
+        (errors.length ? ` (${errors[0]})` : ''),
+    );
+  }
+}
+
+/** The words spoken in a source-time window, joined back into a sentence. */
+function spokenBetween(transcript: { words: Array<{ startSec: number; text: string }> }, fromSec: number, toSec: number): string {
+  return transcript.words
+    .filter((word) => word.startSec >= fromSec - 0.15 && word.startSec < toSec)
+    .map((word) => word.text)
+    .join(' ')
+    .trim();
 }
 
 /* ----------------------------------------------------------------- 9. edl */

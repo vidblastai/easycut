@@ -1,4 +1,8 @@
-import { SCENE_LOOKS, type SceneLook } from '@/lib/edl/types';
+// A relative import, not the `@/` alias: this module is pulled in by the
+// Remotion bundle as well as by Next, and Remotion's webpack config does not
+// carry the alias. With `@/` here the whole composition fails to bundle, which
+// shows up as a still sheet that silently renders nothing new.
+import { SCENE_LOOKS, type SceneLook } from '../edl/types';
 
 /**
  * What a look is called and when to reach for it.
@@ -19,6 +23,16 @@ export interface LookMeta {
   /** The colour the picker draws the chip in. */
   swatch: string;
   /**
+   * Type colours, for captions drawn outside the look's own components.
+   *
+   * A scene the model illustrated puts its labels under the picture rather
+   * than through a slot, and it still has to be in the world's ink — white
+   * text on the gallery's white fog is the obvious failure, and it is not one
+   * the look would ever make about itself.
+   */
+  ink: string;
+  dim: string;
+  /**
    * How the scene meets the footage either side of it.
    *
    * Three of the four cut hard, and that is most of why the reference edits
@@ -34,6 +48,8 @@ export const LOOK_META: Record<SceneLook, LookMeta> = {
   studio: {
     id: 'studio',
     name: 'Studio',
+    ink: '#0D0D10',
+    dim: '#8A8A96',
     bestFor: 'Software, coaching, anything you want to look like a real product.',
     swatch: '#34D171',
     entry: 'cut',
@@ -41,6 +57,8 @@ export const LOOK_META: Record<SceneLook, LookMeta> = {
   neon: {
     id: 'neon',
     name: 'Neon',
+    ink: '#FFFFFF',
+    dim: '#9AA3C4',
     bestFor: 'Money, mindset and meme edits — loud, dark, built for the scroll.',
     swatch: '#B14BFF',
     entry: 'cut',
@@ -48,6 +66,8 @@ export const LOOK_META: Record<SceneLook, LookMeta> = {
   gallery: {
     id: 'gallery',
     name: 'Gallery',
+    ink: '#22222A',
+    dim: '#7C7C88',
     bestFor: 'Comparisons and before/after — objects arriving on a plinth.',
     swatch: '#C0A062',
     entry: 'cut',
@@ -55,6 +75,8 @@ export const LOOK_META: Record<SceneLook, LookMeta> = {
   archive: {
     id: 'archive',
     name: 'Archive',
+    ink: '#F6EAD2',
+    dim: '#C9A268',
     bestFor: 'Storytelling, history, documentary — warm, heavy, cinematic.',
     swatch: '#E0A94E',
     entry: 'fade',

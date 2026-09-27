@@ -97,9 +97,14 @@ const Title: React.FC<{ ctx: LookContext; text: string; at: number; hero?: boole
           display: 'flex',
           flexWrap: 'wrap',
           justifyContent: 'center',
-          // In ems, not units: the gap between words IS the space between them,
-          // and a fixed pixel gap reads as a double space at small sizes.
-          gap: `${ctx.unit * 4}px 0.28em`,
+          /*
+           * Derived from the type size, in pixels.
+           *
+           * `gap` in `em` resolves against the CONTAINER's font size, not the
+           * children's — so an 0.28em gap between 157px words came out as four
+           * pixels and the headline rendered as one unbroken word.
+           */
+          gap: `${size * 0.22}px ${size * 0.26}px`,
           maxWidth: ctx.width * 0.82,
         }}
       >
