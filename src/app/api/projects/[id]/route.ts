@@ -85,6 +85,10 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
       thumbnailUrl: project.thumbnailUrl,
       socialCaption: project.socialCaption,
       hashtags: parseJson<string[]>(project.hashtags, []),
+      // The layers this project was created without. Surfaced because a scene
+      // that was built and then stripped looks exactly like one that was never
+      // built, and telling those apart took three rounds of guessing.
+      layersOff: parseJson<string[]>(project.layersOff, []),
       costUsd: project.costUsd,
       costReport: parseJson(project.costReport, {}),
       createdAt: project.createdAt,

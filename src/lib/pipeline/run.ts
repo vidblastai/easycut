@@ -7,6 +7,7 @@ import { direct, planWindows } from '@/lib/director';
 import { designScenes, isScenePassConfigured, type PlannedScene } from '@/lib/director/scenes';
 import { buildEdl } from '@/lib/edl/builder';
 import { stripLayers } from '@/lib/edl/layers';
+import { fallbackScene } from '@/lib/edl/scene-fallback';
 import { ASPECT_DIMENSIONS, type Aspect, type Edl } from '@/lib/edl/types';
 import {
   detectSilence,
@@ -553,6 +554,37 @@ async function stageAssets(ctx: PipelineContext): Promise<void> {
   // Declined layers come out BEFORE the assets are fetched: a B-roll clip
   // nobody asked for is a download and a bill as well as a layer.
   const wanted = stripLayers(built, ctx.request.layersOff ?? []);
+
+  /*
+   * The scene guarantee, enforced AFTER the strip rather than before it.
+   *
+   * The builder already promises one. The promise was being made on the wrong
+   * side of this line: whatever `stripLayers` does to the track runs after the
+   * builder has finished, so a scene could be created, counted, reported as
+   * created, and removed here — leaving a video with none and a log that said
+   * everything worked. Three rounds of testing looked exactly like the model
+   * declining, and it was not.
+   *
+   * So the rule lives where it can actually hold: if the layer was NOT
+   * declined, this video has a scene in it by the time it leaves this
+   * function, whatever happened upstream. If it was declined, it has none.
+   * Nothing between those two statements gets a say.
+   */
+  if (!(ctx.request.layersOff ?? []).includes('scenes') && !wanted.scenes.length) {
+    const rescued = fallbackScene(
+      ctx.transcript!,
+      new TimeMapper(wanted.segments),
+      wanted.format.durationSec,
+      wanted.broll,
+      ctx.style.accent,
+    );
+    if (rescued) {
+      wanted.scenes = [rescued];
+      ctx.degraded.push(`animated scene added from the transcript (${rescued.kind})`);
+    } else {
+      ctx.degraded.push('animated scenes (nothing in the transcript could carry one)');
+    }
+  }
 
   const resolved = await resolveAssets(wanted, {
     mode: ctx.mode,
