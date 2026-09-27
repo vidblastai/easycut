@@ -97,9 +97,12 @@ describe('keeping a scene plan honest', () => {
     expect(sanitiseScenes([scene({ startSec: 42, endSec: 47 })], finished)).toHaveLength(0);
   });
 
-  it('budgets roughly one scene per half minute, capped', () => {
-    expect(sceneBudget(20)).toBe(1);
+  it('never budgets fewer than two, so a short video can carry more than one', () => {
+    // One allowed scene on an eighteen-second clip reads as the layer not
+    // having run at all.
+    expect(sceneBudget(18)).toBe(2);
     expect(sceneBudget(60)).toBe(2);
+    expect(sceneBudget(150)).toBe(6);
     expect(sceneBudget(600)).toBe(6);
   });
 });

@@ -363,7 +363,14 @@ async function stageDirect(ctx: PipelineContext): Promise<void> {
     if (pass.error) {
       ctx.degraded.push(`animated scenes (${pass.error})`);
     } else if (!pass.scenes.length) {
-      ctx.degraded.push('animated scenes (no passage in this video had a shape worth animating)');
+      // Say what it looked at, not just that it found nothing. "It saw three
+      // candidates and drew none" and "there was genuinely nothing there" are
+      // different failures and used to read identically.
+      ctx.degraded.push(
+        pass.considered.length
+          ? `animated scenes (saw ${pass.considered.length} candidate(s) but drew none: ${pass.considered.join('; ').slice(0, 200)})`
+          : 'animated scenes (no passage in this video had a shape worth animating)',
+      );
     }
   } else {
     // The rule-based editor has no transcript worth reading, so there is

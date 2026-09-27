@@ -29,6 +29,19 @@ import { wavespeedPriceFor } from './wavespeed';
 
 const API_BASE = 'https://llm.wavespeed.ai/v1';
 
+/**
+ * Unwrap a ```json fence, if the model added one.
+ *
+ * It is asked for JSON and given a strict schema, and it still occasionally
+ * returns the object inside a markdown code fence. `JSON.parse` then throws on
+ * the first backtick, the whole pass reports an error, and the video silently
+ * gets no scenes — one run in five, for a formatting habit.
+ */
+function stripFence(text: string): string {
+  const fenced = text.match(/```(?:json)?\s*([\s\S]*?)```/i);
+  return (fenced ? fenced[1] : text).trim();
+}
+
 /** Long enough for the eye to read it, short enough not to lose the speaker. */
 const MIN_SCENE_SEC = 2.4;
 const MAX_SCENE_SEC = 6.5;
@@ -48,7 +61,9 @@ export type PlannedScene = z.infer<typeof PlannedSceneSchema>;
 
 const SYSTEM = `You pick the moments in a talking-head video that should become a full-screen animated scene, and you say what that scene contains.
 
-A scene REPLACES the speaker. For as long as it is on, the viewer sees a drawn picture and hears a voice. That is a real cost: if you cover a moment that needed a face, the video gets worse. You are looking for the opposite — the passages where the words describe something the eye could hold better than the ear can, and where losing the speaker for a few seconds costs nothing.
+A scene REPLACES the speaker. For as long as it is on, the viewer sees a drawn picture and hears a voice. You are looking for the passages where the words describe something the eye could hold better than the ear can, and where losing the speaker for a few seconds costs nothing.
+
+**Work in two steps, in this order.** First read the whole transcript and list, in "considered", every passage that has one of the six shapes below — one short line each, naming the passage and the shape. Then choose the best ones, up to the budget, and write those into "scenes". Do the listing first and do it honestly: the way this task goes wrong is deciding "nothing here" before looking, and a transcript almost always has more shapes in it than the budget allows.
 
 A passage qualifies only if it has a SHAPE. There are six, and they are your six scene kinds:
 
@@ -59,9 +74,11 @@ A passage qualifies only if it has a SHAPE. There are six, and they are your six
 - stack — things building on each other, where the order is cumulative rather than chronological. Layers, foundations, "on top of that".
 - big-number — a single figure that carries the whole sentence.
 
-If a passage does not have one of these shapes, it does not get a scene — a scene over a passage that is just the speaker talking is the failure this task is most prone to, and returning fewer than the budget is always allowed.
+A passage with none of these shapes does not get a scene — a scene over someone simply talking is a wasted one.
 
-But do not read that as a reason to return nothing. Almost every explanatory video has at least one passage with one of these shapes in it, and kinetic-text is a low bar on purpose: a single short line that IS the point — a claim, a rule, the sentence the video exists to deliver — qualifies on its own. **If you can find even one passage that genuinely has one of these six shapes, use it.** Only an empty list when the footage really has none: pure narrative, pure anecdote, someone thinking out loud.
+**But "considered" and "scenes" must agree.** If you listed anything in "considered", then "scenes" must contain at least one of them: having found a shape and then drawn nothing is the single most common way to get this wrong, and it is always wrong. Both lists are empty only when the footage genuinely has no shape in it at all — pure narrative, pure anecdote, someone thinking out loud.
+
+Note how low the bar for kinetic-text is, deliberately: one short line that IS the point — a claim, a rule, the sentence the video exists to deliver — qualifies on its own. A list of named parts said in one breath ("the captions, the B-roll, the effects") is an orbit. A figure said with any weight at all is a big-number. These are common; treat them as the normal case, not as exceptions.
 
 Rules that matter as much as the choice:
 
@@ -85,7 +102,9 @@ function briefFor(transcript: Transcript, plan: DirectorPlan, sourceSec: number,
   return `Transcript covers ${sourceSec.toFixed(1)}s of footage. At most ${budget} scene${budget === 1 ? '' : 's'}.
 Moments already covered by B-roll (do not put a scene on these): ${covered}
 
-Return {"scenes": [...]} and nothing else. Fill in "reason" with one short line naming the shape you saw in that passage — it is shown to the person editing.
+If you listed more candidates than the budget allows, fill the budget — returning one scene when you are allowed two, having found three, is leaving the video worse than it could be. Spread them out; they cannot sit next to each other.
+
+Return {"considered": [...], "scenes": [...]} as raw JSON, with no code fence and nothing else. Fill in "reason" with one short line naming the shape you saw in that passage — it is shown to the person editing.
 
 Transcript:
 ${lines}`;
@@ -94,8 +113,19 @@ ${lines}`;
 const jsonSchema = {
   type: 'object',
   additionalProperties: false,
-  required: ['scenes'],
+  required: ['considered', 'scenes'],
   properties: {
+    /*
+     * Written BEFORE `scenes`, and that ordering is the point.
+     *
+     * Asked only for a list of scenes, the model would sometimes answer `[]`
+     * on a transcript that plainly contained one — three identical runs on the
+     * same eighteen seconds returned 0, 1, 1. It was deciding "nothing here"
+     * without going through the footage. Making it enumerate what it can see
+     * first, in a field the schema forces it to fill in first, turns a
+     * judgement call into a two-step task: find the shapes, then pick.
+     */
+    considered: { type: 'array', items: { type: 'string' } },
     scenes: {
       type: 'array',
       items: {
@@ -127,11 +157,20 @@ const jsonSchema = {
  * animation with a voice over it.
  */
 export function sceneBudget(durationSec: number): number {
-  return Math.max(1, Math.min(6, Math.round(durationSec / 30)));
+  // Floor of two, because one is the same as none for a short video: an
+  // eighteen-second clip with three candidates in it was being allowed a
+  // single scene, which made the layer feel like it had not run. The spacing
+  // rules below (four seconds of speaker between scenes, 2.4s to 6.5s each)
+  // already stop a video turning into an animation reel, so the budget can
+  // afford to be generous and let the guards do the limiting.
+  return Math.max(2, Math.min(6, Math.round(durationSec / 25)));
 }
 
 export interface ScenePassResult {
   scenes: PlannedScene[];
+  /** What it spotted before choosing. Kept for the log: scenes empty while
+   *  this is not is the failure mode worth seeing rather than guessing at. */
+  considered: string[];
   costUsd: number;
   model: string;
   error?: string;
@@ -164,9 +203,42 @@ export async function designScenes(
   sourceDurationSec: number,
   finishedDurationSec: number = sourceDurationSec,
 ): Promise<ScenePassResult> {
+  /*
+   * Ask twice if the first answer is nothing.
+   *
+   * On identical input this returns a scene most of the time and an empty list
+   * the rest — not because the transcript is borderline, but because "is there
+   * anything here" is a judgement the model sometimes short-circuits. Measured
+   * on eighteen seconds of footage with three clear candidates in it, single
+   * runs came back 0, 1, 1. A second ask costs about a cent and turns a coin
+   * flip into a near-certainty, and an empty answer twice over is worth
+   * believing.
+   */
+  const first = await askForScenes(transcript, plan, sourceDurationSec, finishedDurationSec);
+  if (first.scenes.length) return first;
+
+  // Including after an error: a malformed answer is the most worth retrying,
+  // and returning the first failure meant a stray code fence cost the video
+  // its scenes outright.
+  const second = await askForScenes(transcript, plan, sourceDurationSec, finishedDurationSec);
+  return {
+    ...second,
+    // Both attempts were paid for either way.
+    costUsd: first.costUsd + second.costUsd,
+    considered: second.considered.length ? second.considered : first.considered,
+    error: second.scenes.length ? undefined : (second.error ?? first.error),
+  };
+}
+
+async function askForScenes(
+  transcript: Transcript,
+  plan: DirectorPlan,
+  sourceDurationSec: number,
+  finishedDurationSec: number,
+): Promise<ScenePassResult> {
   const model = env.llm.motionModel;
   if (!isScenePassConfigured()) {
-    return { scenes: [], costUsd: 0, model, error: 'no scene model configured' };
+    return { scenes: [], considered: [], costUsd: 0, model, error: 'no scene model configured' };
   }
 
   try {
@@ -200,10 +272,10 @@ export async function designScenes(
       choices?: Array<{ message?: { content?: string } }>;
       usage?: { prompt_tokens?: number; completion_tokens?: number };
     };
-    const text = body.choices?.[0]?.message?.content ?? '';
+    const text = stripFence(body.choices?.[0]?.message?.content ?? '');
     if (!text.trim()) throw new Error('empty response');
 
-    const raw = JSON.parse(text) as { scenes?: unknown[] };
+    const raw = JSON.parse(text) as { scenes?: unknown[]; considered?: unknown[] };
     const scenes = sanitiseScenes(
       (raw.scenes ?? [])
         .map((s) => PlannedSceneSchema.safeParse(s))
@@ -217,10 +289,12 @@ export async function designScenes(
       ((body.usage?.prompt_tokens ?? 0) / 1_000_000) * pricing.inputPerMTok +
       ((body.usage?.completion_tokens ?? 0) / 1_000_000) * pricing.outputPerMTok;
 
-    return { scenes, costUsd, model };
+    const considered = (raw.considered ?? []).filter((c): c is string => typeof c === 'string');
+    return { scenes, considered, costUsd, model };
   } catch (error) {
     return {
       scenes: [],
+      considered: [],
       costUsd: 0,
       model,
       error: error instanceof Error ? error.message : String(error),
