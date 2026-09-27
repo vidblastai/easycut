@@ -56,8 +56,14 @@ async function main() {
     duration: 5,
     resolution: '720p',
   };
-  // Not every model takes one, and an unknown key is a 400 on most of them.
-  if (!model.includes('ltx') && !model.includes('pixverse')) input.aspect_ratio = '9:16';
+  /*
+   * Aspect ratio only where there is no picture to read it from.
+   *
+   * An image-to-video model takes the frame shape from the image it was given,
+   * and several of them reject the key outright — Seedance 2.5 has no
+   * `aspect_ratio` in its schema at all, and an unknown key is a 400.
+   */
+  if (wantsMany) input.aspect_ratio = '9:16';
 
   const started = Date.now();
   const submit = await fetch(`${API_BASE}/${model}`, {
