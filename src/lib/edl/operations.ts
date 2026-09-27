@@ -38,7 +38,7 @@ import {
 
 /* ─────────────────────────────────────────────────────────── schema ─── */
 
-export const CLIP_TRACKS = ['broll', 'graphics', 'overlays', 'punchIns', 'sfx', 'transitions'] as const;
+export const CLIP_TRACKS = ['broll', 'graphics', 'overlays', 'punchIns', 'scenes', 'sfx', 'transitions'] as const;
 export type ClipTrack = (typeof CLIP_TRACKS)[number];
 
 export const EdlOperationSchema = z.discriminatedUnion('op', [
@@ -197,7 +197,9 @@ function writeTime(edl: Edl, track: ClipTrack, id: string, start: number, end: n
 }
 
 /** Tracks where two items on screen at once is incoherent rather than merely busy. */
-const EXCLUSIVE_TRACKS: ClipTrack[] = ['broll', 'graphics', 'punchIns'];
+// Scenes join these: two full-frame animations cannot share a moment, and a
+// scene on top of B-roll would hide it completely.
+const EXCLUSIVE_TRACKS: ClipTrack[] = ['broll', 'graphics', 'punchIns', 'scenes'];
 
 /* ───────────────────────────────────────────────────── apply ─── */
 
@@ -370,6 +372,19 @@ function applyOne(edl: Edl, op: EdlOperation): Edl {
           id, outStartSec: start, outEndSec: end, kind: 'stock-video' as const,
           url: '', clipStartSec: 0, scale: 1, kenBurns: 'in' as const,
           audioGainDb: -60, opacity: 1, intent: 'Added by hand', query: op.value, attribution: undefined,
+        }] };
+      }
+      if (op.track === 'scenes') {
+        // A hand-added scene starts as the words you typed on a plain ground.
+        // Everything else about it — the kind, the items — is changed from the
+        // inspector afterwards, and an empty one would draw nothing at all.
+        return { ...edl, scenes: [...edl.scenes, {
+          id, outStartSec: start, outEndSec: end,
+          kind: 'kinetic-text' as const, backdrop: 'gradient' as const,
+          headline: op.value || 'Your line here',
+          items: [], iconQueries: [], iconSvgs: [],
+          accent: edl.captionStyle.emphasisColor,
+          reason: 'Added by hand.',
         }] };
       }
       if (op.track === 'graphics') {
@@ -1054,6 +1069,7 @@ function trackNoun(track: ClipTrack): string {
   switch (track) {
     case 'broll': return 'a B-roll insert';
     case 'graphics': return 'a graphic';
+    case 'scenes': return 'an animated scene';
     case 'overlays': return 'an overlay';
     case 'punchIns': return 'a punch-in';
     case 'sfx': return 'a sound effect';

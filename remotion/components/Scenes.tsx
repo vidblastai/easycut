@@ -514,8 +514,19 @@ const Orbit: React.FC<{ scene: AnimatedScene; durationInFrames: number }> = ({ s
    * plenty, so the ring is squashed to match the shape it lives in.
    */
   const rx = Math.min(unit * 300, width * 0.32);
-  const ry = Math.min(unit * 330, height * 0.21);
+  const ry = Math.min(unit * 360, height * 0.235);
   const core = pop(frame, fps, 0, true);
+
+  /*
+   * The centre shrinks as its line gets longer.
+   *
+   * At one size a four-word headline is a neat plate and a nine-word one is
+   * four stacked lines that grow up into the chip above and down into the one
+   * below. The ring cannot move — it is sized to the frame — so the thing in
+   * the middle of it has to give way.
+   */
+  const words = scene.headline.trim().split(/\s+/).length;
+  const coreSize = words > 6 ? unit * 30 : words > 4 ? unit * 36 : unit * 42;
 
   return (
     <AbsoluteFill style={{ alignItems: 'center', justifyContent: 'center' }}>
@@ -526,14 +537,15 @@ const Orbit: React.FC<{ scene: AnimatedScene; durationInFrames: number }> = ({ s
             left: '50%',
             top: '50%',
             transform: `translate(-50%, -50%) scale(${core})`,
-            padding: `${unit * 26}px ${unit * 40}px`,
-            borderRadius: unit * 28,
+            padding: `${unit * 22}px ${unit * 32}px`,
+            borderRadius: unit * 26,
             background: scene.accent,
             color: '#0D0D10',
-            fontSize: unit * 42,
+            fontSize: coreSize,
             fontWeight: 800,
+            lineHeight: 1.15,
             textAlign: 'center',
-            maxWidth: unit * 420,
+            maxWidth: rx * 1.3,
             boxShadow: `0 ${unit * 22}px ${unit * 60}px -${unit * 18}px ${scene.accent}`,
           }}
         >

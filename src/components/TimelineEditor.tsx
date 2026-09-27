@@ -1265,36 +1265,33 @@ function TimelineEditorImpl({
           </Track>
 
           {/*
-            Scenes, shown rather than editable — for now.
+            Scenes get their own track, above the footage.
 
-            A scene is the one thing on this timeline that takes the speaker off
-            the screen, so the first question anybody has is "where does it do
-            that, and what does it say while it does". That is what this row
-            answers. Dragging and trimming them needs the same reducer support
-            every other clip track has and is not here yet; deleting one is a
-            re-run away.
+            They are the one thing on this timeline that takes the speaker off
+            the screen, so they read better as a lane of their own than as
+            something buried in the video row — and being a real clip track
+            means they move, trim and delete like everything else.
           */}
-          {edl.scenes.length ? (
-            <Track label="Scenes" labelHint={`${edl.scenes.length}`}>
-              {edl.scenes.map((scene) => {
-                const left = scene.outStartSec * pps;
-                const width = Math.max(8, (scene.outEndSec - scene.outStartSec) * pps);
-                return (
-                  <div
-                    key={scene.id}
-                    title={`${scene.kind} · ${scene.headline}${scene.reason ? `\n${scene.reason}` : ''}`}
-                    style={{ left: TRACK_LABEL_W + left, width }}
-                    className="absolute top-1 bottom-1 overflow-hidden rounded-md border border-violet/60 bg-violet/20 px-2 py-1 text-left"
-                  >
-                    <span className="block truncate text-[10px] font-bold uppercase tracking-wider text-violet">
-                      {scene.kind}
-                    </span>
-                    <span className="block truncate text-[11px] text-chalk">{scene.headline}</span>
-                  </div>
-                );
-              })}
-            </Track>
-          ) : null}
+          <Track label="Scenes" labelHint={`${edl.scenes.length}`}>
+            {edl.scenes.map((scene) => {
+              const g = geometry(scene.id, scene.outStartSec, scene.outEndSec);
+              return (
+                <Clip
+                  key={scene.id}
+                  id={scene.id}
+                  track="scenes"
+                  left={g.start * pps}
+                  width={Math.max(6, (g.end - g.start) * pps)}
+                  selected={selection?.kind === 'scenes' && selection.id === scene.id}
+                  dragging={dragPreview?.id === scene.id}
+                  tone="scene"
+                  startSec={g.start}
+                  endSec={g.end}
+                  text={scene.headline || scene.kind}
+                />
+              );
+            })}
+          </Track>
 
           <Track label="B-roll" labelHint={`${edl.broll.length}`}>
             {edl.broll.map((clip) => {
@@ -1714,6 +1711,9 @@ const TONES: Record<string, string> = {
   broll: 'bg-ok/20 border-ok/40 text-chalk',
   graphic: 'bg-warn/20 border-warn/40 text-chalk',
   punch: 'bg-bad/15 border-bad/35 text-chalk',
+  // The loudest tone on the timeline, because a scene is the loudest thing in
+  // the video: for those seconds there is no footage at all.
+  scene: 'bg-violet/45 border-violet text-chalk font-semibold',
 };
 
 const Clip = React.memo(function Clip({
@@ -2148,6 +2148,10 @@ function AddMenu({ atSec, onAdd }: { atSec: number; onAdd: (op: EdlOperation) =>
           </div>
           <MenuItem onClick={() => add({ op: 'clip.add', track: 'punchIns', atSec, durationSec: 2, value: '', id: freshId('punchIns') })}>
             Punch-in
+          </MenuItem>
+          <MenuItem onClick={() => add({ op: 'clip.add', track: 'scenes', atSec, durationSec: 3.5, value: 'Your line here', id: freshId('scenes') })}>
+            Animated scene
+            <span className="block text-[10px] font-normal text-muted">3.5s &mdash; covers the speaker</span>
           </MenuItem>
           <div className="border-t border-line-soft px-3 pt-2 pb-1 text-[10px] font-bold uppercase tracking-wider text-faint">
             Transition

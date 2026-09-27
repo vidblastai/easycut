@@ -131,7 +131,10 @@ function shapeOf(text: string): { kind: SceneKind; headline: string; items: stri
 
   const listed = listedThings(clean);
   if (listed) {
-    return { kind: 'orbit', headline: listed.headline.slice(0, 60), items: listed.items, bonus: 40 };
+    // Trimmed to a plate's worth. A nine-word title in the middle of an orbit
+    // stacks to five lines and grows into the chips either side of it.
+    const title = listed.headline.split(/\s+/).slice(0, 6).join(' ');
+    return { kind: 'orbit', headline: title, items: listed.items, bonus: 40 };
   }
 
   const figure = clean.match(NUMBER);

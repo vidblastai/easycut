@@ -490,6 +490,19 @@ export const AnimatedSceneSchema = z.object({
 });
 export type AnimatedScene = z.infer<typeof AnimatedSceneSchema>;
 
+/**
+ * Whether a scene puts words on the screen.
+ *
+ * This decides whether the captions get out of its way. Two sets of words over
+ * one picture — the caption band saying one thing while a kinetic-text scene
+ * says another, half a beat apart — is unreadable, and it is the reason the
+ * rule exists. A scene that is only shapes and icons has no such quarrel, so
+ * the captions stay.
+ */
+export function sceneHasText(scene: AnimatedScene): boolean {
+  return Boolean(scene.headline.trim()) || scene.items.some((item) => item.trim());
+}
+
 /* ---------------------------------------------------------------- overlays */
 
 export const OVERLAY_TYPES = ['lower-third', 'progress-bar', 'chapter-card', 'end-card', 'watermark', 'vignette', 'grain'] as const;

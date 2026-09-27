@@ -1,6 +1,6 @@
 import React from 'react';
 import { AbsoluteFill, interpolate, useCurrentFrame, useVideoConfig } from 'remotion';
-import type { CaptionCue, CaptionStyle, CaptionWord, Edl } from '../../src/lib/edl/types';
+import { sceneHasText, type CaptionCue, type CaptionStyle, type CaptionWord, type Edl } from '../../src/lib/edl/types';
 import { ensureCaptionFont } from '../lib/fonts';
 import { pop } from '../lib/timing';
 import {
@@ -76,7 +76,28 @@ export const Captions: React.FC<{ edl: Edl; positionY?: number | null; lowDetail
     return map;
   }, [edl.captions, edl.captionStyle.emphasisStyle?.fontFamily, edl.captionStyle.lineTwoStyle?.fontFamily]);
 
-  const cue = edl.captions.find((c) => outSec >= c.startSec && outSec < c.endSec);
+  /*
+   * Captions stand down while a scene is doing the talking.
+   *
+   * A kinetic-text scene IS the sentence, set large in the middle of the
+   * frame; running the caption band underneath it puts the same words on
+   * screen twice, half a beat out of step, and the eye cannot read either. A
+   * scene made only of shapes and icons has no such quarrel, so it does not
+   * take the captions away — see `sceneHasText`.
+   *
+   * Decided here rather than baked into the document, because a scene can be
+   * moved, trimmed or deleted in the editor and the captions underneath it
+   * have to come straight back.
+   */
+  const covered = React.useMemo(
+    () => edl.scenes.filter(sceneHasText).map((s) => [s.outStartSec, s.outEndSec] as const),
+    [edl.scenes],
+  );
+  const silenced = covered.some(([from, to]) => outSec >= from && outSec < to);
+
+  const cue = silenced
+    ? undefined
+    : edl.captions.find((c) => outSec >= c.startSec && outSec < c.endSec);
 
   /*
    * The card AFTER this one, drawn early and almost invisibly.
