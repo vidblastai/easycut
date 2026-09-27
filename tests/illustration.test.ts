@@ -62,10 +62,10 @@ describe('splitting a drawing into its parts', () => {
   });
 
   it('caps the number of parts', () => {
-    // Higher than it was, because a part is now a piece of one BEAT rather
-    // than of the whole scene — three beats of four pieces is normal.
-    const many = Array.from({ length: 30 }, (_, i) => `<g>${shape(i)}</g>`).join('');
-    expect(parseIllustration(svg(many))?.parts.length).toBeLessThanOrEqual(14);
+    // Counted across the whole strip: three beats of five pieces plus two
+    // connectors is seventeen, so the cap has to clear that.
+    const many = Array.from({ length: 40 }, (_, i) => `<g>${shape(i)}</g>`).join('');
+    expect(parseIllustration(svg(many))?.parts.length).toBeLessThanOrEqual(22);
   });
 });
 
@@ -290,5 +290,21 @@ describe('an empty beat', () => {
     const art = parseIllustration(`<svg viewBox="0 0 1000 2000">${full(0)}${bare}` +
       `<g data-stage="0" data-enter="draw"><path d="M500 900 L500 1100" stroke="#333" fill="none"/></g></svg>`)!;
     expect(auditIllustration(art, 2).join(' ')).toContain('nearly empty');
+  });
+});
+
+describe('trimming a drawing that came back too big', () => {
+  it('takes the extra parts from the fullest beat, never off the end', () => {
+    // `slice(0, cap)` takes them all off the END of the strip, which leaves
+    // the last beat without a subject and the camera panning to an empty
+    // room. That shipped once.
+    const many =
+      Array.from({ length: 24 }, (_, i) => `<g data-stage="0">${shape(i)}</g>`).join('') +
+      `<g data-stage="1">${shape(90)}</g><g data-stage="2">${shape(91)}</g>`;
+    const art = parseIllustration(svg(many))!;
+    expect(art.parts.length).toBeLessThanOrEqual(22);
+    expect(art.parts.some((part) => part.stage === 1)).toBe(true);
+    expect(art.parts.some((part) => part.stage === 2)).toBe(true);
+    expect(art.stages).toBe(3);
   });
 });

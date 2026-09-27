@@ -92,10 +92,12 @@ export interface Illustration {
 /**
  * Parts beyond this are past the point where a viewer reads them arriving.
  *
- * Higher than it was, because a part is now a piece of ONE BEAT rather than of
- * the whole scene: three beats of four pieces each is a normal drawing.
+ * Counted across the whole strip, so it has to cover every beat: three beats
+ * of five pieces plus two connectors is seventeen, and a cap of fourteen
+ * silently ate the last beat — which then failed the audit as "nearly empty",
+ * triggered a repair, and got truncated again in exactly the same place.
  */
-const MAX_PARTS = 14;
+const MAX_PARTS = 22;
 
 /** Beats beyond this cannot each get long enough on screen to be read. */
 const MAX_STAGES = 4;
@@ -189,7 +191,7 @@ export function parseIllustration(markup: string, idPrefix = ''): Illustration |
       : null;
   }
 
-  const kept = parts.slice(0, MAX_PARTS);
+  const kept = trimToCap(parts);
   return { viewBox, defs, stages: kept.reduce((most, p) => Math.max(most, p.stage + 1), 1), parts: kept };
 }
 
@@ -471,6 +473,29 @@ export function auditIllustration(art: Illustration, expectedStages: number): st
   }
 
   return problems;
+}
+
+/**
+ * Drop parts down to the cap, taking them from the busiest beat.
+ *
+ * `slice(0, cap)` takes them all off the END of the strip, which is the worst
+ * possible place: the last beat loses its subject and the camera pans down to
+ * an empty room. Trimming the fullest beat instead keeps every beat drawn.
+ */
+function trimToCap(parts: ArtPart[]): ArtPart[] {
+  if (parts.length <= MAX_PARTS) return parts;
+
+  const kept = [...parts];
+  while (kept.length > MAX_PARTS) {
+    const counts = new Map<number, number>();
+    for (const part of kept) counts.set(part.stage, (counts.get(part.stage) ?? 0) + 1);
+    const fullest = [...counts.entries()].sort((a, b) => b[1] - a[1])[0][0];
+    // The last piece of that beat: the earlier ones establish it, and a
+    // connector is never the last piece of a beat it leads from.
+    const index = kept.map((part) => part.stage).lastIndexOf(fullest);
+    kept.splice(index, 1);
+  }
+  return kept;
 }
 
 function groupByStage(parts: ArtPart[]): Array<[number, ArtPart[]]> {
