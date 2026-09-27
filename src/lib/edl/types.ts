@@ -485,8 +485,10 @@ export type SceneBackdrop = (typeof SCENE_BACKDROPS)[number];
  *   neon     dark glow: one lit glyph, a huge gradient title, drifting props
  *   gallery  a bright fogged colonnade, objects arriving on a plinth
  *   archive  cinematic amber, film-strip bars, a push-in that never stops
+ *   editorial  near-black and violet: heavy type on magenta highlight strips,
+ *              huge cropped foreground curves, rim-lit metal objects
  */
-export const SCENE_LOOKS = ['studio', 'neon', 'gallery', 'archive'] as const;
+export const SCENE_LOOKS = ['studio', 'neon', 'gallery', 'archive', 'editorial'] as const;
 export type SceneLook = (typeof SCENE_LOOKS)[number];
 
 export const AnimatedSceneSchema = z.object({

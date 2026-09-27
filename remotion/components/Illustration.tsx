@@ -69,13 +69,14 @@ export const Illustration: React.FC<{
   art: Art;
   /** Frame the first beat starts on, relative to the scene. */
   at: number;
-  /** Rendered width and height, in pixels. */
-  size: number;
+  /** The frame the drawing fills, in pixels. */
+  width: number;
+  height: number;
   /** How long the scene runs, so the beats can be paced across all of it. */
   durationInFrames: number;
   /** Anything seeded — drift direction, idle phases — hangs off this. */
   seed: string;
-}> = ({ art, at, size, durationInFrames, seed }) => {
+}> = ({ art, at, width: frameWidth, height: frameHeight, durationInFrames, seed }) => {
   const frame = useCurrentFrame();
 
   /*
@@ -89,6 +90,21 @@ export const Illustration: React.FC<{
    */
   const [minX, minY, width] = parseViewBox(art.viewBox);
   const band = bandHeight(art, width);
+
+  /*
+   * COVER, not contain.
+   *
+   * The drawing is the scene's background as well as its subject, so a band
+   * that does not reach the frame edge leaves a strip of something else
+   * showing — and something else behind a picture is the second background
+   * this layer is not allowed to have. `slice` crops the overflow instead of
+   * letterboxing it.
+   *
+   * A band drawn 9:16 covers exactly. A square one, from before beats were
+   * asked for in the frame's own shape, crops at the sides — which is worse
+   * than ideal and much better than a panel.
+   */
+  const cover = Math.max(frameWidth / width, frameHeight / band);
   const cx = minX + width / 2;
 
   const plan = planStages(art.stages, at, durationInFrames);
@@ -97,9 +113,16 @@ export const Illustration: React.FC<{
   return (
     <svg
       viewBox={`${minX} ${minY} ${width} ${band}`}
-      width={size}
-      height={size}
-      style={{ overflow: 'hidden', display: 'block' }}
+      width={width * cover}
+      height={band * cover}
+      preserveAspectRatio="xMidYMid slice"
+      style={{
+        display: 'block',
+        position: 'absolute',
+        left: (frameWidth - width * cover) / 2,
+        top: (frameHeight - band * cover) / 2,
+        overflow: 'hidden',
+      }}
     >
       {/*
         Gradients first, and outside the camera group: a `<defs>` is never

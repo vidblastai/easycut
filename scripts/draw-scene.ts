@@ -11,6 +11,7 @@ const GROUND: Record<SceneLook, string> = {
   neon: '#05060F',
   gallery: '#EFF0F4',
   archive: '#0B0710',
+  editorial: '#030105',
 };
 
 /**

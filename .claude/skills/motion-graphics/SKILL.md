@@ -13,6 +13,31 @@ This file is the measured record of four reference edits the user supplied,
 plus the rules that came out of reading them frame by frame. Numbers here were
 counted off real 30fps frames, not guessed.
 
+## One background, and the drawing is it
+
+The bug worth naming, because it was invisible to me and instant to the user:
+a drawn scene was painting the look's decorative ground AND the illustration's
+own backdrop on top of it, inset. Two backgrounds, so the art read as a panel
+floating on somebody else's wallpaper — *"there's a background on the
+background, this looks very low quality"*.
+
+The rule now: **a drawn scene has exactly one background and the drawing owns
+it.** `Scenes.tsx` paints a flat fill of the guide's `ground` colour instead of
+the look's ground, and the illustration renders `cover` at full frame size, so
+it reaches every edge. Beats are asked for at **1000 × 1778** — the frame's own
+aspect — because a square beat mathematically cannot cover a 9:16 frame, which
+is what left a margin for a second background to show through in the first
+place.
+
+Consequences to hold onto:
+
+- The backdrop group must reach all four edges of the strip. Any gap it leaves
+  is a hole, not a margin.
+- The caption is an overlay on the art, anchored to the lower part of the frame
+  the drawing was told to keep clear — not a sibling sitting under a picture.
+- Art drawn before this change is square-banded and crops at the sides. It
+  still renders; it just wastes width.
+
 ## One style guide per look
 
 `src/lib/scenes/style-guides.ts` is the single description of a visual world,
@@ -180,6 +205,24 @@ What the prompt has to say, or the model returns a picture anyway:
 Where the scene has one item per beat, the **caption follows the beat** —
 "it's not about money", then, further down the board, "it's all about timing".
 A fixed caption over a travelling sequence undoes most of what it was for.
+
+## Borrowed art direction
+
+The `editorial` guide came from a reference edit the user supplied with a
+written breakdown. Three things in that breakdown were worth taking whole,
+and they generalise past that one style:
+
+- **The signature is never the colour.** "Purple text with an icon" is not the
+  reference; near-black with ONE localised violet pool, oversized cropped
+  curves in the foreground, and rim-lit metal is. When a style reads as cheap,
+  the missing thing is usually structure, not saturation.
+- **Three depth planes, deliberately different.** Cropped foreground, focal
+  group, dim satellites — distinct in scale, sharpness and how much they
+  respond to the camera. The drawing prompt now asks for this by `data-depth`
+  band, because three groups at the same depth waste the parallax and the
+  flatness shows at once.
+- **"Do not treat glow as a substitute for design."** If it would not read in
+  flat grey, more bloom will not save it.
 
 ## It must never stop moving
 

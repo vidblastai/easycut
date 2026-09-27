@@ -39,11 +39,19 @@ import { wavespeedPriceFor } from './wavespeed';
 
 const API_BASE = 'https://llm.wavespeed.ai/v1';
 
-/** One beat's square. The strip is this tall per beat. */
+/**
+ * One beat, in the shape of the frame it will fill.
+ *
+ * Square was wrong, and visibly so: a square beat cannot cover a 9:16 frame,
+ * so something else showed around it and the drawing read as a panel floating
+ * on someone else's background. A beat is 1000 x 1778 — the frame's own
+ * aspect — and the strip is that tall per beat.
+ */
 const CANVAS = 1000;
-const TWO = CANVAS * 2;
+const BEAT = 1778;
+const TWO = BEAT * 2;
 /** Three beats, which is the default the prompt is written around. */
-const TALL = CANVAS * 3;
+const TALL = BEAT * 3;
 
 const SYSTEM = `You draw one moment of a video as a single SVG — not a picture, but a short sequence that plays out.
 
@@ -53,7 +61,7 @@ It is shown full-screen for a few seconds while someone talks over it. It IS the
 
 The canvas is a tall strip with the beats of the sequence stacked down it, and the camera travels down the strip as the voice moves on. Beat 0 is the top ${CANVAS}x${CANVAS} square, beat 1 is the next one down, and so on.
 
-\`<svg viewBox="0 0 ${CANVAS} ${TALL}" xmlns="http://www.w3.org/2000/svg">\` for three beats — height is ${CANVAS} per beat.
+\`<svg viewBox="0 0 ${CANVAS} ${TALL}" xmlns="http://www.w3.org/2000/svg">\` for three beats — each beat is ${CANVAS} wide by ${BEAT} tall, the shape of a phone screen.
 
 **Two or three beats.** Each one is a thing the viewer looks at, and then leaves behind. What the camera does at the end of a beat is follow an arrow down to the next one, so the beat that was on screen slides up and out and the next thing rises into view. Think:
 
@@ -65,7 +73,7 @@ The canvas is a tall strip with the beats of the sequence stacked down it, and t
 
 That is a sequence. "A wallet, a note and a clock arranged side by side" is not — it is a picture, and it is the thing to avoid.
 
-**Each beat is drawn INSIDE its own square.** Beat 1's shapes have y coordinates between ${CANVAS} and ${TWO}, beat 2's between ${TWO} and ${TALL}. Nothing straddles a boundary except a connector.
+**Each beat is drawn INSIDE its own panel.** Beat 0's shapes have y coordinates between 0 and ${BEAT}, beat 1's between ${BEAT} and ${TWO}, beat 2's between ${TWO} and ${TALL}. Nothing straddles a boundary except a connector.
 
 ## The groups
 
@@ -103,7 +111,7 @@ Draw it so it CAN pivot, or the motion exposes it:
 
 ## Hard requirements
 
-1. **FILL EACH BEAT'S SQUARE.** The drawing in a beat spans at least 800 of the ${CANVAS} units across and is centred left to right. A composition sitting small in the middle is unusable: this is full-screen on a phone, so anything at half scale is a postage stamp in an empty frame.
+1. **FILL EACH BEAT, EDGE TO EDGE.** This drawing IS the whole screen — there is no background behind it and nothing around it. The backdrop must reach all four edges of the strip with no margin at all, and the subject of a beat spans at least 800 of the ${CANVAS} units across, centred. A composition sitting small in the middle of a panel is unusable: it is full-screen on a phone, so anything at half scale is a postage stamp.
 2. Shapes only: path, circle, ellipse, rect, line, polyline, polygon, g. \`linearGradient\` and \`radialGradient\` in a \`<defs>\` are fine and worth using.
 3. **No \`<text>\`.** Words are drawn by the renderer in the video's own typeface. Leave room for them in the lower part of each beat.
 4. No \`<filter>\`, no \`<image>\`, no CSS \`filter\`, no blend modes, no \`<animate>\`. They are stripped, and a drawing that relied on them arrives broken.
@@ -112,12 +120,17 @@ Draw it so it CAN pivot, or the motion exposes it:
 
 ## Craft
 
-- **One background for the WHOLE strip, and it must be continuous.** Make the first group a backdrop that spans every beat — full width, from y=0 to the bottom of the last beat — with \`data-stage="0"\` and \`data-depth="0.05"\`. The camera pans down between beats and travels over the boundary, so a backdrop that stops at the end of a beat leaves the screen blank for half a second. Give it something to look at all the way down: a wall that changes tone, a floor line that runs through, a soft pool of light under each object, a grid, a drift of texture dots, a long soft gradient.
+- **One background for the WHOLE strip, and it is the only background there is.** Make the first group a backdrop spanning every beat — x from 0 to ${CANVAS}, y from 0 to ${TALL}, no margin — with \`data-stage="0"\` and \`data-depth="0.05"\`. Nothing is painted behind it, so any gap it leaves is a hole. The camera also pans over the boundaries between beats, so a backdrop that stopped at the end of a beat would leave the screen empty mid-move. Give it something to look at all the way down: a wall that changes tone, a floor line that runs through, a soft pool of light under each object, a grid, a drift of texture dots, a long soft gradient.
 - **Then give each beat its own ground.** A surface the object stands on, a shadow under it, a horizon behind it. An object floating on a flat colour is the most common thing that makes these look cheap.
+- **Three depth planes in every beat, and make them different.** A cropped foreground shape at \`data-depth="0.85"\` — a curve, an edge, a corner of something, larger than it needs to be and running off the frame. The focal group at 0.5. Two to four dim satellite objects at 0.15–0.3, each smaller, darker and less sharp than the subject. Giving three groups the same depth wastes the parallax entirely, and the flatness is visible immediately.
 - **Build volume from flat shapes.** A lit face and a shadowed one. A darker plane where a surface turns away. A cast shadow as a low-opacity ellipse underneath — without one, everything floats.
 - **Detail the object the way it really is.** A clock has a bezel, a dial, an inner ring, twelve marks, two hands and a cap. A banknote has a border, a portrait oval, a denomination block, a guilloche line. Three or four of those is the difference between "a clock" and a clock.
 - One or two stroke weights throughout, 6–14 units, \`stroke-linecap="round"\`.
 - Stay in the palette you are given. The accent is a spot colour — one or two elements a beat, not the whole drawing.
+
+## Do not do these
+
+A slideshow of things fading in. Emoji or flat clip art as the hero object. The whole frame covered in outlines or particles. Tiny subtitle-sized text as the composition. Everything animating continuously. A glow used in place of a drawing — if it would not read in flat grey, more glow will not save it. Three unrelated pictures called a sequence. Solving every topic with a clock when time is not what it is about.
 
 **Output ONE <svg> element and nothing else.** No prose, no code fence, no explanation.`;
 

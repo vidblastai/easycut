@@ -5,6 +5,7 @@ import { FONT_FAMILY } from '../lib/fonts';
 import { easeOutCubic, kf, riseIn, stagger, transformOf } from '../lib/motion';
 import { lookFor } from '../looks';
 import { LOOK_META } from '../../src/lib/scenes/looks';
+import { styleGuideFor } from '../../src/lib/scenes/style-guides';
 import type { Arrange, Look, LookContext } from '../looks/contract';
 import { NeonProps } from '../looks/neon';
 import { Illustration, artSettlesAt, stageAt, stageStartsAt } from './Illustration';
@@ -100,7 +101,22 @@ const SceneView: React.FC<{ scene: AnimatedScene; durationInFrames: number }> = 
 
   return (
     <AbsoluteFill style={{ opacity, fontFamily: FONT_FAMILY }}>
-      <look.Ground ctx={ctx} />
+      {/*
+        ONE background, always.
+        A drawn scene brings its own — the illustration's backdrop group runs
+        the whole strip and the camera pans across it. Painting the look's
+        decorative ground underneath as well put a second, differently-toned
+        background behind the first, and the drawing then read as a panel
+        floating on someone else's wallpaper. Where the art covers, it IS the
+        background; where it cannot quite reach the frame edge, what shows
+        through is the flat colour the drawing was told to sit on, so there is
+        no seam either way.
+      */}
+      {sceneIsDrawn(scene) ? (
+        <AbsoluteFill style={{ background: styleGuideFor(scene.look).ground }} />
+      ) : (
+        <look.Ground ctx={ctx} />
+      )}
       <Arrangement ctx={ctx} look={look} />
     </AbsoluteFill>
   );
@@ -218,9 +234,6 @@ const Drawn: React.FC<{ ctx: LookContext; look: Look; centred: React.CSSProperti
   const art = scene.art!;
   const items = scene.items.filter((item) => item.trim());
 
-  // Square, sized off the SHORT side of the frame, so one drawing composes the
-  // same way in 9:16 and 16:9 instead of overflowing one of them.
-  const size = Math.min(ctx.width * 0.94, ctx.height * 0.62);
   const settled = artSettlesAt(art, 1);
 
   /*
@@ -240,17 +253,34 @@ const Drawn: React.FC<{ ctx: LookContext; look: Look; centred: React.CSSProperti
   const caption = perBeat ? items[Math.min(stage, items.length - 1)] : scene.headline;
 
   return (
-    <AbsoluteFill style={{ ...centred, flexDirection: 'column', gap: ctx.unit * 30 }}>
+    <AbsoluteFill>
+      {/*
+        Edge to edge. A drawing inset in the middle of the frame is a panel,
+        and a panel needs something behind it — which is the second background
+        this scene is not allowed to have.
+      */}
       <Illustration
         art={art}
         at={1}
-        size={size}
+        width={ctx.width}
+        height={ctx.height}
         // The camera paces itself across the WHOLE scene, so it needs the
         // scene's length: a fixed per-frame push would leave a six-second
         // insert twice as close as a three-second one.
         durationInFrames={ctx.durationInFrames}
         seed={scene.id}
       />
+      <AbsoluteFill
+        style={{
+          ...centred,
+          flexDirection: 'column',
+          gap: ctx.unit * 24,
+          // The words sit over the picture, in the lower part of the frame the
+          // drawing was told to leave clear.
+          justifyContent: 'flex-end',
+          paddingBottom: ctx.unit * 150,
+        }}
+      >
       {caption ? (
         // Never `hero`, whatever the kind: the picture is the hero here, and a
         // headline at hero size next to a drawing fights it for the frame.
@@ -266,6 +296,7 @@ const Drawn: React.FC<{ ctx: LookContext; look: Look; centred: React.CSSProperti
       {!perBeat && items.length && scene.kind !== 'big-number' ? (
         <DrawnLabels ctx={ctx} look={look} items={items.slice(0, 3)} at={settled + 5} />
       ) : null}
+      </AbsoluteFill>
       <Props ctx={ctx} look={look} />
     </AbsoluteFill>
   );

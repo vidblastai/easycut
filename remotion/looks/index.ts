@@ -4,10 +4,11 @@ import { studio } from './studio';
 import { neon } from './neon';
 import { gallery } from './gallery';
 import { archive } from './archive';
+import { editorial } from './editorial';
 
 export type { Look, LookContext, Arrange } from './contract';
 
-export const LOOKS: Record<SceneLook, Look> = { studio, neon, gallery, archive };
+export const LOOKS: Record<SceneLook, Look> = { studio, neon, gallery, archive, editorial };
 
 /**
  * Looks are resolved by id with a fallback rather than indexed directly,

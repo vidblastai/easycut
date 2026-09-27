@@ -76,6 +76,14 @@ const NAMED: Record<SceneLook, Omit<LookMeta, 'swatch'>> = {
     bestFor: 'Comparisons and before/after — objects arriving on a plinth.',
     entry: 'cut',
   },
+  editorial: {
+    id: 'editorial',
+    name: 'Editorial',
+    ink: '#F5F2F7',
+    dim: '#BEB7C6',
+    bestFor: 'Punchy talking-head takes — heavy type, one violet light, deep black.',
+    entry: 'cut',
+  },
   archive: {
     id: 'archive',
     name: 'Archive',

@@ -166,6 +166,50 @@ export const STYLE_GUIDES: Record<SceneLook, StyleGuide> = {
     camera: 'A continuous slow push in that never stops, with a very slight drift.',
     never: ['photorealism', 'bright or white backgrounds', 'cool colours', 'neon', 'flat even lighting'],
   },
+  /*
+   * From a reference edit the user supplied, with a written art-direction
+   * breakdown of it. The distinguishing thing is not "purple": it is the
+   * combination of near-black with ONE localised violet pool, oversized
+   * cropped curves in the foreground, and rim-lit metal — and the note that
+   * came with it is worth keeping verbatim, because it is the failure mode
+   * this world has: "do not treat glow as a substitute for design".
+   */
+  editorial: {
+    id: 'editorial',
+    ground: '#030105',
+    palette: [
+      { role: 'primary text and the brightest highlight', hex: '#F5F2F7' },
+      { role: 'secondary text and supporting copy', hex: '#BEB7C6' },
+      { role: 'the violet light pool behind the subject', hex: '#9B18F4' },
+      { role: 'deep violet ambient, where the light falls off', hex: '#160026' },
+      { role: 'the cropped foreground curve, almost black', hex: '#0A0410' },
+    ],
+    accent: '#C323DC',
+    rendering:
+      'Dark editorial. One or two huge cropped circles or arcs in the foreground, 0.95 to 1.6 times the frame width, ' +
+      'entering from below or the lower left, shaded almost black with dark-violet faces and a thin lit edge — never bright decorative blobs. ' +
+      'The hero object is detailed metal or dark glass, rim-lit in violet, with silver highlights and deep shadow. ' +
+      'Keyword emphasis is a luminous rectangular strip behind the word, square-cornered, tight to the letters.',
+    lighting:
+      'A localised radial violet pool behind the subject, falling to black at every edge. Large quiet black regions are the point. ' +
+      'The brightest violet is concentrated on the meaning-bearing element and nowhere else.',
+    ground_rule:
+      'Near-black with one violet pool, a cropped foreground curve, and two to four dim topic objects further back, ' +
+      'each smaller, darker and less sharp than the subject.',
+    motion:
+      'Three depth planes moving at different rates: the cropped foreground curve, the focal group, and dim satellites drifting ' +
+      '6 to 18 units with 1 to 4 degrees of slow rotation, phase-offset so they never move together. ' +
+      'Type assembles from offset letters and settles quickly into a readable word — never a prolonged scramble.',
+    camera: 'A slow push or drift of two to four per cent during a hold, with a quick motivated move between beats.',
+    never: [
+      'photorealism',
+      'bright or white backgrounds',
+      'emoji or flat clip art as the hero object',
+      'neon outlines everywhere',
+      'particles',
+      'glow used in place of design',
+    ],
+  },
 };
 
 export function styleGuideFor(look: SceneLook): StyleGuide {
