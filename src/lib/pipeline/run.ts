@@ -332,10 +332,32 @@ async function stageDirect(ctx: PipelineContext): Promise<void> {
    * a drawing would have been, and nobody is told about a scene that did not
    * arrive.
    */
-  if (isScenePassConfigured() && result.provider !== 'heuristic') {
+  const sceneLayerOff = (ctx.request.layersOff ?? []).includes('scenes');
+
+  if (sceneLayerOff) {
+    // Asked for without scenes: skip the call rather than pay for a plan that
+    // `stripLayers` is going to empty anyway.
+    ctx.scenes = [];
+  } else if (!isScenePassConfigured()) {
+    ctx.degraded.push('animated scenes (no MOTION_MODEL configured)');
+  } else if (result.provider !== 'heuristic') {
     const pass = await designScenes(ctx.transcript, ctx.plan, targetDurationSec);
     ctx.scenes = pass.scenes;
     if (pass.costUsd > 0) ctx.ledger.add('director', pass.costUsd, `scenes:${pass.model}`);
+
+    /*
+     * Say what happened either way.
+     *
+     * A scene layer that quietly produces nothing is indistinguishable from
+     * one that is broken, and the person who just waited for a render has no
+     * way to tell which. Both outcomes get a line: it failed, or it looked and
+     * did not find a passage with a shape in it.
+     */
+    if (pass.error) {
+      ctx.degraded.push(`animated scenes (${pass.error})`);
+    } else if (!pass.scenes.length) {
+      ctx.degraded.push('animated scenes (no passage in this video had a shape worth animating)');
+    }
   }
 }
 

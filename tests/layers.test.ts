@@ -8,6 +8,7 @@ const full = () =>
     captions: [{ id: 'c' }],
     broll: [{ id: 'b' }],
     graphics: [{ id: 'g' }],
+    scenes: [{ id: 'sc' }],
     sfx: [{ id: 's' }],
     punchIns: [{ id: 'p' }],
     transitions: [{ id: 't' }],
@@ -76,5 +77,21 @@ describe('reading stored refusals', () => {
     const on = allLayersOn();
     expect(Object.keys(on).sort()).toEqual([...LAYER_NAMES].sort());
     expect(Object.values(on).every(Boolean)).toBe(true);
+  });
+});
+
+describe('the animated scenes layer', () => {
+  it('can be declined like any other layer', () => {
+    // It is the most expensive layer to produce and the most intrusive when it
+    // lands badly, so "no thanks" has to actually mean something.
+    expect(LAYER_NAMES).toContain('scenes');
+  });
+
+  it('is emptied from the document when declined', () => {
+    expect(stripLayers(full(), ['scenes']).scenes).toEqual([]);
+  });
+
+  it('is left alone when something else is declined', () => {
+    expect(stripLayers(full(), ['music']).scenes).toHaveLength(1);
   });
 });

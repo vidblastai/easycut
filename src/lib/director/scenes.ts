@@ -59,7 +59,9 @@ A passage qualifies only if it has a SHAPE. There are six, and they are your six
 - stack — things building on each other, where the order is cumulative rather than chronological. Layers, foundations, "on top of that".
 - big-number — a single figure that carries the whole sentence.
 
-If a passage does not have one of these shapes, it does not get a scene. Most of a video does not. Returning fewer scenes than you are allowed is a correct answer and is usually the right one; returning a scene for a passage that is just the speaker talking is the failure this task is most prone to.
+If a passage does not have one of these shapes, it does not get a scene — a scene over a passage that is just the speaker talking is the failure this task is most prone to, and returning fewer than the budget is always allowed.
+
+But do not read that as a reason to return nothing. Almost every explanatory video has at least one passage with one of these shapes in it, and kinetic-text is a low bar on purpose: a single short line that IS the point — a claim, a rule, the sentence the video exists to deliver — qualifies on its own. **If you can find even one passage that genuinely has one of these six shapes, use it.** Only an empty list when the footage really has none: pure narrative, pure anecdote, someone thinking out loud.
 
 Rules that matter as much as the choice:
 
@@ -80,10 +82,10 @@ function briefFor(transcript: Transcript, plan: DirectorPlan, durationSec: numbe
 
   const covered = plan.broll.map((b) => `${b.atSec.toFixed(1)}s`).join(', ') || 'none';
 
-  return `Video length: ${durationSec.toFixed(1)}s. At most ${budget} scene${budget === 1 ? '' : 's'} — fewer is usually right.
+  return `Video length: ${durationSec.toFixed(1)}s. At most ${budget} scene${budget === 1 ? '' : 's'}.
 Moments already covered by B-roll (do not put a scene on these): ${covered}
 
-Return {"scenes": [...]} and nothing else. [] is a valid and common answer. Fill in "reason" with one short line on what shape you saw in that passage — it is shown to the person editing.
+Return {"scenes": [...]} and nothing else. Fill in "reason" with one short line naming the shape you saw in that passage — it is shown to the person editing.
 
 Transcript:
 ${lines}`;
