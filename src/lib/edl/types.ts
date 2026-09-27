@@ -1,4 +1,8 @@
 import { z } from 'zod';
+// Relative, not `@/`: this module is in the Remotion bundle, whose webpack
+// config does not carry the alias. One aliased import here fails the whole
+// composition — see the note in the motion-graphics skill.
+import { ART_ENTERS, ART_IDLES } from '../assets/illustration';
 
 /**
  * The EDL (Edit Decision List) is the single source of truth for a finished
@@ -518,7 +522,41 @@ export const AnimatedSceneSchema = z.object({
    * existence.
    */
   art: z
-    .object({ viewBox: z.string(), parts: z.array(z.string()) })
+    .object({
+      viewBox: z.string(),
+      /** The drawing's gradients; every `url(#…)` in the parts points here. */
+      defs: z.string().default(''),
+      /*
+       * A part is an object, but a bare string is still accepted and widened.
+       *
+       * The first version of this field stored plain markup, and projects
+       * rendered under it are sitting in the database. A union here means
+       * those still parse — without it the whole EDL fails validation and an
+       * old project becomes unopenable, which is a much worse outcome than an
+       * old drawing animating a little more plainly than a new one.
+       */
+      parts: z.array(
+        z.union([
+          z.string().transform((markup) => ({
+            markup,
+            depth: 0.5,
+            enter: 'pop' as const,
+            idle: 'bob' as const,
+            pivot: { x: 500, y: 500 },
+          })),
+          z.object({
+            markup: z.string(),
+            depth: z.number().min(0).max(1).default(0.5),
+            enter: z.enum(ART_ENTERS).default('pop'),
+            idle: z.enum(ART_IDLES).default('bob'),
+            /** Where the piece turns and scales about, in viewBox units. */
+            pivot: z
+              .object({ x: z.number(), y: z.number() })
+              .default({ x: 500, y: 500 }),
+          }),
+        ]),
+      ),
+    })
     .nullable()
     .default(null),
   accent: z.string().default('#9B7BFF'),

@@ -50,26 +50,45 @@ Draw the THING being talked about. If the sentence is about a phone, draw the ph
 
 **Output ONE <svg> element and nothing else.** No prose, no code fence, no explanation.
 
-Hard requirements:
+## Structure — this is what makes it move
 
-1. \`<svg viewBox="0 0 ${CANVAS} ${CANVAS}" xmlns="http://www.w3.org/2000/svg">\`.
-1b. **FILL THE CANVAS.** The drawing's bounding box must span at least 800 of the 1000 units across, and be centred left-to-right. A composition sitting small in one corner is the most common thing that comes back and it is unusable: this is shown full-screen on a phone, so anything drawn at half scale is a postage stamp in the middle of an empty frame. Work out roughly where your shapes end up and push them out to the edges. Keep 40 units of margin, no more.
-2. **The top-level children are groups, in the order they should appear on screen: \`<g id="part-1">\`, \`<g id="part-2">\`, up to part-6.** Each is a piece a viewer would notice arriving on its own — the desk, then the laptop, then the chart on its screen, then the arrow. Three to six parts. This is the single most important instruction here: the renderer brings them in one at a time, a few frames apart, and a drawing in one group cannot animate.
-3. Shapes only: path, circle, ellipse, rect, line, polyline, polygon, g. \`linearGradient\` and \`radialGradient\` in a \`<defs>\` are fine.
-4. **No \`<text>\`.** Words are drawn by the renderer in the video's own typeface. If a label belongs on the drawing, leave room for it instead.
-5. No \`<filter>\`, no \`<image>\`, no CSS \`filter\`, no blend modes, no animation elements. They are stripped out, and a drawing that depended on them arrives broken.
-6. Every shape gets an explicit \`fill\` (or \`fill="none"\` with a \`stroke\`). An inherited fill renders black.
-7. 20 to 80 shapes. Under 20 is a clipart symbol; over 80 nobody reads it in four seconds.
+\`<svg viewBox="0 0 ${CANVAS} ${CANVAS}" xmlns="http://www.w3.org/2000/svg">\`
 
-Craft:
+The top-level children are groups, in the order they should appear on screen. **Four to six of them.** Each is a piece a viewer would notice arriving on its own — the desk, then the laptop, then the chart on its screen, then the arrow pointing at it. The renderer brings them in one at a time, five frames apart, and animates each one for the rest of the shot, so a drawing in one group is a still image and fails.
 
-- Build volume from flat shapes: a lighter face and a darker one, a cast shadow as a low-opacity ellipse. No outlines-only line art unless the palette is a stroke palette.
-- Keep strokes at one or two weights throughout, 6–14 units, \`stroke-linecap="round"\`.
+Every group carries four attributes:
+
+\`<g id="part-2" data-depth="0.7" data-enter="rise" data-idle="bob" data-pivot="520 430"> … </g>\`
+
+- **data-depth** — 0 is far behind, 1 is right up at the lens, 0.5 is the picture plane. The camera pushes in and drifts across the whole shot, and near things travel further than far things: this attribute is the entire reason a flat drawing reads as a space. **Give your parts different depths.** Background wash 0.1, the main object 0.5, something small in front 0.85.
+- **data-enter** — \`pop\` (scales up), \`rise\` (up from below), \`slide-left\` / \`slide-right\`, \`grow\` (from small), \`draw\` (a stroke draws itself end to end).
+- **data-idle** — what it does for the REST of the shot, after it arrives: \`bob\` (floats), \`drift\`, \`sway\` (rocks a degree or two), \`pulse\` (breathes), \`spin\` (turns continuously — clock hands, a gear, a ring), \`none\`.
+- **data-pivot** — \`"x y"\`, the point this piece turns and scales about, in the same units as the drawing. **Get this right for anything that spins or sways**: a clock's hands pivot on the pin at the centre of its face, not on the middle of the canvas. Without it the piece swings around the whole picture in a wide circle instead of turning on the spot. Omit it for a full-width background.
+
+Use \`spin\` where something genuinely rotates, and put it in its OWN group so only that piece turns: clock hands are a part with the pin as their pivot, the clock face is a different part. Same for anything that should swing, tick or orbit.
+
+**Include one connector.** A dashed curve, an arrow, a bracket or an underline that links two parts of the drawing, as its own group with \`data-enter="draw"\` and \`fill="none"\`. It draws itself on, and it is most of what makes these read as made rather than generated.
+
+## Hard requirements
+
+1. **FILL THE CANVAS.** The drawing's bounding box must span at least 800 of the 1000 units across, and be centred left-to-right. A composition sitting small in the middle is the most common thing that comes back and it is unusable: this is shown full-screen on a phone, so anything drawn at half scale is a postage stamp in an empty frame. Work out roughly where your shapes land and push them out. Keep 40 units of margin, no more.
+2. Shapes only: path, circle, ellipse, rect, line, polyline, polygon, g. \`linearGradient\` and \`radialGradient\` in a \`<defs>\` are fine and worth using.
+3. **No \`<text>\`.** Words are drawn by the renderer in the video's own typeface. If a label belongs on the drawing, leave room for it instead.
+4. No \`<filter>\`, no \`<image>\`, no CSS \`filter\`, no blend modes, no \`<animate>\`. They are stripped out, and a drawing that depended on them arrives broken.
+5. Every shape gets an explicit \`fill\` (or \`fill="none"\` with a \`stroke\`). An inherited fill renders black.
+6. **40 to 110 shapes.** This is the number that separates a clipart symbol from an illustration, and it is worth spending: take the time to build the object properly rather than suggesting it.
+
+## Craft
+
+- **Build volume from flat shapes.** A lit face and a shadowed one. A darker plane where a surface turns away. A cast shadow as a low-opacity ellipse underneath — without one, everything floats.
+- **Detail the object the way it really is.** A clock has a bezel, a face, an inner ring, hour marks, two hands and a pin. A banknote has a border, a portrait oval, a denomination block, a guilloche line. Three or four of those details is the difference between "a clock" and a clock.
+- Keep strokes to one or two weights throughout, 6–14 units, \`stroke-linecap="round"\`.
 - Use the palette you are given and stay in it. The accent is a spot colour — one or two elements, not the whole drawing.
-- Compose to the centre, and leave the bottom fifth emptier than the rest: that is where the caption sits.
-- Vertically, sit the mass between y=80 and y=800. Put a soft contact shadow under whatever is standing on the ground — a low-opacity ellipse is enough, and without it everything floats.`;
+- Compose to the centre; sit the mass between y=80 and y=800, and leave the bottom fifth emptier, because that is where the caption goes.`;
 
 export interface IllustrationRequest {
+  /** Namespaces the drawing's gradient ids, so two scenes cannot collide. */
+  id?: string;
   /** What is being said over this scene, verbatim. */
   line: string;
   /** The scene's own words, so the drawing does not repeat them. */
@@ -143,6 +162,7 @@ export async function illustrateScenes(
     scenes.map(async (scene) => ({
       id: scene.id,
       result: await drawScene({
+        id: scene.id,
         line: lineFor(scene),
         headline: scene.headline,
         items: scene.items,
@@ -207,7 +227,10 @@ Draw what is being described, in ${request.kind === 'compare' ? 'two halves, the
         // Enough for eighty shapes with room to spare. A drawing that runs out
         // of tokens arrives without its closing tags, and the parser then
         // rejects the whole thing rather than showing half a picture.
-        max_tokens: 6000,
+        // Raised for the detail the craft notes ask for: a hundred shapes
+        // with gradients runs past six thousand, and a drawing that runs out
+        // of tokens arrives without its closing tags and is refused whole.
+        max_tokens: 9000,
         // Higher than the selection pass on purpose: that one is a judgement
         // with a right answer, this one is drawing, and a cautious drawing is
         // a boring one.
@@ -230,7 +253,7 @@ Draw what is being described, in ${request.kind === 'compare' ? 'two halves, the
       ((body.usage?.prompt_tokens ?? 0) / 1_000_000) * pricing.inputPerMTok +
       ((body.usage?.completion_tokens ?? 0) / 1_000_000) * pricing.outputPerMTok;
 
-    const illustration = parseIllustration(body.choices?.[0]?.message?.content ?? '');
+    const illustration = parseIllustration(body.choices?.[0]?.message?.content ?? '', request.id ?? '');
     if (!isDrawn(illustration)) {
       return { illustration: null, costUsd, error: 'illustration came back empty or too sparse to use' };
     }

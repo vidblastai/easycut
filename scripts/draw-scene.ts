@@ -63,10 +63,12 @@ async function main() {
         return;
       }
 
-      const { viewBox, parts } = result.illustration;
+      const { viewBox, defs, parts } = result.illustration;
+      const markup = defs + parts.map((part) => part.markup).join('\n');
       console.log(
-        `  ${name.padEnd(12)} ${parts.length} parts, ${parts.join('').length} chars, ` +
-          `${seconds}s, $${result.costUsd.toFixed(4)}`,
+        `  ${name.padEnd(12)} ${parts.length} parts, ${markup.length} chars, ` +
+          `${seconds}s, $${result.costUsd.toFixed(4)}\n` +
+          `  ${' '.repeat(12)} ${parts.map((p) => `${p.depth}·${p.enter}·${p.idle}`).join('  ')}`,
       );
 
       // Each part gets a visible outline in the debug page so a "drawing" that
@@ -75,9 +77,12 @@ async function main() {
         join(OUT, `${name}.html`),
         `<!doctype html><meta charset="utf-8"><title>${name}</title>
 <body style="margin:0;display:grid;place-items:center;min-height:100vh;background:${GROUND[job.look]}">
-<svg viewBox="${viewBox}" width="720" height="720">${parts.join('\n')}</svg>`,
+<svg viewBox="${viewBox}" width="720" height="720">${markup}</svg>`,
       );
-      await writeFile(join(OUT, `${name}.svg`), `<svg viewBox="${viewBox}" xmlns="http://www.w3.org/2000/svg">${parts.join('\n')}</svg>`);
+      await writeFile(
+        join(OUT, `${name}.svg`),
+        `<svg viewBox="${viewBox}" xmlns="http://www.w3.org/2000/svg">${markup}</svg>`,
+      );
     }),
   );
 

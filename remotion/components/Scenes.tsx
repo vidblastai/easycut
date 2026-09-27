@@ -224,7 +224,16 @@ const Drawn: React.FC<{ ctx: LookContext; look: Look; centred: React.CSSProperti
 
   return (
     <AbsoluteFill style={{ ...centred, flexDirection: 'column', gap: ctx.unit * 30 }}>
-      <Illustration art={art} at={1} size={size} />
+      <Illustration
+        art={art}
+        at={1}
+        size={size}
+        // The camera paces itself across the WHOLE scene, so it needs the
+        // scene's length: a fixed per-frame push would leave a six-second
+        // insert twice as close as a three-second one.
+        durationInFrames={ctx.durationInFrames}
+        seed={scene.id}
+      />
       {scene.headline ? (
         // Never `hero`, whatever the kind: the picture is the hero here, and a
         // headline at hero size next to a drawing fights it for the frame.

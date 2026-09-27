@@ -4,7 +4,7 @@ import '../src/lib/config/load-env';
 import { EdlSchema, SCENE_KINDS, SCENE_LOOKS, type SceneKind, type SceneLook } from '../src/lib/edl/types';
 import { env } from '../src/lib/config/env';
 import { readFile } from 'node:fs/promises';
-import { parseIllustration } from '../src/lib/assets/illustration';
+import { parseIllustration, type Illustration } from '../src/lib/assets/illustration';
 import { startAssetServer } from '../src/lib/render/asset-server';
 import { SAMPLE_EDL } from '../remotion/sample-edl';
 
@@ -41,7 +41,7 @@ const CONTENT: Record<SceneKind, { headline: string; items: string[] }> = {
 };
 
 /** A drawing from `scripts/draw-scene.ts`, when one has been made for this look. */
-let ART: Record<string, { viewBox: string; parts: string[] } | null> = {};
+const ART: Record<string, Illustration | null> = {};
 
 function edlFor(look: SceneLook, kind: SceneKind) {
   const content = CONTENT[kind];
@@ -95,7 +95,7 @@ async function main() {
   // only the fallback.
   for (const id of SCENE_LOOKS) {
     const file = (await readFile(`out/drawings/${['studio', 'neon', 'gallery', 'archive'].indexOf(id)}-${id}.svg`, 'utf8').catch(() => null));
-    ART[id] = file ? parseIllustration(file) : null;
+    ART[id] = file ? parseIllustration(file, id) : null;
   }
   console.log(`drawings found: ${Object.entries(ART).filter(([, a]) => a).map(([k]) => k).join(', ') || 'none'}`);
 

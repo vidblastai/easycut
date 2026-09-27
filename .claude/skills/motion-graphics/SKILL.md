@@ -62,8 +62,57 @@ Measured over several rounds with `scripts/draw-scene.ts`:
 - **Inside a world, the world's colour wins.** The brand accent goes to
   `studio` only; everywhere else the look's own swatch is the accent, or you
   get a violet arrow in a gold documentary frame.
-- Cost is real: roughly **$0.06 and 30 seconds per drawing**, run in parallel,
-  so about $0.35 on a six-scene video.
+- **Ask for `<defs>` and keep them.** `<defs>` is a top-level child of the
+  `<svg>` but it is not a `<g>`, so the part splitter walks past it and every
+  `fill="url(#…)"` then refers to nothing. It does not error — the shape just
+  renders wrong. Ids are namespaced per scene, or two scenes in one video both
+  define `#wall` and the second one fills with the first one's gradient.
+- **40–110 shapes, and say so.** That number is the line between a clipart
+  symbol and an illustration, and asking for it visibly doubles the detail.
+- Cost is real: roughly **$0.11 and 60 seconds per drawing**, run in parallel,
+  so about $0.65 on a six-scene video.
+
+## It must never stop moving
+
+The second correction, after the picture one: *"it should not be like a still
+image. It's just an animation, and then it's sitting there until the motion
+graphics finish."* Exactly right, and it is what a naive assemble-then-hold
+gives you — every piece lands in the first second and the remaining three are
+a PNG.
+
+Read the reference edits frame by frame and NOTHING in them is ever still. Over
+four seconds of a wallet on a desk: the camera pushes in the whole time, notes
+slide out one at a time, a dashed arrow draws itself across the board, and a
+clock's hands turn. There is no hold anywhere.
+
+So a drawn scene has three layers of motion, and only the first one ends:
+
+1. **Entry** — each part arrives, five frames after the last.
+2. **Camera** — a slow push and drift across the whole scene, first frame to
+   last, with no keyframes and no settle. The instant it stops, the frame reads
+   as a photograph. Paced against the scene's DURATION, not per-frame, or a
+   six-second insert ends up twice as close as a three-second one.
+3. **Idle** — once a part has landed it keeps moving on its own: bob, sway,
+   pulse, drift, or spin.
+
+**Parallax ties the first two together.** Each part carries a `data-depth`, and
+the camera's drift is multiplied by it, so near things travel further than far
+things. That is what makes a flat SVG read as a space rather than a sticker.
+
+Numbers, after watching renders rather than reasoning: **14% push and 10%
+drift** over the scene, idle periods of **38–64 frames**. At half those values
+the move was real and still read as a still frame. The reference edits travel
+much further than feels reasonable written down — that is the point.
+
+Two traps, both of which cost a render to find:
+
+- **Everything pivots on the PART, not the canvas.** A `spin` pivoting on the
+  drawing's centre does not turn the object, it swings it around the picture in
+  a wide circle. `data-pivot` exists for this, and because the model forgets it
+  constantly, `estimatePivot()` measures one off the shapes' own coordinates
+  and the hint only overrides.
+- **Idle periods are seeded per part.** A shared clock makes four pieces bob in
+  unison, which looks far worse than no idle at all.
 
 ## The one architectural rule
 
@@ -187,8 +236,14 @@ against the whole frame, a rule scaled by a string's length running off the
 edge, a headline stacked one word per line, a flex `gap` in `em` resolving
 against the container's font size so a headline rendered as one unbroken word.
 
-    npx tsx scripts/draw-scene.ts ["a line"] [look]   # ask the model to draw
-    npx tsx scripts/scene-sheet.ts [look] [kind]      # every look x every kind
+    npx tsx scripts/draw-scene.ts ["a line"] [look]      # ask the model to draw
+    npx tsx scripts/scene-sheet.ts [look] [kind] [frame] # every look x every kind
+    npx tsx scripts/scene-clip.ts [look] [kind] [secs]   # a real mp4
+
+**A still cannot catch a motion bug.** "The drawing lands and then sits there
+for three seconds" looks identical to a good scene in any single frame, so
+anything about pacing, camera or idle is judged from `scene-clip.ts` output,
+not from the sheet.
 
 `scene-sheet` picks up whatever `draw-scene` left in `out/drawings/`, so the
 sheet shows illustrated scenes rather than only the icon fallback.
