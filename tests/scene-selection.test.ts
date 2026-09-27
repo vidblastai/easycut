@@ -76,6 +76,27 @@ describe('keeping a scene plan honest', () => {
     expect(out.items).toEqual(['One', 'Two']);
   });
 
+  it('clamps against the FOOTAGE length, not the finished length', () => {
+    /*
+     * The bug that hid the whole feature.
+     *
+     * Timestamps come back in source time. The pipeline has the post-cut
+     * length closest to hand, and passing that here clamped every scene in the
+     * back half of a video down to nothing — on a product whose job is cutting
+     * silence out, that was most of them, silently, with no error anywhere.
+     */
+    const source = 60;
+    const [out] = sanitiseScenes([scene({ startSec: 42, endSec: 47 })], source);
+    expect(out).toBeDefined();
+    expect(out.startSec).toBeCloseTo(42);
+    expect(out.endSec).toBeCloseTo(47);
+
+    // And the shape of the mistake, so it cannot come back unnoticed: the same
+    // scene measured against the finished length simply vanishes.
+    const finished = 38;
+    expect(sanitiseScenes([scene({ startSec: 42, endSec: 47 })], finished)).toHaveLength(0);
+  });
+
   it('budgets roughly one scene per half minute, capped', () => {
     expect(sceneBudget(20)).toBe(1);
     expect(sceneBudget(60)).toBe(2);

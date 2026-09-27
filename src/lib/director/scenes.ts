@@ -73,7 +73,7 @@ Rules that matter as much as the choice:
 6. **iconQueries** are one concrete noun each, parallel to items — "rocket", "shield", "clock", "credit card". Leave an entry empty if nothing concrete fits; a wrong icon is worse than none.
 7. **backdrop** sets the mood: gradient (default, calm), grid (technical, product), dots (light, friendly), rays (energy, a reveal), solid (when the content is busy and needs room).`;
 
-function briefFor(transcript: Transcript, plan: DirectorPlan, durationSec: number, budget: number): string {
+function briefFor(transcript: Transcript, plan: DirectorPlan, sourceSec: number, budget: number): string {
   // Sentences, not words: the model is choosing a PASSAGE, and giving it a
   // word list invites timestamps that start mid-clause.
   const lines = transcript.sentences?.length
@@ -82,7 +82,7 @@ function briefFor(transcript: Transcript, plan: DirectorPlan, durationSec: numbe
 
   const covered = plan.broll.map((b) => `${b.atSec.toFixed(1)}s`).join(', ') || 'none';
 
-  return `Video length: ${durationSec.toFixed(1)}s. At most ${budget} scene${budget === 1 ? '' : 's'}.
+  return `Transcript covers ${sourceSec.toFixed(1)}s of footage. At most ${budget} scene${budget === 1 ? '' : 's'}.
 Moments already covered by B-roll (do not put a scene on these): ${covered}
 
 Return {"scenes": [...]} and nothing else. Fill in "reason" with one short line naming the shape you saw in that passage — it is shown to the person editing.
@@ -141,10 +141,28 @@ export function isScenePassConfigured(): boolean {
   return Boolean(env.llm.wavespeedKey && env.llm.motionModel);
 }
 
+/**
+ * @param sourceDurationSec  Length of the FOOTAGE, because every timestamp the
+ *   model sees and returns is a source timestamp.
+ * @param finishedDurationSec  Length of the finished video, used only to decide
+ *   how many scenes it can carry.
+ *
+ * ── Why those are two arguments and not one ─────────────────────────────
+ *
+ * They were one, and it was a silent bug that hid the whole feature. The
+ * pipeline naturally has the POST-CUT length to hand — it is what the director
+ * is briefed with — but the transcript is the raw footage, so a scene chosen at
+ * 40s in a 60s recording that cuts down to 38s was clamped to "ends at 38s",
+ * came out shorter than the minimum, and was dropped. Every scene in the back
+ * half of a video disappeared, which on a product whose entire job is removing
+ * silence meant most of them. Nothing errored; there were simply never any
+ * scenes.
+ */
 export async function designScenes(
   transcript: Transcript,
   plan: DirectorPlan,
-  durationSec: number,
+  sourceDurationSec: number,
+  finishedDurationSec: number = sourceDurationSec,
 ): Promise<ScenePassResult> {
   const model = env.llm.motionModel;
   if (!isScenePassConfigured()) {
@@ -162,7 +180,7 @@ export async function designScenes(
         model,
         messages: [
           { role: 'system', content: SYSTEM },
-          { role: 'user', content: briefFor(transcript, plan, durationSec, sceneBudget(durationSec)) },
+          { role: 'user', content: briefFor(transcript, plan, sourceDurationSec, sceneBudget(finishedDurationSec)) },
         ],
         response_format: {
           type: 'json_schema',
@@ -191,7 +209,7 @@ export async function designScenes(
         .map((s) => PlannedSceneSchema.safeParse(s))
         .filter((r): r is { success: true; data: PlannedScene } => r.success)
         .map((r) => r.data),
-      durationSec,
+      sourceDurationSec,
     );
 
     const pricing = wavespeedPriceFor(model);
@@ -218,7 +236,7 @@ export async function designScenes(
  * one over the opening seconds where the speaker is still earning attention.
  * Checking is cheap; a video that drops the presenter for eleven seconds is not.
  */
-export function sanitiseScenes(scenes: PlannedScene[], durationSec: number): PlannedScene[] {
+export function sanitiseScenes(scenes: PlannedScene[], sourceDurationSec: number): PlannedScene[] {
   const HOOK_SEC = 2.5;
   const GAP_SEC = 4;
 
@@ -227,7 +245,9 @@ export function sanitiseScenes(scenes: PlannedScene[], durationSec: number): Pla
 
   for (const scene of ordered) {
     const start = Math.max(HOOK_SEC, scene.startSec);
-    const end = Math.min(durationSec, scene.endSec);
+    // Source seconds on both sides. Passing a post-cut length here silently
+    // deletes every scene in the back half of the video.
+    const end = Math.min(sourceDurationSec, scene.endSec);
     const length = end - start;
     if (length < MIN_SCENE_SEC) continue;
 

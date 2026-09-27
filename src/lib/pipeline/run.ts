@@ -341,7 +341,14 @@ async function stageDirect(ctx: PipelineContext): Promise<void> {
   } else if (!isScenePassConfigured()) {
     ctx.degraded.push('animated scenes (no MOTION_MODEL configured)');
   } else if (result.provider !== 'heuristic') {
-    const pass = await designScenes(ctx.transcript, ctx.plan, targetDurationSec);
+    // Source length first: the transcript the pass reads, and every timestamp
+    // it returns, are in footage time. The finished length only sets the budget.
+    const pass = await designScenes(
+      ctx.transcript,
+      ctx.plan,
+      ctx.media.durationSec,
+      targetDurationSec,
+    );
     ctx.scenes = pass.scenes;
     if (pass.costUsd > 0) ctx.ledger.add('director', pass.costUsd, `scenes:${pass.model}`);
 
@@ -358,6 +365,12 @@ async function stageDirect(ctx: PipelineContext): Promise<void> {
     } else if (!pass.scenes.length) {
       ctx.degraded.push('animated scenes (no passage in this video had a shape worth animating)');
     }
+  } else {
+    // The rule-based editor has no transcript worth reading, so there is
+    // nothing for the scene pass to choose from. Say so rather than leaving a
+    // fourth way for the layer to produce nothing quietly.
+    ctx.scenes = [];
+    ctx.degraded.push('animated scenes (the AI director did not run)');
   }
 }
 
