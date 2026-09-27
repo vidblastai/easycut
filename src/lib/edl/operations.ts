@@ -8,6 +8,7 @@ import {
   EdlSchema,
   type CaptionCue,
   type Edl,
+  type GraphicElement,
   type Segment,
 } from './types';
 
@@ -372,10 +373,17 @@ function applyOne(edl: Edl, op: EdlOperation): Edl {
         }] };
       }
       if (op.track === 'graphics') {
+        const type = op.graphicType ?? 'icon';
+        // The list-shaped ones read `items`, not `text`: seeding the text on a
+        // checklist adds a graphic that draws nothing, which looks broken.
+        const listShaped = type === 'bar-chart' || type === 'checklist' || type === 'list';
         return { ...edl, graphics: [...edl.graphics, {
-          id, type: op.graphicType ?? 'icon', outStartSec: start, outEndSec: end,
-          animation: 'pop' as const, x: 0.76, y: 0.22, scale: 1,
-          text: op.value, subtext: '', items: [], assetUrl: null,
+          id, type, outStartSec: start, outEndSec: end,
+          animation: animationForAdded(type), x: 0.5, y: 0.28, scale: 1,
+          text: listShaped ? '' : op.value,
+          subtext: '',
+          items: listShaped ? [op.value] : [],
+          assetUrl: null,
           iconQuery: op.value, imagePrompt: '', color: edl.captionStyle.emphasisColor,
         }] };
       }
@@ -1050,5 +1058,31 @@ function trackNoun(track: ClipTrack): string {
     case 'punchIns': return 'a punch-in';
     case 'sfx': return 'a sound effect';
     case 'transitions': return 'a transition';
+  }
+}
+
+/**
+ * How a hand-added graphic arrives.
+ *
+ * Same rule the pipeline uses: the ones that carry their own movement come up
+ * quietly, so the entrance does not fight the move. Kept here rather than
+ * imported from the builder because the builder is the pipeline's and this
+ * runs in the browser on every keystroke of the pending-operation stack.
+ */
+function animationForAdded(type: GraphicElement['type']): GraphicElement['animation'] {
+  switch (type) {
+    case 'counter':
+    case 'progress-ring':
+    case 'checklist':
+    case 'underline':
+      return 'fade';
+    case 'bar-chart':
+      return 'slide-up';
+    case 'badge':
+      return 'bounce';
+    case 'icon':
+      return 'spin-in';
+    default:
+      return 'pop';
   }
 }

@@ -2,6 +2,7 @@ import React from 'react';
 import { AbsoluteFill, Img, Sequence, interpolate, useCurrentFrame, useVideoConfig } from 'remotion';
 import { FONT_FAMILY } from '../lib/fonts';
 import type { Edl, GraphicElement } from '../../src/lib/edl/types';
+import { Badge, BarChart, Checklist, Counter, ProgressRing, Underline } from './MotionGraphics';
 import { lifecycleOpacity, pop, ramp } from '../lib/timing';
 
 /**
@@ -43,7 +44,10 @@ const GraphicElementView: React.FC<{ graphic: GraphicElement; durationInFrames: 
   const { fps, width, height } = useVideoConfig();
 
   const opacity = lifecycleOpacity(frame, durationInFrames, Math.round(fps * 0.2));
-  const entry = pop(frame, fps, 0, graphic.animation === 'pop');
+  // Overshoot for the entrances that are meant to land with weight; a linear
+  // ease for the ones that are meant to arrive quietly.
+  const springy = ['pop', 'spin-in', 'bounce', 'pulse'].includes(graphic.animation);
+  const entry = pop(frame, fps, 0, springy);
   const unit = height * 0.001; // one "unit" scales layout across aspect ratios
 
   const enterTransform = (() => {
@@ -53,11 +57,35 @@ const GraphicElementView: React.FC<{ graphic: GraphicElement; durationInFrames: 
       case 'slide-left':
         return `translateX(${(1 - entry) * width * 0.06}px)`;
       case 'fade':
-        return 'none';
+        // Empty, NOT `none`. This string is concatenated into a longer
+        // `transform`, and `none` is only legal as the whole value — so
+        // `translate(-50%,-50%) none scale(1)` is invalid, the browser throws
+        // the entire declaration away, and the graphic loses its centring and
+        // renders off the side of the frame. It fails silently and only for
+        // the animations that have nothing to add.
+        return '';
+      case 'spin-in':
+        // A flat pop makes an icon read as a sticker dropped on the frame; a
+        // little rotation on the way in makes it read as arriving.
+        return `scale(${0.6 + entry * 0.4}) rotate(${(1 - entry) * -140}deg)`;
+      case 'bounce':
+        return `translateY(${(1 - entry) * height * 0.09}px) scale(${0.88 + entry * 0.12})`;
+      case 'pulse': {
+        // Lands, holds, then breathes once — the second beat is what brings
+        // the eye back to it after it has read the words.
+        const beat = Math.sin(Math.max(0, (frame - fps * 0.9) / fps) * Math.PI * 2.2);
+        const breathe = frame > fps * 0.9 ? 1 + Math.max(0, beat) * 0.05 : 1;
+        return `scale(${(0.7 + entry * 0.3) * breathe})`;
+      }
+      case 'wipe':
+        return `scale(${0.98 + entry * 0.02})`;
       default:
         return `scale(${0.7 + entry * 0.3})`;
     }
   })();
+
+  // `wipe` is the one entrance that is a reveal rather than a move.
+  const clip = graphic.animation === 'wipe' ? `inset(0 ${(1 - entry) * 100}% 0 0)` : undefined;
 
   return (
     <AbsoluteFill style={{ opacity, pointerEvents: 'none' }}>
@@ -66,8 +94,9 @@ const GraphicElementView: React.FC<{ graphic: GraphicElement; durationInFrames: 
           position: 'absolute',
           left: `${graphic.x * 100}%`,
           top: `${graphic.y * 100}%`,
-          transform: `translate(-50%, -50%) ${enterTransform} scale(${graphic.scale})`,
+          transform: `translate(-50%, -50%) ${enterTransform} scale(${graphic.scale})`.replace(/\s+/g, ' '),
           transformOrigin: 'center center',
+          clipPath: clip,
           fontFamily: FONT_FAMILY,
           color: '#F5F5F7',
           textAlign: 'center',
@@ -80,7 +109,7 @@ const GraphicElementView: React.FC<{ graphic: GraphicElement; durationInFrames: 
   );
 };
 
-interface RenderContext {
+export interface RenderContext {
   frame: number;
   fps: number;
   unit: number;
@@ -107,6 +136,18 @@ function renderBody(graphic: GraphicElement, ctx: RenderContext): React.ReactNod
           style={{ width: ctx.unit * 460, borderRadius: ctx.unit * 22, boxShadow: '0 30px 80px -30px rgba(0,0,0,0.9)' }}
         />
       ) : null;
+    case 'counter':
+      return <Counter graphic={graphic} ctx={ctx} />;
+    case 'progress-ring':
+      return <ProgressRing graphic={graphic} ctx={ctx} />;
+    case 'bar-chart':
+      return <BarChart graphic={graphic} ctx={ctx} />;
+    case 'checklist':
+      return <Checklist graphic={graphic} ctx={ctx} />;
+    case 'badge':
+      return <Badge graphic={graphic} ctx={ctx} />;
+    case 'underline':
+      return <Underline graphic={graphic} ctx={ctx} />;
     case 'icon':
     default:
       return <IconChip graphic={graphic} ctx={ctx} />;
@@ -115,7 +156,7 @@ function renderBody(graphic: GraphicElement, ctx: RenderContext): React.ReactNod
 
 /* ------------------------------------------------------------------ parts */
 
-const Chrome: React.FC<{ ctx: RenderContext; accent: string; children: React.ReactNode }> = ({ ctx, accent, children }) => (
+export const Chrome: React.FC<{ ctx: RenderContext; accent: string; children: React.ReactNode }> = ({ ctx, accent, children }) => (
   <div
     style={{
       display: 'flex',
@@ -180,7 +221,7 @@ const StatCard: React.FC<{ graphic: GraphicElement; ctx: RenderContext }> = ({ g
   );
 };
 
-function formatCount(value: number, target: number): string {
+export function formatCount(value: number, target: number): string {
   const decimals = Number.isInteger(target) ? 0 : 1;
   return value.toLocaleString('en-US', { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
 }

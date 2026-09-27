@@ -279,7 +279,9 @@ function placeGraphics(
       type: cue.type,
       outStartSec: start,
       outEndSec: end,
-      animation: animationFor(cue.type),
+      // The director's choice wins; `animationFor` is the fallback, and is
+      // what runs for the (common) case where it did not express one.
+      animation: cue.animation ?? animationFor(cue.type),
       ...positionFor(cue.type),
       scale: 1,
       text: cue.text,
@@ -323,6 +325,16 @@ function animationFor(type: GraphicElement['type']): GraphicElement['animation']
     case 'arrow': return 'draw';
     case 'title-card': return 'slide-up';
     case 'quote': return 'fade';
+    // The moving graphics carry their own motion, so the entrance has to stay
+    // out of its way: a counter that also springs is two animations fighting
+    // over the same second. They come up quietly and let the move be the move.
+    case 'counter': return 'fade';
+    case 'progress-ring': return 'fade';
+    case 'bar-chart': return 'slide-up';
+    case 'checklist': return 'fade';
+    case 'underline': return 'fade';
+    case 'badge': return 'bounce';
+    case 'icon': return 'spin-in';
     default: return 'pop';
   }
 }
@@ -333,6 +345,12 @@ function positionFor(type: GraphicElement['type']): { x: number; y: number } {
     case 'title-card': return { x: 0.5, y: 0.5 };
     case 'list': return { x: 0.5, y: 0.34 };
     case 'stat': return { x: 0.5, y: 0.24 };
+    case 'counter': return { x: 0.5, y: 0.26 };
+    case 'progress-ring': return { x: 0.5, y: 0.27 };
+    case 'bar-chart': return { x: 0.5, y: 0.32 };
+    case 'checklist': return { x: 0.5, y: 0.33 };
+    case 'badge': return { x: 0.5, y: 0.18 };
+    case 'underline': return { x: 0.5, y: 0.3 };
     case 'quote': return { x: 0.5, y: 0.42 };
     case 'arrow': return { x: 0.68, y: 0.4 };
     default: return { x: 0.76, y: 0.22 };

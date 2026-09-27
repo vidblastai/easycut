@@ -127,7 +127,30 @@ export const env = {
      * question a router does not answer for you.
      */
     wavespeedKey: str('WAVESPEED_API_KEY'),
+    /**
+     * The everyday director: cuts, removals, B-roll queries, emphasis.
+     *
+     * A flash-tier model is the right tool for that job — it is mostly
+     * bookkeeping against a transcript, and it runs on every upload.
+     */
     wavespeedModel: str('WAVESPEED_MODEL') ?? 'google/gemini-3.6-flash',
+    /**
+     * The model that designs the motion graphics, when one is set.
+     *
+     * Deciding that a sentence wants a counter running to 40K rather than a
+     * stat card — and what its two-word label should be, and which of six
+     * moves suits the beat — is a design judgement, not bookkeeping, and it is
+     * the one part of the plan where a stronger model visibly changes the
+     * output. It is a separate knob so it can be a stronger model than the one
+     * doing the cutting without paying that rate for the whole plan.
+     *
+     * Note the DOT in the model id. WaveSpeed names this one
+     * `anthropic/claude-opus-5.5`, not `-5-5` as Anthropic's own API spells
+     * it, and the dashed form comes back as "does not exist or you do not
+     * have access to it" — which reads exactly like the model not being
+     * available. It is available; the id is just spelled differently here.
+     */
+    motionModel: str('MOTION_MODEL') ?? 'anthropic/claude-opus-5.5',
     maxOutputTokens: num('LLM_MAX_OUTPUT_TOKENS', 8000),
   },
 

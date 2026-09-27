@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { GRAPHIC_ANIMATIONS, GRAPHIC_TYPES } from '@/lib/edl/types';
 
 /**
  * The director's output. Everything here is expressed in **source time** — the
@@ -37,10 +38,14 @@ export const DirectorBrollSchema = z.object({
 export const DirectorGraphicSchema = z.object({
   atSec: z.number().nonnegative(),
   durationSec: z.number().positive().default(2.5),
-  type: z.enum(['icon', 'stat', 'list', 'title-card', 'quote', 'arrow', 'image']),
+  // Taken from the renderer's own list rather than repeated here: a type the
+  // director can name but nothing can draw is a silent hole in the video.
+  type: z.enum(GRAPHIC_TYPES),
   text: z.string().default(''),
   subtext: z.string().default(''),
   items: z.array(z.string()).default([]),
+  /** How it arrives. Left empty, the pipeline picks one to suit the type. */
+  animation: z.enum(GRAPHIC_ANIMATIONS).optional(),
   /** Iconify-style concept name: "rocket", "shield-check", "trending-up". */
   iconQuery: z.string().default(''),
   /** Only for `image` — a bespoke illustration prompt. Costs money, use sparingly. */

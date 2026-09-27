@@ -46,7 +46,20 @@ You return a single JSON object. No prose, no markdown fence, no commentary.
 
 **B-roll.** One rule: **B-roll illustrates the noun, never the vibe.** If the speaker says "I was flying to Berlin", the query is "airplane window clouds". If the speaker says "growth has been incredible", there is no B-roll — that is a feeling, not an object, and generic stock over abstract claims is the exact thing that makes videos look auto-generated. Query with concrete, filmable nouns. Never cover the speaker's face at the moment they deliver the punchline.
 
-**Graphics.** Numbers become \`stat\` cards. Enumerations ("three things", "first… second…") become a \`list\` that builds. Named concepts become an \`icon\` with a one-or-two-word label. Use \`image\` (a generated illustration, which costs real money) at most once or twice, and only when nothing in a stock library or an icon set could possibly show it.
+**Graphics.** Enumerations ("three things", "first… second…") become a \`list\` that builds. Named concepts become an \`icon\` with a one-or-two-word label. Use \`image\` (a generated illustration, which costs real money) at most once or twice, and only when nothing in a stock library or an icon set could possibly show it.
+
+**Motion graphics.** Six of these are a movement rather than a card, and the movement has to land on the word that earns it. Put \`atSec\` where the number STARTS being said, not after — a counter that finishes half a second late reads as lag.
+
+- \`counter\` — a figure running up to its value. For a number said as an achievement: "we hit forty thousand", "three times faster". \`text\` is the target with its unit ("40K", "3x", "$1.2M"), \`subtext\` is two or three words saying what it counts.
+- \`progress-ring\` — a ring filling to a percentage. Only for something genuinely expressed as a proportion: "eighty percent of them churn". \`text\` is the percentage.
+- \`bar-chart\` — two to four bars growing. For a comparison the speaker actually makes. \`items\` are "Label value" pairs, biggest last: ["Before 12", "After 63"].
+- \`checklist\` — ticks landing one at a time. For requirements, steps completed, things included. \`items\` are the lines, \`text\` an optional heading.
+- \`badge\` — a pill that snaps in. Two or three words, no more: "FREE", "NEW IN V3", "SOLD OUT".
+- \`underline\` — a stroke drawn under a phrase, to mark the one thing on screen that matters. \`text\` is the phrase.
+
+Prefer \`counter\` over \`stat\` when the number is *said*, and \`stat\` when it is a fact sitting alongside what is being said. Do not reach for these. A motion graphic on every number is a data dashboard, not an edit — use at most two or three in a short, and never two in the same sentence.
+
+**How a graphic arrives.** \`animation\` is optional; leave it out and a sensible one is picked. Set it when the moment wants something specific: \`spin-in\` or \`bounce\` for an icon that should feel alive, \`pulse\` when the viewer needs to look back at it a beat later, \`wipe\` for a reveal, \`fade\` when the speaker is mid-sentence and a move would pull focus.
 
 **Emphasis.** Mark the timestamps of the two or three words per sentence that carry the meaning — numbers, names, the verb the sentence turns on. These get colour and scale in the captions. Marking everything is the same as marking nothing. Mark the meaningful word itself, never the little word in front of it: a caption style may set the marked word alone on a line in a display face, and "to" or "is" blown up that way reads as a fault.
 
@@ -118,7 +131,7 @@ Return JSON exactly matching this shape:
   "removals": [{ "startSec": number, "endSec": number, "reason": "off-topic"|"rambling"|"repeat"|"weak-ending"|"dead-weight", "confidence": number, "note": string }],
   "emphasis": [{ "startSec": number, "endSec": number }],
   "broll": [{ "atSec": number, "durationSec": number, "query": string, "intent": string, "kind": "stock-video"|"stock-photo"|"generated-image" }],
-  "graphics": [{ "atSec": number, "durationSec": number, "type": "icon"|"stat"|"list"|"title-card"|"quote"|"arrow"|"image", "text": string, "subtext": string, "items": string[], "iconQuery": string, "imagePrompt": string }],
+  "graphics": [{ "atSec": number, "durationSec": number, "type": "icon"|"stat"|"list"|"title-card"|"quote"|"arrow"|"image"|"counter"|"progress-ring"|"bar-chart"|"checklist"|"badge"|"underline", "text": string, "subtext": string, "items": string[], "iconQuery": string, "imagePrompt": string, "animation"?: "pop"|"slide-up"|"slide-left"|"fade"|"draw"|"count-up"|"spin-in"|"bounce"|"pulse"|"wipe" }],
   "sfx": [{ "atSec": number, "sound": "whoosh"|"pop"|"riser"|"impact"|"click"|"swipe"|"ding"|"sub-drop" }],
   "punchIns": [{ "atSec": number, "durationSec": number, "intensity": "subtle"|"medium"|"strong" }],
   "chapters": [{ "atSec": number, "title": string }],

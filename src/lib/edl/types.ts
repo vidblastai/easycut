@@ -370,17 +370,42 @@ export type BrollClip = z.infer<typeof BrollClipSchema>;
 /* ---------------------------------------------------------------- graphics */
 
 export const GRAPHIC_TYPES = [
-  'icon',        // animated SVG/PNG icon with a label
-  'stat',        // big number + caption
-  'list',        // bullets that build in one by one
-  'title-card',  // full-frame title, usually at 0s
+  'icon',          // animated SVG/PNG icon with a label
+  'stat',          // big number + caption
+  'list',          // bullets that build in one by one
+  'title-card',    // full-frame title, usually at 0s
   'quote',
-  'arrow',       // pointer/annotation aimed at a screen position
-  'image',       // generated or fetched illustration
+  'arrow',         // pointer/annotation aimed at a screen position
+  'image',         // generated or fetched illustration
+  /* ── motion graphics: the ones that are a MOVE, not a card ──────────── */
+  'counter',       // a number that runs up to its target as it is said
+  'progress-ring', // a ring that fills to a percentage
+  'bar-chart',     // two to four bars that grow from nothing
+  'checklist',     // ticks that land one at a time
+  'badge',         // a pill that snaps in and settles
+  'underline',     // a stroke drawn under a point on the frame
 ] as const;
 export type GraphicType = (typeof GRAPHIC_TYPES)[number];
 
-export const GRAPHIC_ANIMATIONS = ['pop', 'slide-up', 'slide-left', 'fade', 'draw', 'count-up'] as const;
+/**
+ * Which of these carries its own motion.
+ *
+ * A stat card animates in and then holds; a counter IS the animation, and the
+ * moment it lands has to sit under the words that earned it. The renderer uses
+ * this to decide whether the entrance is the whole of the movement or only the
+ * beginning of it.
+ */
+export const MOVING_GRAPHICS: readonly GraphicType[] = [
+  'counter', 'progress-ring', 'bar-chart', 'checklist', 'underline',
+];
+
+export const GRAPHIC_ANIMATIONS = [
+  'pop', 'slide-up', 'slide-left', 'fade', 'draw', 'count-up',
+  'spin-in',  // arrives turning — for icons, where a flat pop reads as a sticker
+  'bounce',   // overshoots and settles
+  'pulse',    // lands, then breathes once so the eye comes back to it
+  'wipe',     // revealed left to right behind a moving edge
+] as const;
 
 export const GraphicElementSchema = z.object({
   id: z.string(),
@@ -424,6 +449,11 @@ export type OverlayElement = z.infer<typeof OverlayElementSchema>;
 
 export const TRANSITION_TYPES = [
   'none', 'cut', 'dissolve', 'whip-pan', 'zoom-punch', 'glitch', 'slide', 'flash', 'film-burn',
+  'zoom-blur',   // the frame rushes at you and clears
+  'barn-door',   // two panels part from the middle
+  'pixelate',    // breaks into blocks and reassembles
+  'light-leak',  // a warm streak crosses the frame
+  'push',        // the outgoing frame is shoved off by the incoming one
 ] as const;
 export type TransitionType = (typeof TRANSITION_TYPES)[number];
 

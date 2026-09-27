@@ -2030,6 +2030,22 @@ function Inspector({
  * here" is the other half, and without it the timeline is a veto rather than an
  * instrument.
  */
+/**
+ * The motion graphics you can drop in by hand, with something in them already.
+ *
+ * `seed` is what lands in the clip's text: a graphic added blank shows nothing,
+ * which reads as the button not having worked. Typing over a placeholder is a
+ * better first move than facing an empty one.
+ */
+const MOTION_GRAPHIC_ITEMS = [
+  { type: 'counter', label: 'Counter', seed: '100', durationSec: 2.5 },
+  { type: 'progress-ring', label: 'Ring', seed: '75%', durationSec: 2.5 },
+  { type: 'bar-chart', label: 'Bars', seed: 'Before 20', durationSec: 3 },
+  { type: 'checklist', label: 'Checklist', seed: 'First thing', durationSec: 3.5 },
+  { type: 'badge', label: 'Badge', seed: 'New', durationSec: 2 },
+  { type: 'underline', label: 'Underline', seed: 'this bit', durationSec: 2 },
+] as const;
+
 function AddMenu({ atSec, onAdd }: { atSec: number; onAdd: (op: EdlOperation) => void }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -2078,6 +2094,26 @@ function AddMenu({ atSec, onAdd }: { atSec: number; onAdd: (op: EdlOperation) =>
           <MenuItem onClick={() => add({ op: 'clip.add', track: 'graphics', atSec, durationSec: 2.5, value: '100', graphicType: 'stat', id: freshId('graphics') })}>
             Stat card
           </MenuItem>
+
+          <div className="border-t border-line-soft px-3 pt-2 pb-1 text-[10px] font-bold uppercase tracking-wider text-faint">
+            Motion graphic
+          </div>
+          <div className="flex flex-wrap gap-1 p-2 pt-0">
+            {MOTION_GRAPHIC_ITEMS.map(({ type, label, seed, durationSec }) => (
+              <button
+                key={type}
+                type="button"
+                onClick={() => add({
+                  op: 'clip.add', track: 'graphics', atSec, durationSec,
+                  value: seed, graphicType: type, id: freshId('graphics'),
+                })}
+                title={`${label} at the playhead`}
+                className="rounded border border-line px-2 py-0.5 text-[11px] font-semibold text-muted transition-colors hover:border-violet hover:text-violet"
+              >
+                {label}
+              </button>
+            ))}
+          </div>
           <MenuItem onClick={() => add({ op: 'clip.add', track: 'punchIns', atSec, durationSec: 2, value: '', id: freshId('punchIns') })}>
             Punch-in
           </MenuItem>
@@ -2085,7 +2121,10 @@ function AddMenu({ atSec, onAdd }: { atSec: number; onAdd: (op: EdlOperation) =>
             Transition
           </div>
           <div className="flex flex-wrap gap-1 p-2 pt-0">
-            {(['dissolve', 'whip-pan', 'zoom-punch', 'flash', 'glitch', 'slide', 'film-burn'] as const).map((type) => (
+            {([
+              'dissolve', 'whip-pan', 'zoom-punch', 'flash', 'glitch', 'slide', 'film-burn',
+              'zoom-blur', 'barn-door', 'pixelate', 'light-leak', 'push',
+            ] as const).map((type) => (
               <button
                 key={type}
                 type="button"

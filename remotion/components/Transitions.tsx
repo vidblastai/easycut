@@ -150,6 +150,94 @@ const TransitionEffect: React.FC<{ cue: TransitionCue; span: number; cheap: bool
         />
       );
 
+    case 'zoom-blur':
+      // The frame appears to rush at the viewer and clear. A real radial blur
+      // is not something CSS can do cheaply, so this is the read of one: a
+      // bright core thrown outward, scaled past the edges.
+      return (
+        <AbsoluteFill
+          style={{
+            pointerEvents: 'none',
+            opacity: intensity * 0.75,
+            background: 'radial-gradient(circle at center, rgba(245,245,247,0.55) 0%, rgba(245,245,247,0) 55%)',
+            transform: `scale(${1 + intensity * 1.6})`,
+            ...(cheap ? null : { filter: `blur(${intensity * 10}px)` }),
+          }}
+        />
+      );
+
+    case 'barn-door':
+      // Two panels part from the middle, so the cut looks like it was opened.
+      return (
+        <AbsoluteFill style={{ pointerEvents: 'none' }}>
+          {[-1, 1].map((side) => (
+            <div
+              key={side}
+              style={{
+                position: 'absolute',
+                top: 0,
+                bottom: 0,
+                left: side < 0 ? 0 : '50%',
+                width: '50%',
+                background: '#0D0D10',
+                transform: `translateX(${(1 - intensity) * side * 100}%)`,
+              }}
+            />
+          ))}
+        </AbsoluteFill>
+      );
+
+    case 'pixelate':
+      // Blocks, not a real mosaic: a grid of squares that flashes over the cut
+      // and clears. The grid is fixed, so nothing here lays out per frame.
+      return (
+        <AbsoluteFill style={{ pointerEvents: 'none', opacity: intensity * 0.85 }}>
+          {bands.map((band, i) => (
+            <div
+              key={i}
+              style={{
+                position: 'absolute',
+                left: `${(i % 4) * 25}%`,
+                top: `${Math.floor(i / 4) * 25 + band * 12}%`,
+                width: '25%',
+                height: '25%',
+                background: i % 2 === 0 ? 'rgba(13,13,16,0.85)' : 'rgba(155,123,255,0.35)',
+                transform: `scale(${0.6 + intensity * 0.4})`,
+              }}
+            />
+          ))}
+        </AbsoluteFill>
+      );
+
+    case 'light-leak':
+      // A warm streak crossing the frame, the way film does when the back is
+      // opened. Static gradient, animated across — no repainted gradient.
+      return (
+        <AbsoluteFill
+          style={{
+            pointerEvents: 'none',
+            opacity: intensity * 0.8,
+            background:
+              'linear-gradient(105deg, rgba(0,0,0,0) 30%, rgba(255,196,120,0.75) 48%, rgba(255,120,60,0.45) 56%, rgba(0,0,0,0) 72%)',
+            transform: `translateX(${t * width * 0.9}px)`,
+            ...(cheap ? null : { mixBlendMode: 'screen' as const }),
+          }}
+        />
+      );
+
+    case 'push':
+      // The outgoing frame is shoved off by the incoming one: one opaque panel
+      // travelling the full width of the frame across the cut.
+      return (
+        <AbsoluteFill
+          style={{
+            pointerEvents: 'none',
+            background: '#0D0D10',
+            transform: `translateX(${t * width}px)`,
+          }}
+        />
+      );
+
     case 'dissolve':
     default:
       return (

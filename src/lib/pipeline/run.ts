@@ -4,6 +4,7 @@ import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { env } from '@/lib/config/env';
 import { direct, planWindows } from '@/lib/director';
+import { designMotionGraphics, isMotionPassConfigured, withMotionGraphics } from '@/lib/director/motion';
 import { buildEdl } from '@/lib/edl/builder';
 import { stripLayers } from '@/lib/edl/layers';
 import { ASPECT_DIMENSIONS, type Aspect, type Edl } from '@/lib/edl/types';
@@ -317,6 +318,23 @@ async function stageDirect(ctx: PipelineContext): Promise<void> {
         ? `AI director unavailable (${result.error}) — used the rule-based editor`
         : 'AI director not configured — used the rule-based editor',
     );
+  }
+
+  /*
+   * A second, small pass for the motion graphics, on a stronger model.
+   *
+   * Deliberately after the main plan and deliberately non-fatal: a counter
+   * running up to the figure somebody just said is the best thing in the edit
+   * when it lands and completely optional when it does not. If this call
+   * fails, the video keeps the graphics the director already chose and nobody
+   * is told about a garnish that did not arrive.
+   */
+  if (isMotionPassConfigured() && result.provider !== 'heuristic') {
+    const motion = await designMotionGraphics(ctx.transcript, ctx.plan, targetDurationSec);
+    if (motion.graphics.length) {
+      ctx.plan = withMotionGraphics(ctx.plan, motion.graphics);
+      ctx.ledger.add('director', motion.costUsd, `motion:${motion.model}`);
+    }
   }
 }
 

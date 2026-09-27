@@ -48,6 +48,11 @@ const MODEL_PRICING: Record<string, { inputPerMTok: number; outputPerMTok: numbe
   'google/gemini-3-flash-preview': { inputPerMTok: 0.5, outputPerMTok: 3 },
   'google/gemini-2.5-flash': { inputPerMTok: 0.3, outputPerMTok: 2.5 },
   'google/gemini-2.5-pro': { inputPerMTok: 1.25, outputPerMTok: 10 },
+  // The motion-graphics pass. Mind the dot: WaveSpeed spells this model
+  // `claude-opus-5.5`, not `claude-opus-5-5`.
+  'anthropic/claude-opus-5.5': { inputPerMTok: 4, outputPerMTok: 20 },
+  'anthropic/claude-opus-5': { inputPerMTok: 5, outputPerMTok: 25 },
+  'anthropic/claude-sonnet-5': { inputPerMTok: 2, outputPerMTok: 10 },
 };
 
 const FALLBACK_PRICING = { inputPerMTok: 1, outputPerMTok: 5 };
