@@ -681,6 +681,11 @@ async function uploadWithRetry(
   file: File,
   onProgress: (fraction: number) => void,
 ): Promise<void> {
+  // Anything big enough that starting over would hurt goes up in pieces.
+  if (upload.method === 'POST' && file.size > CHUNKED_ABOVE) {
+    return uploadInChunks(upload.url, file, onProgress);
+  }
+
   const delays = [2000, 6000];
   for (let attempt = 0; ; attempt++) {
     try {
@@ -693,6 +698,172 @@ async function uploadWithRetry(
       await new Promise((r) => setTimeout(r, delays[attempt]));
     }
   }
+}
+
+/* ------------------------------------------------------- chunked uploading */
+
+/** Above this, a lost connection costs too much to accept. */
+const CHUNKED_ABOVE = 32 * 1024 * 1024;
+
+/**
+ * How much goes in one request.
+ *
+ * Eight megabytes is the compromise: small enough that losing one is a few
+ * seconds even on a slow line, large enough that a 3 GB file is a few hundred
+ * requests rather than tens of thousands.
+ */
+const CHUNK_BYTES = 8 * 1024 * 1024;
+
+/** Per-chunk, not per-file — the whole point is that one chunk can fail a lot. */
+const CHUNK_DELAYS = [1000, 2000, 4000, 8000, 15000, 30000];
+
+/**
+ * The same file, in pieces, resuming where it left off.
+ *
+ * Why this exists rather than a bigger timeout: the bytes were never the
+ * problem. Three uploads in a row failed and the server logged no error at all
+ * — twelve client-aborted requests and nothing else, which is what a dropped
+ * connection looks like from the other end. On a phone export that takes ten
+ * minutes to send, one drop is close to certain, and whole-file POST answers a
+ * drop at minute nine by asking for all nine minutes again.
+ *
+ * So: ask the server how much it already has, send the next piece, repeat. A
+ * drop now costs one piece. A reload costs nothing at all, because the upload
+ * id is derived from the file itself and the server's part file is still there.
+ */
+async function uploadInChunks(url: string, file: File, onProgress: (fraction: number) => void): Promise<void> {
+  const uploadId = uploadIdFor(file);
+  let offset = await askReceived(url, uploadId, file.size).catch(() => 0);
+  let strikes = 0;
+  let done = false;
+
+  onProgress(offset / file.size);
+
+  /*
+   * Driven by the server saying "done", not by the client's own arithmetic.
+   *
+   * The difference matters in one case that is easy to miss: a part file that
+   * is already complete because the FINAL chunk's response was the one that got
+   * lost. Counting bytes, the client would decide there was nothing left to
+   * send and report success on an upload that was never finalised and has no
+   * asset row. Looping until the server says so sends a last empty chunk
+   * instead, which is exactly the nudge that finalises it.
+   */
+  while (!done) {
+    const end = Math.min(offset + CHUNK_BYTES, file.size);
+    try {
+      const before = offset;
+      const answer = await sendChunk(url, uploadId, file, offset, end, onProgress);
+      offset = answer.received;
+      done = answer.done;
+      // A reply that accepted bytes and moved nowhere would spin for ever.
+      strikes = !done && offset <= before && end > before ? strikes + 1 : 0;
+      if (strikes > CHUNK_DELAYS.length) throw new UploadError(droppedMessage(offset, file.size), 0);
+    } catch (error) {
+      const status = error instanceof UploadError ? error.status : 0;
+      if (!TRANSIENT.has(status) || strikes >= CHUNK_DELAYS.length) throw error;
+      await new Promise((r) => setTimeout(r, CHUNK_DELAYS[strikes]));
+      strikes += 1;
+      /*
+       * Re-ask rather than assume. A chunk can fail on the way back, after the
+       * server wrote every byte of it — retrying from the old offset would then
+       * be refused for ever, and the transfer would deadlock at 40%.
+       */
+      offset = await askReceived(url, uploadId, file.size).catch(() => offset);
+    }
+    onProgress(offset / file.size);
+  }
+}
+
+/**
+ * An id for this transfer, derived from the file rather than invented.
+ *
+ * Deterministic on purpose: a reload, a second tab or a phone that locked mid
+ * upload all lose whatever the page was holding, and a fresh random id would
+ * mean starting the file again while the bytes we already sent sit on the
+ * server waiting for an id nobody will ask for.
+ */
+function uploadIdFor(file: File): string {
+  let name = 0;
+  for (const char of file.name) name = (name * 31 + char.charCodeAt(0)) % 0xffffffff;
+  return `u-${file.size.toString(36)}-${file.lastModified.toString(36)}-${name.toString(36)}`.toLowerCase();
+}
+
+/**
+ * How many bytes the server already holds for this upload.
+ *
+ * A part longer than the file cannot be a prefix of it, so it is thrown away
+ * rather than resumed. That only happens if a previous transfer under the same
+ * id was of different content, and resuming it would produce a file that is the
+ * right length and the wrong video.
+ */
+async function askReceived(url: string, uploadId: string, size: number): Promise<number> {
+  const response = await fetch(`${url}?uploadId=${encodeURIComponent(uploadId)}`, { cache: 'no-store' });
+  if (!response.ok) return 0;
+  const body = (await response.json()) as { received?: number };
+  const received = Number.isFinite(body.received) ? Number(body.received) : 0;
+  if (received <= size) return received;
+  await fetch(`${url}?uploadId=${encodeURIComponent(uploadId)}`, { method: 'DELETE' }).catch(() => {});
+  return 0;
+}
+
+/** Sends one slice and answers with the server's position, and whether that is the end. */
+function sendChunk(
+  url: string,
+  uploadId: string,
+  file: File,
+  offset: number,
+  end: number,
+  onProgress: (fraction: number) => void,
+): Promise<{ received: number; done: boolean }> {
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', url);
+    xhr.setRequestHeader('Content-Type', file.type || 'video/mp4');
+    xhr.setRequestHeader('x-filename', file.name);
+    xhr.setRequestHeader('x-upload-id', uploadId);
+    xhr.setRequestHeader('x-chunk-offset', String(offset));
+    xhr.setRequestHeader('x-upload-total', String(file.size));
+
+    let sent = 0;
+    xhr.upload.onprogress = (event) => {
+      if (event.lengthComputable) {
+        sent = event.loaded;
+        onProgress((offset + sent) / file.size);
+      }
+    };
+
+    const answer = (): { received?: number; done?: boolean } => {
+      try {
+        return JSON.parse(xhr.responseText) as { received?: number; done?: boolean };
+      } catch {
+        return {};
+      }
+    };
+
+    xhr.onload = () => {
+      // 409 is not a failure: it is the server telling us where it really is,
+      // which is the only answer that lets a resumed upload converge.
+      if (xhr.status === 409) {
+        const at = answer().received;
+        return Number.isFinite(at)
+          ? resolve({ received: Number(at), done: false })
+          : reject(new UploadError(messageFor(xhr), 409));
+      }
+      if (xhr.status < 200 || xhr.status >= 300) return reject(new UploadError(messageFor(xhr), xhr.status));
+      const body = answer();
+      resolve({
+        received: Number.isFinite(body.received) ? Number(body.received) : end,
+        done: body.done === true,
+      });
+    };
+    const dropped = () => reject(new UploadError(droppedMessage(offset + sent, file.size), 0));
+    xhr.onerror = dropped;
+    xhr.ontimeout = dropped;
+    xhr.onabort = dropped;
+
+    xhr.send(file.slice(offset, end));
+  });
 }
 
 function uploadWithProgress(
