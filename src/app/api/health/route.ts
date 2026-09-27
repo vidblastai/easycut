@@ -1,4 +1,6 @@
 import { NextResponse } from 'next/server';
+import { statfs } from 'node:fs/promises';
+import { resolve } from 'node:path';
 import { db } from '@/lib/db';
 import { env } from '@/lib/config/env';
 import { selectedProvider } from '@/lib/director';
@@ -19,6 +21,7 @@ export const dynamic = 'force-dynamic';
  */
 export async function GET() {
   const checks: Record<string, string> = {};
+  const warnings: string[] = [];
   let healthy = true;
 
   try {
@@ -30,6 +33,25 @@ export async function GET() {
   }
 
   checks.storage = env.storage.driver;
+  /*
+   * Free disk, when the uploads land on this container's own disk.
+   *
+   * A full disk does not look like a full disk from the browser. The upload
+   * streams fine until the write fails, the connection drops mid-body, and the
+   * only thing the user ever sees is `xhr.onerror` — "Upload failed, check your
+   * connection", which sends them to reset a router that was never the
+   * problem. This is the one place an operator can tell the difference.
+   */
+  const disk = await freeSpace(env.storage.driver === 'local' ? env.storage.localDir : '.');
+  if (disk) {
+    checks.disk = `${gb(disk.free)} free of ${gb(disk.total)}`;
+    if (env.storage.driver === 'local' && disk.free < LOW_DISK_BYTES) {
+      warnings.push(
+        `Only ${gb(disk.free)} of disk left — uploads will fail mid-transfer, and the browser reports that as a dropped connection.`,
+      );
+      healthy = false;
+    }
+  }
   checks.queue = env.queue.driver;
   checks.renderer = env.render.driver;
   checks.director = selectedProvider();
@@ -44,7 +66,6 @@ export async function GET() {
   // Two settings that work locally and quietly lose data once there is more
   // than one container. Worth surfacing on the endpoint an operator actually
   // looks at rather than only in a doc they read once.
-  const warnings: string[] = [];
   if (!isAuthEnabled()) {
     warnings.push('No CLERK_SECRET_KEY — every project is reachable by anyone who guesses its id.');
   }
@@ -59,4 +80,22 @@ export async function GET() {
     { status: healthy ? 'ok' : 'degraded', checks, ...(warnings.length ? { warnings } : {}) },
     { status: healthy ? 200 : 503 },
   );
+}
+
+/** Below this, an upload of any real size is going to hit the end of the disk. */
+const LOW_DISK_BYTES = 3 * 1024 * 1024 * 1024;
+
+async function freeSpace(dir: string): Promise<{ free: number; total: number } | null> {
+  try {
+    const fs = await statfs(resolve(dir));
+    return { free: Number(fs.bsize) * Number(fs.bavail), total: Number(fs.bsize) * Number(fs.blocks) };
+  } catch {
+    // An unmounted path or a platform without statfs is not a health problem;
+    // it just means this line cannot be reported.
+    return null;
+  }
+}
+
+function gb(bytes: number): string {
+  return `${(bytes / 1024 ** 3).toFixed(1)} GB`;
 }

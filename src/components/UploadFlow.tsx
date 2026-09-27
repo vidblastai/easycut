@@ -712,18 +712,61 @@ function uploadWithProgress(
       xhr.setRequestHeader('x-filename', file.name);
     }
 
+    /*
+     * How far it got, kept so a failure can say so.
+     *
+     * "Upload failed — check your connection" is what this used to say for
+     * every network-level failure, and it is useless: it reads as our problem
+     * when it is usually a 3 GB file over a home connection, and it reads as
+     * their connection when it is sometimes us. The number is the whole
+     * diagnosis.
+     */
+    let sent = 0;
     xhr.upload.onprogress = (event) => {
-      if (event.lengthComputable) onProgress(event.loaded / event.total);
+      if (event.lengthComputable) {
+        sent = event.loaded;
+        onProgress(event.loaded / event.total);
+      }
     };
     xhr.onload = () =>
       xhr.status >= 200 && xhr.status < 300
         ? resolve()
         : reject(new UploadError(messageFor(xhr), xhr.status));
-    xhr.onerror = () =>
-      reject(new UploadError('Upload failed — check your connection and try again.', 0));
+    xhr.onerror = () => reject(new UploadError(droppedMessage(sent, file.size), 0));
+    xhr.ontimeout = () => reject(new UploadError(droppedMessage(sent, file.size), 0));
+    xhr.onabort = () => reject(new UploadError(droppedMessage(sent, file.size), 0));
 
     xhr.send(file);
   });
+}
+
+/**
+ * What to say when the connection drops mid-upload.
+ *
+ * There is no status code here — the request never completed — so the only
+ * evidence is how far it got. Nothing sent at all is a different problem from
+ * two thirds of a three-gigabyte file, and telling someone to "check your
+ * connection" when the real answer is "this file is enormous" wastes their
+ * afternoon.
+ */
+function droppedMessage(sent: number, total: number): string {
+  if (!total) return 'The upload did not start. Check your connection and try again.';
+
+  const fraction = sent / total;
+  const size = formatBytes(total);
+
+  if (sent === 0) {
+    return `The upload never started (${size}). Check your connection, then try again.`;
+  }
+  if (fraction > 0.9) {
+    return `The upload was cut off right at the end (${formatBytes(sent)} of ${size}). Try again — it usually goes through on a second attempt.`;
+  }
+  return (
+    `The connection dropped after ${formatBytes(sent)} of ${size}. ` +
+    (total > 500 * 1024 * 1024
+      ? 'Large files are the usual cause — trimming the clip or exporting at 1080p instead of 4K will upload much more reliably.'
+      : 'Try again, and if it keeps happening on the same file, send it to us.')
+  );
 }
 
 /**
