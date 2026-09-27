@@ -4,16 +4,20 @@ import type { PlannedScene } from '@/lib/director/scenes';
 import type { FormatMode, StylePreset } from '@/lib/styles/presets';
 import { pacingFor } from '@/lib/styles/presets';
 import { layoutPlan } from '@/lib/styles/layouts';
+import { LOOK_META } from '@/lib/scenes/looks';
 import { TimeMapper } from '@/lib/timeline/time-mapper';
 import type { Transcript } from '@/lib/transcribe/types';
 import { buildCaptions } from './captions';
 import { fallbackScene } from './scene-fallback';
 import {
   ASPECT_DIMENSIONS,
+  iconRowY,
   type Aspect,
   type BrollClip,
   type Edl,
+  type CaptionStyle,
   type GraphicElement,
+  type IconCue,
   type OverlayElement,
   type PunchIn,
   type Segment,
@@ -135,6 +139,24 @@ export function buildEdl(input: BuildEdlInput): Edl {
 
   const sfx = placeSfx(plan, mapper, durationSec, transitions, graphics, broll);
 
+  /* ------------------------------ icon cards ------------------------------ */
+
+  // After the three layers it defers to, because it needs to see what they
+  // took: a card is punctuation on the speaker's frame, and there is no
+  // speaker's frame while a scene or a B-roll insert is up.
+  const icons = placeIcons(
+    plan,
+    transcript,
+    mapper,
+    durationSec,
+    broll,
+    graphics,
+    scenes,
+    LOOK_META[style.sceneLook].tone,
+    style.captionStyle,
+    dimensions,
+  );
+
   /* ------------------------------- overlays ------------------------------- */
 
   const overlays = placeOverlays(input, plan, mapper, durationSec);
@@ -158,6 +180,7 @@ export function buildEdl(input: BuildEdlInput): Edl {
     captionStyle: style.captionStyle,
     broll,
     graphics,
+    icons,
     scenes,
     overlays,
     transitions,
@@ -348,6 +371,144 @@ export function placeScenes(
   }
 
   return scenes;
+}
+
+/* ------------------------------------------------------------- icon cards */
+
+/** How long a row sits after its last card lands. */
+const ICON_HOLD_SEC = 2;
+
+/** Cards this close together belong to the same row. */
+const ICON_ROW_WINDOW_SEC = 2.5;
+
+/** Three side by side is the most a vertical frame can hold and stay readable. */
+const ICON_ROW_MAX = 3;
+
+/**
+ * The icon cards, snapped to the words that earn them.
+ *
+ * ── Snapping, and why it is the whole job ───────────────────────────────
+ *
+ * A card that lands a few frames off the word does not read as "slightly
+ * late", it reads as broken — the eye is very good at this, which is why the
+ * effect works at all. The director's `atSec` is a reading of the transcript
+ * and is routinely a tenth of a second out; the transcript's own word
+ * timestamps are not. So the director names the WORD, and the real moment is
+ * looked up here.
+ *
+ * ── Rows ────────────────────────────────────────────────────────────────
+ *
+ * Cards said close together are one row that arrives one card at a time and
+ * leaves all at once, because that is what the sentence does: "bananas and
+ * apples" is one thought with two nouns in it. Grouping here rather than in
+ * the director is deliberate — it is bookkeeping, it has an exact answer, and
+ * a model asked to do it will sometimes put the apple in its own row.
+ */
+function placeIcons(
+  plan: DirectorPlan,
+  transcript: Transcript,
+  mapper: TimeMapper,
+  durationSec: number,
+  broll: BrollClip[],
+  graphics: GraphicElement[],
+  scenes: AnimatedScene[],
+  tone: 'light' | 'dark',
+  captions: CaptionStyle,
+  dimensions: { width: number; height: number },
+): IconCue[] {
+  const placed: Array<{ atSec: number; word: string; query: string }> = [];
+
+  for (const cue of plan.icons) {
+    if (!cue.query.trim()) continue;
+
+    const sourceSec = snapToWord(transcript, cue.word, cue.atSec);
+    const at = mapper.toOutput(sourceSec);
+    // `toOutput` returns null for a moment that was cut away. A card for a
+    // sentence the edit removed is not a card with bad timing, it is a card
+    // for something the viewer never hears.
+    if (at === null || at < 0.2 || at > durationSec - 0.8) continue;
+
+    // Three layers already own the frame when they are up. A card over any of
+    // them is a second focal point competing with the first.
+    if (broll.some((b) => at >= b.outStartSec - 0.2 && at <= b.outEndSec + 0.2)) continue;
+    if (scenes.some((sc) => at >= sc.outStartSec - 0.2 && at <= sc.outEndSec + 0.2)) continue;
+    if (graphics.some((g) => at >= g.outStartSec - 0.4 && at <= g.outEndSec + 0.4)) continue;
+
+    // Two cards on the same word is the same card twice.
+    if (placed.some((other) => Math.abs(other.atSec - at) < 0.25)) continue;
+
+    placed.push({ atSec: at, word: cue.word, query: cue.query.trim() });
+  }
+
+  placed.sort((a, b) => a.atSec - b.atSec);
+
+  /* ------------------------------- into rows ------------------------------ */
+
+  const rows: Array<typeof placed> = [];
+  for (const card of placed) {
+    const row = rows[rows.length - 1];
+    const previous = row?.[row.length - 1];
+    if (row && previous && card.atSec - previous.atSec <= ICON_ROW_WINDOW_SEC && row.length < ICON_ROW_MAX) {
+      row.push(card);
+    } else {
+      rows.push([card]);
+    }
+  }
+
+  return rows
+    .map((row, index) => {
+      const last = row[row.length - 1].atSec;
+      const next = rows[index + 1]?.[0]?.atSec ?? Infinity;
+      // A row leaves before the next one arrives, and never overruns the edit.
+      const endSec = Math.min(last + ICON_HOLD_SEC, next - 0.3, durationSec - 0.1);
+
+      return {
+        id: `icon-${index}`,
+        endSec,
+        // Measured against the captions rather than fixed, so a preset that
+        // puts its words halfway up the frame does not get a card behind them.
+        y: iconRowY(captions, row.length, dimensions.width, dimensions.height),
+        tone,
+        cards: row.map((card) => ({
+          atSec: card.atSec,
+          word: card.word,
+          query: card.query,
+          markup: null,
+          iconId: '',
+        })),
+      };
+    })
+    // A row that has to leave almost as soon as it lands is a flicker. Better
+    // no card than one the viewer only half sees.
+    .filter((cue) => cue.endSec - Math.min(...cue.cards.map((c) => c.atSec)) >= 0.7);
+}
+
+/**
+ * The real timestamp of the word the director named.
+ *
+ * Searched around the director's own guess rather than across the whole
+ * transcript, because a common word said six times would otherwise snap to the
+ * first one — which is a card in the wrong sentence, and worse than the small
+ * error it was fixing. Nothing found within the window means the guess stands.
+ */
+export function snapToWord(transcript: Transcript, word: string, nearSec: number): number {
+  const wanted = word.trim().toLowerCase().replace(/[^a-z0-9']/g, '');
+  if (!wanted) return nearSec;
+
+  const WINDOW_SEC = 2;
+  let best: { startSec: number; distance: number } | null = null;
+
+  for (const candidate of transcript.words) {
+    const distance = Math.abs(candidate.startSec - nearSec);
+    if (distance > WINDOW_SEC) continue;
+    const text = candidate.text.toLowerCase().replace(/[^a-z0-9']/g, '');
+    // `startsWith` both ways, so "banana" matches the spoken "bananas" and a
+    // director who wrote "bananas" matches a spoken "banana".
+    if (!text || !(text.startsWith(wanted) || wanted.startsWith(text))) continue;
+    if (!best || distance < best.distance) best = { startSec: candidate.startSec, distance };
+  }
+
+  return best?.startSec ?? nearSec;
 }
 
 /* -------------------------------------------------------------- graphics */

@@ -1,6 +1,6 @@
 ---
 name: motion-graphics
-description: How EasyCut's faceless animated scenes are built and how to add a new look. Read before touching remotion/components/Scenes.tsx, remotion/lib/motion.ts, remotion/looks/*, src/lib/director/scenes.ts or src/lib/edl/scene-fallback.ts, or when asked to make the motion graphics look better, add a style, or fix how a scene animates.
+description: How EasyCut's faceless animated scenes and icon cards are built, and how to add a new look. Read before touching remotion/components/Scenes.tsx, remotion/components/IconCards.tsx, remotion/lib/motion.ts, remotion/looks/*, src/lib/director/scenes.ts, src/lib/assets/icon-cards.ts or src/lib/edl/scene-fallback.ts, or when asked to make the motion graphics look better, add a style, or fix how a scene animates.
 ---
 
 # Motion graphics that look hand-made
@@ -398,6 +398,90 @@ that drifts.
    model will draw it in the default world's colours.
 6. Render stills and look at them before claiming it works:
    `npx tsx scripts/scene-sheet.ts [look] [kind] [frame]`.
+
+## The icon card is a different instrument
+
+A scene replaces the frame. An **icon card** does not: it is one illustrated
+object on a plain tile that slides up on the word that earns it, holds dead
+still, and fades. No type on it, ever. It is punctuation for a noun, and the
+whole effect is timing — a card three frames late reads as lag.
+
+Measured off the user's reference clip at 1080x1920, 30fps. These numbers are
+not preferences:
+
+| | |
+|---|---|
+| card | 325 x 298 px, centred → **0.30 of the SHORT edge** |
+| travel | 602 px, from below a floor → **2x the card's own height** |
+| rise | 19 frames, **quadratic ease-out**, no overshoot |
+| scale | **none** — the width is constant to the pixel |
+| hold | absolute stillness. Not a drift, not a breath |
+| exit | 15 frames, **linear** opacity, and it does not move |
+
+Three mistakes are one reflex each, and all three were in the first draft of
+the idea:
+
+- **A pop.** Anything arriving wants to scale in. A card that scales is a
+  sticker; what makes this read as an object is that it is already full size
+  before you see it, and it is moving.
+- **A spring.** Overshoot-and-settle is a thing LANDING. This is a thing
+  rising into view, so the ease decelerates and creeps the last few pixels.
+- **A fade-in.** The reference never fades in, it is hidden by an edge. Each
+  card gets its own invisible floor one card-height below where it lands and
+  climbs out of it, clipped, exactly as the reference climbs out of the bottom
+  of the screen. Fade plus slide is a web animation, not an edit.
+
+**The floor is why the clip box is bigger than the card.** It extends a card's
+height below and a sixth of a card all round, so the tile's shadow is not
+sliced down its sides.
+
+### Where the row sits
+
+Under the captions in z-order, above them on screen. `iconRowY()` hangs the
+row off the caption block rather than using a constant, and it deliberately
+over-estimates that block twice over: a display face's line box is taller than
+its `lineHeight`, and a `slide-up` preset lifts the whole block by 0.9 of its
+font size as it arrives. The first version used a flat 0.56 and put the first
+line of the captions straight through the bottom of the cards.
+
+### Rows
+
+Nouns said within 2.5s are ONE row: they arrive one at a time and leave
+together, because that is what "bananas and apples" does. The row is laid out
+for its final width from the first frame, so the banana does not slide left
+when the apple appears. Grouping happens in the builder, never in the
+director — it is bookkeeping with an exact answer.
+
+### The icons themselves
+
+Full-colour illustrated icons from Iconify's emoji sets, not the tinted
+monochrome glyphs the graphics layer uses: a flat pictogram blown up to a
+third of the frame reads as a missing asset. No image model — it would cost
+money per card, take seconds, and come back with a background to key out.
+
+`resolveCardIcons()` takes the WHOLE video's queries at once, because the
+choice of icon set is a property of the set of queries: every set is asked
+about every word and the one that answers the most wins the video. Resolving
+per card gives you a Noto banana beside an OpenMoji apple, which is two
+illustrators on screen in the same second.
+
+Two things do the quality work inside it, and both came from real wrong
+answers:
+
+- **Ranking, not first-hit.** Searching "money" returns a money-mouth face
+  ahead of the money bag. Exact name beats a compound, a compound that starts
+  with the word beats one that contains it, shortest breaks the tie.
+- **`CARD_OBJECTS`.** Emoji sets have no "revenue" and no "growth"; they have
+  a money bag and a chart. The mapped object goes SECOND in the search ladder,
+  right after the phrase — at the bottom it is never reached, because a single
+  word out of the query almost always matches something. That is how "video
+  editing" resolved to a games console.
+
+Verify with a real clip in both tones. A still cannot show you whether it
+lands on the word:
+
+    npx tsx scripts/icon-clip.ts light 6
+    npx tsx scripts/icon-clip.ts dark 6
 
 ## Verifying
 

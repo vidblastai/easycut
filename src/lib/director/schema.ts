@@ -52,6 +52,27 @@ export const DirectorGraphicSchema = z.object({
   imagePrompt: z.string().default(''),
 });
 
+/**
+ * One illustrated icon, tied to the word that earns it.
+ *
+ * Deliberately the smallest cue in this file. Everything it needs is a moment
+ * and a thing — no size, no position, no animation, no duration. Those are the
+ * renderer's business and are identical for every card, and every field a
+ * director is given is a field it can get wrong on a cue whose whole job is to
+ * be frame-accurate.
+ */
+export const DirectorIconSchema = z.object({
+  /** The second the word is SAID. The card is timed to land on it. */
+  atSec: z.number().nonnegative(),
+  /** The spoken word, exactly as it appears in the transcript. */
+  word: z.string().default(''),
+  /**
+   * The object to draw. A physical thing somebody could photograph —
+   * "banana", "clapper board", "money bag" — never an abstraction.
+   */
+  query: z.string(),
+});
+
 export const DirectorEmphasisSchema = z.object({
   startSec: z.number().nonnegative(),
   endSec: z.number().nonnegative(),
@@ -75,6 +96,7 @@ export const DirectorPlanSchema = z.object({
   emphasis: z.array(DirectorEmphasisSchema).default([]),
   broll: z.array(DirectorBrollSchema).default([]),
   graphics: z.array(DirectorGraphicSchema).default([]),
+  icons: z.array(DirectorIconSchema).default([]),
   sfx: z.array(DirectorSfxSchema).default([]),
   punchIns: z.array(DirectorPunchInSchema).default([]),
   chapters: z.array(z.object({ atSec: z.number().nonnegative(), title: z.string() })).default([]),
@@ -96,6 +118,7 @@ export type DirectorPlan = z.infer<typeof DirectorPlanSchema>;
 export type DirectorRemoval = z.infer<typeof DirectorRemovalSchema>;
 export type DirectorBroll = z.infer<typeof DirectorBrollSchema>;
 export type DirectorGraphic = z.infer<typeof DirectorGraphicSchema>;
+export type DirectorIcon = z.infer<typeof DirectorIconSchema>;
 export type DirectorSfx = z.infer<typeof DirectorSfxSchema>;
 export type DirectorPunchIn = z.infer<typeof DirectorPunchInSchema>;
 
@@ -118,6 +141,7 @@ export function mergePlans(plans: DirectorPlan[]): DirectorPlan {
     removals: plans.flatMap((p) => p.removals),
     emphasis: plans.flatMap((p) => p.emphasis),
     broll: plans.flatMap((p) => p.broll),
+    icons: plans.flatMap((p) => p.icons),
     graphics: plans.flatMap((p) => p.graphics),
     sfx: plans.flatMap((p) => p.sfx),
     punchIns: plans.flatMap((p) => p.punchIns),

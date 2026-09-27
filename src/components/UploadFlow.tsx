@@ -62,6 +62,7 @@ const LAYERS = [
   { key: 'captions', label: 'Captions', body: 'Word by word, timed to the syllable.' },
   { key: 'broll', label: 'B-roll', body: 'Real footage cut in where you name something concrete.' },
   { key: 'graphics', label: 'Graphics', body: 'Stat cards, lists and icons for the numbers you say.' },
+  { key: 'icons', label: 'Icon cards', body: 'When you name a thing — a deadline, a phone, a banana — a small illustrated icon of it slides up on the word and fades.' },
   { key: 'scenes', label: 'Animated scenes', body: 'Where you explain something with a shape — steps, a before and after, a figure — the picture becomes a full-screen animation of it.' },
   { key: 'sfx', label: 'Sound effects', body: 'Whooshes on the cuts, pops on the graphics.' },
   { key: 'punchIns', label: 'Punch-ins', body: 'A second camera that pushes in on your point.' },

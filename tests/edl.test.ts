@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { buildEdl } from '@/lib/edl/builder';
-import { EdlSchema } from '@/lib/edl/types';
+import { EdlSchema, iconCardGeometry } from '@/lib/edl/types';
 import { DirectorPlanSchema } from '@/lib/director/schema';
 import { getStyle } from '@/lib/styles/presets';
 import { layoutSegments } from '@/lib/timeline/time-mapper';
@@ -190,5 +190,98 @@ describe('a layout whose B-roll slot is on screen throughout', () => {
     const edl = build(withCues(3), 'split');
     const runs = edl.broll.length;
     expect(runs).toBeGreaterThanOrEqual(4);
+  });
+});
+
+/**
+ * Rows of icon cards.
+ *
+ * The grouping is bookkeeping with an exact answer — which is precisely why it
+ * is done here and not asked of the director, and why it is worth pinning
+ * down. "Bananas and apples" has to come out as ONE row that arrives twice and
+ * leaves once; two rows would put the banana away before the apple appears.
+ */
+describe('icon cards', () => {
+  it('groups nouns said close together into one row that leaves together', () => {
+    const edl = build({
+      icons: [
+        { atSec: 5, word: 'word10', query: 'banana' },
+        { atSec: 6, word: 'word12', query: 'red apple' },
+      ],
+    });
+
+    expect(edl.icons).toHaveLength(1);
+    expect(edl.icons[0].cards.map((c) => c.query)).toEqual(['banana', 'red apple']);
+    // They arrive one at a time…
+    expect(edl.icons[0].cards[0].atSec).toBeLessThan(edl.icons[0].cards[1].atSec);
+    // …and there is one exit for the pair.
+    expect(edl.icons[0].endSec).toBeGreaterThan(edl.icons[0].cards[1].atSec);
+  });
+
+  it('starts a new row when the next noun is a separate thought', () => {
+    const edl = build({
+      icons: [
+        { atSec: 4, word: 'word8', query: 'banana' },
+        { atSec: 14, word: 'word28', query: 'hourglass' },
+      ],
+    });
+    expect(edl.icons).toHaveLength(2);
+  });
+
+  it('never keeps a row on screen once the next one has arrived', () => {
+    const edl = build({
+      icons: [
+        { atSec: 4, word: 'word8', query: 'banana' },
+        { atSec: 9, word: 'word18', query: 'hourglass' },
+      ],
+    });
+    for (let i = 1; i < edl.icons.length; i++) {
+      const previousEnd = edl.icons[i - 1].endSec;
+      const nextStart = Math.min(...edl.icons[i].cards.map((c) => c.atSec));
+      expect(previousEnd).toBeLessThanOrEqual(nextStart);
+    }
+  });
+
+  it('holds a row to three cards, so a fourth noun opens a new one', () => {
+    const edl = build({
+      icons: [
+        { atSec: 4, word: 'word8', query: 'banana' },
+        { atSec: 5, word: 'word10', query: 'red apple' },
+        { atSec: 6, word: 'word12', query: 'grapes' },
+        { atSec: 7, word: 'word14', query: 'hourglass' },
+      ],
+    });
+    expect(edl.icons[0].cards).toHaveLength(3);
+    expect(edl.icons).toHaveLength(2);
+  });
+
+  it('snaps each card to the real timing of the word it names', () => {
+    // The fixture speaks word20 at 10.0s; the director guessed 10.4.
+    const edl = build({ icons: [{ atSec: 10.4, word: 'word20', query: 'banana' }] });
+    expect(edl.icons[0].cards[0].atSec).toBeCloseTo(10, 2);
+  });
+
+  it('drops a card that would land on top of a layer that owns the frame', () => {
+    // B-roll covers 9–13s. A card there is a second focal point competing with
+    // the first, and the insert wins.
+    const edl = build({
+      broll: [{ atSec: 9, durationSec: 4, query: 'a', intent: '', kind: 'stock-video' }],
+      icons: [{ atSec: 11, word: 'word22', query: 'banana' }],
+    });
+    expect(edl.icons).toHaveLength(0);
+  });
+
+  it('carries the video-s tone, so the tile is white or near-black to match', () => {
+    const light = build({ icons: [{ atSec: 5, word: 'word10', query: 'banana' }] }, 'clean');
+    const dark = build({ icons: [{ atSec: 5, word: 'word10', query: 'banana' }] }, 'punchy');
+    expect(light.icons[0].tone).toBe('light');
+    expect(dark.icons[0].tone).toBe('dark');
+  });
+
+  it('places every row clear of the captions', () => {
+    const edl = build({ icons: [{ atSec: 5, word: 'word10', query: 'banana' }] });
+    const { card } = iconCardGeometry(1, edl.format.width, edl.format.height);
+    const rowBottom = edl.icons[0].y + card / edl.format.height / 2;
+    expect(rowBottom).toBeLessThan(edl.captionStyle.positionY);
   });
 });

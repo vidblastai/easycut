@@ -55,6 +55,11 @@ const PatchSchema = z.object({
       captions: z.boolean(),
       broll: z.boolean(),
       graphics: z.boolean(),
+      icons: z.boolean(),
+      // `scenes` was missing here while the editor has offered the switch all
+      // along: turning animated scenes off did nothing, silently, because the
+      // key was dropped before `stripLayers` ever saw it.
+      scenes: z.boolean(),
       music: z.boolean(),
       sfx: z.boolean(),
       punchIns: z.boolean(),

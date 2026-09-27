@@ -1,5 +1,7 @@
 import { env } from '@/lib/config/env';
 import { fetchIconMarkup, resolveIcon } from '@/lib/assets/icons';
+import { resolveCardIcons, type CardIcon } from '@/lib/assets/icon-cards';
+import { getStyle } from '@/lib/styles/presets';
 import { generateImage, isImageGenConfigured } from '@/lib/assets/images';
 import { selectMusic } from '@/lib/assets/music';
 import { searchStock, isStockConfigured, type StockClip } from '@/lib/assets/broll';
@@ -36,7 +38,7 @@ export async function resolveAssets(
   const imageBudget = options.mode === 'short' ? 1 : 2;
   let imagesGenerated = 0;
 
-  const [brollResults, graphicResults, sceneIcons, music] = await Promise.all([
+  const [brollResults, graphicResults, sceneIcons, cardIcons, music] = await Promise.all([
     /* -------------------------------- b-roll ------------------------------- */
     Promise.all(
       edl.broll.map(async (clip) => {
@@ -92,6 +94,23 @@ export async function resolveAssets(
         ),
       ),
     ),
+
+    /* ------------------------------ icon cards ----------------------------- */
+    /*
+     * Every card in the video, resolved in ONE call.
+     *
+     * Not a loop, on purpose: the resolver picks a single illustrated icon set
+     * for the whole video by seeing which one can answer the most of its
+     * words, and that decision cannot be made one card at a time. Resolving
+     * them independently is how you get a Noto banana next to an OpenMoji
+     * apple — two illustrators on screen in the same second.
+     */
+    resolveCardIcons(
+      edl.icons.flatMap((cue) => cue.cards.map((card) => card.query)),
+      // Only ever used to tint the monochrome fallback, so the video's accent
+      // is the right colour for it — the illustrated icons keep their own.
+      getStyle(edl.styleId).accent,
+    ).catch(() => [] as Array<CardIcon | null>),
 
     /* -------------------------------- music -------------------------------- */
     env.features.music
@@ -171,6 +190,32 @@ export async function resolveAssets(
     degraded.push('music (library is empty — add tracks to content/music/manifest.json)');
   }
 
+  /* ------------------------------ icon cards ------------------------------ */
+
+  /*
+   * Flat results back onto rows, in the order they were flattened.
+   *
+   * A card whose icon did not resolve is DROPPED rather than drawn empty — an
+   * empty tile rising on a word is worse than no tile — and a row that loses
+   * all its cards goes with it.
+   */
+  let cardCursor = 0;
+  const icons = edl.icons
+    .map((cue) => ({
+      ...cue,
+      cards: cue.cards
+        .map((card) => {
+          const resolved = cardIcons[cardCursor++] ?? null;
+          return resolved ? { ...card, markup: resolved.markup, iconId: resolved.id } : null;
+        })
+        .filter((card): card is NonNullable<typeof card> => card !== null),
+    }))
+    .filter((cue) => cue.cards.length > 0);
+
+  const droppedCards =
+    edl.icons.reduce((n, cue) => n + cue.cards.length, 0) - icons.reduce((n, cue) => n + cue.cards.length, 0);
+  if (droppedCards > 0) degraded.push(`icon cards (${droppedCards} word(s) had no icon)`);
+
   const scenes = edl.scenes.map((scene, i) => ({
     ...scene,
     // Padded to the item count, so a scene with four labels and two icons
@@ -180,7 +225,7 @@ export async function resolveAssets(
 
   return {
     edl: {
-      ...edl, broll, graphics, scenes, sfx, music: musicTrack,
+      ...edl, broll, graphics, icons, scenes, sfx, music: musicTrack,
       degraded: [...edl.degraded, ...degraded],
     },
     degraded,

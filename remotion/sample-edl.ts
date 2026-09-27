@@ -73,6 +73,7 @@ export const SAMPLE_EDL: Edl = {
   captionStyle: { ...findCaptionPreset('impact')!.style },
   broll: [],
   scenes: [],
+  icons: [],
   graphics: [
     {
       id: 'graphic-0',

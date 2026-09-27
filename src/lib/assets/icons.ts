@@ -72,7 +72,7 @@ function toResolved(id: string, color: string): ResolvedIcon {
  * either. "chart" will. So we try progressively more generic terms rather than
  * failing on the first miss.
  */
-function deriveTerms(query: string): string[] {
+export function deriveTerms(query: string): string[] {
   const cleaned = query.toLowerCase().replace(/[^a-z0-9\s-]/g, ' ').trim();
   const words = cleaned.split(/\s+/).filter(Boolean);
 

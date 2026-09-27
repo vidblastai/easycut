@@ -7,6 +7,7 @@ import type { Edl } from '../src/lib/edl/types';
 import { BrollLayer } from './components/BrollLayer';
 import { Captions } from './components/Captions';
 import { Graphics } from './components/Graphics';
+import { IconCards } from './components/IconCards';
 import { Overlays } from './components/Overlays';
 import { Scenes } from './components/Scenes';
 import { Transitions } from './components/Transitions';
@@ -107,6 +108,11 @@ export const EasyCutVideo: React.FC<EasyCutVideoProps> = ({ edl, previewAudio = 
       <Scenes edl={edl} />
       {plan.headline ? <Headline edl={edl} /> : null}
       <Graphics edl={edl} />
+      {/* Under the captions, deliberately. A card rises from a floor below
+          where it lands, so for a few frames it passes through the caption
+          band — and the words have to stay on top of it, not the other way
+          round. */}
+      <IconCards edl={edl} />
       <Captions edl={edl} positionY={plan.captionY} lowDetail={lowDetail} />
       <Transitions edl={edl} cheap={lowDetail} />
       <Overlays edl={edl} cheap={lowDetail} />

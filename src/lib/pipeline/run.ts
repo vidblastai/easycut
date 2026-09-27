@@ -482,6 +482,7 @@ async function stageTimeline(ctx: PipelineContext): Promise<void> {
     captionStyle: ctx.style.captionStyle,
     broll: [],
     graphics: [],
+    icons: [],
     scenes: [],
     overlays: [],
     transitions: [],

@@ -433,6 +433,141 @@ export const GraphicElementSchema = z.object({
 });
 export type GraphicElement = z.infer<typeof GraphicElementSchema>;
 
+/* ------------------------------------------------------------- icon cards */
+
+/**
+ * The icon that rises on the word that earned it.
+ *
+ * ── What this is, and why it is not a graphic ───────────────────────────
+ *
+ * A graphic is a card with words on it — a stat, a list, a quote — placed
+ * where the director thought a point neededsupport. This is a different
+ * instrument: ONE illustrated object on a plain tile, with no type at all,
+ * that slides up out of nowhere at the exact moment its noun is spoken, holds
+ * dead still, and fades.
+ *
+ * It earns its own track because the timing contract is different. A graphic
+ * is synced to a passage; a card is synced to a WORD, and a card that lands
+ * even three frames after the word reads as a lag rather than as punctuation.
+ * Everything here is built to protect that: the moment comes from the word's
+ * own timestamp in the transcript, and the rise is timed so the card ARRIVES
+ * on the word rather than starting to move on it.
+ *
+ * ── Rows, not singles ───────────────────────────────────────────────────
+ *
+ * "The two best fruits are bananas and apples" wants a banana on "bananas" and
+ * an apple on "apples", side by side, both leaving together. So a cue is a ROW
+ * of up to three cards with their own arrival times and one shared exit: the
+ * row is laid out for its final width from the start, so the first card does
+ * not slide sideways when the second one appears.
+ */
+export const IconCardSchema = z.object({
+  /** Output time of the word this card belongs to. It must LAND here. */
+  atSec: z.number().nonnegative(),
+  /** The word that earned it — shown in the editor, and used to re-roll. */
+  word: z.string().default(''),
+  /** What the icon library was asked for. */
+  query: z.string().default(''),
+  /**
+   * The icon itself, inlined as sanitised SVG.
+   *
+   * Markup rather than a URL for the same reason the graphics layer inlines
+   * its icons: headless Chromium refuses to `decode()` these SVGs, so an
+   * `<Img>` kills the frame it is on. A card with no markup is dropped at
+   * render rather than drawn as an empty tile.
+   */
+  markup: z.string().nullable().default(null),
+  /** Where it came from, e.g. `openmoji:banana`. Kept for the editor. */
+  iconId: z.string().default(''),
+});
+export type IconCard = z.infer<typeof IconCardSchema>;
+
+export const IconCueSchema = z.object({
+  id: z.string(),
+  /** When the whole row fades. Every card in a row leaves together. */
+  endSec: z.number().nonnegative(),
+  /** Normalised centre of the row. The builder keeps it clear of the captions. */
+  y: z.number().default(0.56),
+  /**
+   * White tile or near-black one.
+   *
+   * Carried on the cue rather than read from the style at paint time, and that
+   * is not redundancy: the renderer must not import the style presets, because
+   * Remotion's bundle does not resolve the `@/` alias those modules are built
+   * on and one such import silently kills the whole composition. Writing the
+   * answer into the document also means the editor can flip a single row
+   * without touching the video's style.
+   */
+  tone: z.enum(['light', 'dark']).default('light'),
+  cards: z.array(IconCardSchema).min(1).max(3),
+});
+export type IconCue = z.infer<typeof IconCueSchema>;
+
+/** When the first card of a row arrives. Rows are sorted and spaced by this. */
+export function iconCueStart(cue: IconCue): number {
+  return Math.min(...cue.cards.map((card) => card.atSec));
+}
+
+/**
+ * How big a card is, and how far apart.
+ *
+ * Here rather than in the renderer because the BUILDER needs the same number:
+ * it places the row so the cards clear the captions, and it cannot do that
+ * without knowing how tall a card is. Two copies of this table is how the row
+ * ends up two thirds of a card too low in exactly one of the two places.
+ *
+ * Sized off the SHORT edge, so a card is the same physical object in a
+ * vertical frame and a wide one. A third of the width in 16:9 would be a
+ * poster.
+ */
+export function iconCardGeometry(count: number, width: number, height: number): { card: number; gap: number } {
+  const shortEdge = Math.min(width, height);
+  const fraction = count <= 1 ? 0.3 : count === 2 ? 0.26 : 0.22;
+  return { card: shortEdge * fraction, gap: shortEdge * 0.055 };
+}
+
+/**
+ * Where a row of cards sits, given the captions it must not touch.
+ *
+ * A fixed height cannot work: caption presets put the words anywhere from
+ * halfway up the frame to the bottom sixth, and the first version of this used
+ * a constant 0.56 that happened to land a card directly behind the words. So
+ * the row hangs off the caption block instead — its bottom edge a small gap
+ * above the top of the highest line the captions can reach.
+ *
+ * Clamped at both ends: never so high it sits on the speaker's face, never so
+ * low it leaves the frame when a preset puts its captions near the top.
+ */
+export function iconRowY(
+  captions: Pick<CaptionStyle, 'positionY' | 'fontSizeRatio' | 'lineHeight' | 'maxLines'>,
+  count: number,
+  width: number,
+  height: number,
+): number {
+  const { card } = iconCardGeometry(count, width, height);
+
+  /*
+   * The caption block is taller than `lineHeight` says, and it moves.
+   *
+   * `lineHeight` is applied to the WORDS; the line box a browser gives a
+   * display face at that size is larger than the number — the font's own
+   * ascent and descent do not fit inside 1.0em. And a `slide-up` preset lifts
+   * the whole block by nine tenths of its font size as it arrives. Modelling
+   * only the nominal height put the first line of the captions straight
+   * through the bottom of the cards, so both are allowed for here, generously
+   * in both cases: a card sitting a little higher than it needs to costs
+   * nothing, and a card behind the words costs the shot.
+   */
+  const lineBox = Math.max(captions.lineHeight, 1.5);
+  const blockHeight = Math.max(1, captions.maxLines) * captions.fontSizeRatio * lineBox;
+  const entryLift = captions.fontSizeRatio * 0.9;
+  const captionTop = captions.positionY - blockHeight / 2 - entryLift;
+
+  const bottom = captionTop - 0.035;
+  const centre = bottom - card / height / 2;
+  return Math.min(0.62, Math.max(0.24, centre));
+}
+
 /* ------------------------------------------------------------------ scenes */
 
 /**
@@ -763,6 +898,7 @@ export const EdlSchema = z.object({
   captionStyle: CaptionStyleSchema,
   broll: z.array(BrollClipSchema).default([]),
   graphics: z.array(GraphicElementSchema).default([]),
+  icons: z.array(IconCueSchema).default([]),
   scenes: z.array(AnimatedSceneSchema).default([]),
   overlays: z.array(OverlayElementSchema).default([]),
   transitions: z.array(TransitionCueSchema).default([]),

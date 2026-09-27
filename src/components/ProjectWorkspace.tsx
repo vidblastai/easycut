@@ -1725,6 +1725,7 @@ function TweakPanel({
     { key: 'captions', label: 'Captions', on: edl.captions.length > 0 },
     { key: 'broll', label: 'B-roll', on: edl.broll.length > 0 },
     { key: 'graphics', label: 'Graphics', on: edl.graphics.length > 0 },
+    { key: 'icons', label: 'Icon cards', on: edl.icons.length > 0 },
     { key: 'scenes', label: 'Animated scenes', on: edl.scenes.length > 0 },
     { key: 'sfx', label: 'Sound effects', on: edl.sfx.length > 0 },
     { key: 'punchIns', label: 'Punch-ins', on: edl.punchIns.length > 0 },

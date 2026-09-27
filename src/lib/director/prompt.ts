@@ -61,6 +61,14 @@ Prefer \`counter\` over \`stat\` when the number is *said*, and \`stat\` when it
 
 **How a graphic arrives.** \`animation\` is optional; leave it out and a sensible one is picked. Set it when the moment wants something specific: \`spin-in\` or \`bounce\` for an icon that should feel alive, \`pulse\` when the viewer needs to look back at it a beat later, \`wipe\` for a reveal, \`fade\` when the speaker is mid-sentence and a move would pull focus.
 
+**Icon cards.** This is the smallest instrument you have and the one to reach for most often. When the speaker names a THING — a banana, a deadline, a phone, a gym, a clapper board — a small illustrated icon of that thing slides up on screen at the exact moment the word is said, sits there, and fades out. No words on it. It is visual punctuation for a noun.
+
+- \`word\` is the spoken word itself, copied exactly from the transcript. \`atSec\` is where that word STARTS.
+- \`query\` is the physical object to draw: "banana", "money bag", "clapper board", "hourglass". Never an abstraction — "growth", "strategy" and "mindset" are not objects and will resolve to something arbitrary. If the noun is abstract, either name the object that stands for it ("burnout" → "sleeping face") or skip it.
+- Nouns said close together get their own card each and share the row: "the two best fruits are bananas and apples" is a banana on "bananas" and an apple on "apples", side by side. Up to three in a row; a fourth is clutter.
+- Do NOT put a card on the same word you gave a graphic or a B-roll insert. Those already own that moment.
+- Spread them out. A card on every noun is a sticker album. Pick the nouns the sentence turns on.
+
 **Emphasis.** Mark the timestamps of the two or three words per sentence that carry the meaning — numbers, names, the verb the sentence turns on. These get colour and scale in the captions. Marking everything is the same as marking nothing. Mark the meaningful word itself, never the little word in front of it: a caption style may set the marked word alone on a line in a display face, and "to" or "is" blown up that way reads as a fault.
 
 **Sound effects.** A sound effect is punctuation. It goes on a visual event — a graphic appearing, a hard cut, a reveal — never on a word the speaker is saying. Silence is a legitimate choice.
@@ -87,6 +95,9 @@ export function buildDirectorPrompt(brief: DirectorBrief): string {
   const graphicBudget = Math.max(0, Math.round(windowSec / pacing.graphicEverySec));
   const punchBudget = Math.max(0, Math.round(windowSec / ((pacing.punchInEverySec[0] + pacing.punchInEverySec[1]) / 2)));
   const sfxBudget = Math.round((brollBudget + graphicBudget) * pacing.sfxDensity * 1.5);
+  // Denser than graphics on purpose: a card is one object for a second and a
+  // half, so it punctuates where a card with type on it would interrupt.
+  const iconBudget = Math.max(0, Math.round(windowSec / Math.max(5, pacing.graphicEverySec * 0.7)));
 
   const formatBrief =
     mode === 'short'
@@ -118,6 +129,7 @@ ${
 BUDGET FOR THIS WINDOW (approximate targets, not quotas — under is fine, over is not):
 - B-roll inserts: ~${brollBudget}, each ${pacing.brollDurationSec[0]}–${pacing.brollDurationSec[1]}s
 - Graphics: ~${graphicBudget}, each about ${pacing.graphicDurationSec}s
+- Icon cards: ~${iconBudget}
 - Punch-ins: ~${punchBudget}
 - Sound effects: ~${sfxBudget}
 - Generated images (expensive): at most ${mode === 'short' ? 1 : 2} in the whole video
@@ -132,6 +144,7 @@ Return JSON exactly matching this shape:
   "emphasis": [{ "startSec": number, "endSec": number }],
   "broll": [{ "atSec": number, "durationSec": number, "query": string, "intent": string, "kind": "stock-video"|"stock-photo"|"generated-image" }],
   "graphics": [{ "atSec": number, "durationSec": number, "type": "icon"|"stat"|"list"|"title-card"|"quote"|"arrow"|"image"|"counter"|"progress-ring"|"bar-chart"|"checklist"|"badge"|"underline", "text": string, "subtext": string, "items": string[], "iconQuery": string, "imagePrompt": string, "animation"?: "pop"|"slide-up"|"slide-left"|"fade"|"draw"|"count-up"|"spin-in"|"bounce"|"pulse"|"wipe" }],
+  "icons": [{ "atSec": number, "word": string, "query": string }],
   "sfx": [{ "atSec": number, "sound": "whoosh"|"pop"|"riser"|"impact"|"click"|"swipe"|"ding"|"sub-drop" }],
   "punchIns": [{ "atSec": number, "durationSec": number, "intensity": "subtle"|"medium"|"strong" }],
   "chapters": [{ "atSec": number, "title": string }],
