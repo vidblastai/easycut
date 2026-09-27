@@ -7,6 +7,7 @@ import { layoutPlan } from '@/lib/styles/layouts';
 import { TimeMapper } from '@/lib/timeline/time-mapper';
 import type { Transcript } from '@/lib/transcribe/types';
 import { buildCaptions } from './captions';
+import { fallbackScene } from './scene-fallback';
 import {
   ASPECT_DIMENSIONS,
   type Aspect,
@@ -90,6 +91,37 @@ export function buildEdl(input: BuildEdlInput): Edl {
 
   const scenes = placeScenes(input.scenes ?? [], mapper, durationSec, broll, style.accent);
 
+  /*
+   * A video always leaves here with at least one scene in it.
+   *
+   * Everything above this line can legitimately produce none: the pass can
+   * decline, the cut can eat the passage it chose, a B-roll insert can land on
+   * top of it. Each of those is defensible on its own and the sum of them is
+   * not — what comes out the other side is a talking head with captions, which
+   * is the video this product exists to stop people shipping.
+   *
+   * So if nothing survived, one is chosen deterministically by reading the
+   * transcript. It is placed here, at the end of the builder, rather than back
+   * at the pass, because this is the only point that knows whether anything
+   * actually made it onto the timeline.
+   *
+   * Somebody who declined the layer still gets none: `stripLayers` runs after
+   * this and empties the track. Guaranteeing one here and honouring the
+   * refusal there keeps the two decisions in the one place each belongs.
+   */
+  const sceneNotes: string[] = [];
+  if (!scenes.length) {
+    const rescued = fallbackScene(transcript, mapper, durationSec, broll, style.accent);
+    if (rescued) {
+      scenes.push(rescued);
+      // Recorded, because "the model chose this" and "nothing else was left"
+      // are different facts about the same video and used to look identical.
+      sceneNotes.push(`animated scene chosen from the transcript (${rescued.kind}) — the AI pass placed none`);
+    } else {
+      sceneNotes.push('animated scenes (nothing in the transcript could carry one)');
+    }
+  }
+
   /* ------------------------------ punch-ins ------------------------------- */
 
   const punchIns = placePunchIns(plan, mapper, durationSec, broll, pacing.punchInScale, input.reframe);
@@ -147,7 +179,7 @@ export function buildEdl(input: BuildEdlInput): Edl {
         .map((c) => ({ atSec: mapper.toOutputClamped(c.atSec), title: c.title }))
         .filter((c) => c.atSec > 1 && c.atSec < durationSec - 2),
     },
-    degraded: input.degraded,
+    degraded: [...input.degraded, ...sceneNotes],
   };
 }
 
