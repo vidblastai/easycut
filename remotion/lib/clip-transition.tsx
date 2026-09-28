@@ -279,19 +279,27 @@ export function clipFrameStyle(type: ClipTransition, input: ClipFrameInput): Cli
       const jx = (seeded(`${seed}-jx`, Math.floor(frame)) - 0.5) * width * 0.05 * d;
       const jy = (seeded(`${seed}-jy`, Math.floor(frame)) - 0.5) * height * 0.012 * d;
 
-      if (cheap) {
-        // The editor cannot afford a filter chain rebuilt thirty times a
-        // second, so the preview gets the jump and the exposure only. It is
-        // not the effect, but it is the right length and the right rhythm,
-        // which is what someone scrubbing a timeline is actually judging.
-        return {
-          ...still,
-          opacity: 1,
-          transform: `translate3d(${jx}px, ${jy}px, 0)`,
-          brightness: 1 + blowout * 1.2,
-        };
-      }
-
+      /*
+       * The preview gets the real thing, `cheap` or not.
+       *
+       * It used to get a jump and an exposure lift instead, on the theory that
+       * a filter chain rebuilt thirty times a second was too much for a
+       * browser. That was a bad trade and it cost a round of "you didn't ship
+       * it": what the editor showed was not a lighter version of the effect,
+       * it was a DIFFERENT effect, so the only way to find out what a glitch
+       * actually looked like was to export and watch the file.
+       *
+       * Measured rather than assumed: the chain costs ~45ms a frame at a full
+       * 1080x1920 with no GPU at all, and the preview draws the composition
+       * scaled to a few hundred pixels, where it is a fraction of that. Even
+       * at the worst number it is nine frames at each end of an insert. A
+       * third of a second of dropped frames is a far smaller problem than a
+       * preview that lies.
+       *
+       * `cheap` still governs the motion blur, which is what it was built for:
+       * a full-frame gaussian on EVERY frame of every move is a different
+       * order of cost from a filter on the two ends of an insert.
+       */
       return {
         ...still,
         opacity: 1,
@@ -607,16 +615,16 @@ export function ClipTransitionEffect({
 
     case 'glitch':
       /*
-       * Nothing, once the filter is doing it.
+       * Nothing. The clip's own pixels are what tear.
        *
-       * The bands this used to paint were the bug. They sat ON an intact
-       * picture, and a layer over an undamaged frame is what an overlay looks
-       * like no matter how it is tuned — `clipFrameStyle` now tears the clip's
-       * own pixels instead. The bands survive only in the editor, where a
-       * filter chain rebuilt every frame is too slow to scrub.
+       * The bands this used to paint were the bug, and they outlived the fix
+       * by one release: they were kept for the editor, which meant the preview
+       * went on showing the exact effect that had just been thrown away. What
+       * you saw while editing and what came out of the export were two
+       * different transitions, so the only way to see the real one was to
+       * render the file and watch it. See `clipFrameStyle`.
        */
-      if (!cheap) return null;
-      return <Glitch intensity={intensity} seed={seed} frame={frame} width={width} height={height} cheap={cheap} />;
+      return null;
 
     default:
       return null;
@@ -714,45 +722,6 @@ const Burn: React.FC<{ intensity: number; t: number; cheap: boolean }> = ({ inte
         }}
       />
     </>
-  );
-};
-
-/**
- * Torn bands, offset sideways.
- *
- * The bands' positions are fixed for the life of the clip and only their
- * horizontal offset changes per frame. Re-seeding the `top` and `height` every
- * frame — the obvious way to write this — is a layout pass thirty times a
- * second for movement nobody can follow at this speed.
- */
-const Glitch: React.FC<{
-  intensity: number;
-  seed: string;
-  frame: number;
-  width: number;
-  height: number;
-  cheap: boolean;
-}> = ({ intensity, seed, frame, width, height, cheap }) => {
-  const bands = React.useMemo(() => Array.from({ length: 8 }, (_, i) => seeded(`clip-glitch-${seed}`, i)), [seed]);
-
-  return (
-    <div style={{ ...COVER, opacity: intensity }}>
-      {bands.map((band, i) => (
-        <div
-          key={i}
-          style={{
-            position: 'absolute',
-            left: 0,
-            right: 0,
-            top: band * height,
-            height: height * (0.008 + band * 0.028),
-            background: i % 2 === 0 ? 'rgba(155,123,255,0.55)' : 'rgba(245,245,247,0.25)',
-            transform: `translateX(${(seeded(`clip-glitch-${seed}-${Math.floor(frame)}`, i) - 0.5) * width * 0.14}px)`,
-            ...(cheap ? null : { mixBlendMode: 'screen' as const }),
-          }}
-        />
-      ))}
-    </div>
   );
 };
 

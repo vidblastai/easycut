@@ -585,6 +585,22 @@ Two fixes, and they are the two things a camera does for free:
    step/7, capped at 48px. Derived from the distance actually covered since
    the last frame, so fast frames smear and the settle is sharp.
 
+**The preview runs the same code, and this is not negotiable.** It briefly did
+not: the glitch had a `cheap` branch that gave the editor a jump and an
+exposure lift with the OLD coloured bands still painted over it, so the preview
+showed the previous transition and the export showed the new one. The only way
+to find out what a glitch looked like was to render the file and watch it, and
+the reasonable conclusion from inside the app was that nothing had shipped.
+
+A preview may be CHEAPER than the render. It may not be a DIFFERENT effect.
+`tests/clip-transition.test.ts` pins that for the glitch by asserting the two
+branches return the same style. The number, since it was assumed rather than
+measured for a while: the whole shatter chain costs ~45ms a frame at a full
+1080x1920 with no GPU at all, and the preview draws the composition scaled to a
+few hundred pixels — for nine frames at each end of an insert. `cheap` still
+governs the motion blur, which is a full-frame gaussian on EVERY frame of every
+move and a genuinely different order of cost.
+
 **Directional, via an SVG `feGaussianBlur`** — CSS `blur()` is isotropic, and
 a horizontal slide blurred equally in both axes reads as out of focus rather
 than as moving. Two details that are not details: `colorInterpolationFilters`
@@ -650,6 +666,10 @@ time, and none of them can be judged from a still:
 
     npx tsx scripts/transition-clip.ts              # all of them, labelled
     npx tsx scripts/transition-clip.ts glitch,whip  # just these
+
+And then LOOK AT THE PREVIEW, which is a second renderer with its own code
+path. A strip out of `renderMedia` proves the export; it proves nothing about
+what somebody sees in the editor, and the editor is where they will judge it.
 
 The strip uses flat colour plates rather than footage for the inserts. Its
 first version used the same fixture for the speaker AND the inserts, which

@@ -162,6 +162,26 @@ describe('the shape of a transition', () => {
     expect(at('glitch', 1).shatter).toBeUndefined();
   });
 
+  it('shows the editor the same glitch the export gets', () => {
+    /*
+     * The bug this pins cost a round of "you didn't ship it".
+     *
+     * The preview ran a different branch — a jump and an exposure lift, with
+     * the old coloured bands still painted over the top — so what somebody saw
+     * while editing was not a lighter version of the transition, it was the
+     * PREVIOUS transition. The only way to find out what a glitch actually
+     * looked like was to export the file and watch it.
+     *
+     * A preview may be cheaper. It may not be a different effect.
+     */
+    const preview = clipFrameStyle('glitch', {
+      ...FRAME, progress: 0.3, leaving: false, fps: 30, frame: 4, seed: 'test', cheap: true,
+    });
+    const render = at('glitch', 0.3, false, 4);
+    expect(preview).toEqual(render);
+    expect(preview.shatter).toBeDefined();
+  });
+
   it('breaks late on the way out and settles slowly on the way in', () => {
     // The asymmetry the reference has: a shot holds together and then goes,
     // where the one arriving is already broken and takes twice as long to
