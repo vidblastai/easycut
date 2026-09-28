@@ -596,8 +596,8 @@ export function iconCardAt(cue: IconCue, card: IconCard): number {
  * `positionY` to within about 0.05 of the frame across every preset, so
  * clamping the number the style declares is enough — there is no correction
  * factor hiding in here. The upper bound is set by what has to fit UNDER it:
- * a block centred at 0.70 reaches about 0.768 at its deepest, and the icon
- * cards' band starts at 0.77.
+ * a block centred at 0.66 reaches about 0.728 at its deepest, and the icon
+ * cards' band starts at 0.74.
  *
  * Most presets end up at the top of the band, which is the point — this is a
  * clamp rather than a constant so that a preset with a real reason to sit
@@ -610,7 +610,7 @@ export function iconCardAt(cue: IconCue, card: IconCard): number {
  * whole point of the layout. `LayoutPlan.captionY` wins outright; this is only
  * consulted when the layout has no opinion.
  */
-export const CAPTION_BAND: readonly [number, number] = [0.63, 0.7];
+export const CAPTION_BAND: readonly [number, number] = [0.6, 0.66];
 
 export function framedPositionY(style: Pick<CaptionStyle, 'positionY'>): number {
   const [low, high] = CAPTION_BAND;
@@ -653,20 +653,27 @@ export interface IconRowPlacement {
   gap: number;
 }
 
-/** The reference clip's card: 0.30 of the frame's short edge. */
-const ICON_CARD_MAX = 0.3;
+/**
+ * The biggest a card gets, as a fraction of the frame's short edge.
+ *
+ * The reference clip measured 0.30, and 0.30 is too big here — that clip had
+ * no captions over it and nothing else competing for the lower frame. Against
+ * a line of words the tile has to read as punctuation under them rather than
+ * as the subject, which it does at about two thirds of the reference size.
+ */
+const ICON_CARD_MAX = 0.22;
 
 /** Smaller than this and the icon stops reading as an object. */
-const ICON_CARD_MIN = 0.15;
+const ICON_CARD_MIN = 0.13;
 
 /**
- * The top of the cards' quarter, with a little air under the captions.
+ * The top of the cards' band, a little under the deepest the captions reach.
  *
- * A caption block centred at the band's lowest point reaches about 0.768 at
- * its deepest, measured across every preset — so 0.77 clears the words without
- * leaving a visible gap between the two layers.
+ * A caption block centred at the band's lowest point reaches about 0.728 at
+ * its deepest, measured across every preset — so 0.74 clears the words without
+ * opening a gap between the two layers.
  */
-const ICON_BAND_TOP = 0.77;
+const ICON_BAND_TOP = 0.74;
 
 /**
  * And between the cards and the bottom of the frame.
@@ -694,9 +701,17 @@ export function iconRowPlacement(count: number, width: number, height: number): 
     Math.min(shortEdge * ICON_CARD_MAX, widthLimit, room * height),
   );
 
-  // Hung from the bottom margin up, so the row keeps its distance from the
-  // frame edge whatever size it ended up.
-  const y = 1 - ICON_BOTTOM_MARGIN - card / height / 2;
+  /*
+   * Hung from the TOP of the band down, so the cards sit directly under the
+   * words rather than floating above the floor.
+   *
+   * Anchoring to the bottom margin instead — which is what this did — ties the
+   * row's position to the card's size, so every time the card got smaller the
+   * gap under the captions got bigger and the tile drifted toward the bottom
+   * edge on its own. From the top, a smaller card is simply a smaller card in
+   * the same place.
+   */
+  const y = ICON_BAND_TOP + card / height / 2;
 
   return { y, card, gap: shortEdge * 0.055 };
 }

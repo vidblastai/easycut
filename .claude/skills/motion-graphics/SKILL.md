@@ -455,19 +455,26 @@ Numbers, measured off renders of every preset:
 
 | | |
 |---|---|
-| caption band | `positionY` clamped to 0.63–0.70 |
+| caption band | `positionY` clamped to 0.60–0.66 |
 | ink vs `positionY` | within 0.05 — no correction factor needed |
-| deepest a block reaches | about 0.768, from a block centred at 0.70 |
-| cards' band | 0.77 to 0.93 |
-| card | that band's height, capped at the reference 0.30 of the short edge |
+| deepest a block reaches | about 0.728, from a block centred at 0.66 |
+| cards' band | starts at 0.74, floor margin 0.07 |
+| card | 0.22 of the short edge — two thirds of the reference |
 
 Two things that look like details and are not. The presets had drifted from
 0.54 — the middle of the frame — to 0.87, hard against the bottom edge; where
 a video's words live must not change when somebody tries a different caption
 look, which is why this is a clamp on the style rather than a rewrite of
-twenty presets. And the cards' bottom margin is 0.07 rather than 0.03: at 0.03
-the tile read as a thing that fell rather than a thing placed. The card gives
-up size before it gives up that margin.
+twenty presets. And the row hangs from the TOP of its band rather than up from the
+floor margin. Anchoring to the margin ties the row's position to the card's
+size, so every time the card got smaller the gap under the captions grew and
+the tile drifted toward the bottom edge on its own; from the top, a smaller
+card is simply a smaller card in the same place.
+
+The card is 0.22 of the short edge, not the reference clip's 0.30. That clip
+had no captions over it and nothing competing for the lower frame. Against a
+line of words the tile has to read as punctuation under them rather than as
+the subject.
 
 A split layout is exempt from all of it. `LayoutPlan.captionY` hands the words
 the one strip covering neither the face above nor the picture below, and that

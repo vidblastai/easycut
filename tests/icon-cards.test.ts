@@ -91,8 +91,16 @@ describe('where the row sits', () => {
   it('keeps clear of the bottom edge', () => {
     // At three per cent the tile read as a thing that fell rather than a thing
     // placed. The card gives up size before it gives up this margin.
-    expect(band().bottom).toBeLessThanOrEqual(0.94);
-    for (const count of [1, 2, 3]) expect(band(count).bottom).toBeLessThanOrEqual(0.94);
+    for (const count of [1, 2, 3]) expect(band(count).bottom).toBeLessThanOrEqual(0.93);
+  });
+
+  it('hangs from the top of its band, not up from the floor', () => {
+    // Anchoring to the bottom margin ties the row's position to the card's
+    // size: every time the card got smaller the gap under the captions grew
+    // and the tile drifted toward the bottom edge on its own.
+    const one = band(1);
+    const three = band(3);
+    expect(one.top).toBeCloseTo(three.top, 5);
   });
 
   it('sits in the same place whatever the caption preset does', () => {
@@ -102,13 +110,16 @@ describe('where the row sits', () => {
     expect(band(1).y).toBe(band(1).y);
   });
 
-  it('never exceeds the size the reference clip measured', () => {
-    expect(band(1).card).toBeLessThanOrEqual(FRAME.w * 0.3 + 0.001);
+  it('stays well under the size the reference clip measured', () => {
+    // Two thirds of it, in fact: the reference clip had no captions over it
+    // and nothing else competing for the lower frame. Against a line of words
+    // the tile has to read as punctuation under them, not as the subject.
+    expect(band(1).card).toBeLessThanOrEqual(FRAME.w * 0.23);
   });
 
   it('never shrinks below the size an icon stops reading at', () => {
     for (const [w, h] of [[1080, 1920], [1920, 1080], [1080, 1080]] as const) {
-      expect(iconRowPlacement(3, w, h).card).toBeGreaterThanOrEqual(Math.min(w, h) * 0.15);
+      expect(iconRowPlacement(3, w, h).card).toBeGreaterThanOrEqual(Math.min(w, h) * 0.13);
     }
   });
 });
