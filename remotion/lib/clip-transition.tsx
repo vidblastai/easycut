@@ -53,6 +53,17 @@ const MOVE_SEC_RANGE: readonly [number, number] = [0.42, 0.72];
 /** An effect flavour is faster — it is a snap with a flash over it. */
 export const CLIP_EFFECT_SEC = 0.22;
 
+/**
+ * The exception: a glitch needs longer than a flash does.
+ *
+ * Measured off a reference cut, frame by frame: the break runs thirteen frames
+ * at thirty — about five of the outgoing shot coming apart, ONE frame of
+ * blow-out, and seven of the incoming shot tearing its way back to clean. Half
+ * of that is nine frames per side, and at 0.22s the effect was six, which is
+ * why ours read as a stutter rather than as a signal failing.
+ */
+export const CLIP_GLITCH_SEC = 0.3;
+
 /** For tests and callers that only need a representative length. */
 export const CLIP_MOVE_SEC = MOVE_SEC_RANGE[0];
 
@@ -66,6 +77,7 @@ export const CLIP_MOVE_SEC = MOVE_SEC_RANGE[0];
  */
 export function clipTransitionSec(type: ClipTransition, frame?: { width: number; height: number }): number {
   if (type === 'cut') return 0;
+  if (type === 'glitch') return CLIP_GLITCH_SEC;
   if (!CLIP_TRANSITION_MOVES.includes(type)) return CLIP_EFFECT_SEC;
 
   const travel = travelPx(type, frame);
@@ -111,6 +123,33 @@ export interface ClipFrameStyle {
   blur: { x: number; y: number };
   /** Exposure lift, for the flavours that burn the frame. */
   brightness: number;
+  /** Signal breakup: the picture's OWN pixels torn apart. Absent means intact. */
+  shatter?: Shatter;
+  /** Film fog, 0..1. Blacks lifted and contrast crushed, the way a leak does it. */
+  fog?: number;
+}
+
+/**
+ * A frame of signal breakup.
+ *
+ * Everything here is resolution-independent — `blockX`/`blockY` are per-pixel
+ * frequencies derived from the frame's own width, so the shards are the same
+ * size relative to the picture whether it is rendered at 1080 or previewed at
+ * 320. Getting that wrong is what makes an effect that was tuned in the editor
+ * come out as fine static in the export.
+ */
+export interface Shatter {
+  /** How far a shard slides, in pixels. */
+  shardPx: number;
+  /** Turbulence frequency per pixel, across and down. */
+  blockX: number;
+  blockY: number;
+  /** Re-drawn every frame, so the break never holds still. */
+  seed: number;
+  /** 0..1 — how much of the frame drops to burnt, colourless data. */
+  burn: number;
+  /** 0..1 — the single frame of blow-out at the moment of the cut. */
+  blowout: number;
 }
 
 export interface ClipFrameInput {
@@ -193,23 +232,107 @@ export function clipFrameStyle(type: ClipTransition, input: ClipFrameInput): Cli
 
     case 'glitch': {
       /*
-       * A snap plus a tear.
+       * The picture coming apart, not bands painted over it.
        *
-       * The clip is fully there — a glitch over a half-faded picture looks
-       * like a rendering fault, which is the one thing a glitch must not look
-       * like — but it jumps sideways a few pixels per frame while the effect
-       * plays. That jitter is what sells it as a broken signal rather than as
-       * coloured bands drawn on top of a still picture.
+       * This is the one that was wrong, and it was wrong in a way no amount of
+       * tuning fixes: coloured bars drawn ON TOP of an intact frame read as an
+       * overlay, because that is exactly what they are. A real digital break
+       * has no extra layer in it. The picture's own pixels are what move —
+       * blocks of it slide sideways, regions lose their colour and blow out to
+       * flat data, and for one frame the whole thing washes white before the
+       * next shot tears its way back.
+       *
+       * ── The three acts, and why they fall out of one number ─────────────
+       *
+       * `d` is how broken the frame is: 0 intact, 1 at the moment of the cut.
+       * Both ends of a clip run the same curve, so the exit's last frame and
+       * the entrance's first frame are the two loudest — which puts the
+       * blow-out exactly on the join with nothing coordinating them.
+       *
+       * The exponents are the asymmetry the reference has. Leaving, the shot
+       * holds together and then goes in about four frames; arriving, it comes
+       * apart at once and takes twice as long to settle. A symmetric curve
+       * reads as a stutter — a thing that broke and unbroke — rather than as
+       * one shot failing into the next.
        */
-      const shake = (seeded(`${seed}-tear`, Math.floor(frame)) - 0.5) * width * 0.035 * (1 - Math.abs(t * 2 - 1));
-      return { ...still, opacity: t > 0.02 ? 1 : 0, transform: `translate3d(${shake}px, 0, 0)` };
+      const d = Math.pow(1 - t, leaving ? 2.2 : 1.05);
+      if (d <= 0.005) return { ...still, opacity: 1 };
+
+      /*
+       * The wash, and why the window is as wide as it is.
+       *
+       * The reference blows out for exactly one frame, and one frame is what
+       * this has to produce — but `d` is not frames, it is a curve, and at
+       * nine frames a side the first one lands at 0.88 and the second at 0.78.
+       * A threshold at 0.86 therefore fires on NEITHER of them properly: the
+       * first gets a third of the wash and the rest get none, which is how the
+       * loudest frame of the effect ended up invisible. Opened to 0.72 so the
+       * first frame goes fully white and the second carries a trace of it.
+       *
+       * Note this flavour has no `t > 0.02` opacity guard, unlike the others.
+       * They fade a frame in from nothing so an insert cannot flash before the
+       * cut that introduces it; here frame zero IS the blow-out, and hiding it
+       * throws away the one frame the whole effect is built around.
+       */
+      const blowout = smoothstep(0.72, 0.95, d);
+      // Two axes, because a purely horizontal jump reads as tracking error.
+      const jx = (seeded(`${seed}-jx`, Math.floor(frame)) - 0.5) * width * 0.05 * d;
+      const jy = (seeded(`${seed}-jy`, Math.floor(frame)) - 0.5) * height * 0.012 * d;
+
+      if (cheap) {
+        // The editor cannot afford a filter chain rebuilt thirty times a
+        // second, so the preview gets the jump and the exposure only. It is
+        // not the effect, but it is the right length and the right rhythm,
+        // which is what someone scrubbing a timeline is actually judging.
+        return {
+          ...still,
+          opacity: 1,
+          transform: `translate3d(${jx}px, ${jy}px, 0)`,
+          brightness: 1 + blowout * 1.2,
+        };
+      }
+
+      return {
+        ...still,
+        opacity: 1,
+        transform: `translate3d(${jx}px, ${jy}px, 0)`,
+        shatter: {
+          // Eased hard: at half-broken the shards should already be travelling
+          // a long way, or the middle of the effect looks like a wobble.
+          shardPx: width * 0.55 * Math.pow(d, 1.3),
+          // Wide and short — the blocks a failing codec drops are bands, not
+          // squares, and a frequency equal in both axes gives cloud, not data.
+          blockX: 1.1 / width,
+          blockY: 8 / width,
+          seed: Math.floor(frame) * 7 + 1,
+          burn: d,
+          blowout,
+        },
+      };
     }
 
     case 'film-burn':
-    case 'light-leak':
-      // The overlay paints the flare; this is the exposure lifting under it.
-      // Without it the gradient sits ON the picture instead of in it.
-      return { ...still, opacity: t > 0.02 ? 1 : 0, brightness: 1 + (1 - Math.abs(t * 2 - 1)) * 0.22 };
+    case 'light-leak': {
+      /*
+       * What a leak actually does to the stock.
+       *
+       * The old version was a warm gradient at 85% opacity, and the reason it
+       * looked stuck on is that light does not tint a photograph — it exposes
+       * it. Stray light hitting film raises the floor: the blacks go milky,
+       * the contrast collapses, and the highlights clip. That is a curve with
+       * a lifted intercept and a shallower slope, which is what `fog` is, and
+       * it is the half of the effect that was missing. The gradient on top is
+       * only the shape of the leak; this is the leak being IN the picture.
+       */
+      const peak = 1 - Math.abs(t * 2 - 1);
+      const strength = type === 'film-burn' ? 1 : 0.82;
+      return {
+        ...still,
+        opacity: t > 0.02 ? 1 : 0,
+        brightness: 1 + peak * 0.22 * strength,
+        fog: peak * strength,
+      };
+    }
 
     case 'flash':
       return { ...still, opacity: t > 0.02 ? 1 : 0 };
@@ -245,32 +368,187 @@ function smear(stepPx: number, axis: 'x' | 'y', cheap: boolean): { x: number; y:
 }
 
 /**
- * The SVG filter the blur is drawn with.
+ * Everything this frame needs doing to its own pixels, as one SVG filter.
  *
- * SVG rather than CSS `filter: blur()` because CSS blur is isotropic: a
- * horizontal slide blurred equally in both axes reads as out of focus, not as
- * moving. `feGaussianBlur` takes a standard deviation per axis, which is the
- * only way to get a smear that points somewhere.
+ * SVG rather than CSS because none of the three things here exist in CSS. A
+ * CSS `blur()` is isotropic — blur a horizontal slide equally in both axes and
+ * it reads as out of focus rather than as moving, where `feGaussianBlur` takes
+ * a standard deviation per axis and points somewhere. There is no CSS at all
+ * for displacing a picture by a noise field, and none for lifting the black
+ * point, which is what fog is.
  *
- * `sRGB` interpolation is not a detail — the default is linearRGB, which
- * lightens every blurred edge and makes the smear look like a glow.
+ * `sRGB` interpolation is not a detail. The default is linearRGB, which
+ * lightens every blurred edge and turns a smear into a glow.
  */
+export const ClipFrameFilter: React.FC<{ id: string; style: ClipFrameStyle }> = ({ id, style }) => {
+  /*
+   * A blur has to paint outside the element it came from, so it needs room.
+   * Shatter must NOT: it only ever pulls pixels inward, and a region wider
+   * than the picture would let a shard land on the footage either side of the
+   * insert — a glitch bleeding past the clip that caused it.
+   */
+  const wide = style.blur.x > 0 || style.blur.y > 0;
+  const region = wide
+    ? { x: '-25%', y: '-25%', width: '150%', height: '150%' }
+    : { x: '0%', y: '0%', width: '100%', height: '100%' };
+
+  return (
+    <svg width="0" height="0" style={{ position: 'absolute', pointerEvents: 'none' }} aria-hidden="true">
+      <defs>
+        <filter id={id} {...region} colorInterpolationFilters="sRGB">
+          {wide ? <feGaussianBlur stdDeviation={`${style.blur.x} ${style.blur.y}`} /> : null}
+          {style.shatter ? <ShatterChain shatter={style.shatter} /> : null}
+          {style.fog ? <FogChain fog={style.fog} /> : null}
+        </filter>
+      </defs>
+    </svg>
+  );
+};
+
+/** Kept under its old name for the callers that only ever wanted the smear. */
 export const MotionBlurFilter: React.FC<{ id: string; blur: { x: number; y: number } }> = ({ id, blur }) => (
-  <svg width="0" height="0" style={{ position: 'absolute', pointerEvents: 'none' }} aria-hidden="true">
-    <defs>
-      <filter id={id} x="-25%" y="-25%" width="150%" height="150%" colorInterpolationFilters="sRGB">
-        <feGaussianBlur stdDeviation={`${blur.x} ${blur.y}`} />
-      </filter>
-    </defs>
-  </svg>
+  <ClipFrameFilter id={id} style={{ blur, brightness: 1 }} />
 );
+
+/** True when this frame has anything for a filter to do. */
+export function clipNeedsFilter(style: ClipFrameStyle): boolean {
+  return style.blur.x > 0 || style.blur.y > 0 || style.shatter !== undefined || (style.fog ?? 0) > 0;
+}
 
 /** The `filter` value for a clip, or undefined when it needs none. */
 export function clipFilter(style: ClipFrameStyle, blurId: string): string | undefined {
   const parts: string[] = [];
-  if (style.blur.x > 0 || style.blur.y > 0) parts.push(`url(#${blurId})`);
+  if (clipNeedsFilter(style)) parts.push(`url(#${blurId})`);
   if (style.brightness !== 1) parts.push(`brightness(${style.brightness.toFixed(3)})`);
   return parts.length ? parts.join(' ') : undefined;
+}
+
+/**
+ * The break, in five primitives.
+ *
+ *  1. `feTurbulence` — a smooth noise field. On its own it would displace the
+ *     picture in curves, which is water, not data.
+ *  2. `feComponentTransfer type="discrete"` — this is the whole trick. It
+ *     quantises the noise into flat steps, and a displacement map made of flat
+ *     steps moves whole REGIONS by the same amount. Hard edges, rectangular
+ *     shards, a dropped macroblock. Without this one primitive the effect is
+ *     a heat haze.
+ *  3. `feDisplacementMap` — slides each region by its step. Pixels pulled from
+ *     beyond the frame come back empty, which is exactly the torn gap a real
+ *     break leaves.
+ *  4. The burnt patches. The same quantised noise is thresholded into a mask
+ *     (`feFuncB`, whose table is the only thing that grows with the damage),
+ *     and where it bites, the picture is replaced by a colourless, blown-out
+ *     copy of itself. Not a colour drawn in — the picture's own luminance,
+ *     stripped of chroma and pushed past white. That is what makes the damage
+ *     look like it belongs to this shot.
+ *  5. The blow-out, one frame wide at the join: saturation pulled out and the
+ *     transfer curve lifted bodily, so the frame washes rather than brightens.
+ */
+const ShatterChain: React.FC<{ shatter: Shatter }> = ({ shatter }) => {
+  const { shardPx, blockX, blockY, seed, burn, blowout } = shatter;
+  const lit = 1 + blowout * 2.6;
+  const floor = blowout * 0.26;
+
+  return (
+    <>
+      <feTurbulence
+        type="fractalNoise"
+        baseFrequency={`${blockX.toFixed(6)} ${blockY.toFixed(6)}`}
+        numOctaves={1}
+        seed={seed}
+        result="glitchNoise"
+      />
+      <feComponentTransfer in="glitchNoise" result="glitchBlocks">
+        <feFuncR type="discrete" tableValues="0 0.28 0.44 0.56 0.72 1" />
+        {/* Barely a step: vertical displacement should nudge a band, not
+            scatter it, or the picture stops being readable as a picture. */}
+        <feFuncG type="discrete" tableValues="0.48 0.5 0.52" />
+        <feFuncB type="discrete" tableValues={burnTable(burn)} />
+      </feComponentTransfer>
+
+      <feDisplacementMap
+        in="SourceGraphic"
+        in2="glitchBlocks"
+        scale={shardPx.toFixed(1)}
+        xChannelSelector="R"
+        yChannelSelector="G"
+        result="glitchTorn"
+      />
+
+      <feColorMatrix in="glitchTorn" type="saturate" values="0" result="glitchGrey" />
+      <feComponentTransfer in="glitchGrey" result="glitchBurnt">
+        <feFuncR type="linear" slope="2.2" intercept="-0.1" />
+        <feFuncG type="linear" slope="2.2" intercept="-0.1" />
+        <feFuncB type="linear" slope="2.2" intercept="-0.1" />
+      </feComponentTransfer>
+      {/* Blue channel of the quantised noise → alpha, white everywhere else.
+          A mask shaped by the same field that did the tearing, so the burnt
+          regions line up with the shards instead of floating over them. */}
+      <feColorMatrix
+        in="glitchBlocks"
+        type="matrix"
+        values="0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 1 0 0"
+        result="glitchMask"
+      />
+      <feComposite in="glitchBurnt" in2="glitchMask" operator="in" result="glitchPatches" />
+      <feMerge result="glitchBroken">
+        <feMergeNode in="glitchTorn" />
+        <feMergeNode in="glitchPatches" />
+      </feMerge>
+
+      <feColorMatrix type="saturate" values={(1 - blowout * 0.92).toFixed(3)} result="glitchCool" />
+      <feComponentTransfer in="glitchCool">
+        <feFuncR type="linear" slope={lit.toFixed(3)} intercept={floor.toFixed(3)} />
+        <feFuncG type="linear" slope={lit.toFixed(3)} intercept={floor.toFixed(3)} />
+        <feFuncB type="linear" slope={lit.toFixed(3)} intercept={floor.toFixed(3)} />
+      </feComponentTransfer>
+    </>
+  );
+};
+
+/**
+ * How much of the frame drops out, as a discrete table.
+ *
+ * Eight slots, of which the last few are lit. The count is what rises with the
+ * damage — the THRESHOLD staying put is deliberate, because a threshold that
+ * slides makes existing patches grow and shrink, and patches that breathe look
+ * like an animation. Patches that appear and vanish look like data arriving
+ * broken.
+ */
+function burnTable(burn: number): string {
+  const slots = 8;
+  const lit = Math.round(clamp01(burn) * 3.4);
+  return Array.from({ length: slots }, (_, i) => (i >= slots - lit ? '1' : '0')).join(' ');
+}
+
+/**
+ * Light in the gate.
+ *
+ * Stray light does not tint a photograph, it exposes it: the black point comes
+ * up, the contrast falls away, and the highlights clip. One transfer curve
+ * with a lifted intercept and a shallower slope is the whole of it, and it is
+ * the difference between a leak that is in the picture and a gradient that is
+ * on top of it. Warmed very slightly, because the light in a leak has come
+ * through the back of the film.
+ */
+const FogChain: React.FC<{ fog: number }> = ({ fog }) => {
+  const f = clamp01(fog);
+  const slope = 1 - f * 0.4;
+  const base = f * 0.34;
+  return (
+    <feComponentTransfer>
+      <feFuncR type="linear" slope={slope.toFixed(3)} intercept={(base * 1.08).toFixed(3)} />
+      <feFuncG type="linear" slope={slope.toFixed(3)} intercept={(base * 0.94).toFixed(3)} />
+      <feFuncB type="linear" slope={slope.toFixed(3)} intercept={(base * 0.78).toFixed(3)} />
+    </feComponentTransfer>
+  );
+};
+
+/** Hermite ramp — zero below `a`, one above `b`, and smooth at both ends. */
+function smoothstep(a: number, b: number, x: number): number {
+  const t = clamp01((x - a) / (b - a || 1));
+  return t * t * (3 - 2 * t);
 }
 
 /**
@@ -311,31 +589,10 @@ export function ClipTransitionEffect({
       return <div style={{ ...COVER, background: '#FFFFFF', opacity: intensity * 0.5 }} />;
 
     case 'film-burn':
-      return (
-        <div
-          style={{
-            ...COVER,
-            opacity: intensity * 0.75,
-            background:
-              'radial-gradient(circle at 68% 42%, rgba(255,176,90,0.9) 0%, rgba(255,110,40,0.45) 32%, rgba(0,0,0,0) 66%)',
-            ...(cheap ? null : { mixBlendMode: 'screen' as const }),
-          }}
-        />
-      );
+      return <Burn intensity={intensity} t={t} cheap={cheap} />;
 
     case 'light-leak':
-      return (
-        <div
-          style={{
-            ...COVER,
-            opacity: intensity * 0.85,
-            background:
-              'linear-gradient(105deg, rgba(0,0,0,0) 28%, rgba(255,196,120,0.8) 47%, rgba(255,120,60,0.5) 56%, rgba(0,0,0,0) 74%)',
-            transform: `translateX(${(t * 2 - 1) * direction * width * 0.9}px)`,
-            ...(cheap ? null : { mixBlendMode: 'screen' as const }),
-          }}
-        />
-      );
+      return <Leak intensity={intensity} t={t} direction={direction} cheap={cheap} />;
 
     case 'whip':
       return (
@@ -349,12 +606,116 @@ export function ClipTransitionEffect({
       );
 
     case 'glitch':
+      /*
+       * Nothing, once the filter is doing it.
+       *
+       * The bands this used to paint were the bug. They sat ON an intact
+       * picture, and a layer over an undamaged frame is what an overlay looks
+       * like no matter how it is tuned — `clipFrameStyle` now tears the clip's
+       * own pixels instead. The bands survive only in the editor, where a
+       * filter chain rebuilt every frame is too slow to scrub.
+       */
+      if (!cheap) return null;
       return <Glitch intensity={intensity} seed={seed} frame={frame} width={width} height={height} cheap={cheap} />;
 
     default:
       return null;
   }
 }
+
+/**
+ * A leak sweeping through the gate.
+ *
+ * Three passes rather than one gradient, because a single warm band is the
+ * thing that read as a sticker. Real stray light arrives as a broad fog with a
+ * brighter core somewhere inside it, and the two do not travel together — the
+ * core is a reflection off something closer, so it crosses faster. Giving the
+ * two layers different speeds is most of what makes this read as light in a
+ * lens rather than a shape sliding over a picture.
+ *
+ * The third pass is the fringe. Light bent by the edge of a lens element
+ * splits, and the warm side leads: an amber core with a magenta tail behind
+ * it. Tiny, and the only reason it matters is that its absence is what makes
+ * a digital flare look digital.
+ */
+const Leak: React.FC<{ intensity: number; t: number; direction: number; cheap: boolean }> = ({
+  intensity,
+  t,
+  direction,
+  cheap,
+}) => {
+  // -25%..125%, so it is off-frame at both ends rather than parked in view.
+  const sweep = (t * 1.5 - 0.25) * direction + (direction < 0 ? 1 : 0);
+  const core = sweep * 100;
+  const fog = 18 + sweep * 64;
+  const screen = cheap ? null : { mixBlendMode: 'screen' as const };
+
+  return (
+    <>
+      <div
+        style={{
+          ...COVER,
+          opacity: intensity * 0.6,
+          background: `radial-gradient(ellipse 62% 130% at ${fog.toFixed(1)}% 46%, rgba(255,214,158,0.85) 0%, rgba(255,158,74,0.38) 38%, rgba(0,0,0,0) 74%)`,
+          ...screen,
+        }}
+      />
+      <div
+        style={{
+          ...COVER,
+          opacity: intensity * 0.9,
+          background: `radial-gradient(ellipse 18% 84% at ${core.toFixed(1)}% 52%, rgba(255,248,232,0.95) 0%, rgba(255,186,96,0.55) 34%, rgba(0,0,0,0) 72%)`,
+          ...screen,
+        }}
+      />
+      <div
+        style={{
+          ...COVER,
+          opacity: intensity * 0.42,
+          background: `radial-gradient(ellipse 12% 70% at ${(core - direction * 9).toFixed(1)}% 58%, rgba(255,120,190,0.7) 0%, rgba(0,0,0,0) 70%)`,
+          ...screen,
+        }}
+      />
+    </>
+  );
+};
+
+/**
+ * The frame burning through.
+ *
+ * A burn is not a leak that stayed still. It starts as a hot point and EATS
+ * outward — so the thing that has to animate is the size of the hole, not its
+ * position, and the giveaway is the rim: film going is brightest just inside
+ * the edge that is still curling, not at the centre, which has already gone.
+ * Hence two stops close together at the boundary and a near-white middle.
+ */
+const Burn: React.FC<{ intensity: number; t: number; cheap: boolean }> = ({ intensity, t, cheap }) => {
+  // Grows through the effect rather than peaking with it: the hole opens and
+  // keeps opening while the picture underneath is already changing.
+  const r = 6 + t * 52;
+  const screen = cheap ? null : { mixBlendMode: 'screen' as const };
+
+  return (
+    <>
+      <div
+        style={{
+          ...COVER,
+          opacity: intensity * 0.55,
+          background: `radial-gradient(circle at 66% 40%, rgba(255,236,196,0.5) 0%, rgba(255,150,54,0.42) ${(r * 1.6).toFixed(1)}%, rgba(0,0,0,0) ${(r * 2.9).toFixed(1)}%)`,
+          ...screen,
+        }}
+      />
+      <div
+        style={{
+          ...COVER,
+          opacity: intensity,
+          background: `radial-gradient(circle at 66% 40%, rgba(255,252,244,0.96) 0%, rgba(255,246,222,0.9) ${(r * 0.62).toFixed(1)}%, rgba(255,164,58,0.85) ${(r * 0.92).toFixed(1)}%, rgba(190,62,10,0.3) ${(r * 1.12).toFixed(1)}%, rgba(0,0,0,0) ${(r * 1.5).toFixed(1)}%)`,
+          ...screen,
+        }}
+      />
+    </>
+  );
+};
 
 /**
  * Torn bands, offset sideways.

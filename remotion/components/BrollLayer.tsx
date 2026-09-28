@@ -2,7 +2,7 @@ import React from 'react';
 import { AbsoluteFill, Img, OffthreadVideo, Sequence, useCurrentFrame, useVideoConfig } from 'remotion';
 import type { BrollClip, Edl } from '../../src/lib/edl/types';
 import { ramp } from '../lib/timing';
-import { ClipTransitionEffect, MotionBlurFilter, clipFilter, clipFrameStyle, clipPhase, clipTransitionSec, fitTransitions } from '../lib/clip-transition';
+import { ClipFrameFilter, ClipTransitionEffect, clipFilter, clipFrameStyle, clipNeedsFilter, clipPhase, clipTransitionSec, fitTransitions } from '../lib/clip-transition';
 import { layoutPlan, regionStyle } from '../../src/lib/styles/layouts';
 
 /**
@@ -134,12 +134,17 @@ const BrollInsert: React.FC<{
          * trailing edge off square, which reads as a hard band rather than as
          * motion. Restored the moment the clip settles, where it is what stops
          * a Ken Burns push spilling past the frame.
+         *
+         * The SMEAR specifically, not any filter. A glitch is also a filter
+         * and wants the opposite: it only ever pulls pixels inward, so opening
+         * the box would let a Ken Burns push spill out and then be torn, which
+         * puts shards of the insert on the footage either side of it.
          */
-        overflow: clipFilter(moving, blurId) ? 'visible' : 'hidden',
+        overflow: moving.blur.x > 0 || moving.blur.y > 0 ? 'visible' : 'hidden',
         backgroundColor: '#000',
       }}
     >
-      {moving.blur.x > 0 || moving.blur.y > 0 ? <MotionBlurFilter id={blurId} blur={moving.blur} /> : null}
+      {clipNeedsFilter(moving) ? <ClipFrameFilter id={blurId} style={moving} /> : null}
       <AbsoluteFill
         style={{
           transform: `scale(${scale * clip.scale}) translate(${translateX}%, ${translateY}%)`,

@@ -106,9 +106,16 @@ describe('the shape of a transition', () => {
     for (const type of ['glitch', 'film-burn', 'light-leak', 'flash'] as ClipTransition[]) {
       expect(at(type, 0.5).opacity).toBe(1);
       expect(at(type, 1).opacity).toBe(1);
-      // And nothing at all before it begins, so it cannot show a frame early.
+    }
+    // And nothing at all before they begin, so they cannot show a frame early.
+    for (const type of ['film-burn', 'light-leak', 'flash'] as ClipTransition[]) {
       expect(at(type, 0).opacity).toBe(0);
     }
+    // The glitch is the exception, and deliberately: its first frame is the
+    // blow-out. Fading it in from nothing hides the loudest frame the effect
+    // has, which is what made the rebuilt version look like it did nothing.
+    expect(at('glitch', 0).opacity).toBe(1);
+    expect(at('glitch', 0).shatter!.blowout).toBeGreaterThan(0.9);
   });
 
   it('does nothing at all for a cut', () => {
@@ -119,7 +126,58 @@ describe('the shape of a transition', () => {
   it('gives a move longer than an effect', () => {
     // A move has to be readable; an effect is a snap with a flash over it.
     expect(clipTransitionSec('slide-left', FRAME)).toBeGreaterThan(CLIP_EFFECT_SEC);
-    expect(clipTransitionSec('glitch', FRAME)).toBe(CLIP_EFFECT_SEC);
+    expect(clipTransitionSec('flash', FRAME)).toBe(CLIP_EFFECT_SEC);
+    expect(clipTransitionSec('film-burn', FRAME)).toBe(CLIP_EFFECT_SEC);
+  });
+
+  it('gives the glitch longer than the other effects, and still less than a move', () => {
+    /*
+     * Measured, not guessed. The reference cut this was rebuilt from runs
+     * thirteen frames at thirty — five of the outgoing shot breaking up, one
+     * of blow-out, seven of the incoming shot settling — and half of that is
+     * nine frames a side. At the old 0.22s it got six, which is why it read as
+     * a stutter: not enough frames for anything to come apart IN.
+     */
+    expect(clipTransitionSec('glitch', FRAME)).toBeGreaterThan(CLIP_EFFECT_SEC);
+    expect(clipTransitionSec('glitch', FRAME)).toBeLessThan(clipTransitionSec('slide-left', FRAME));
+  });
+
+  it('tears the clip\'s own pixels rather than painting bands over them', () => {
+    /*
+     * The bug this replaced was not a value out by a bit. Coloured bars drawn
+     * on top of an INTACT picture read as an overlay however they are tuned,
+     * because that is what they are, so the thing worth pinning is that the
+     * frame itself is damaged: a displacement, growing as the cut approaches,
+     * and a blow-out that exists only at the join.
+     */
+    const far = at('glitch', 0.9);
+    const near = at('glitch', 0.1);
+    expect(far.shatter).toBeDefined();
+    expect(near.shatter).toBeDefined();
+    expect(near.shatter!.shardPx).toBeGreaterThan(far.shatter!.shardPx * 4);
+    expect(near.shatter!.blowout).toBeGreaterThan(0);
+    expect(far.shatter!.blowout).toBe(0);
+    // Settled means settled: no filter left running over a clip that has
+    // arrived, which would cost a filter pass on every frame of its life.
+    expect(at('glitch', 1).shatter).toBeUndefined();
+  });
+
+  it('breaks late on the way out and settles slowly on the way in', () => {
+    // The asymmetry the reference has: a shot holds together and then goes,
+    // where the one arriving is already broken and takes twice as long to
+    // clean up. Symmetric, it reads as a thing that broke and unbroke.
+    const out = at('glitch', 0.5, true).shatter!.shardPx;
+    const into = at('glitch', 0.5).shatter!.shardPx;
+    expect(into).toBeGreaterThan(out * 1.5);
+  });
+
+  it('puts the leak in the picture, not on top of it', () => {
+    // Stray light exposes film, it does not tint it: the black point comes up
+    // and the contrast falls away. Without that the gradient is a sticker.
+    expect(at('light-leak', 0.5).fog).toBeGreaterThan(0);
+    expect(at('film-burn', 0.5).fog).toBeGreaterThan(0);
+    // And it is gone once the transition is over.
+    expect(at('light-leak', 1).fog).toBe(0);
   });
 
   it('gives a longer move more time, so both travel at the same speed', () => {

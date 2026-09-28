@@ -3,7 +3,7 @@ import { AbsoluteFill, Sequence, useCurrentFrame, useVideoConfig } from 'remotio
 import { sceneIsDrawn, type AnimatedScene, type Edl } from '../../src/lib/edl/types';
 import { FONT_FAMILY } from '../lib/fonts';
 import { easeOutCubic, kf, riseIn, stagger, transformOf } from '../lib/motion';
-import { ClipTransitionEffect, MotionBlurFilter, clipFilter, clipFrameStyle, clipPhase, clipTransitionSec, fitTransitions } from '../lib/clip-transition';
+import { ClipFrameFilter, ClipTransitionEffect, clipFilter, clipFrameStyle, clipNeedsFilter, clipPhase, clipTransitionSec, fitTransitions } from '../lib/clip-transition';
 import { lookFor } from '../looks';
 import { LOOK_META } from '../../src/lib/scenes/looks';
 import { styleGuideFor } from '../../src/lib/scenes/style-guides';
@@ -127,7 +127,7 @@ const SceneView: React.FC<{ scene: AnimatedScene; durationInFrames: number }> = 
         fontFamily: FONT_FAMILY,
       }}
     >
-      {moving.blur.x > 0 || moving.blur.y > 0 ? <MotionBlurFilter id={blurId} blur={moving.blur} /> : null}
+      {clipNeedsFilter(moving) ? <ClipFrameFilter id={blurId} style={moving} /> : null}
       {/*
         ONE background, always.
         A drawn scene brings its own — the illustration's backdrop group runs
