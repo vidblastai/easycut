@@ -489,6 +489,53 @@ A split layout is exempt from all of it. `LayoutPlan.captionY` hands the words
 the one strip covering neither the face above nor the picture below, and that
 strip is the whole point of the layout.
 
+### And then somebody drags them somewhere else
+
+The band is a rule about PRESETS, not about people. Held as the only truth it
+meant the product offered exactly six per cent of the frame's height to put
+captions in, which is not a position control, and no horizontal control at all.
+
+So `CaptionStyle.placement` is `{x, y} | null`, and null — the default, on
+every preset — means the rule above still applies, unchanged. A value means
+somebody dragged the words on the picture in the editor and it outranks
+everything, including a split layout's own band: they are looking at the frame
+while they do it, and a drag that silently does nothing on one layout is worse
+than a caption somewhere the layout would not have chosen. `framedPositionY`
+holds both branches; `framedPositionX` returns null rather than 0.5 when
+unplaced, because "centred" and "never touched" are not the same thing and a
+number there would quietly replace `align`'s layout on every existing video.
+
+Three things fall out of the anchor being the column's CENTRE rather than its
+left edge — which it has to be, or a caption moves when its words change
+length:
+
+- The column narrows near an edge (`framedWidthRatio`), to twice the distance
+  to the nearer edge, less a gutter. Without the gutter a line exactly fits,
+  and a line that exactly fits reads as a line that was cut off.
+- The TYPE has to shrink with it. A narrower column does not shrink a word —
+  flex only wraps between words — so "everything" at a 111px weight is 600
+  pixels wide whatever `maxWidth` says, and it overflowed off the frame.
+  Floored at 0.6 of the style's size.
+- `placement` survives a change of caption preset. Where a video's words live
+  must not change when somebody tries a different LOOK; that is the same
+  sentence the band is built on, and it applies to a drag even harder.
+
+The handle is `components/editor/CaptionDragLayer.tsx`, laid over the preview
+box — which already carries the composition's aspect and which the Player fills
+exactly, so a fraction of that element IS a fraction of the frame and nothing
+has to know the video's pixel size. It writes through the caption picker's
+existing draft channel, so a drag is live in the frame under your finger and is
+committed by the same "Apply captions" button.
+
+Check the EXPORT agrees, because a drag the renderer ignores is the worst kind
+of bug — right while you work, different in the file:
+
+    npx tsx scripts/caption-sheet.ts out/fixture.mp4 bold-pop 0.26,0.3
+
+The icon cards do NOT follow a dragged caption. Their `y` is computed at build
+time and stored on the cue, so it is a different mechanism with a different
+answer, and moving it would need the row's stored position recomputed.
+
 ### Rows### Rows
 
 Nouns said within 2.5s are ONE row: they arrive one at a time and leave

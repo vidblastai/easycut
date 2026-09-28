@@ -145,6 +145,14 @@ export const EdlOperationSchema = z.discriminatedUnion('op', [
     animation: z.enum(CAPTION_ANIMATIONS).optional(),
     fontSizeRatio: z.number().min(0.02).max(0.12).optional(),
     positionY: z.number().min(0.05).max(0.97).optional(),
+    /**
+     * Where the words were dragged to, or null to put them back on the rule.
+     *
+     * Bounds are not enforced here — `framedPositionY`/`framedPositionX` clamp
+     * at paint time, which is the only place that knows the frame. A value
+     * outside them is a caption at the edge, not a rejected edit.
+     */
+    placement: z.object({ x: z.number(), y: z.number() }).nullable().optional(),
     maxWordsPerCue: z.number().int().min(1).max(12).optional(),
     uppercase: z.boolean().optional(),
     emphasisColor: z.string().optional(),

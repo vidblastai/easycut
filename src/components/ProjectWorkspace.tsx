@@ -8,6 +8,7 @@ import { TimelineEditor } from '@/components/TimelineEditor';
 import { TimelineDock } from '@/components/TimelineDock';
 import { AppShell } from '@/components/shell/AppShell';
 import type { RecentProject } from '@/components/shell/Sidebar';
+import { CaptionDragLayer } from '@/components/editor/CaptionDragLayer';
 import { Stepper, type StepKey } from '@/components/shell/Stepper';
 import { STAGES as PIPELINE_STAGES, STAGE_LABELS } from '@/lib/pipeline/types';
 import { CaptionStudio } from '@/components/captions/CaptionStudio';
@@ -603,6 +604,25 @@ export function ProjectWorkspace({
                 <LivePreview edl={live} onPlayer={setPlayer} />
 
                 {/*
+                  * Drag the words around on the picture.
+                  *
+                  * It rides on the same channel the caption picker uses — a
+                  * draft style, straight into the preview, committed by the
+                  * same "Apply captions" button — so a drag is live in the
+                  * frame while your finger is still down and does not touch
+                  * the timeline's operation stack.
+                  *
+                  * Only where there are captions to move: an invisible handle
+                  * over a video with no words is a control for nothing.
+                  */}
+                {captionStyle && live.captions.length ? (
+                  <CaptionDragLayer
+                    style={captionStyle}
+                    onChange={(placement) => setDraftCaption({ ...captionStyle, placement })}
+                  />
+                ) : null}
+
+                {/*
                   * Held until the footage is in memory.
                   *
                   * The preview is mounted underneath — it needs to be, so it
@@ -794,7 +814,19 @@ export function ProjectWorkspace({
                         ) : (
                           <CaptionStudio
                             style={captionStyle}
-                            onChange={setDraftCaption}
+                            /*
+                             * A preset carries `placement: null`, and picking
+                             * one must not undo a drag. Where a video's words
+                             * live is not supposed to change when somebody
+                             * tries a different LOOK — that is the whole
+                             * reason the caption band exists — so the one
+                             * field that says where they were put survives a
+                             * change of preset. "Put it back" on the handle is
+                             * how you clear it, deliberately.
+                             */
+                            onChange={(next) =>
+                              setDraftCaption({ ...next, placement: captionStyle.placement ?? next.placement })
+                            }
                             mode={project.mode}
                             posterUrl={project.thumbnailUrl}
                             compact

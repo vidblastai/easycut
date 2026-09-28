@@ -1,6 +1,6 @@
 import React from 'react';
 import { AbsoluteFill, interpolate, useCurrentFrame, useVideoConfig } from 'remotion';
-import { framedPositionY, sceneHasText, type CaptionCue, type CaptionStyle, type CaptionWord, type Edl } from '../../src/lib/edl/types';
+import { framedPositionX, framedPositionY, framedWidthRatio, sceneHasText, type CaptionCue, type CaptionStyle, type CaptionWord, type Edl } from '../../src/lib/edl/types';
 import { ensureCaptionFont } from '../lib/fonts';
 import { pop } from '../lib/timing';
 import {
@@ -129,8 +129,18 @@ export const Captions: React.FC<{ edl: Edl; positionY?: number | null; lowDetail
    * should not change when somebody tries a different caption look. See
    * `framedPositionY`.
    */
+  /*
+   * A hand-placed caption outranks the layout's band too.
+   *
+   * `positionY` arrives non-null from a split layout, which reserves the one
+   * strip covering neither the face above nor the picture below — a good rule,
+   * and still a rule. Somebody dragging the words is looking at the frame
+   * while they do it, so if they put the words somewhere the layout would not
+   * have, they can see exactly what that costs and can drag them back. A drag
+   * that silently does nothing on one layout is the worse outcome.
+   */
   const style =
-    positionY === null
+    positionY === null || edl.captionStyle.placement
       ? { ...edl.captionStyle, positionY: framedPositionY(edl.captionStyle) }
       : { ...edl.captionStyle, positionY };
 
@@ -187,7 +197,23 @@ const CaptionCard: React.FC<{
   const cueStartFrame = cue.startSec * fps;
   const sinceCue = frozen ? fps * 2 : frame - cueStartFrame;
 
-  const fontSize = height * style.fontSizeRatio;
+  /*
+   * The type shrinks with the column, and only ever for a placed caption.
+   *
+   * A caption dragged toward an edge gets a narrower column — it has to, or
+   * half of it hangs off the frame, since the anchor is the column's centre.
+   * But a narrower column does not shrink a WORD: flex wrapping only breaks
+   * between words, so "everything" at a 111px weight is 600 pixels wide
+   * whatever `maxWidth` says, and it simply overflowed and ran off the left
+   * edge. Scaling the size by how much the column gave up keeps the block
+   * inside its own box.
+   *
+   * Floored, because there is a size below which the words stop being the
+   * point of the frame. Somebody who drags a caption right into the corner
+   * gets small type; they do not get type they cannot read.
+   */
+  const columnRatio = framedWidthRatio(style);
+  const fontSize = height * style.fontSizeRatio * Math.max(0.6, Math.min(1, columnRatio / style.widthRatio));
 
   /* ---- how the whole block arrives ---- */
   let cardOpacity = 1;
@@ -229,17 +255,34 @@ const CaptionCard: React.FC<{
     ? splitLineIndex(cue.words, findCaptionFont(style.fontFamily)?.group)
     : null;
 
+  /*
+   * Where the block hangs from.
+   *
+   * Two layouts, and the difference is whether anybody has moved the words.
+   * Unplaced, they are laid out by `align` — a left-aligned style gets a
+   * margin from the frame edge, which is not the same thing as a centre point
+   * and is why `framedPositionX` returns null rather than 0.5 for it. Placed,
+   * the anchor IS the centre of the column, so the caption stays where it was
+   * put when its words change length.
+   */
+  const placedX = framedPositionX(style);
+
   return (
     <AbsoluteFill style={{ justifyContent: 'flex-start', alignItems: justify }}>
       <div
         style={{
           position: 'absolute',
           top: height * style.positionY,
-          left: style.align === 'left' ? width * 0.06 : undefined,
-          right: style.align === 'right' ? width * 0.06 : undefined,
-          transform: `translateY(-50%) translateY(${cardTranslateY}px) scale(${cardScale})`,
+          left: placedX !== null ? width * placedX : style.align === 'left' ? width * 0.06 : undefined,
+          right: placedX !== null ? undefined : style.align === 'right' ? width * 0.06 : undefined,
+          transform: `${placedX !== null ? 'translateX(-50%) ' : ''}translateY(-50%) translateY(${cardTranslateY}px) scale(${cardScale})`,
           opacity: cardOpacity,
           ...blockStyle(style, { width, height }, fontSize),
+          // After the block's own style, because a placed column near an edge
+          // has to be narrower than the look asked for or half of it hangs off
+          // the frame — it is centred on an anchor that is already near the
+          // edge. See `framedWidthRatio`.
+          maxWidth: width * columnRatio,
         }}
       >
         {cue.words.map((word, index) => (
@@ -268,7 +311,7 @@ const CaptionCard: React.FC<{
             fontStack={fontStack}
             overrideFonts={overrideFonts}
             fontSize={fontSize}
-            maxWidthPx={width * style.widthRatio}
+            maxWidthPx={width * columnRatio}
             outSec={outSec}
             frame={frame}
             fps={fps}

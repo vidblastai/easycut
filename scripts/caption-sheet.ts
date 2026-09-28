@@ -22,6 +22,24 @@ import { SAMPLE_EDL } from '../remotion/sample-edl';
 // reachable from every network — so the footage is served off the same
 // loopback asset server a real render uses.
 const SOURCE_FILE = process.argv[2] ?? 'out/fixture.mp4';
+
+/**
+ * An optional hand placement, as `x,y` fractions of the frame.
+ *
+ *   npx tsx scripts/caption-sheet.ts out/fixture.mp4 bold-pop 0.25,0.3
+ *
+ * Here because the editor lets people DRAG the words now, and a drag that the
+ * export does not honour is the worst kind of bug: everything looks right
+ * while you work and the file you download is different. This is how you check
+ * the render agrees, which is not a question a preview can answer.
+ */
+const PLACEMENT = (() => {
+  const raw = process.argv[4];
+  if (!raw) return null;
+  const [x, y] = raw.split(',').map(Number);
+  if (!Number.isFinite(x) || !Number.isFinite(y)) throw new Error(`Bad placement "${raw}" — want x,y`);
+  return { x, y };
+})();
 let SOURCE = '';
 const OUT = 'out/caption-sheet';
 
@@ -70,7 +88,7 @@ function edlFor(presetId: string) {
         })),
       },
     ],
-    captionStyle: preset.style,
+    captionStyle: { ...preset.style, placement: PLACEMENT },
     broll: [],
     graphics: [],
     overlays: [],

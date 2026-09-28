@@ -244,6 +244,21 @@ export const CaptionStyleSchema = z.object({
   align: z.enum(['left', 'center', 'right']).default('center'),
   /** Vertical anchor, 0 = top, 1 = bottom. */
   positionY: z.number().default(0.74),
+  /**
+   * Where somebody DRAGGED the words to, as fractions of the frame.
+   *
+   * Null — the default — means nobody has, and the automatic rule applies:
+   * `positionY` clamped into the caption band, horizontally centred. A value
+   * here is an explicit decision about this video and outranks the band; see
+   * `framedPositionY` for why those are two different things and not one
+   * number with a wider range.
+   *
+   * `x` is the CENTRE of the text column, not its left edge, so a caption
+   * dragged to the middle of the frame stays there when its words change
+   * length. Both are fractions so the placement survives an export at a
+   * different aspect ratio.
+   */
+  placement: z.object({ x: z.number(), y: z.number() }).nullable().default(null),
   /** Text column width as a fraction of frame width. */
   widthRatio: z.number().default(0.86),
 
@@ -612,9 +627,67 @@ export function iconCardAt(cue: IconCue, card: IconCard): number {
  */
 export const CAPTION_BAND: readonly [number, number] = [0.6, 0.66];
 
-export function framedPositionY(style: Pick<CaptionStyle, 'positionY'>): number {
+/**
+ * How far into the frame a hand-placed caption may go.
+ *
+ * Wider than the band by a long way, because this is not the band's job. The
+ * band stops twenty presets DRIFTING; these two numbers stop a caption being
+ * dragged off the screen. The only thing they owe anybody is that the words
+ * stay visible, so they sit just inside the edge — everything between is a
+ * decision somebody made on purpose and gets honoured.
+ */
+export const CAPTION_PLACEMENT_BOUNDS = { x: [0.08, 0.92], y: [0.1, 0.92] } as const;
+
+type Placed = Pick<CaptionStyle, 'positionY'> & Partial<Pick<CaptionStyle, 'placement'>>;
+
+export function framedPositionY(style: Placed): number {
+  // A placement is a decision, not a drift. The band exists to pull twenty
+  // presets back into line with each other; somebody who dragged the words
+  // somewhere has said exactly where they want them, and overruling that with
+  // a rule about preset hygiene is how a drag ends up looking broken.
+  if (style.placement) return clampTo(style.placement.y, CAPTION_PLACEMENT_BOUNDS.y);
   const [low, high] = CAPTION_BAND;
   return Math.min(high, Math.max(low, style.positionY));
+}
+
+/**
+ * The centre of the text column, or null when nobody has placed it.
+ *
+ * Null rather than 0.5, because "centred" and "not placed" are not the same
+ * thing: unplaced captions are laid out by `align`, which gives a left-aligned
+ * style a margin from the frame edge rather than a centre point. Returning a
+ * number here would quietly replace that layout on every video that has never
+ * been touched.
+ */
+export function framedPositionX(style: Pick<CaptionStyle, 'placement'>): number | null {
+  return style.placement ? clampTo(style.placement.x, CAPTION_PLACEMENT_BOUNDS.x) : null;
+}
+
+/**
+ * How wide the column may be where it has been placed.
+ *
+ * A block centred at 0.12 with a width of 0.86 of the frame runs off both
+ * edges — it is centred on its own anchor, so half of it is to the left of a
+ * point that is already near the left edge. Twice the distance to the nearer
+ * edge is the widest it can be and still fit, and the style's own ratio caps
+ * it from above so dragging a caption toward the middle never makes its lines
+ * longer than the look intended.
+ */
+export function framedWidthRatio(style: Pick<CaptionStyle, 'placement' | 'widthRatio'>): number {
+  const x = framedPositionX(style);
+  if (x === null) return style.widthRatio;
+  // Twice the distance to the nearer edge is the widest that FITS, and a line
+  // that exactly fits reads as a line that was cut off — the descenders and
+  // the drop shadow touch the frame edge with nothing either side of them. The
+  // gutter is what makes it look placed rather than clipped.
+  return Math.max(0.08, Math.min(style.widthRatio, 2 * (Math.min(x, 1 - x) - CAPTION_EDGE_GUTTER)));
+}
+
+/** Clear space kept between a placed caption and the frame edge. */
+const CAPTION_EDGE_GUTTER = 0.035;
+
+function clampTo(n: number, [low, high]: readonly [number, number]): number {
+  return Math.min(high, Math.max(low, n));
 }
 
 /**
