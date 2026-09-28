@@ -13,6 +13,7 @@ import {
   ASPECT_DIMENSIONS,
   iconRowPlacement,
   type Aspect,
+  type ClipTransition,
   type BrollClip,
   type Edl,
   type CaptionStyle,
@@ -86,7 +87,17 @@ export function buildEdl(input: BuildEdlInput): Edl {
 
   /* -------------------------------- b-roll -------------------------------- */
 
-  const broll = placeBroll(plan, mapper, durationSec, pacing.brollDurationSec, captions, layoutPlan(style.layout).alwaysOn);
+  const broll = placeBroll(
+    plan,
+    mapper,
+    durationSec,
+    pacing.brollDurationSec,
+    captions,
+    layoutPlan(style.layout).alwaysOn,
+    // A layout that gives B-roll a permanent half has nothing to transition
+    // INTO — the slot is on screen from the first frame — so those cut.
+    layoutPlan(style.layout).alwaysOn ? ['cut'] : style.clipTransitions,
+  );
 
   /* ------------------------------- graphics ------------------------------- */
 
@@ -94,7 +105,15 @@ export function buildEdl(input: BuildEdlInput): Edl {
 
   /* --------------------------------- scenes -------------------------------- */
 
-  const scenes = placeScenes(input.scenes ?? [], mapper, durationSec, broll, style.accent, style.sceneLook);
+  const scenes = placeScenes(
+    input.scenes ?? [],
+    mapper,
+    durationSec,
+    broll,
+    style.accent,
+    style.sceneLook,
+    style.clipTransitions[0] ?? null,
+  );
 
   /*
    * A video always leaves here with at least one scene in it.
@@ -224,6 +243,8 @@ function placeBroll(
    * black rectangle beside somebody's face.
    */
   alwaysOn: boolean,
+  /** The style's vocabulary of enter/exit moves, cycled per insert. */
+  transitions: readonly ClipTransition[],
 ): BrollClip[] {
   const clips: BrollClip[] = [];
 
@@ -253,6 +274,19 @@ function placeBroll(
       id: `broll-${clips.length}`,
       outStartSec: start,
       outEndSec: end,
+      /*
+       * Cycled through the style's vocabulary rather than fixed.
+       *
+       * One transition for every insert in a video reads as a template; a
+       * different one each time reads as random. Cycling a style's short list
+       * gives consecutive inserts different moves out of one coherent set, and
+       * it is deterministic, so re-running the same footage gives the same
+       * edit.
+       */
+      enter: transitions[clips.length % transitions.length],
+      // The same move, so the insert travels in one direction through its
+      // whole life: in from the right, out past the left.
+      exit: transitions[clips.length % transitions.length],
       kind: cue.kind,
       url: '', // resolved by the asset stage
       clipStartSec: 0,
@@ -336,6 +370,8 @@ export function placeScenes(
   broll: BrollClip[],
   accent: string,
   look: SceneLook,
+  /** The style's signature move. Null leaves it to the look's own entry. */
+  signature: ClipTransition | null = null,
 ): AnimatedScene[] {
   const scenes: AnimatedScene[] = [];
 
@@ -354,6 +390,11 @@ export function placeScenes(
       id: `scene-${scenes.length}`,
       outStartSec: start,
       outEndSec: end,
+      // The style's signature move, not a rotating one: a scene takes the
+      // whole frame, and the two or three in a video should arrive the same
+      // way as each other.
+      enter: signature,
+      exit: signature,
       kind: cue.kind,
       look,
       backdrop: cue.backdrop,

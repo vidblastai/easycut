@@ -415,6 +415,9 @@ function applyOne(edl: Edl, op: EdlOperation): Edl {
           id, outStartSec: start, outEndSec: end, kind: 'stock-video' as const,
           url: '', clipStartSec: 0, scale: 1, kenBurns: 'in' as const,
           audioGainDb: -60, opacity: 1, intent: 'Added by hand', query: op.value, attribution: undefined,
+          // Whatever the inserts either side of it do, so a hand-added clip
+          // does not announce itself as the odd one out.
+          enter: edl.broll[0]?.enter ?? 'fade', exit: edl.broll[0]?.exit ?? 'fade',
         }] };
       }
       if (op.track === 'scenes') {
@@ -423,6 +426,7 @@ function applyOne(edl: Edl, op: EdlOperation): Edl {
         // inspector afterwards, and an empty one would draw nothing at all.
         return { ...edl, scenes: [...edl.scenes, {
           id, outStartSec: start, outEndSec: end,
+          enter: edl.scenes[0]?.enter ?? null, exit: edl.scenes[0]?.exit ?? null,
           kind: 'kinetic-text' as const,
           // Inherits the world the video's other scenes are drawn in. A
           // hand-added scene in a different look than the two either side of
@@ -496,6 +500,8 @@ function applyOne(edl: Edl, op: EdlOperation): Edl {
         'text', 'subtext', 'items', 'query', 'intent', 'url', 'assetUrl', 'iconQuery',
         'imagePrompt', 'color', 'scale', 'opacity', 'kenBurns', 'audioGainDb',
         'clipStartSec', 'sound', 'gainDb', 'x', 'y', 'animation', 'type', 'easing',
+        // How a full-frame clip arrives and leaves.
+        'enter', 'exit',
         // An icon row's white-or-black tile, switchable per row.
         'tone',
       ]);

@@ -6,7 +6,7 @@ import { clsx } from 'clsx';
 import type { PlayerRef } from '@remotion/player';
 import { applyOperations, describeOperation, type ClipTrack, type EdlOperation } from '@/lib/edl/operations';
 import { reorderIndexFor, resolveDrag, snapPointsFor, type DragKind } from '@/lib/timeline/drag';
-import { SCENE_KINDS, TRANSITION_TYPES, type Edl, type IconCue } from '@/lib/edl/types';
+import { CLIP_TRANSITIONS, SCENE_KINDS, TRANSITION_TYPES, type ClipTransition, type Edl, type IconCue } from '@/lib/edl/types';
 import { LOOK_LIST } from '@/lib/scenes/looks';
 
 /**
@@ -1966,6 +1966,73 @@ function IconInspector({ cue, onChange }: { cue: IconCue; onChange: (op: EdlOper
   );
 }
 
+
+/**
+ * How a full-frame clip arrives and leaves.
+ *
+ * Both ends, separately, because the interesting edits set them apart — an
+ * insert that slides in and then glitches out is a real choice, and one
+ * control for both would make it unexpressible. They default to the same value
+ * from the builder, so the common case still takes one click.
+ *
+ * Named by where the clip TRAVELS, which is why the labels read as directions
+ * rather than as origins: "slide left" comes in from the right.
+ */
+function TransitionPicker({
+  enter,
+  exit,
+  onPick,
+}: {
+  enter: ClipTransition;
+  exit: ClipTransition;
+  onPick: (which: 'enter' | 'exit', value: ClipTransition) => void;
+}) {
+  return (
+    <div className="mt-3 border-t border-line-soft pt-3">
+      {(
+        [
+          ['enter', 'Comes in', enter],
+          ['exit', 'Goes out', exit],
+        ] as const
+      ).map(([which, label, current]) => (
+        <div key={which} className="mt-2 first:mt-0">
+          <p className="text-[11px] font-bold uppercase tracking-wider text-muted/70">{label}</p>
+          <div className="mt-1.5 flex flex-wrap gap-1.5">
+            {CLIP_TRANSITIONS.map((type) => (
+              <button
+                key={type}
+                type="button"
+                onClick={() => onPick(which, type)}
+                className={clsx(
+                  'rounded border px-2 py-0.5 text-[11px] font-semibold',
+                  current === type ? 'border-violet text-violet' : 'border-line text-muted hover:text-chalk',
+                )}
+              >
+                {TRANSITION_LABELS[type]}
+              </button>
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+const TRANSITION_LABELS: Record<ClipTransition, string> = {
+  cut: 'cut',
+  fade: 'fade',
+  'slide-left': 'slide left',
+  'slide-right': 'slide right',
+  'slide-up': 'slide up',
+  'slide-down': 'slide down',
+  zoom: 'zoom',
+  whip: 'whip',
+  glitch: 'glitch',
+  'film-burn': 'film burn',
+  'light-leak': 'light leak',
+  flash: 'flash',
+};
+
 function Inspector({
   edl,
   selection,
@@ -2058,6 +2125,14 @@ function Inspector({
             </button>
           ))}
         </div>
+
+        <TransitionPicker
+          enter={clip.enter}
+          exit={clip.exit}
+          onPick={(which, value) =>
+            onChange({ op: 'clip.update', track: 'broll', id: clip.id, patch: { [which]: value } })
+          }
+        />
       </div>
     );
   }
@@ -2142,6 +2217,17 @@ function Inspector({
             </button>
           ))}
         </div>
+
+        <TransitionPicker
+          // Null means "whatever this look does" — shown as `cut`, because
+          // three of the five looks do exactly that and the fourth fades,
+          // which the picker would then misreport as a choice nobody made.
+          enter={scene.enter ?? 'cut'}
+          exit={scene.exit ?? 'cut'}
+          onPick={(which, value) =>
+            onChange({ op: 'clip.update', track: 'scenes', id: scene.id, patch: { [which]: value } })
+          }
+        />
 
         <h5 className="mt-3 text-[11px] font-bold uppercase tracking-wider text-muted/70">
           Animation style <span className="font-normal normal-case text-faint">· all scenes</span>

@@ -1,7 +1,8 @@
 import React from 'react';
 import { AbsoluteFill, Img, OffthreadVideo, Sequence, useCurrentFrame, useVideoConfig } from 'remotion';
 import type { BrollClip, Edl } from '../../src/lib/edl/types';
-import { lifecycleOpacity, ramp } from '../lib/timing';
+import { ramp } from '../lib/timing';
+import { ClipTransitionEffect, clipMotion, clipPhase, clipTransitionSec } from '../lib/clip-transition';
 import { layoutPlan, regionStyle } from '../../src/lib/styles/layouts';
 
 /**
@@ -14,7 +15,11 @@ import { layoutPlan, regionStyle } from '../../src/lib/styles/layouts';
  *  - Stills always move. A static photo held for two seconds looks like the
  *    video froze, so every image gets a slow Ken Burns push.
  */
-export const BrollLayer: React.FC<{ edl: Edl; onMediaError?: (message: string) => void }> = ({ edl, onMediaError }) => {
+export const BrollLayer: React.FC<{ edl: Edl; onMediaError?: (message: string) => void; cheap?: boolean }> = ({
+  edl,
+  onMediaError,
+  cheap = false,
+}) => {
   const { fps } = useVideoConfig();
 
   // On a `full` layout B-roll COVERS the frame — an insert in a box reads as a
@@ -32,7 +37,7 @@ export const BrollLayer: React.FC<{ edl: Edl; onMediaError?: (message: string) =
 
     return (
       <Sequence key={clip.id} from={from} durationInFrames={durationInFrames} premountFor={Math.round(fps * 2)}>
-        <BrollInsert clip={clip} durationInFrames={durationInFrames} onMediaError={onMediaError} />
+        <BrollInsert clip={clip} durationInFrames={durationInFrames} onMediaError={onMediaError} cheap={cheap} />
       </Sequence>
     );
   });
@@ -62,13 +67,35 @@ export const BrollLayer: React.FC<{ edl: Edl; onMediaError?: (message: string) =
   );
 };
 
-const BrollInsert: React.FC<{ clip: BrollClip; durationInFrames: number; onMediaError?: (message: string) => void }> = ({ clip, durationInFrames, onMediaError }) => {
+const BrollInsert: React.FC<{
+  clip: BrollClip;
+  durationInFrames: number;
+  onMediaError?: (message: string) => void;
+  cheap?: boolean;
+}> = ({ clip, durationInFrames, onMediaError, cheap = false }) => {
   const frame = useCurrentFrame();
-  const { fps } = useVideoConfig();
+  const { fps, width, height } = useVideoConfig();
 
-  // Short cross-fades at both ends; a hard cut to stock is jarring against a
-  // continuous voice track.
-  const opacity = lifecycleOpacity(frame, durationInFrames, Math.round(fps * 0.12)) * clip.opacity;
+  /*
+   * How it arrives and how it leaves, from the document.
+   *
+   * This used to be a fixed 0.12s cross-fade at both ends — which is not
+   * nothing, but it is the same nothing on every insert in every video, and an
+   * insert that fades up in four frames still reads as a picture that appeared
+   * rather than a cut that was made. The style now names a vocabulary and the
+   * builder cycles it, so consecutive inserts travel in from different edges.
+   */
+  const enterFrames = Math.round(fps * clipTransitionSec(clip.enter));
+  const exitFrames = Math.round(fps * clipTransitionSec(clip.exit));
+  const { entering, leaving } = clipPhase(frame, durationInFrames, enterFrames, exitFrames);
+
+  // The end being animated right now. Both curves are applied, so a clip too
+  // short to finish arriving before it has to leave degrades instead of
+  // jumping: the two opacities multiply and the two transforms compose.
+  const enterStyle = clipMotion(clip.enter, entering, false);
+  const exitStyle = clipMotion(clip.exit, leaving, true);
+  const effect = entering < 1 ? { type: clip.enter, progress: entering, leaving: false } : null;
+  const outgoing = leaving < 1 ? { type: clip.exit, progress: leaving, leaving: true } : null;
 
   const progress = ramp(frame, 0, durationInFrames);
   const { scale, translateX, translateY } = kenBurns(clip.kenBurns, progress);
@@ -76,7 +103,18 @@ const BrollInsert: React.FC<{ clip: BrollClip; durationInFrames: number; onMedia
   const isVideo = clip.kind === 'stock-video';
 
   return (
-    <AbsoluteFill style={{ opacity, overflow: 'hidden', backgroundColor: '#000' }}>
+    <AbsoluteFill
+      style={{
+        // Composed rather than picked: `transform: a b` is one declaration,
+        // and writing `${a} ${b}` where one of them is undefined discards the
+        // whole thing — which is how an insert ends up not transitioning at
+        // all in exactly the cases where both ends are animating.
+        transform: [enterStyle.transform, exitStyle.transform].filter(Boolean).join(' ') || undefined,
+        opacity: Number(enterStyle.opacity ?? 1) * Number(exitStyle.opacity ?? 1) * clip.opacity,
+        overflow: 'hidden',
+        backgroundColor: '#000',
+      }}
+    >
       <AbsoluteFill
         style={{
           transform: `scale(${scale * clip.scale}) translate(${translateX}%, ${translateY}%)`,
@@ -96,6 +134,15 @@ const BrollInsert: React.FC<{ clip: BrollClip; durationInFrames: number; onMedia
           <Img src={clip.url} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
         )}
       </AbsoluteFill>
+
+      {/* Over the picture, inside the clip's own frame — a glitch that spilled
+          past the insert would tear the speaker either side of it too. */}
+      {effect ? (
+        <ClipTransitionEffect {...effect} seed={clip.id} frame={frame} width={width} height={height} cheap={cheap} />
+      ) : null}
+      {outgoing ? (
+        <ClipTransitionEffect {...outgoing} seed={clip.id} frame={frame} width={width} height={height} cheap={cheap} />
+      ) : null}
     </AbsoluteFill>
   );
 };

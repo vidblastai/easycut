@@ -1,4 +1,4 @@
-import { SCENE_LOOKS, type Aspect, type CaptionStyle, type Layout, type SceneLook, type TransitionType } from '@/lib/edl/types';
+import { SCENE_LOOKS, type Aspect, type CaptionStyle, type ClipTransition, type Layout, type SceneLook, type TransitionType } from '@/lib/edl/types';
 import { findCaptionPreset } from '@/lib/captions/presets';
 
 /**
@@ -80,6 +80,18 @@ export interface StylePreset {
   /** Resolved from captionPreset below; the pipeline reads this. */
   captionStyle: CaptionStyle;
   transitions: TransitionType[];
+  /**
+   * How this style's full-frame clips arrive and leave.
+   *
+   * A separate vocabulary from `transitions` above, which decorates a cut
+   * between two shots of the speaker. These move the clip itself, and the
+   * builder cycles through the list so consecutive inserts differ without the
+   * video looking like it was assembled from someone else's presets.
+   *
+   * First entry wins for a scene, which takes the whole frame and should use
+   * the style's signature move rather than a rotating one.
+   */
+  clipTransitions: ClipTransition[];
   musicMood: string;
   musicGainDb: number;
   /** Silence handling aggressiveness for raw footage. */
@@ -104,6 +116,7 @@ const RAW_PRESETS: Record<StyleId, Omit<StylePreset, 'captionStyle'>> = {
     formats: ['short', 'long'],
     captionPreset: 'clean-plate',
     transitions: ['cut', 'dissolve'],
+    clipTransitions: ['fade', 'slide-up', 'zoom'],
     musicMood: 'minimal ambient',
     musicGainDb: -22,
     silencePreset: 'balanced',
@@ -144,6 +157,7 @@ const RAW_PRESETS: Record<StyleId, Omit<StylePreset, 'captionStyle'>> = {
     formats: ['short', 'long'],
     captionPreset: 'impact',
     transitions: ['cut', 'whip-pan', 'zoom-punch', 'flash', 'glitch', 'zoom-blur', 'pixelate'],
+    clipTransitions: ['glitch', 'slide-left', 'whip', 'slide-up', 'flash'],
     musicMood: 'upbeat energetic',
     musicGainDb: -16,
     silencePreset: 'aggressive',
@@ -198,6 +212,7 @@ const RAW_PRESETS: Record<StyleId, Omit<StylePreset, 'captionStyle'>> = {
     formats: ['short', 'long'],
     captionPreset: 'bold-pop',
     transitions: ['cut', 'zoom-punch', 'flash', 'zoom-blur'],
+    clipTransitions: ['whip', 'zoom', 'slide-left', 'flash'],
     musicMood: 'upbeat energetic',
     musicGainDb: -19,
     silencePreset: 'aggressive',
@@ -255,6 +270,7 @@ const RAW_PRESETS: Record<StyleId, Omit<StylePreset, 'captionStyle'>> = {
     formats: ['short', 'long'],
     captionPreset: 'bold-pop',
     transitions: ['cut', 'dissolve'],
+    clipTransitions: ['fade', 'zoom', 'slide-up'],
     musicMood: 'low-key groove',
     musicGainDb: -21,
     silencePreset: 'balanced',
@@ -310,6 +326,7 @@ const RAW_PRESETS: Record<StyleId, Omit<StylePreset, 'captionStyle'>> = {
     formats: ['short'],
     captionPreset: 'subtitle',
     transitions: ['cut', 'slide', 'push'],
+    clipTransitions: ['slide-left', 'slide-right', 'slide-up', 'fade'],
     musicMood: '',
     musicGainDb: -26,
     silencePreset: 'aggressive',
@@ -363,6 +380,7 @@ const RAW_PRESETS: Record<StyleId, Omit<StylePreset, 'captionStyle'>> = {
     formats: ['short'],
     captionPreset: 'bold-pop',
     transitions: ['cut', 'whip-pan', 'slide', 'push', 'barn-door'],
+    clipTransitions: ['slide-up', 'slide-left', 'whip', 'slide-down'],
     musicMood: 'upbeat energetic',
     musicGainDb: -18,
     silencePreset: 'aggressive',
@@ -418,6 +436,7 @@ const RAW_PRESETS: Record<StyleId, Omit<StylePreset, 'captionStyle'>> = {
     formats: ['long', 'short'],
     captionPreset: 'subtitle',
     transitions: ['cut', 'dissolve'],
+    clipTransitions: ['fade', 'slide-up', 'zoom'],
     musicMood: '',
     musicGainDb: -26,
     silencePreset: 'balanced',
@@ -475,6 +494,7 @@ const RAW_PRESETS: Record<StyleId, Omit<StylePreset, 'captionStyle'>> = {
     formats: ['long'],
     captionPreset: 'editorial',
     transitions: ['cut', 'dissolve'],
+    clipTransitions: ['fade', 'zoom', 'slide-up'],
     musicMood: 'cinematic emotional',
     musicGainDb: -23,
     silencePreset: 'gentle',
@@ -523,6 +543,7 @@ const RAW_PRESETS: Record<StyleId, Omit<StylePreset, 'captionStyle'>> = {
     formats: ['short'],
     captionPreset: 'bold-pop',
     transitions: ['cut', 'whip-pan', 'zoom-punch'],
+    clipTransitions: ['slide-left', 'slide-right', 'fade'],
     musicMood: 'upbeat energetic',
     musicGainDb: -18,
     silencePreset: 'aggressive',
@@ -578,6 +599,7 @@ const RAW_PRESETS: Record<StyleId, Omit<StylePreset, 'captionStyle'>> = {
     formats: ['short', 'long'],
     captionPreset: 'editorial',
     transitions: ['cut', 'dissolve', 'film-burn'],
+    clipTransitions: ['film-burn', 'fade', 'light-leak', 'zoom'],
     musicMood: 'cinematic emotional',
     musicGainDb: -20,
     silencePreset: 'gentle',
@@ -618,6 +640,7 @@ const RAW_PRESETS: Record<StyleId, Omit<StylePreset, 'captionStyle'>> = {
     formats: ['short', 'long'],
     captionPreset: 'highlight-box',
     transitions: ['cut', 'slide', 'zoom-punch'],
+    clipTransitions: ['slide-up', 'slide-left', 'zoom', 'fade'],
     musicMood: 'light curious',
     musicGainDb: -24,
     silencePreset: 'balanced',
@@ -658,6 +681,7 @@ const RAW_PRESETS: Record<StyleId, Omit<StylePreset, 'captionStyle'>> = {
     formats: ['long'],
     captionPreset: 'podcast',
     transitions: ['cut', 'dissolve'],
+    clipTransitions: ['fade', 'slide-up'],
     musicMood: 'low-key groove',
     musicGainDb: -26,
     silencePreset: 'gentle',
@@ -700,6 +724,7 @@ const RAW_PRESETS: Record<StyleId, Omit<StylePreset, 'captionStyle'>> = {
     formats: ['long'],
     captionPreset: 'subtitle',
     transitions: ['cut', 'dissolve'],
+    clipTransitions: ['fade', 'slide-right', 'zoom'],
     musicMood: 'light curious',
     musicGainDb: -24,
     silencePreset: 'balanced',
@@ -739,6 +764,7 @@ const RAW_PRESETS: Record<StyleId, Omit<StylePreset, 'captionStyle'>> = {
     formats: ['short'],
     captionPreset: 'bold-pop',
     transitions: ['cut', 'whip-pan', 'dissolve', 'slide'],
+    clipTransitions: ['light-leak', 'whip', 'slide-left', 'fade'],
     musicMood: 'warm lo-fi',
     musicGainDb: -19,
     silencePreset: 'balanced',

@@ -94,7 +94,7 @@ export const EasyCutVideo: React.FC<EasyCutVideoProps> = ({ edl, previewAudio = 
   ) : (
     <VideoTrack edl={edl} onMediaError={onMediaError} />
   );
-  const broll = <BrollLayer edl={edl} onMediaError={onMediaError} />;
+  const broll = <BrollLayer edl={edl} onMediaError={onMediaError} cheap={lowDetail} />;
 
   return (
     <AbsoluteFill style={{ backgroundColor: '#0D0D10', fontFamily: FONT_FAMILY }}>

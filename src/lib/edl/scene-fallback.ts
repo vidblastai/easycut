@@ -240,6 +240,10 @@ export function fallbackScene(
     id: 'scene-fallback',
     outStartSec: best.startSec,
     outEndSec: best.endSec,
+    // Null, so the look's own entry decides. The rescued scene is the one
+    // nobody chose; it should not also be the one that arrives differently.
+    enter: null,
+    exit: null,
     kind: best.kind,
     look,
     backdrop: best.kind === 'big-number' ? 'rays' : 'gradient',

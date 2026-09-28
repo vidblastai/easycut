@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { buildEdl } from '@/lib/edl/builder';
+import { buildEdl, placeScenes } from '@/lib/edl/builder';
 import { EdlSchema, iconRowPlacement } from '@/lib/edl/types';
 import { DirectorPlanSchema } from '@/lib/director/schema';
 import { getStyle } from '@/lib/styles/presets';
-import { layoutSegments } from '@/lib/timeline/time-mapper';
+import { TimeMapper, layoutSegments } from '@/lib/timeline/time-mapper';
 import { deriveSentences, type Transcript, type TranscriptWord } from '@/lib/transcribe/types';
 
 function makeTranscript(): Transcript {
@@ -292,5 +292,89 @@ describe('icon cards', () => {
     // And on screen: a card hanging off the bottom is the failure that comes
     // with sizing it to anything but the room it has.
     expect(edl.icons[0].y + card / edl.format.height / 2).toBeLessThanOrEqual(1);
+  });
+});
+
+/**
+ * How full-frame clips arrive and leave.
+ *
+ * One transition on every insert reads as a template; a different one every
+ * time reads as random. The cycling is what gets variety out of a coherent
+ * set, and the determinism is what makes re-running the same footage produce
+ * the same edit.
+ */
+describe('clip transitions', () => {
+  const inserts = [
+    { atSec: 3, durationSec: 2, query: 'a', intent: '', kind: 'stock-video' as const },
+    { atSec: 8, durationSec: 2, query: 'b', intent: '', kind: 'stock-video' as const },
+    { atSec: 13, durationSec: 2, query: 'c', intent: '', kind: 'stock-video' as const },
+    { atSec: 18, durationSec: 2, query: 'd', intent: '', kind: 'stock-video' as const },
+  ];
+
+  it('gives consecutive inserts different moves from the style-s own set', () => {
+    const edl = build({ broll: inserts }, 'punchy');
+    const used = edl.broll.map((clip) => clip.enter);
+    const vocabulary = getStyle('punchy').clipTransitions;
+
+    expect(edl.broll.length).toBeGreaterThan(2);
+    expect(new Set(used).size).toBeGreaterThan(1);
+    for (const move of used) expect(vocabulary).toContain(move);
+    // Back to back, they differ.
+    for (let i = 1; i < used.length; i++) expect(used[i]).not.toBe(used[i - 1]);
+  });
+
+  it('is deterministic, so the same footage cuts the same way twice', () => {
+    const first = build({ broll: inserts }, 'punchy').broll.map((c) => c.enter);
+    const second = build({ broll: inserts }, 'punchy').broll.map((c) => c.enter);
+    expect(first).toEqual(second);
+  });
+
+  it('sends an insert out the way it came, so it crosses in one direction', () => {
+    for (const clip of build({ broll: inserts }, 'news').broll) {
+      expect(clip.exit).toBe(clip.enter);
+    }
+  });
+
+  it('takes its vocabulary from the style, so a calm one never glitches', () => {
+    const calm = build({ broll: inserts }, 'clean').broll.map((c) => c.enter);
+    expect(calm).not.toContain('glitch');
+    expect(calm).not.toContain('whip');
+  });
+
+  it('gives a scene the style-s signature, not a rotating move', () => {
+    // Two or three scenes in a video should arrive the same way as each other;
+    // an insert is punctuation and can vary.
+    const placed = placeScenes(
+      [
+        { startSec: 4, endSec: 8, kind: 'kinetic-text', backdrop: 'gradient', headline: 'one', items: [], iconQueries: [], reason: '' },
+        { startSec: 14, endSec: 18, kind: 'kinetic-text', backdrop: 'gradient', headline: 'two', items: [], iconQueries: [], reason: '' },
+      ] as never,
+      new TimeMapper(segments),
+      30,
+      [],
+      '#9B7BFF',
+      'neon',
+      'glitch',
+    );
+
+    expect(placed.length).toBe(2);
+    for (const scene of placed) {
+      expect(scene.enter).toBe('glitch');
+      expect(scene.exit).toBe('glitch');
+    }
+  });
+
+  it('leaves a rescued scene to its look, which is the only one nobody chose', () => {
+    // The fallback scene exists because nothing else did. It should not also
+    // be the one that arrives differently from the rest of the style.
+    const edl = build({ broll: [] }, 'punchy');
+    for (const scene of edl.scenes) expect(scene.enter).toBeNull();
+  });
+
+  it('cuts where the layout gives B-roll a permanent half', () => {
+    // A split screen's B-roll slot is on screen from the first frame, so there
+    // is nothing for it to transition INTO.
+    const edl = build({ broll: inserts }, 'split');
+    for (const clip of edl.broll) expect(clip.enter).toBe('cut');
   });
 });

@@ -349,6 +349,48 @@ export type CaptionStyle = z.infer<typeof CaptionStyleSchema>;
 
 /* ------------------------------------------------------------------- broll */
 
+/* ------------------------------------------------- full-frame transitions */
+
+/**
+ * How something that COVERS the frame arrives and leaves.
+ *
+ * Distinct from `TRANSITION_TYPES`, which decorate a cut between two shots of
+ * the speaker: those are an effect drawn on top of a moment, and these move
+ * the clip itself. A B-roll insert that simply appears reads as a dropped
+ * frame; one that travels in from an edge reads as an edit.
+ *
+ * Two families, deliberately in one list because the user picking them does
+ * not care which is which:
+ *
+ *  - **Moves.** `slide-*` and `zoom` transform the clip. Named by the
+ *    direction the clip TRAVELS, so `slide-left` comes in from the right edge
+ *    and leaves past the left one — the eye follows one continuous movement
+ *    through the whole insert.
+ *  - **Flavours.** `glitch`, `film-burn`, `light-leak`, `flash` and `whip`
+ *    snap the clip in over a short effect. The effect is the transition; the
+ *    clip barely moves.
+ */
+export const CLIP_TRANSITIONS = [
+  'cut',
+  'fade',
+  'slide-left',
+  'slide-right',
+  'slide-up',
+  'slide-down',
+  'zoom',
+  'whip',
+  'glitch',
+  'film-burn',
+  'light-leak',
+  'flash',
+] as const;
+export type ClipTransition = (typeof CLIP_TRANSITIONS)[number];
+
+/** The ones that are a movement of the clip rather than an effect over it. */
+export const CLIP_TRANSITION_MOVES: readonly ClipTransition[] = [
+  'slide-left', 'slide-right', 'slide-up', 'slide-down', 'zoom',
+];
+
 export const BrollClipSchema = z.object({
   id: z.string(),
   outStartSec: z.number().nonnegative(),
@@ -368,6 +410,15 @@ export const BrollClipSchema = z.object({
   intent: z.string().default(''),
   query: z.string().default(''),
   attribution: z.string().optional(),
+  /**
+   * How the insert arrives and leaves.
+   *
+   * Defaulted to `fade` rather than `cut` so a document written before these
+   * existed keeps the short cross-fade it was rendered with — the same picture
+   * it had, not a new one.
+   */
+  enter: z.enum(CLIP_TRANSITIONS).default('fade'),
+  exit: z.enum(CLIP_TRANSITIONS).default('fade'),
 });
 export type BrollClip = z.infer<typeof BrollClipSchema>;
 
@@ -677,6 +728,15 @@ export const AnimatedSceneSchema = z.object({
   kind: z.enum(SCENE_KINDS),
   /** The world it is drawn in. See SCENE_LOOKS. */
   look: z.enum(SCENE_LOOKS).default('studio'),
+  /**
+   * How the scene takes the frame and gives it back.
+   *
+   * Null means "whatever this look does", which is the behaviour every scene
+   * had before this existed: three of the five cut hard and `archive` fades.
+   * A value here overrides that for this scene alone.
+   */
+  enter: z.enum(CLIP_TRANSITIONS).nullable().default(null),
+  exit: z.enum(CLIP_TRANSITIONS).nullable().default(null),
   backdrop: z.enum(SCENE_BACKDROPS).default('gradient'),
   /** The phrase being said, in the speaker's own words. Two to six words. */
   headline: z.string().default(''),

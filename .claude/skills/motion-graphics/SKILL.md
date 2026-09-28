@@ -1,6 +1,6 @@
 ---
 name: motion-graphics
-description: How EasyCut's faceless animated scenes and icon cards are built, and how to add a new look. Read before touching remotion/components/Scenes.tsx, remotion/components/IconCards.tsx, remotion/lib/motion.ts, remotion/looks/*, src/lib/director/scenes.ts, src/lib/assets/icon-cards.ts or src/lib/edl/scene-fallback.ts, or when asked to make the motion graphics look better, add a style, or fix how a scene animates.
+description: How EasyCut's faceless animated scenes, icon cards and full-frame clip transitions are built, and how to add a new look. Read before touching remotion/components/Scenes.tsx, remotion/components/IconCards.tsx, remotion/components/BrollLayer.tsx, remotion/lib/clip-transition.tsx, remotion/lib/motion.ts, remotion/looks/*, src/lib/director/scenes.ts, src/lib/assets/icon-cards.ts or src/lib/edl/scene-fallback.ts, or when asked to make the motion graphics look better, add a style, or fix how a scene animates.
 ---
 
 # Motion graphics that look hand-made
@@ -508,6 +508,54 @@ lands on the word:
 
     npx tsx scripts/icon-clip.ts light 6
     npx tsx scripts/icon-clip.ts dark 6
+
+## How a full-frame clip arrives and leaves
+
+A B-roll insert or a scene that simply appears reads as a dropped frame, and
+no amount of effect painted over that moment fixes it — **the picture has to
+travel.** That is the difference between `remotion/lib/clip-transition.tsx`
+and `remotion/components/Transitions.tsx`: the latter decorates a CUT with an
+effect and nothing underneath it moves; this one moves the clip.
+
+Two families in one list, because the person picking does not care which:
+
+- **Moves** — `slide-left/right/up/down`, `zoom`. Named by the direction the
+  clip TRAVELS, so `slide-left` comes in from the RIGHT edge and leaves past
+  the left one. An insert given the same value at both ends therefore crosses
+  the frame in one continuous direction over its whole life, which is what
+  makes a run of them feel edited rather than like a slideshow.
+- **Flavours** — `glitch`, `film-burn`, `light-leak`, `flash`, `whip`. The
+  clip SNAPS in at full opacity and the effect plays over it. Fading it in
+  underneath is the mistake: a glitch over a half-faded picture looks like a
+  rendering fault, which is the one thing a glitch must not look like.
+
+Moves take 0.34s, flavours 0.22s. Both ends are measured from their own edge
+and applied together (transforms composed, opacities multiplied), so a clip
+too short to finish arriving before it must leave degrades rather than jumps.
+
+**Composing, not picking.** `transform: a b` is ONE declaration — writing
+`${a} ${b}` where either is undefined discards the whole thing, and the insert
+silently does not transition at all in exactly the case where both ends are
+animating. Filter, then join.
+
+**Where they come from.** Each style declares a `clipTransitions` vocabulary.
+The builder cycles it per insert, so consecutive inserts differ inside one
+coherent set and re-running the same footage gives the same edit; a scene gets
+the style's FIRST entry as its signature, because the two or three scenes in a
+video should arrive the same way as each other. A layout whose B-roll has a
+permanent half gets `cut` — that slot is on screen from frame one, so there is
+nothing to transition into. Every clip is overridable from the editor.
+
+Watch the whole set on one strip; twelve of these cannot be judged one at a
+time, and none of them can be judged from a still:
+
+    npx tsx scripts/transition-clip.ts              # all of them, labelled
+    npx tsx scripts/transition-clip.ts glitch,whip  # just these
+
+The strip uses flat colour plates rather than footage for the inserts. Its
+first version used the same fixture for the speaker AND the inserts, which
+made it impossible to see where one ended and the other began — the exact
+thing the strip exists to show.
 
 ## Verifying
 

@@ -46,6 +46,10 @@ async function main() {
     edl: EdlSchema.parse({
       ...SAMPLE_EDL,
       projectId: `icon-${tone}`,
+      // The composition's length comes from `format`, not from the
+      // deliverable — setting only the latter renders the sample's ten
+      // seconds and silently truncates the strip.
+      format: { ...SAMPLE_EDL.format, durationSec: seconds },
       source: { ...SAMPLE_EDL.source, url: source },
       segments: [
         { ...SAMPLE_EDL.segments[0], sourceStartSec: 0, sourceEndSec: seconds, outStartSec: 0, outEndSec: seconds },

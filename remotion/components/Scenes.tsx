@@ -3,6 +3,7 @@ import { AbsoluteFill, Sequence, useCurrentFrame, useVideoConfig } from 'remotio
 import { sceneIsDrawn, type AnimatedScene, type Edl } from '../../src/lib/edl/types';
 import { FONT_FAMILY } from '../lib/fonts';
 import { easeOutCubic, kf, riseIn, stagger, transformOf } from '../lib/motion';
+import { ClipTransitionEffect, clipMotion, clipPhase, clipTransitionSec } from '../lib/clip-transition';
 import { lookFor } from '../looks';
 import { LOOK_META } from '../../src/lib/scenes/looks';
 import { styleGuideFor } from '../../src/lib/scenes/style-guides';
@@ -82,25 +83,40 @@ const SceneView: React.FC<{ scene: AnimatedScene; durationInFrames: number }> = 
   const ctx: LookContext = { scene, durationInFrames, fps, width, height, unit: height * 0.001 };
 
   /*
-   * How the scene meets the footage either side of it — the look decides; see
-   * `entry` in src/lib/scenes/looks.ts for why most of them cut. One frame of
-   * guard at each end either way, so a rounding error cannot leave a single
-   * frame of black between the scene and the footage.
+   * How the scene meets the footage either side of it.
+   *
+   * The look still decides when the scene says nothing — see `entry` in
+   * src/lib/scenes/looks.ts for why most of them cut, and why `archive` fades.
+   * A scene that names its own transition overrides that, which is what lets a
+   * style give its inserts and its scenes the same signature move.
    */
-  const fadeFrames = look.entry === 'fade' ? Math.round(fps * 0.4) : 1;
-  const opacity = kf(
-    frame,
-    [
-      [0, 0],
-      [fadeFrames, 1],
-      [durationInFrames - fadeFrames, 1],
-      [durationInFrames, 0],
-    ],
-    easeOutCubic,
-  );
+  const enter = scene.enter ?? (look.entry === 'fade' ? 'fade' : 'cut');
+  const exit = scene.exit ?? (look.entry === 'fade' ? 'fade' : 'cut');
+
+  const enterFrames = Math.max(1, Math.round(fps * clipTransitionSec(enter)));
+  const exitFrames = Math.max(1, Math.round(fps * clipTransitionSec(exit)));
+  const { entering, leaving } = clipPhase(frame, durationInFrames, enterFrames, exitFrames);
+
+  const enterStyle = clipMotion(enter, entering, false);
+  const exitStyle = clipMotion(exit, leaving, true);
+
+  /*
+   * One frame of guard at each end even on a hard cut.
+   *
+   * A rounding error between the sequence's length and the footage either side
+   * of it can otherwise leave a single frame of black, and one black frame in
+   * the middle of a cut is more visible than any transition.
+   */
+  const guard = kf(frame, [[0, 0], [1, 1], [durationInFrames - 1, 1], [durationInFrames, 0]], easeOutCubic);
 
   return (
-    <AbsoluteFill style={{ opacity, fontFamily: FONT_FAMILY }}>
+    <AbsoluteFill
+      style={{
+        transform: [enterStyle.transform, exitStyle.transform].filter(Boolean).join(' ') || undefined,
+        opacity: Number(enterStyle.opacity ?? 1) * Number(exitStyle.opacity ?? 1) * guard,
+        fontFamily: FONT_FAMILY,
+      }}
+    >
       {/*
         ONE background, always.
         A drawn scene brings its own — the illustration's backdrop group runs
@@ -118,6 +134,21 @@ const SceneView: React.FC<{ scene: AnimatedScene; durationInFrames: number }> = 
         <look.Ground ctx={ctx} />
       )}
       <Arrangement ctx={ctx} look={look} />
+
+      {/* And the flavour, if the transition is one. Inside the scene's frame,
+          so it cannot bleed onto the footage either side. */}
+      {entering < 1 ? (
+        <ClipTransitionEffect
+          type={enter} progress={entering} leaving={false}
+          seed={scene.id} frame={frame} width={width} height={height} cheap={false}
+        />
+      ) : null}
+      {leaving < 1 ? (
+        <ClipTransitionEffect
+          type={exit} progress={leaving} leaving
+          seed={scene.id} frame={frame} width={width} height={height} cheap={false}
+        />
+      ) : null}
     </AbsoluteFill>
   );
 };
