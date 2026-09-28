@@ -437,12 +437,24 @@ sliced down its sides.
 
 ### Where the row sits
 
-Under the captions in z-order, above them on screen. `iconRowY()` hangs the
-row off the caption block rather than using a constant, and it deliberately
-over-estimates that block twice over: a display face's line box is taller than
-its `lineHeight`, and a `slide-up` preset lifts the whole block by 0.9 of its
-font size as it arrives. The first version used a flat 0.56 and put the first
-line of the captions straight through the bottom of the cards.
+**Below the captions, in the lower half.** Above them is where there is most
+room and it is the wrong place: in a vertical talking-head frame the speaker's
+FACE is in the upper half, and that is exactly what the first version put a
+card on.
+
+`iconRowPlacement()` pins the row to the bottom margin and sizes the card to
+the room left under the caption band — between 0.15 and the reference 0.30 of
+the short edge. A fixed size cannot work, because that band is not a fixed
+height: two lines of `bold-pop` reach 0.88 and one line of `clean-plate` stops
+at 0.80. Where there is space the card is exactly the size the reference clip
+measured; where there is not it is a smaller version of the same object rather
+than one hanging off the bottom of the frame.
+
+The band itself is calibrated from renders, not derived from `lineHeight`: the
+ink of two lines of `bold-pop` spans 0.27 of the frame where
+`maxLines * fontSizeRatio * lineHeight` predicts 0.13. An emphasised word set
+on its own line adds a line `maxLines` does not count, and a display face's
+line box is half again its nominal size.
 
 ### Rows
 
@@ -476,6 +488,20 @@ answers:
   right after the phrase — at the bottom it is never reached, because a single
   word out of the query almost always matches something. That is how "video
   editing" resolved to a games console.
+
+### On the timeline
+
+An icon row is a clip like any other: `icons` is in `CLIP_TRACKS`, so move,
+trim and delete come from the generic code. That is the whole reason a row
+spells its span `outStartSec`/`outEndSec` and keeps each card's time as an
+`offsetSec` from the row — with absolute card times, dragging the row would
+leave its cards behind and the second one would arrive before the first.
+
+Editing a card needs its own operation (`icon.set`, `icon.remove`), because
+`clip.update` carries a flat patch of primitives and cannot express "the
+second card in this row". The inspector looks the icon up through
+`/api/icons` as you type, so you find out you asked for a games console
+before you re-render rather than after.
 
 Verify with a real clip in both tones. A still cannot show you whether it
 lands on the word:

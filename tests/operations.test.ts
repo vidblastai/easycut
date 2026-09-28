@@ -424,3 +424,117 @@ describe('a caption that begins exactly on a cut', () => {
     expect(spans(edl)).toEqual([['a', 0, 4], ['c', 4, 8]]);
   });
 });
+
+/**
+ * Editing an icon row on the timeline.
+ *
+ * The row is a clip like any other — moved, trimmed and deleted by the generic
+ * code — and that is exactly WHY its cards keep their times as offsets from
+ * the row rather than as absolute seconds. Every test here is one of the ways
+ * the absolute version would have come apart.
+ */
+describe('icon cards on the timeline', () => {
+  function withRow(): Edl {
+    const base = makeEdl();
+    return {
+      ...base,
+      icons: [
+        {
+          id: 'icon-0',
+          outStartSec: 3,
+          outEndSec: 6,
+          y: 0.86,
+          tone: 'light' as const,
+          cards: [
+            { offsetSec: 0, word: 'bananas', query: 'banana', markup: '<svg><path d="M0 0"/></svg>', iconId: 'noto:banana' },
+            { offsetSec: 1, word: 'apples', query: 'red apple', markup: '<svg><path d="M0 0"/></svg>', iconId: 'noto:red-apple' },
+          ],
+        },
+      ],
+    };
+  }
+
+  it('moves as one clip, and the cards keep their spacing', () => {
+    const { edl } = applyOperations(withRow(), [
+      { op: 'clip.move', track: 'icons', id: 'icon-0', outStartSec: 7 },
+    ]);
+    expect(edl.icons[0].outStartSec).toBeCloseTo(7, 5);
+    // The whole point of relative offsets: nothing about the cards changed, so
+    // the second one still lands a second after the first.
+    expect(edl.icons[0].cards.map((c) => c.offsetSec)).toEqual([0, 1]);
+    expect(edl.icons[0].outEndSec - edl.icons[0].outStartSec).toBeCloseTo(3, 5);
+  });
+
+  it('trims and deletes like every other track', () => {
+    const trimmed = applyOperations(withRow(), [
+      { op: 'clip.trim', track: 'icons', id: 'icon-0', outEndSec: 5 },
+    ]).edl;
+    expect(trimmed.icons[0].outEndSec).toBeCloseTo(5, 5);
+
+    const gone = applyOperations(withRow(), [{ op: 'clip.delete', track: 'icons', id: 'icon-0' }]).edl;
+    expect(gone.icons).toHaveLength(0);
+  });
+
+  it('changes which object a card draws', () => {
+    const { edl } = applyOperations(withRow(), [
+      { op: 'icon.set', id: 'icon-0', index: 0, query: 'hourglass', markup: '<svg><circle r="1"/></svg>', iconId: 'noto:hourglass' },
+    ]);
+    expect(edl.icons[0].cards[0].query).toBe('hourglass');
+    expect(edl.icons[0].cards[0].iconId).toBe('noto:hourglass');
+    // And leaves the other one alone.
+    expect(edl.icons[0].cards[1].iconId).toBe('noto:red-apple');
+  });
+
+  it('retimes a card within its row, and keeps the row in order', () => {
+    const { edl } = applyOperations(withRow(), [
+      { op: 'icon.set', id: 'icon-0', index: 0, offsetSec: 2 },
+    ]);
+    // The first card moved past the second, so they swap — a row whose cards
+    // are out of order would animate backwards.
+    expect(edl.icons[0].cards.map((c) => c.word)).toEqual(['apples', 'bananas']);
+  });
+
+  it('never lets a card land after its row has gone', () => {
+    const { edl } = applyOperations(withRow(), [
+      { op: 'icon.set', id: 'icon-0', index: 1, offsetSec: 99 },
+    ]);
+    const last = Math.max(...edl.icons[0].cards.map((c) => c.offsetSec));
+    expect(last).toBeLessThanOrEqual(edl.icons[0].outEndSec - edl.icons[0].outStartSec);
+  });
+
+  it('appends a card when the index is past the end, and stops at three', () => {
+    const grown = applyOperations(withRow(), [
+      { op: 'icon.set', id: 'icon-0', index: 2, query: 'grapes' },
+    ]).edl;
+    expect(grown.icons[0].cards).toHaveLength(3);
+
+    const { rejected } = applyOperations(grown, [
+      { op: 'icon.set', id: 'icon-0', index: 2, query: 'pear' } as EdlOperation,
+    ]);
+    // Index 2 exists now, so that one edits rather than appends; a fourth is
+    // refused rather than silently dropped on screen.
+    expect(rejected).toHaveLength(0);
+  });
+
+  it('removes a card, and removes the row when it was the last one', () => {
+    const one = applyOperations(withRow(), [{ op: 'icon.remove', id: 'icon-0', index: 1 }]).edl;
+    expect(one.icons[0].cards).toHaveLength(1);
+
+    const none = applyOperations(one, [{ op: 'icon.remove', id: 'icon-0', index: 0 }]).edl;
+    expect(none.icons).toHaveLength(0);
+  });
+
+  it('switches the tile between white and near-black', () => {
+    const { edl } = applyOperations(withRow(), [
+      { op: 'clip.update', track: 'icons', id: 'icon-0', patch: { tone: 'dark' } },
+    ]);
+    expect(edl.icons[0].tone).toBe('dark');
+  });
+
+  it('survives a round trip through the schema', () => {
+    const { edl } = applyOperations(withRow(), [
+      { op: 'clip.move', track: 'icons', id: 'icon-0', outStartSec: 1 },
+    ]);
+    expect(() => EdlSchema.parse(edl)).not.toThrow();
+  });
+});

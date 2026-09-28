@@ -7,7 +7,7 @@ import { selectMusic } from '@/lib/assets/music';
 import { searchStock, isStockConfigured, type StockClip } from '@/lib/assets/broll';
 import { sfxDefaultGain, sfxUrl, type SfxName } from '@/lib/assets/sfx';
 import type { CostLedger } from '@/lib/pricing/cost';
-import { iconRowY, type Edl } from '@/lib/edl/types';
+import { iconRowPlacement, type Edl } from '@/lib/edl/types';
 
 /**
  * Resolves every placeholder in an EDL into a real URL.
@@ -218,7 +218,7 @@ export async function resolveAssets(
     // running through the two that are left.
     .map((cue) => ({
       ...cue,
-      y: iconRowY(edl.captionStyle, cue.cards.length, edl.format.width, edl.format.height),
+      y: iconRowPlacement(edl.captionStyle, cue.cards.length, edl.format.width, edl.format.height).y,
     }));
 
   const droppedCards =

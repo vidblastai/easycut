@@ -23,6 +23,10 @@ export default {
         faint: '#6E6E7C',      // micro-labels, inactive icons
         'line-soft': '#232330',// the quieter hairline, for structure not edges
         ok: '#5BD6A0',
+        // A fourth utility hue, for the timeline's icon lane. The three above
+        // were taken by B-roll, graphics and punch-ins, and a layer that
+        // shares a colour with another layer is a layer you have to read.
+        sky: '#56C7F0',
         warn: '#F5C453',
         bad: '#FF7B7B',
       },

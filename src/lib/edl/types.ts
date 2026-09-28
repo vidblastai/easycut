@@ -462,8 +462,15 @@ export type GraphicElement = z.infer<typeof GraphicElementSchema>;
  * not slide sideways when the second one appears.
  */
 export const IconCardSchema = z.object({
-  /** Output time of the word this card belongs to. It must LAND here. */
-  atSec: z.number().nonnegative(),
+  /**
+   * Seconds after the row starts, not an absolute time.
+   *
+   * Relative so the row behaves like every other clip on the timeline: drag it
+   * and its cards keep their spacing, because `outStartSec` is the only thing
+   * that moved. With absolute times, moving the row would leave the cards
+   * behind it and the second card would arrive before the first.
+   */
+  offsetSec: z.number().nonnegative().default(0),
   /** The word that earned it — shown in the editor, and used to re-roll. */
   word: z.string().default(''),
   /** What the icon library was asked for. */
@@ -484,8 +491,15 @@ export type IconCard = z.infer<typeof IconCardSchema>;
 
 export const IconCueSchema = z.object({
   id: z.string(),
-  /** When the whole row fades. Every card in a row leaves together. */
-  endSec: z.number().nonnegative(),
+  /**
+   * When the first card arrives, and when the whole row leaves.
+   *
+   * Named like every other clip's span on purpose: the timeline's move, trim
+   * and delete are written once against `outStartSec`/`outEndSec`, so a track
+   * that spells its own times differently has to re-implement all three.
+   */
+  outStartSec: z.number().nonnegative(),
+  outEndSec: z.number().nonnegative(),
   /** Normalised centre of the row. The builder keeps it clear of the captions. */
   y: z.number().default(0.56),
   /**
@@ -503,69 +517,99 @@ export const IconCueSchema = z.object({
 });
 export type IconCue = z.infer<typeof IconCueSchema>;
 
-/** When the first card of a row arrives. Rows are sorted and spaced by this. */
-export function iconCueStart(cue: IconCue): number {
-  return Math.min(...cue.cards.map((card) => card.atSec));
+/** When a card lands, in output time. */
+export function iconCardAt(cue: IconCue, card: IconCard): number {
+  return cue.outStartSec + card.offsetSec;
 }
 
 /**
- * How big a card is, and how far apart.
+ * Where a row of cards sits and how big each one is.
  *
- * Here rather than in the renderer because the BUILDER needs the same number:
- * it places the row so the cards clear the captions, and it cannot do that
- * without knowing how tall a card is. Two copies of this table is how the row
- * ends up two thirds of a card too low in exactly one of the two places.
+ * ── Below the captions, in the lower half ───────────────────────────────
  *
- * Sized off the SHORT edge, so a card is the same physical object in a
- * vertical frame and a wide one. A third of the width in 16:9 would be a
- * poster.
+ * The first version put the row above the words, which is where there is most
+ * room — and it is the wrong place, because in a vertical talking-head frame
+ * the speaker's FACE is in the upper half and a card there lands on it. So the
+ * row hangs under the caption band instead, in the space nothing else uses.
+ *
+ * ── Why the size is computed here and not fixed ─────────────────────────
+ *
+ * That space is not always the same size. A caption preset can put two lines
+ * of a display face at 0.74 and reach almost to 0.88; another puts one tidy
+ * line at 0.78. A fixed card fits the first case or the second, never both,
+ * and the failure mode of "too big" is a card hanging off the bottom of the
+ * frame. So the card is sized to the room it has, between a floor and the
+ * reference size — where there is space it is exactly as big as the clip this
+ * was measured from, and where there is not it is a smaller version of the
+ * same object rather than a broken one.
  */
-export function iconCardGeometry(count: number, width: number, height: number): { card: number; gap: number } {
-  const shortEdge = Math.min(width, height);
-  const fraction = count <= 1 ? 0.3 : count === 2 ? 0.26 : 0.22;
-  return { card: shortEdge * fraction, gap: shortEdge * 0.055 };
+export interface IconRowPlacement {
+  /** Normalised centre of the row. */
+  y: number;
+  /** Card side, in pixels. */
+  card: number;
+  /** Between cards, in pixels. */
+  gap: number;
 }
 
-/**
- * Where a row of cards sits, given the captions it must not touch.
- *
- * A fixed height cannot work: caption presets put the words anywhere from
- * halfway up the frame to the bottom sixth, and the first version of this used
- * a constant 0.56 that happened to land a card directly behind the words. So
- * the row hangs off the caption block instead — its bottom edge a small gap
- * above the top of the highest line the captions can reach.
- *
- * Clamped at both ends: never so high it sits on the speaker's face, never so
- * low it leaves the frame when a preset puts its captions near the top.
- */
-export function iconRowY(
-  captions: Pick<CaptionStyle, 'positionY' | 'fontSizeRatio' | 'lineHeight' | 'maxLines'>,
+/** The reference clip's card: 0.30 of the frame's short edge. */
+const ICON_CARD_MAX = 0.3;
+
+/** Smaller than this and the icon stops reading as an object. */
+const ICON_CARD_MIN = 0.15;
+
+/** Clear air between the caption band and the top of the cards. */
+const ICON_CAPTION_GAP = 0.025;
+
+/** And between the cards and the bottom of the frame. */
+const ICON_BOTTOM_MARGIN = 0.03;
+
+export function iconRowPlacement(
+  captions: Pick<CaptionStyle, 'positionY' | 'fontSizeRatio' | 'maxLines' | 'emphasisOwnLine' | 'splitLines'>,
   count: number,
   width: number,
   height: number,
-): number {
-  const { card } = iconCardGeometry(count, width, height);
+): IconRowPlacement {
+  const shortEdge = Math.min(width, height);
+  const room = 1 - captionBottom(captions) - ICON_CAPTION_GAP - ICON_BOTTOM_MARGIN;
 
   /*
-   * The caption block is taller than `lineHeight` says, and it moves.
-   *
-   * `lineHeight` is applied to the WORDS; the line box a browser gives a
-   * display face at that size is larger than the number — the font's own
-   * ascent and descent do not fit inside 1.0em. And a `slide-up` preset lifts
-   * the whole block by nine tenths of its font size as it arrives. Modelling
-   * only the nominal height put the first line of the captions straight
-   * through the bottom of the cards, so both are allowed for here, generously
-   * in both cases: a card sitting a little higher than it needs to costs
-   * nothing, and a card behind the words costs the shot.
+   * Three cards have to fit ACROSS as well as under, and the width limit bites
+   * first in a wide frame: a third of the short edge each is a third of the
+   * height in 16:9 and most of the width in 9:16.
    */
-  const lineBox = Math.max(captions.lineHeight, 1.5);
-  const blockHeight = Math.max(1, captions.maxLines) * captions.fontSizeRatio * lineBox;
-  const entryLift = captions.fontSizeRatio * 0.9;
-  const captionTop = captions.positionY - blockHeight / 2 - entryLift;
+  const widthLimit = (width * 0.86 - (count - 1) * shortEdge * 0.055) / count;
+  const card = Math.max(
+    shortEdge * ICON_CARD_MIN,
+    Math.min(shortEdge * ICON_CARD_MAX, widthLimit, room * height),
+  );
 
-  const bottom = captionTop - 0.035;
-  const centre = bottom - card / height / 2;
-  return Math.min(0.62, Math.max(0.24, centre));
+  // Hung from the bottom margin up, so the row is as far from the captions as
+  // the frame allows rather than pressed against them.
+  const y = 1 - ICON_BOTTOM_MARGIN - card / height / 2;
+
+  return { y, card, gap: shortEdge * 0.055 };
+}
+
+/**
+ * The lowest the captions reach, allowing for the ways they get taller.
+ *
+ * Measured rather than modelled from `lineHeight`, because the rendered band
+ * is nothing like the nominal one: the ink of two lines of `bold-pop` spans
+ * 0.27 of the frame where `maxLines * fontSizeRatio * lineHeight` predicts
+ * 0.13. Two things account for most of it — an emphasised word set on its own
+ * line adds a line that `maxLines` does not count, and a display face's line
+ * box is half again its nominal size once ascenders and descenders are in.
+ *
+ * Calibrated against renders of three presets, and deliberately generous: the
+ * cost of over-estimating is a slightly smaller card, and the cost of
+ * under-estimating is the captions sitting on top of it.
+ */
+function captionBottom(
+  captions: Pick<CaptionStyle, 'positionY' | 'fontSizeRatio' | 'maxLines' | 'emphasisOwnLine' | 'splitLines'>,
+): number {
+  const lines = Math.max(1, captions.maxLines) + (captions.emphasisOwnLine || captions.splitLines ? 1 : 0);
+  return captions.positionY + lines * captions.fontSizeRatio * 0.8;
 }
 
 /* ------------------------------------------------------------------ scenes */

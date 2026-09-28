@@ -11,7 +11,7 @@ import { buildCaptions } from './captions';
 import { fallbackScene } from './scene-fallback';
 import {
   ASPECT_DIMENSIONS,
-  iconRowY,
+  iconRowPlacement,
   type Aspect,
   type BrollClip,
   type Edl,
@@ -457,20 +457,24 @@ function placeIcons(
 
   return rows
     .map((row, index) => {
+      const outStartSec = row[0].atSec;
       const last = row[row.length - 1].atSec;
       const next = rows[index + 1]?.[0]?.atSec ?? Infinity;
       // A row leaves before the next one arrives, and never overruns the edit.
-      const endSec = Math.min(last + ICON_HOLD_SEC, next - 0.3, durationSec - 0.1);
+      const outEndSec = Math.min(last + ICON_HOLD_SEC, next - 0.3, durationSec - 0.1);
 
       return {
         id: `icon-${index}`,
-        endSec,
-        // Measured against the captions rather than fixed, so a preset that
-        // puts its words halfway up the frame does not get a card behind them.
-        y: iconRowY(captions, row.length, dimensions.width, dimensions.height),
+        outStartSec,
+        outEndSec,
+        // Under the captions, in the space nothing else uses — a card in the
+        // upper half of a vertical frame lands on the speaker's face.
+        y: iconRowPlacement(captions, row.length, dimensions.width, dimensions.height).y,
         tone,
         cards: row.map((card) => ({
-          atSec: card.atSec,
+          // Relative to the row, so dragging it on the timeline keeps the
+          // cards' spacing instead of leaving them behind.
+          offsetSec: Math.max(0, card.atSec - outStartSec),
           word: card.word,
           query: card.query,
           markup: null,
@@ -480,7 +484,7 @@ function placeIcons(
     })
     // A row that has to leave almost as soon as it lands is a flicker. Better
     // no card than one the viewer only half sees.
-    .filter((cue) => cue.endSec - Math.min(...cue.cards.map((c) => c.atSec)) >= 0.7);
+    .filter((cue) => cue.outEndSec - cue.outStartSec >= 0.7);
 }
 
 /**

@@ -2,7 +2,7 @@ import { mkdir } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 import '../src/lib/config/load-env';
 import { resolveCardIcons } from '../src/lib/assets/icon-cards';
-import { EdlSchema, iconRowY } from '../src/lib/edl/types';
+import { EdlSchema, iconRowPlacement } from '../src/lib/edl/types';
 import { env } from '../src/lib/config/env';
 import { startAssetServer } from '../src/lib/render/asset-server';
 import { SAMPLE_EDL } from '../remotion/sample-edl';
@@ -62,11 +62,12 @@ async function main() {
       icons: [
         {
           id: 'icon-0',
-          endSec: 4.8,
-          y: iconRowY(SAMPLE_EDL.captionStyle, CARDS.length, 1080, 1920),
+          outStartSec: CARDS[0].atSec,
+          outEndSec: 4.8,
+          y: iconRowPlacement(SAMPLE_EDL.captionStyle, CARDS.length, 1080, 1920).y,
           tone,
           cards: CARDS.map((card, k) => ({
-            atSec: card.atSec,
+            offsetSec: card.atSec - CARDS[0].atSec,
             word: card.word,
             query: card.query,
             markup: icons[k]!.markup,

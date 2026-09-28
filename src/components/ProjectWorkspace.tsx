@@ -1645,6 +1645,11 @@ function WhatWeDid({ edl }: { edl: Edl }) {
     { label: 'Captions', value: `${edl.captions.length} cards` },
     { label: 'B-roll', value: `${edl.broll.length} inserts` },
     { label: 'Graphics', value: `${edl.graphics.length}` },
+    {
+      label: 'Icon cards',
+      // Cards, not rows: two icons in one row is two things the viewer sees.
+      value: `${edl.icons.reduce((n, cue) => n + cue.cards.length, 0)}`,
+    },
     { label: 'Sound effects', value: `${edl.sfx.length}` },
     { label: 'Punch-ins', value: `${edl.punchIns.length}` },
     { label: 'Music', value: edl.music ? edl.music.title || 'Added' : 'None' },

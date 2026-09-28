@@ -1,6 +1,6 @@
 import React from 'react';
 import { AbsoluteFill, Sequence, useCurrentFrame, useVideoConfig } from 'remotion';
-import { iconCardGeometry, type Edl, type IconCue } from '../../src/lib/edl/types';
+import { iconRowPlacement, type CaptionStyle, type Edl, type IconCue } from '../../src/lib/edl/types';
 
 /**
  * The icon that rises on the word.
@@ -74,14 +74,13 @@ export const IconCards: React.FC<{ edl: Edl }> = ({ edl }) => {
   return (
     <>
       {edl.icons.map((cue) => {
-        const firstAt = Math.min(...cue.cards.map((card) => card.atSec));
-        const from = Math.max(0, Math.round(firstAt * fps) - LEAD_FRAMES);
-        const until = Math.round(cue.endSec * fps) + Math.round(fps * FADE_SEC);
+        const from = Math.max(0, Math.round(cue.outStartSec * fps) - LEAD_FRAMES);
+        const until = Math.round(cue.outEndSec * fps) + Math.round(fps * FADE_SEC);
         const durationInFrames = Math.max(1, until - from);
 
         return (
           <Sequence key={cue.id} from={from} durationInFrames={durationInFrames} name={`icons · ${cue.cards.map((c) => c.word).join(' + ')}`}>
-            <Row cue={cue} startFrame={from} />
+            <Row cue={cue} startFrame={from} captions={edl.captionStyle} />
           </Sequence>
         );
       })}
@@ -89,16 +88,17 @@ export const IconCards: React.FC<{ edl: Edl }> = ({ edl }) => {
   );
 };
 
-const Row: React.FC<{ cue: IconCue; startFrame: number }> = ({ cue, startFrame }) => {
+const Row: React.FC<{ cue: IconCue; startFrame: number; captions: CaptionStyle }> = ({ cue, startFrame, captions }) => {
   const frame = useCurrentFrame();
   const { fps, width, height } = useVideoConfig();
 
   const drawable = cue.cards.filter((card) => card.markup);
   if (!drawable.length) return null;
 
-  // Shared with the builder, which needs the card's height to place the row
-  // clear of the captions.
-  const { card, gap } = iconCardGeometry(drawable.length, width, height);
+  // The same helper the builder placed the row with, so the card is exactly
+  // the size the space under the captions was measured for. `cue.y` still
+  // wins, because that is the one a user can move.
+  const { card, gap } = iconRowPlacement(captions, drawable.length, width, height);
 
   /*
    * Laid out for the row's FINAL width from the first frame.
@@ -114,7 +114,7 @@ const Row: React.FC<{ cue: IconCue; startFrame: number }> = ({ cue, startFrame }
 
   const riseFrames = Math.max(1, Math.round(fps * RISE_SEC));
   const fadeFrames = Math.max(1, Math.round(fps * FADE_SEC));
-  const endFrame = Math.round(cue.endSec * fps) - startFrame;
+  const endFrame = Math.round(cue.outEndSec * fps) - startFrame;
 
   // Linear, and shared by the whole row: they arrived one at a time and they
   // leave together, which is what the sentence they belong to does.
@@ -126,7 +126,7 @@ const Row: React.FC<{ cue: IconCue; startFrame: number }> = ({ cue, startFrame }
   return (
     <AbsoluteFill style={{ opacity }}>
       {drawable.map((item, index) => {
-        const landsAt = Math.round(item.atSec * fps) - startFrame;
+        const landsAt = Math.round((cue.outStartSec + item.offsetSec) * fps) - startFrame;
         const travelled = riseProgress(frame - (landsAt - LEAD_FRAMES), riseFrames);
         // Two card-heights, exactly as measured. `translate3d` rather than
         // `top`, so the whole entrance is one composited transform.

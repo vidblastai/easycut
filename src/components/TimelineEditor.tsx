@@ -6,7 +6,7 @@ import { clsx } from 'clsx';
 import type { PlayerRef } from '@remotion/player';
 import { applyOperations, describeOperation, type ClipTrack, type EdlOperation } from '@/lib/edl/operations';
 import { reorderIndexFor, resolveDrag, snapPointsFor, type DragKind } from '@/lib/timeline/drag';
-import { SCENE_KINDS, TRANSITION_TYPES, type Edl } from '@/lib/edl/types';
+import { SCENE_KINDS, TRANSITION_TYPES, type Edl, type IconCue } from '@/lib/edl/types';
 import { LOOK_LIST } from '@/lib/scenes/looks';
 
 /**
@@ -1294,6 +1294,34 @@ function TimelineEditorImpl({
             })}
           </Track>
 
+          {/*
+            Icon cards, in their own lane.
+
+            They were only ever visible by scrubbing the preview until one went
+            past, which is not a timeline — a layer you cannot see is a layer
+            you cannot move, and this one is timed to individual words.
+          */}
+          <Track label="Icons" labelHint={`${edl.icons.length}`}>
+            {edl.icons.map((cue) => {
+              const g = geometry(cue.id, cue.outStartSec, cue.outEndSec);
+              return (
+                <Clip
+                  key={cue.id}
+                  id={cue.id}
+                  track="icons"
+                  left={g.start * pps}
+                  width={Math.max(6, (g.end - g.start) * pps)}
+                  selected={selection?.kind === 'icons' && selection.id === cue.id}
+                  dragging={dragPreview?.id === cue.id}
+                  tone="icon"
+                  startSec={g.start}
+                  endSec={g.end}
+                  text={cue.cards.map((c) => c.word || c.query).filter(Boolean).join(' + ') || 'icon'}
+                />
+              );
+            })}
+          </Track>
+
           <Track label="B-roll" labelHint={`${edl.broll.length}`}>
             {edl.broll.map((clip) => {
               const g = geometry(clip.id, clip.outStartSec, clip.outEndSec);
@@ -1715,6 +1743,9 @@ const TONES: Record<string, string> = {
   // The loudest tone on the timeline, because a scene is the loudest thing in
   // the video: for those seconds there is no footage at all.
   scene: 'bg-violet/45 border-violet text-chalk font-semibold',
+  // Distinct from `graphic`: both are things laid over the speaker, and having
+  // told them apart in the video it would be perverse to blend them here.
+  icon: 'bg-sky/20 border-sky/45 text-chalk',
 };
 
 const Clip = React.memo(function Clip({
@@ -1801,6 +1832,140 @@ const Clip = React.memo(function Clip({
 });
 
 /** Editing the content of whatever is selected, rather than only its timing. */
+/**
+ * The icon row's panel.
+ *
+ * Three things are worth being able to change without re-rendering the whole
+ * video, and they are the three that go wrong: WHICH object is drawn (the
+ * director picks a sensible noun and sometimes picks the wrong sense of it),
+ * WHEN each card lands, and whether the tile is white or black.
+ *
+ * Typing a word looks the icon up straight away and shows it, because the
+ * alternative — type, save, re-render, look — is four steps to find out you
+ * got a games console instead of a video camera.
+ */
+function IconInspector({ cue, onChange }: { cue: IconCue; onChange: (op: EdlOperation) => void }) {
+  const [busy, setBusy] = React.useState<number | null>(null);
+  const [failed, setFailed] = React.useState<Record<number, string>>({});
+  const span = Math.max(0.2, cue.outEndSec - cue.outStartSec);
+
+  async function look(index: number, query: string) {
+    const trimmed = query.trim();
+    if (!trimmed) return;
+    setBusy(index);
+    setFailed((f) => ({ ...f, [index]: '' }));
+    try {
+      const response = await fetch(`/api/icons?q=${encodeURIComponent(trimmed)}`);
+      const body = (await response.json()) as { id?: string; markup?: string; error?: string };
+      if (!response.ok || !body.markup) {
+        setFailed((f) => ({ ...f, [index]: body.error ?? 'Could not find that one.' }));
+        return;
+      }
+      onChange({ op: 'icon.set', id: cue.id, index, query: trimmed, markup: body.markup, iconId: body.id });
+    } catch {
+      setFailed((f) => ({ ...f, [index]: 'Could not reach the icon library.' }));
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  return (
+    <div>
+      <h4 className="text-[11px] font-bold uppercase tracking-wider text-muted/70">Icon cards</h4>
+      <p className="mt-1 text-[11px] leading-snug text-faint">
+        Each one slides up on its word and they all leave together.
+      </p>
+
+      <div className="mt-3 space-y-3">
+        {cue.cards.map((card, index) => (
+          <div key={index} className="rounded-xl border border-line bg-ink p-2.5">
+            <div className="flex items-center gap-2.5">
+              <span
+                className={clsx(
+                  'grid h-10 w-10 flex-none place-items-center rounded-lg',
+                  cue.tone === 'dark' ? 'bg-charcoal2' : 'bg-white',
+                )}
+              >
+                {card.markup ? (
+                  <span
+                    className="block h-7 w-7 [&>svg]:h-full [&>svg]:w-full"
+                    // Already sanitised where it was fetched; this is the same
+                    // markup the renderer draws.
+                    dangerouslySetInnerHTML={{ __html: card.markup }}
+                  />
+                ) : (
+                  <span className="text-[10px] text-faint">?</span>
+                )}
+              </span>
+              <input
+                key={`${cue.id}-${index}-q`}
+                defaultValue={card.query}
+                placeholder="banana, money bag, hourglass"
+                onBlur={(e) => void look(index, e.target.value)}
+                className="min-w-0 flex-1 rounded-lg border border-line bg-charcoal px-2.5 py-1.5 text-xs outline-none focus:border-violet"
+              />
+              <button
+                type="button"
+                onClick={() => onChange({ op: 'icon.remove', id: cue.id, index })}
+                className="flex-none rounded-lg border border-line px-2 py-1.5 text-[11px] text-muted hover:text-bad"
+              >
+                Remove
+              </button>
+            </div>
+
+            <label className="mt-2 flex items-center gap-2 text-[11px] text-faint">
+              <span className="w-10 flex-none">Lands</span>
+              <input
+                type="range"
+                min={0}
+                max={Math.round(span * 10) / 10}
+                step={0.1}
+                value={card.offsetSec}
+                onChange={(e) =>
+                  onChange({ op: 'icon.set', id: cue.id, index, offsetSec: Number(e.target.value) })
+                }
+                className="flex-1 accent-violet"
+              />
+              <span className="w-12 flex-none text-right tabular-nums">
+                +{card.offsetSec.toFixed(1)}s
+              </span>
+            </label>
+
+            {busy === index ? <p className="mt-1 text-[11px] text-faint">Looking&hellip;</p> : null}
+            {failed[index] ? <p className="mt-1 text-[11px] text-bad">{failed[index]}</p> : null}
+          </div>
+        ))}
+      </div>
+
+      <div className="mt-3 flex items-center gap-2">
+        {cue.cards.length < 3 ? (
+          <button
+            type="button"
+            onClick={() => onChange({ op: 'icon.set', id: cue.id, index: cue.cards.length, query: '', word: '' })}
+            className="rounded-lg border border-line px-2.5 py-1.5 text-[11px] text-muted hover:text-chalk"
+          >
+            Add a card
+          </button>
+        ) : null}
+        <button
+          type="button"
+          onClick={() =>
+            onChange({
+              op: 'clip.update',
+              track: 'icons',
+              id: cue.id,
+              patch: { tone: cue.tone === 'dark' ? 'light' : 'dark' },
+            })
+          }
+          className="rounded-lg border border-line px-2.5 py-1.5 text-[11px] text-muted hover:text-chalk"
+        >
+          {cue.tone === 'dark' ? 'Dark tile' : 'White tile'}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function Inspector({
   edl,
   selection,
@@ -1918,6 +2083,12 @@ function Inspector({
         />
       </div>
     );
+  }
+
+  if (selection.kind === 'icons') {
+    const cue = edl.icons.find((c) => c.id === selection.id);
+    if (!cue) return null;
+    return <IconInspector cue={cue} onChange={onChange} />;
   }
 
   if (selection.kind === 'scenes') {
@@ -2229,6 +2400,10 @@ function AddMenu({ atSec, onAdd }: { atSec: number; onAdd: (op: EdlOperation) =>
           <MenuItem onClick={() => add({ op: 'clip.add', track: 'scenes', atSec, durationSec: 3.5, value: 'Your line here', id: freshId('scenes') })}>
             Animated scene
             <span className="block text-[10px] font-normal text-muted">3.5s &mdash; covers the speaker</span>
+          </MenuItem>
+          <MenuItem onClick={() => add({ op: 'clip.add', track: 'icons', atSec, durationSec: 2.6, value: '', id: freshId('icons') })}>
+            Icon card
+            <span className="block text-[10px] font-normal text-muted">Rises under the captions &mdash; name the object in the panel</span>
           </MenuItem>
           <div className="border-t border-line-soft px-3 pt-2 pb-1 text-[10px] font-bold uppercase tracking-wider text-faint">
             Transition

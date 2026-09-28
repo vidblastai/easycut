@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { buildEdl } from '@/lib/edl/builder';
-import { EdlSchema, iconCardGeometry } from '@/lib/edl/types';
+import { EdlSchema, iconRowPlacement } from '@/lib/edl/types';
 import { DirectorPlanSchema } from '@/lib/director/schema';
 import { getStyle } from '@/lib/styles/presets';
 import { layoutSegments } from '@/lib/timeline/time-mapper';
@@ -213,9 +213,13 @@ describe('icon cards', () => {
     expect(edl.icons).toHaveLength(1);
     expect(edl.icons[0].cards.map((c) => c.query)).toEqual(['banana', 'red apple']);
     // They arrive one at a time…
-    expect(edl.icons[0].cards[0].atSec).toBeLessThan(edl.icons[0].cards[1].atSec);
+    expect(edl.icons[0].cards[0].offsetSec).toBeLessThan(edl.icons[0].cards[1].offsetSec);
+    // …the first one opens the row…
+    expect(edl.icons[0].cards[0].offsetSec).toBe(0);
     // …and there is one exit for the pair.
-    expect(edl.icons[0].endSec).toBeGreaterThan(edl.icons[0].cards[1].atSec);
+    expect(edl.icons[0].outEndSec).toBeGreaterThan(
+      edl.icons[0].outStartSec + edl.icons[0].cards[1].offsetSec,
+    );
   });
 
   it('starts a new row when the next noun is a separate thought', () => {
@@ -236,9 +240,7 @@ describe('icon cards', () => {
       ],
     });
     for (let i = 1; i < edl.icons.length; i++) {
-      const previousEnd = edl.icons[i - 1].endSec;
-      const nextStart = Math.min(...edl.icons[i].cards.map((c) => c.atSec));
-      expect(previousEnd).toBeLessThanOrEqual(nextStart);
+      expect(edl.icons[i - 1].outEndSec).toBeLessThanOrEqual(edl.icons[i].outStartSec);
     }
   });
 
@@ -258,7 +260,7 @@ describe('icon cards', () => {
   it('snaps each card to the real timing of the word it names', () => {
     // The fixture speaks word20 at 10.0s; the director guessed 10.4.
     const edl = build({ icons: [{ atSec: 10.4, word: 'word20', query: 'banana' }] });
-    expect(edl.icons[0].cards[0].atSec).toBeCloseTo(10, 2);
+    expect(edl.icons[0].outStartSec).toBeCloseTo(10, 2);
   });
 
   it('drops a card that would land on top of a layer that owns the frame', () => {
@@ -278,10 +280,17 @@ describe('icon cards', () => {
     expect(dark.icons[0].tone).toBe('dark');
   });
 
-  it('places every row clear of the captions', () => {
+  it('puts every row BELOW the captions, where the face is not', () => {
     const edl = build({ icons: [{ atSec: 5, word: 'word10', query: 'banana' }] });
-    const { card } = iconCardGeometry(1, edl.format.width, edl.format.height);
-    const rowBottom = edl.icons[0].y + card / edl.format.height / 2;
-    expect(rowBottom).toBeLessThan(edl.captionStyle.positionY);
+    const { card } = iconRowPlacement(edl.captionStyle, 1, edl.format.width, edl.format.height);
+    const rowTop = edl.icons[0].y - card / edl.format.height / 2;
+
+    // Under the words, and in the lower half — the upper half of a vertical
+    // frame is where the speaker's face is, which is what this used to cover.
+    expect(rowTop).toBeGreaterThan(edl.captionStyle.positionY);
+    expect(edl.icons[0].y).toBeGreaterThan(0.5);
+    // And on screen: a card hanging off the bottom is the failure that comes
+    // with sizing it to anything but the room it has.
+    expect(edl.icons[0].y + card / edl.format.height / 2).toBeLessThanOrEqual(1);
   });
 });

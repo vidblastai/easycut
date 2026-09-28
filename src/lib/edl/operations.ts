@@ -7,6 +7,7 @@ import {
   TRANSITION_TYPES,
   SCENE_LOOKS,
   EdlSchema,
+  iconRowPlacement,
   type CaptionCue,
   type Edl,
   type GraphicElement,
@@ -39,7 +40,14 @@ import {
 
 /* ─────────────────────────────────────────────────────────── schema ─── */
 
-export const CLIP_TRACKS = ['broll', 'graphics', 'overlays', 'punchIns', 'scenes', 'sfx', 'transitions'] as const;
+/*
+ * `icons` joins these for free, and that is the reason an icon cue spells its
+ * span `outStartSec`/`outEndSec` and keeps its cards' times as offsets: move,
+ * trim and delete below are written once, generically, against exactly those
+ * two fields. A track that named its own times would have to reimplement all
+ * three and would drift from them.
+ */
+export const CLIP_TRACKS = ['broll', 'graphics', 'icons', 'overlays', 'punchIns', 'scenes', 'sfx', 'transitions'] as const;
 export type ClipTrack = (typeof CLIP_TRACKS)[number];
 
 export const EdlOperationSchema = z.discriminatedUnion('op', [
@@ -156,6 +164,29 @@ export const EdlOperationSchema = z.discriminatedUnion('op', [
    * in the undo stack for what the user experienced as one decision.
    */
   z.object({ op: z.literal('scene.look'), look: z.enum(SCENE_LOOKS) }),
+
+  /* icon cards */
+  /*
+   * A card is edited by its own operation rather than through `clip.update`,
+   * because `clip.update` carries a flat patch of primitives — it cannot
+   * express "the second card in this row" at all, and widening it to nested
+   * objects would let any track write any shape.
+   */
+  z.object({
+    op: z.literal('icon.set'),
+    /** The row. */
+    id: z.string(),
+    /** Which card in it. Out of range appends, so this doubles as "add". */
+    index: z.number().int().nonnegative().max(2),
+    word: z.string().max(60).optional(),
+    query: z.string().max(80).optional(),
+    /** Sanitised SVG from the icon endpoint. Null clears it. */
+    markup: z.string().max(60000).nullable().optional(),
+    iconId: z.string().max(80).optional(),
+    /** Seconds after the row starts. */
+    offsetSec: z.number().nonnegative().max(30).optional(),
+  }),
+  z.object({ op: z.literal('icon.remove'), id: z.string(), index: z.number().int().nonnegative() }),
 ]);
 
 export type EdlOperation = z.infer<typeof EdlOperationSchema>;
@@ -420,6 +451,21 @@ function applyOne(edl: Edl, op: EdlOperation): Edl {
           iconQuery: op.value, imagePrompt: '', color: edl.captionStyle.emphasisColor,
         }] };
       }
+      if (op.track === 'icons') {
+        /*
+         * One empty card, waiting for a word.
+         *
+         * It renders nothing until the icon is resolved, which is correct: a
+         * placeholder tile rising on a word would be worse than no tile, and
+         * the inspector fills it the moment you type.
+         */
+        return { ...edl, icons: [...edl.icons, {
+          id, outStartSec: start, outEndSec: end,
+          y: iconRowPlacement(edl.captionStyle, 1, edl.format.width, edl.format.height).y,
+          tone: edl.icons[0]?.tone ?? 'light',
+          cards: [{ offsetSec: 0, word: op.value, query: op.value, markup: null, iconId: '' }],
+        }] };
+      }
       if (op.track === 'punchIns') {
         return { ...edl, punchIns: [...edl.punchIns, {
           id, outStartSec: start, outEndSec: end, scale: 1.15,
@@ -450,6 +496,8 @@ function applyOne(edl: Edl, op: EdlOperation): Edl {
         'text', 'subtext', 'items', 'query', 'intent', 'url', 'assetUrl', 'iconQuery',
         'imagePrompt', 'color', 'scale', 'opacity', 'kenBurns', 'audioGainDb',
         'clipStartSec', 'sound', 'gainDb', 'x', 'y', 'animation', 'type', 'easing',
+        // An icon row's white-or-black tile, switchable per row.
+        'tone',
       ]);
       const patch = Object.fromEntries(Object.entries(op.patch).filter(([k]) => allowed.has(k)));
 
@@ -463,6 +511,55 @@ function applyOne(edl: Edl, op: EdlOperation): Edl {
         c.id === op.id ? { ...c, ...patch } : c,
       );
       return { ...edl, [op.track]: list } as Edl;
+    }
+
+    /* ──────────────────────────────────────────────── icon cards ─── */
+    case 'icon.set': {
+      const cue = edl.icons.find((c) => c.id === op.id);
+      if (!cue) throw new Error('Icon row not found');
+
+      const existing = cue.cards[op.index];
+      if (!existing && cue.cards.length >= 3) throw new Error('Three cards is as many as a row can hold');
+
+      const card = existing ?? {
+        offsetSec: Math.max(0, (cue.outEndSec - cue.outStartSec) / 2),
+        word: '',
+        query: '',
+        markup: null,
+        iconId: '',
+      };
+      const next = {
+        ...card,
+        ...(op.word !== undefined ? { word: op.word } : {}),
+        ...(op.query !== undefined ? { query: op.query } : {}),
+        ...(op.markup !== undefined ? { markup: op.markup } : {}),
+        ...(op.iconId !== undefined ? { iconId: op.iconId } : {}),
+        // Clamped to the row: a card that lands after the row has left is a
+        // card nobody ever sees.
+        ...(op.offsetSec !== undefined
+          ? { offsetSec: Math.min(op.offsetSec, Math.max(0, cue.outEndSec - cue.outStartSec - 0.2)) }
+          : {}),
+      };
+
+      const cards = existing
+        ? cue.cards.map((c, i) => (i === op.index ? next : c))
+        : [...cue.cards, next];
+
+      return {
+        ...edl,
+        icons: edl.icons.map((c) =>
+          c.id === op.id ? { ...c, cards: [...cards].sort((a, b) => a.offsetSec - b.offsetSec) } : c,
+        ),
+      };
+    }
+
+    case 'icon.remove': {
+      const cue = edl.icons.find((c) => c.id === op.id);
+      if (!cue) throw new Error('Icon row not found');
+      const cards = cue.cards.filter((_, i) => i !== op.index);
+      // A row with nothing in it is not a row.
+      if (!cards.length) return { ...edl, icons: edl.icons.filter((c) => c.id !== op.id) };
+      return { ...edl, icons: edl.icons.map((c) => (c.id === op.id ? { ...c, cards } : c)) };
     }
 
     /* ───────────────────────────────────────────────── captions ─── */
@@ -1084,6 +1181,8 @@ export function describeOperation(op: EdlOperation): string {
     case 'music.remove': return 'Removed the music';
     case 'transition.set': return `Changed a transition to ${op.type}`;
     case 'scene.look': return `Changed the animation style to ${op.look}`;
+    case 'icon.set': return 'Changed an icon card';
+    case 'icon.remove': return 'Removed an icon card';
   }
 }
 
@@ -1091,6 +1190,7 @@ function trackNoun(track: ClipTrack): string {
   switch (track) {
     case 'broll': return 'a B-roll insert';
     case 'graphics': return 'a graphic';
+    case 'icons': return 'an icon card';
     case 'scenes': return 'an animated scene';
     case 'overlays': return 'an overlay';
     case 'punchIns': return 'a punch-in';
