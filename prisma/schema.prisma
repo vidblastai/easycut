@@ -77,6 +77,12 @@ model Project {
   // is cropped. See src/lib/scenes/style-guides.ts.
   sceneLook String?
 
+  // The transitions the user likes, as a JSON array of names, in the order
+  // they picked them — the builder cycles the list, so the order is a choice
+  // and not incidental. Null or empty means "whatever this edit style
+  // declares", the same contract as the two looks above.
+  clipTransitions String?
+
   // Optional free-text steer, e.g. "focus on the pricing section".
   userNote String?
 

@@ -71,6 +71,12 @@ export interface PipelineRequest {
   captionPreset?: string | null;
   /** The world the animated scenes are drawn in. Null takes the edit style's. */
   sceneLook?: string | null;
+  /**
+   * The transitions the user likes, in the order they picked them. The builder
+   * cycles the list, so the order is part of the choice. Null or empty takes
+   * the edit style's own vocabulary.
+   */
+  clipTransitions?: readonly string[] | null;
   inputMode: 'raw' | 'roughcut';
   userNote?: string;
   /**

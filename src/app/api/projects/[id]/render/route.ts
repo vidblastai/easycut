@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { parseTransitions } from '@/lib/styles/presets';
 import { entitlementsFor } from '@/lib/billing/entitlements';
 import { allowsQuality, DEFAULT_QUALITY, dimensionsFor, RENDER_QUALITIES } from '@/lib/render/quality';
 import { z } from 'zod';
@@ -102,6 +103,11 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
         sourceKey: source.storageKey,
         reframe: currentEdl.reframe,
         styleId: project.styleId,
+        // Carried through, because a rebuild is a rebuild: re-exporting at a
+        // different aspect used to quietly revert every look the user chose.
+        captionPreset: project.captionPreset,
+        sceneLook: project.sceneLook,
+        clipTransitions: parseTransitions(project.clipTransitions),
         mode: project.mode as 'short' | 'long',
         aspect: input.aspect,
         degraded: currentEdl.degraded,

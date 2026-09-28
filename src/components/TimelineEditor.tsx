@@ -7,6 +7,7 @@ import type { PlayerRef } from '@remotion/player';
 import { applyOperations, describeOperation, type ClipTrack, type EdlOperation } from '@/lib/edl/operations';
 import { reorderIndexFor, resolveDrag, snapPointsFor, type DragKind } from '@/lib/timeline/drag';
 import { CLIP_TRANSITIONS, SCENE_KINDS, TRANSITION_TYPES, type ClipTransition, type Edl, type IconCue } from '@/lib/edl/types';
+import { TRANSITION_COPY, TRANSITION_GLYPH } from '@/lib/edl/transition-copy';
 import { LOOK_LIST } from '@/lib/scenes/looks';
 
 /**
@@ -132,6 +133,23 @@ function TimelineEditorImpl({
   const [ops, setOps] = useState<EdlOperation[]>([]);
   const [redoStack, setRedoStack] = useState<EdlOperation[]>([]);
   const [selection, setSelection] = useState<Selection>(null);
+
+  /**
+   * The transition menu a badge on a clip's edge opened.
+   *
+   * Positioned in VIEWPORT coordinates rather than inside the scroll box, so
+   * it cannot be clipped by the track it belongs to or scrolled away from the
+   * clip it is editing. The trade is that it has to close on scroll, which is
+   * the right behaviour anyway: the badge moves, so the menu must not stay.
+   */
+  const [txMenu, setTxMenu] = useState<{
+    track: string;
+    id: string;
+    which: 'enter' | 'exit';
+    x: number;
+    y: number;
+  } | null>(null);
+
   /*
    * The playhead moves thirty times a second. React does not have to.
    *
@@ -636,6 +654,23 @@ function TimelineEditorImpl({
     const id = hit.dataset.clipId;
     const track = hit.dataset.track as Selection extends null ? never : string;
     if (!id || !track) return;
+
+    /*
+     * A badge on a clip's edge is a menu, not a grab.
+     *
+     * Claimed here, before the drag starts, because a pointerdown that begins
+     * a drag has captured the pointer by the time a click would have fired —
+     * so a badge that waited for `onClick` would never see one.
+     */
+    const edge = (event.target as HTMLElement).closest('[data-transition]') as HTMLElement | null;
+    const which = edge?.dataset.transition;
+    if (edge && (which === 'enter' || which === 'exit')) {
+      event.preventDefault();
+      const box = edge.getBoundingClientRect();
+      setSelection({ kind: track as Exclude<Selection, null>['kind'], id });
+      setTxMenu({ track, id, which, x: box.left + box.width / 2, y: box.bottom + 4 });
+      return;
+    }
 
     const span = spanOf(edl, track, id);
     if (!span) return;
@@ -1196,6 +1231,10 @@ function TimelineEditorImpl({
         // Anywhere that is not a clip means "nothing". Without it the only way
         // to put the inspector down is to pick up something else.
         onPointerDown={beginDragFromEvent}
+        // The menu is placed in viewport coordinates against a badge that
+        // scrolls, so it has to go when the badge moves — leaving it behind
+        // would have it editing a clip it is no longer pointing at.
+        onScroll={() => setTxMenu(null)}
       >
         <div style={{ width: width + TRACK_LABEL_W, minWidth: '100%' }}>
           {/* ruler */}
@@ -1289,6 +1328,11 @@ function TimelineEditorImpl({
                   startSec={g.start}
                   endSec={g.end}
                   text={scene.headline || scene.kind}
+                  // Null on a scene means "whatever this look does", and three
+                  // of the five looks cut — so that is what the badge shows,
+                  // rather than inventing a choice nobody made.
+                  enter={scene.enter ?? 'cut'}
+                  exit={scene.exit ?? 'cut'}
                 />
               );
             })}
@@ -1338,6 +1382,8 @@ function TimelineEditorImpl({
                   startSec={g.start}
                   endSec={g.end}
                   text={clip.query || 'B-roll'}
+                  enter={clip.enter}
+                  exit={clip.exit}
                 />
               );
             })}
@@ -1508,6 +1554,23 @@ function TimelineEditorImpl({
       </div>
 
       {showKeys ? <ShortcutSheet onClose={() => setShowKeys(false)} /> : null}
+
+      {txMenu ? (
+        <TransitionMenu
+          at={txMenu}
+          current={currentTransition(edl, txMenu.track, txMenu.id, txMenu.which)}
+          onClose={() => setTxMenu(null)}
+          onPick={(type) => {
+            push({
+              op: 'clip.update',
+              track: txMenu.track as 'broll' | 'scenes',
+              id: txMenu.id,
+              patch: { [txMenu.which]: type },
+            });
+            setTxMenu(null);
+          }}
+        />
+      ) : null}
 
       {/* Only when there is nowhere better to put them. See `panels` above. */}
       {panels ? null : (
@@ -1759,6 +1822,8 @@ const Clip = React.memo(function Clip({
   startSec,
   endSec,
   text,
+  enter,
+  exit,
 }: {
   /** On the element as well as in React, so a drag can be driven and measured. */
   id: string;
@@ -1781,6 +1846,15 @@ const Clip = React.memo(function Clip({
    * comparison can actually succeed.
    */
   text: string;
+  /**
+   * How this clip arrives and leaves, when it is a clip that transitions.
+   *
+   * Primitives, like everything else here, so `React.memo` can still skip the
+   * 399 clips a drag did not touch. Undefined means this track has no
+   * transitions at all (captions, punch-ins) and draws no badges.
+   */
+  enter?: ClipTransition;
+  exit?: ClipTransition;
 }) {
   const handle = width >= 14 ? Math.max(4, Math.min(8, Math.round(width * 0.2))) : 0;
 
@@ -1803,7 +1877,18 @@ const Clip = React.memo(function Clip({
       )}
       style={{ left, width, touchAction: 'none' }}
     >
-      <span className="pointer-events-none block truncate">{text}</span>
+      {/* The label steps aside for the badges rather than running under them.
+          Padding rather than a narrower box, so a clip with no transitions —
+          a caption, a punch-in — still uses its whole width for its name. */}
+      <span
+        className="pointer-events-none block truncate"
+        style={{
+          paddingLeft: enter && width >= 34 ? 15 : undefined,
+          paddingRight: exit && width >= 34 ? 15 : undefined,
+        }}
+      >
+        {text}
+      </span>
 
       {/* Trim handles: invisible until hover, so the timeline stays calm.
 
@@ -1827,9 +1912,55 @@ const Clip = React.memo(function Clip({
           />
         </>
       ) : null}
+
+      {/* How it comes and goes, ON the clip.
+
+          This lived only in the inspector, which meant the answer to "what
+          does this one do" was: select it, look down the panel, and remember,
+          one clip at a time. A transition is a property of an EDGE, so it
+          belongs drawn on that edge — and the thing you actually want to see
+          is the pattern down a whole track, which no inspector can show you.
+
+          Corner-pinned rather than centred, so they overlap only the top of
+          the trim handles, which are invisible until hover and still have two
+          thirds of the clip's height left to grab. Below 34px there is no
+          room for either badge and they go, because a clip that thin is one
+          you nudge, not one you dress. */}
+      {enter && width >= 34 ? (
+        <TransitionBadge which="enter" type={enter} />
+      ) : null}
+      {exit && width >= 34 ? (
+        <TransitionBadge which="exit" type={exit} />
+      ) : null}
     </div>
   );
 });
+
+/**
+ * One edge's transition, as a clickable mark.
+ *
+ * `data-transition` rather than an `onClick`: the timeline dispatches every
+ * pointer from one delegated handler on the scroll box, and giving four
+ * hundred clips two callbacks each is exactly the thing that made dragging lag
+ * the cursor. The handler reads the attribute and opens the menu; nothing here
+ * closes over anything.
+ */
+function TransitionBadge({ which, type }: { which: 'enter' | 'exit'; type: ClipTransition }) {
+  return (
+    <span
+      data-transition={which}
+      title={`${which === 'enter' ? 'Comes in' : 'Goes out'}: ${TRANSITION_COPY[type].label} — ${TRANSITION_COPY[type].note}`}
+      className={clsx(
+        'absolute top-0 z-10 grid h-[14px] w-[15px] cursor-pointer place-items-center',
+        'rounded-b-[4px] bg-ink/70 text-[10px] leading-none text-chalk/70',
+        'hover:bg-violet hover:text-ink',
+        which === 'enter' ? 'left-0 rounded-tr-[4px]' : 'right-0 rounded-tl-[4px]',
+      )}
+    >
+      <span className="pointer-events-none">{TRANSITION_GLYPH[type]}</span>
+    </span>
+  );
+}
 
 /** Editing the content of whatever is selected, rather than only its timing. */
 /**
@@ -2008,7 +2139,7 @@ function TransitionPicker({
                   current === type ? 'border-violet text-violet' : 'border-line text-muted hover:text-chalk',
                 )}
               >
-                {TRANSITION_LABELS[type]}
+                {TRANSITION_COPY[type].label}
               </button>
             ))}
           </div>
@@ -2018,20 +2149,109 @@ function TransitionPicker({
   );
 }
 
-const TRANSITION_LABELS: Record<ClipTransition, string> = {
-  cut: 'cut',
-  fade: 'fade',
-  'slide-left': 'slide left',
-  'slide-right': 'slide right',
-  'slide-up': 'slide up',
-  'slide-down': 'slide down',
-  zoom: 'zoom',
-  whip: 'whip',
-  glitch: 'glitch',
-  'film-burn': 'film burn',
-  'light-leak': 'light leak',
-  flash: 'flash',
-};
+/**
+ * The same twelve, as a menu hung off a badge on the timeline.
+ *
+ * ── Why this exists when the inspector already had a picker ─────────────
+ *
+ * Because a transition is a property of an EDGE, and the inspector can only
+ * ever show you one clip's. What you actually want to know is the pattern down
+ * a whole track — do these four inserts all slide the same way, does the one
+ * in the middle glitch — and that question has no answer in a panel that shows
+ * one clip at a time. The badges answer it at a glance; this is what makes
+ * them changeable without leaving the track you are reading.
+ *
+ * Both controls stay. The inspector's is where you go when a clip is already
+ * selected and you are working down its settings; this is where you go when
+ * you are reading the edit and one edge is wrong.
+ */
+function TransitionMenu({
+  at,
+  current,
+  onPick,
+  onClose,
+}: {
+  at: { which: 'enter' | 'exit'; x: number; y: number };
+  current: ClipTransition | null;
+  onPick: (type: ClipTransition) => void;
+  onClose: () => void;
+}) {
+  const ref = React.useRef<HTMLDivElement>(null);
+
+  React.useEffect(() => {
+    const away = (event: PointerEvent) => {
+      if (!ref.current?.contains(event.target as Node)) onClose();
+    };
+    const key = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        event.stopPropagation();
+        onClose();
+      }
+    };
+    /*
+     * Armed on the next tick, not synchronously.
+     *
+     * The pointerdown that opened this menu is still travelling up the tree
+     * when the effect runs, so a capture listener added immediately catches
+     * that very event and closes the menu before it has painted once.
+     */
+    const armed = window.setTimeout(() => window.addEventListener('pointerdown', away, true), 0);
+    window.addEventListener('keydown', key, true);
+    return () => {
+      window.clearTimeout(armed);
+      window.removeEventListener('pointerdown', away, true);
+      window.removeEventListener('keydown', key, true);
+    };
+  }, [onClose]);
+
+  // Kept inside the window by hand: a menu anchored to a badge near the right
+  // edge of a wide timeline otherwise opens half off screen, and there is no
+  // scrolling sideways to reach it.
+  const width = 232;
+  const viewport = typeof window === 'undefined' ? 1280 : window.innerWidth;
+  const left = Math.max(8, Math.min(at.x - width / 2, viewport - width - 8));
+
+  return (
+    <div
+      ref={ref}
+      role="menu"
+      className="fixed z-50 overflow-hidden rounded-xl border border-line bg-ink/95 shadow-card backdrop-blur"
+      style={{ left, top: at.y, width }}
+    >
+      <p className="border-b border-line-soft px-3 py-2 text-[10.5px] font-bold uppercase tracking-wider text-muted/70">
+        {at.which === 'enter' ? 'Comes in' : 'Goes out'}
+      </p>
+      <div className="max-h-[260px] overflow-y-auto py-1">
+        {CLIP_TRANSITIONS.map((type) => (
+          <button
+            key={type}
+            type="button"
+            role="menuitem"
+            onClick={() => onPick(type)}
+            title={TRANSITION_COPY[type].note}
+            className={clsx(
+              'flex w-full items-center gap-2.5 px-3 py-1.5 text-left text-[12px]',
+              current === type ? 'bg-violet/15 text-violet' : 'text-muted hover:bg-charcoal2 hover:text-chalk',
+            )}
+          >
+            <span className="w-3.5 flex-none text-center text-[11px]">{TRANSITION_GLYPH[type]}</span>
+            <span className="min-w-0 flex-1 truncate font-semibold">{TRANSITION_COPY[type].label}</span>
+            {current === type ? <span className="flex-none text-[10px]">&#10003;</span> : null}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/** What a given edge is set to now, so the menu can tick it. */
+function currentTransition(edl: Edl, track: string, id: string, which: 'enter' | 'exit'): ClipTransition | null {
+  if (track === 'broll') return edl.broll.find((c) => c.id === id)?.[which] ?? null;
+  // Null on a scene means "whatever this look does", which the badge draws as
+  // `cut` — so the tick has to agree with the badge rather than with the data.
+  if (track === 'scenes') return edl.scenes.find((c) => c.id === id)?.[which] ?? 'cut';
+  return null;
+}
 
 function Inspector({
   edl,

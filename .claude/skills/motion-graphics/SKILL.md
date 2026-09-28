@@ -613,7 +613,37 @@ coherent set and re-running the same footage gives the same edit; a scene gets
 the style's FIRST entry as its signature, because the two or three scenes in a
 video should arrive the same way as each other. A layout whose B-roll has a
 permanent half gets `cut` — that slot is on screen from frame one, so there is
-nothing to transition into. Every clip is overridable from the editor.
+nothing to transition into.
+
+**The vocabulary is overridable, and so is every clip.** Three places, and they
+are three different questions:
+
+1. **The upload wizard** (`components/transitions/TransitionPicker.tsx`) picks
+   the SET, before anything is cut. It is a multi-select and the ORDER is kept,
+   because the builder cycles the list — glitch-then-zoom and zoom-then-glitch
+   are two different edits, so nothing between the picker and `placeBroll` is
+   allowed to sort it. Empty means the style's own. It rides through as a JSON
+   array on `Project.clipTransitions`, sanitised on the way in by
+   `sanitiseTransitions`, so a name a later build drops costs a preference and
+   not a render.
+2. **Badges on the timeline**, one at each edge of every B-roll and scene clip,
+   which open a menu. This is where you go when you are READING the edit —
+   whether these four inserts all slide the same way is a question about a
+   track, and an inspector that shows one clip at a time cannot answer it.
+3. **The inspector's picker**, for when a clip is already selected and you are
+   working down its settings.
+
+Every tile in the wizard plays its own transition on a CSS loop, because twelve
+words is not a picker: nobody can tell `whip` from `slide-left`, or `film-burn`
+from `light-leak`, from the name, and choosing one you have never seen and
+finding out after a render is the whole failure mode.
+
+Two CSS traps, both of which cost a round of screenshots. `steps(1, end)` holds
+the START of every keyframe interval, which froze four tiles on frame zero for
+the entire loop — a hard cut is two keyframes a tenth of a per cent apart, with
+`linear`. And a property named at 8% and again at 88% and nowhere in between
+does NOT hold across the gap; it interpolates, which had the glitch tile at 6%
+opacity during its own exit. Restate it on every keyframe.
 
 Watch the whole set on one strip; twelve of these cannot be judged one at a
 time, and none of them can be judged from a still:

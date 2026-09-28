@@ -2,7 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { buildEdl, placeScenes } from '@/lib/edl/builder';
 import { EdlSchema, framedPositionY, iconRowPlacement } from '@/lib/edl/types';
 import { DirectorPlanSchema } from '@/lib/director/schema';
-import { getStyle } from '@/lib/styles/presets';
+import { getStyle, parseTransitions, sanitiseTransitions, styleFor } from '@/lib/styles/presets';
+import type { StylePreset } from '@/lib/styles/presets';
 import { TimeMapper, layoutSegments } from '@/lib/timeline/time-mapper';
 import { deriveSentences, type Transcript, type TranscriptWord } from '@/lib/transcribe/types';
 
@@ -32,9 +33,17 @@ function build(
   planOverrides: Parameters<typeof DirectorPlanSchema.parse>[0],
   styleId = 'punchy',
 ) {
+  return buildWithStyle(planOverrides, getStyle(styleId));
+}
+
+/** The same, for the cases that need a style the preset list does not hold. */
+function buildWithStyle(
+  planOverrides: Parameters<typeof DirectorPlanSchema.parse>[0],
+  style: StylePreset,
+) {
   return buildEdl({
     projectId: 'test',
-    style: getStyle(styleId),
+    style,
     mode: 'short',
     aspect: '9:16',
     fps: 30,
@@ -325,6 +334,43 @@ describe('clip transitions', () => {
     for (const move of used) expect(vocabulary).toContain(move);
     // Back to back, they differ.
     for (let i = 1; i < used.length; i++) expect(used[i]).not.toBe(used[i - 1]);
+  });
+
+  it('cycles the set the user picked, in the order they picked it', () => {
+    /*
+     * The order is the choice, not incidental.
+     *
+     * `placeBroll` walks the vocabulary per insert, so glitch-then-zoom and
+     * zoom-then-glitch are two different edits — which is why the picker
+     * appends in click order and why nothing between there and here is allowed
+     * to sort it into the canonical list.
+     */
+    const style = styleFor('punchy', null, null, ['zoom', 'glitch']);
+    expect(style.clipTransitions).toEqual(['zoom', 'glitch']);
+
+    const edl = buildWithStyle({ broll: inserts }, style);
+    expect(edl.broll.map((c) => c.enter)).toEqual(['zoom', 'glitch', 'zoom', 'glitch']);
+  });
+
+  it('drops a name it has never heard of rather than failing the render', () => {
+    // A stale id in a months-old project should cost you a preference, not
+    // the video — and a pick that is ENTIRELY stale reads as no pick at all,
+    // because "nothing I recognise" is not a request for no transitions.
+    expect(styleFor('punchy', null, null, ['zoom', 'wormhole']).clipTransitions).toEqual(['zoom']);
+    expect(styleFor('punchy', null, null, ['wormhole']).clipTransitions).toEqual(
+      getStyle('punchy').clipTransitions,
+    );
+    expect(styleFor('punchy', null, null, []).clipTransitions).toEqual(getStyle('punchy').clipTransitions);
+  });
+
+  it('reads back what it stored, and shrugs off what it cannot', () => {
+    expect(parseTransitions(JSON.stringify(['whip', 'fade']))).toEqual(['whip', 'fade']);
+    expect(parseTransitions('not json')).toBeNull();
+    expect(parseTransitions('{"a":1}')).toBeNull();
+    expect(parseTransitions(null)).toBeNull();
+    // Duplicates collapse: the builder cycles the list, so the same name twice
+    // would silently weight one transition over the others.
+    expect(sanitiseTransitions(['fade', 'fade', 'zoom'])).toEqual(['fade', 'zoom']);
   });
 
   it('is deterministic, so the same footage cuts the same way twice', () => {

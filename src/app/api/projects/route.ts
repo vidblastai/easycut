@@ -3,11 +3,11 @@ import { z } from 'zod';
 import { db, parseJson } from '@/lib/db';
 import { env } from '@/lib/config/env';
 import { assetKey, storage } from '@/lib/storage';
-import { FORMAT_PRESETS, getStyle } from '@/lib/styles/presets';
+import { FORMAT_PRESETS, getStyle, sanitiseTransitions } from '@/lib/styles/presets';
 import { findCaptionPreset } from '@/lib/captions/presets';
 import { currentUserId, ensureUser, isAuthEnabled } from '@/lib/auth';
 import { LAYER_NAMES, type LayerName } from '@/lib/edl/layers';
-import { SCENE_LOOKS } from '@/lib/edl/types';
+import { CLIP_TRANSITIONS, SCENE_LOOKS } from '@/lib/edl/types';
 
 export const runtime = 'nodejs';
 
@@ -18,6 +18,8 @@ const CreateProjectSchema = z.object({
   /** The caption look, when the picker set a default. Omitted takes the style's. */
   captionPreset: z.string().optional(),
   sceneLook: z.string().optional(),
+  /** Transitions the person picked, in cycling order. Omitted takes the style's. */
+  clipTransitions: z.array(z.string()).max(CLIP_TRANSITIONS.length).optional(),
   inputMode: z.enum(['raw', 'roughcut']).default('raw'),
   /**
    * Layers the person declined, before anything is made.
@@ -58,6 +60,11 @@ export async function POST(request: Request) {
     );
   }
 
+  // Unknown names are dropped rather than rejected, and an all-unknown pick
+  // reads as no pick: a client built against a newer list should cost you the
+  // transitions this build has never heard of, not the upload.
+  const transitions = sanitiseTransitions(input.clipTransitions);
+
   // Stamped at creation. A project with no owner is one nobody can ever open
   // again once auth is on, so this is not a field to backfill later.
   const userId = await ensureUser();
@@ -81,6 +88,7 @@ export async function POST(request: Request) {
       sceneLook: input.sceneLook && (SCENE_LOOKS as readonly string[]).includes(input.sceneLook)
         ? input.sceneLook
         : null,
+      clipTransitions: transitions ? JSON.stringify(transitions) : null,
       inputMode: input.inputMode,
       userNote: input.userNote,
       status: 'draft',

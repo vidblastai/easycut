@@ -2,13 +2,14 @@ import { NextResponse } from 'next/server';
 import { entitlementsFor } from '@/lib/billing/entitlements';
 import { z } from 'zod';
 import { db, parseJson, stringifyJson } from '@/lib/db';
-import { ASPECTS, CaptionStyleSchema, EdlSchema, type Edl } from '@/lib/edl/types';
+import { ASPECTS, CLIP_TRANSITIONS, CaptionStyleSchema, EdlSchema, type Edl } from '@/lib/edl/types';
 import { applyOperations, EdlOperationsSchema, healEdl } from '@/lib/edl/operations';
 import { stripLayers, type LayerName } from '@/lib/edl/layers';
 import { rebuildEdl } from '@/lib/pipeline/rebuild';
 import { queue } from '@/lib/queue';
 import { selectMusic } from '@/lib/assets/music';
 import { findCaptionPreset } from '@/lib/captions/presets';
+import { parseTransitions, sanitiseTransitions } from '@/lib/styles/presets';
 import type { DirectorPlan } from '@/lib/director/schema';
 import type { MediaInfo } from '@/lib/media/ffmpeg';
 import type { Transcript } from '@/lib/transcribe/types';
@@ -73,6 +74,13 @@ const PatchSchema = z.object({
    * presets; `captionStyle` below carries the hand-tuned deltas on top.
    */
   captionPreset: z.string().optional(),
+
+  /**
+   * The transitions to build with, by name, in the order they should cycle.
+   * Structural, because which move an insert makes is decided where the insert
+   * is placed. An empty array means "back to whatever this edit style does".
+   */
+  clipTransitions: z.array(z.string()).max(CLIP_TRANSITIONS.length).optional(),
 
   /**
    * Any field of the caption style.
@@ -156,6 +164,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     patch.mode !== undefined ||
     patch.aspect !== undefined ||
     patch.maxDurationSec !== undefined ||
+    patch.clipTransitions !== undefined ||
     (patch.remove?.segments?.length ?? 0) > 0;
 
   if (structural) {
@@ -184,6 +193,10 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
       // Without this, changing the edit style would silently revert a caption
       // look the user picked — the two lists are independent by design.
       captionPreset: patch.captionPreset ?? project.captionPreset,
+      // Same reason, and both were missing: a rebuild that forgets these is a
+      // rebuild that silently undoes two choices the user made on the way in.
+      sceneLook: project.sceneLook,
+      clipTransitions: patch.clipTransitions ?? parseTransitions(project.clipTransitions),
       mode: (patch.mode ?? project.mode) as 'short' | 'long',
       aspect: patch.aspect,
       maxDurationSec: patch.maxDurationSec,
@@ -293,6 +306,15 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
   }
   if (patch.captionPreset) {
     await db.project.update({ where: { id }, data: { captionPreset: patch.captionPreset } });
+  }
+  if (patch.clipTransitions) {
+    // Stored sanitised, so a rebuild months from now cannot inherit a name
+    // this build no longer has. An empty pick clears back to the style's own.
+    const picked = sanitiseTransitions(patch.clipTransitions);
+    await db.project.update({
+      where: { id },
+      data: { clipTransitions: picked ? JSON.stringify(picked) : null },
+    });
   }
   if (patch.mode) {
     await db.project.update({ where: { id }, data: { mode: patch.mode } });

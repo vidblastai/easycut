@@ -4,6 +4,7 @@ import { entitlementsFor } from '@/lib/billing/entitlements';
 import { renderDelta, worthSplicing } from '@/lib/render/diff';
 import { DEFAULT_QUALITY, scaleFor, type RenderQuality } from '@/lib/render/quality';
 import { localMusicPath } from '@/lib/assets/music';
+import { parseTransitions } from '@/lib/styles/presets';
 import { parseLayersOff } from '@/lib/edl/layers';
 import { recordUsage } from '@/lib/billing/usage';
 import { readyMail, sendMail } from '@/lib/email';
@@ -59,6 +60,7 @@ export async function processProject(payload: ProcessJobPayload): Promise<void> 
         styleId: project.styleId,
         captionPreset: project.captionPreset,
         sceneLook: project.sceneLook,
+        clipTransitions: parseTransitions(project.clipTransitions),
         inputMode: project.inputMode as 'raw' | 'roughcut',
         userNote: project.userNote ?? undefined,
         layersOff: parseLayersOff(project.layersOff),

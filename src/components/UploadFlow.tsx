@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { clsx } from 'clsx';
 import { StylePreview } from '@/components/styles/StylePreview';
 import { detectFormat, probeInBrowser, type Detected } from '@/lib/styles/detect';
-import type { Layout } from '@/lib/edl/types';
+import type { ClipTransition, Layout } from '@/lib/edl/types';
 import { layoutPlan } from '@/lib/styles/layouts';
 import { IconArrowRight, IconCheck } from '@/components/shell/Icons';
 import { Stepper, type StepKey } from '@/components/shell/Stepper';
@@ -13,6 +13,7 @@ import { readDefaultCaptionPreset } from '@/lib/captions/default-preset';
 import { CaptionPicker } from '@/components/captions/CaptionPicker';
 import { takePendingUpload } from '@/lib/ui/pending-upload';
 import { ScenePicker } from '@/components/scenes/ScenePicker';
+import { TransitionPicker } from '@/components/transitions/TransitionPicker';
 
 /**
  * The upload wizard: one question per screen.
@@ -132,6 +133,15 @@ export function UploadFlow({ styles, formats }: { styles: StyleOption[]; formats
    * it came out white.
    */
   const [sceneLook, setSceneLook] = useState<string | null>(null);
+
+  /**
+   * How the full-frame inserts arrive and leave.
+   *
+   * A list rather than a value, because the builder cycles it — every insert
+   * making the same move is what makes a run of them read as a slideshow. The
+   * order is the user's: it is the order they cycle in.
+   */
+  const [transitions, setTransitions] = useState<ClipTransition[]>([]);
   useEffect(() => {
     // On mount, not during render: localStorage is not there on the server and
     // can throw in a private window, and a mismatch would flash the wrong tile.
@@ -242,6 +252,9 @@ export function UploadFlow({ styles, formats }: { styles: StyleOption[]; formats
           // names its own, which is the behaviour this used to have always.
           captionPreset: captionPreset ?? undefined,
           sceneLook: sceneLook ?? undefined,
+          // Omitted when empty, which is how "the style's own set" is spelled
+          // everywhere else on this request.
+          clipTransitions: transitions.length ? transitions : undefined,
           inputMode,
           // Only the ones being declined: the default is everything on, and a
           // request that spells out six `true`s says nothing the absence did not.
@@ -486,6 +499,13 @@ export function UploadFlow({ styles, formats }: { styles: StyleOption[]; formats
             {/* Same rule: only where the layer is actually going in. */}
             {layers.scenes ? (
               <ScenePicker value={sceneLook} onChange={setSceneLook} className="mt-7" />
+            ) : null}
+
+            {/* Transitions belong to whatever takes the whole frame, and both
+                layers that do are optional — so the question only makes sense
+                while at least one of them is still switched on. */}
+            {layers.broll || layers.scenes ? (
+              <TransitionPicker value={transitions} onChange={setTransitions} className="mt-7" />
             ) : null}
 
             {brollWarning ? (

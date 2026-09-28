@@ -1,4 +1,4 @@
-import { SCENE_LOOKS, type Aspect, type CaptionStyle, type ClipTransition, type Layout, type SceneLook, type TransitionType } from '@/lib/edl/types';
+import { CLIP_TRANSITIONS, SCENE_LOOKS, type Aspect, type CaptionStyle, type ClipTransition, type Layout, type SceneLook, type TransitionType } from '@/lib/edl/types';
 import { findCaptionPreset } from '@/lib/captions/presets';
 
 /**
@@ -839,23 +839,60 @@ export function styleFor(
   styleId: string,
   captionPreset?: string | null,
   sceneLook?: string | null,
+  clipTransitions?: readonly string[] | null,
 ): StylePreset {
   const base = getStyle(styleId);
 
-  // Both overrides are validated rather than trusted, and an unknown one falls
+  // Every override is validated rather than trusted, and an unknown one falls
   // back to the style's own pick rather than failing the render: a stale id in
   // a months-old project should cost you a preference, not the video.
   const caption = captionPreset ? findCaptionPreset(captionPreset) : null;
   const look = sceneLook && (SCENE_LOOKS as readonly string[]).includes(sceneLook)
     ? (sceneLook as SceneLook)
     : null;
+  const moves = sanitiseTransitions(clipTransitions);
 
-  if (!caption && !look) return base;
+  if (!caption && !look && !moves) return base;
   return {
     ...base,
     ...(caption ? { captionStyle: { ...caption.style } } : {}),
     ...(look ? { sceneLook: look } : {}),
+    ...(moves ? { clipTransitions: moves } : {}),
   };
+}
+
+/**
+ * The transitions somebody picked, as a vocabulary the builder can cycle.
+ *
+ * ORDER IS KEPT, and that is the whole reason this is a list rather than a
+ * set: `placeBroll` walks the vocabulary per insert, so picking slide-left
+ * then slide-right gives alternating inserts, and picking them the other way
+ * round gives a different edit. Sorting it here — the tidy-looking thing to do
+ * — would quietly throw away a decision somebody made.
+ *
+ * An empty list means the same as no list: take the style's own. Anything else
+ * would let a stray click produce a video with no transitions in it at all,
+ * and "I picked nothing" is not a request for nothing.
+ */
+export function sanitiseTransitions(picked?: readonly string[] | null): ClipTransition[] | null {
+  if (!picked?.length) return null;
+  const seen = new Set<string>();
+  const kept = picked.filter(
+    (name): name is ClipTransition =>
+      (CLIP_TRANSITIONS as readonly string[]).includes(name) && !seen.has(name) && !!seen.add(name),
+  );
+  return kept.length ? kept : null;
+}
+
+/** The stored JSON, back as a list. A corrupt value is no preference, not a crash. */
+export function parseTransitions(stored?: string | null): ClipTransition[] | null {
+  if (!stored) return null;
+  try {
+    const parsed: unknown = JSON.parse(stored);
+    return Array.isArray(parsed) ? sanitiseTransitions(parsed.filter((n) => typeof n === 'string')) : null;
+  } catch {
+    return null;
+  }
 }
 
 /* --------------------------------------------------------------- formats */
