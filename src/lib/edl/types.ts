@@ -667,13 +667,21 @@ const ICON_CARD_MAX = 0.22;
 const ICON_CARD_MIN = 0.13;
 
 /**
- * The top of the cards' band, a little under the deepest the captions reach.
+ * The top of the cards' band.
  *
- * A caption block centred at the band's lowest point reaches about 0.728 at
- * its deepest, measured across every preset — so 0.74 clears the words without
- * opening a gap between the two layers.
+ * Set to sit close under the words rather than to clear the worst case, and
+ * that is a deliberate trade. Caption blocks vary by about eight per cent of
+ * the frame in how deep they run — it depends on how many lines the words
+ * actually made, which nothing here can know — so a value that guaranteed
+ * clearance for the deepest preset left a 167px hole under the shallow ones,
+ * which is what this looks like in practice.
+ *
+ * At 0.70 the common case sits about 90px under the last line, and the deepest
+ * blocks overlap the top of the tile by a few dozen pixels. That costs
+ * nothing: the cards render UNDER the captions, and the tile's top seventh is
+ * padding around the icon, so what ends up behind the text is blank tile.
  */
-const ICON_BAND_TOP = 0.74;
+const ICON_BAND_TOP = 0.7;
 
 /**
  * And between the cards and the bottom of the frame.

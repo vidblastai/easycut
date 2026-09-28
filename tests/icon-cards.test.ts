@@ -160,10 +160,20 @@ describe('the caption band', () => {
     expect(framedPositionY({ positionY: 0.87 })).toBe(CAPTION_BAND[1]);
   });
 
-  it('leaves room under itself for the cards', () => {
-    // The deepest a caption block reaches, measured across every preset, is
-    // about 0.068 below its centre.
-    expect(CAPTION_BAND[1] + 0.068).toBeLessThan(iconRowPlacement(1, 1080, 1920).y - iconRowPlacement(1, 1080, 1920).card / 1920 / 2);
+  it('sits close under the words rather than clearing the deepest block', () => {
+    /*
+     * A deliberate trade. Caption blocks vary by about eight per cent of the
+     * frame in how deep they run, so clearing the deepest preset leaves a
+     * 167px hole under the shallow ones. The cards render UNDER the captions
+     * and the tile's top seventh is padding, so an overlap puts blank tile
+     * behind text and nothing else.
+     */
+    const { y, card } = iconRowPlacement(1, 1080, 1920);
+    const top = y - card / 1920 / 2;
+
+    // Below the caption band's centre line, and within a caption's depth of it.
+    expect(top).toBeGreaterThan(CAPTION_BAND[1]);
+    expect(top - CAPTION_BAND[1]).toBeLessThan(0.07);
   });
 });
 

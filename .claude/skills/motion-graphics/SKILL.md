@@ -457,8 +457,8 @@ Numbers, measured off renders of every preset:
 |---|---|
 | caption band | `positionY` clamped to 0.60–0.66 |
 | ink vs `positionY` | within 0.05 — no correction factor needed |
-| deepest a block reaches | about 0.728, from a block centred at 0.66 |
-| cards' band | starts at 0.74, floor margin 0.07 |
+| block depth | varies by ~0.08 of the frame between presets |
+| cards' band | starts at 0.70, floor margin 0.07 |
 | card | 0.22 of the short edge — two thirds of the reference |
 
 Two things that look like details and are not. The presets had drifted from
@@ -475,6 +475,15 @@ The card is 0.22 of the short edge, not the reference clip's 0.30. That clip
 had no captions over it and nothing competing for the lower frame. Against a
 line of words the tile has to read as punctuation under them rather than as
 the subject.
+
+**The cards' band deliberately does not clear the deepest caption block.**
+How far a block runs depends on how many lines the words actually made, which
+nothing here can know, and a value that guaranteed clearance for the deepest
+preset left a 167px hole under the shallow ones. At 0.70 the common case sits
+about 90px under the last line and the deepest blocks overlap the top of the
+tile — which costs nothing, because the cards render UNDER the captions and
+the tile's top seventh is padding, so what ends up behind the text is blank
+tile.
 
 A split layout is exempt from all of it. `LayoutPlan.captionY` hands the words
 the one strip covering neither the face above nor the picture below, and that

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { buildEdl, placeScenes } from '@/lib/edl/builder';
-import { EdlSchema, iconRowPlacement } from '@/lib/edl/types';
+import { EdlSchema, framedPositionY, iconRowPlacement } from '@/lib/edl/types';
 import { DirectorPlanSchema } from '@/lib/director/schema';
 import { getStyle } from '@/lib/styles/presets';
 import { TimeMapper, layoutSegments } from '@/lib/timeline/time-mapper';
@@ -287,7 +287,11 @@ describe('icon cards', () => {
 
     // Under the words, and in the lower half — the upper half of a vertical
     // frame is where the speaker's face is, which is what this used to cover.
-    expect(rowTop).toBeGreaterThan(edl.captionStyle.positionY);
+    //
+    // Against the FRAMED position, not the style's raw one: the renderer
+    // clamps every preset into the caption band, so the raw number is not
+    // where the words end up.
+    expect(rowTop).toBeGreaterThan(framedPositionY(edl.captionStyle));
     expect(edl.icons[0].y).toBeGreaterThan(0.5);
     // And on screen: a card hanging off the bottom is the failure that comes
     // with sizing it to anything but the room it has.
