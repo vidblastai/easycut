@@ -75,8 +75,21 @@ export async function resolveCardIcons(queries: string[], accent: string): Promi
   return Promise.all(
     queries.map(async (query, index) => {
       const options = candidates[index];
-      // The family first, then any colour set at all, then a tinted glyph.
-      const id = (family && options.get(family)) || firstColour(options);
+      /*
+       * The family first — and if it has nothing, ask it again on its own
+       * before settling for another set.
+       *
+       * The first pass stops at whichever term matched ANY set, which can be
+       * the wrong set: "smartphone" found a flat-color-icons tablet and
+       * stopped, so the row's third card came from a different illustrator
+       * while `noto:mobile-phone` sat one term further down the ladder. This
+       * second look is restricted to the family and only runs for the handful
+       * of queries it missed.
+       */
+      const id =
+        (family && options.get(family)) ||
+        (family ? await inFamily(queries[index], family) : null) ||
+        firstColour(options);
       if (id) {
         const markup = await fetchIconMarkup(colourUrl(id));
         if (markup) return { id, set: id.split(':')[0], markup: prefixIds(markup, `card${index}`), monochrome: false };
@@ -155,6 +168,16 @@ export function bestInSet(icons: string[], set: string, term: string): string | 
   }
 
   return best?.id ?? null;
+}
+
+/** A second look for one query, inside the family the video already chose. */
+async function inFamily(query: string, family: string): Promise<string | null> {
+  for (const term of cardTerms(query)) {
+    const params = new URLSearchParams({ query: term, limit: String(SEARCH_LIMIT), prefixes: family });
+    const best = bestInSet(await searchIds(`https://api.iconify.design/search?${params}`), family, term);
+    if (best) return best;
+  }
+  return null;
 }
 
 /** The set that covers the most queries; ties go to the preference order. */
@@ -252,7 +275,7 @@ const CARD_OBJECTS: Array<[RegExp, string]> = [
   [/\b(search|find|finding|discover|research)\b/, 'magnifying glass tilted left'],
   [/\b(write|writing|note|notes|document|post|blog|copy|script)\b/, 'memo'],
   [/\b(email|emails|message|inbox|newsletter)\b/, 'envelope'],
-  [/\b(phone|mobile|call|calling)\b/, 'mobile phone'],
+  [/\b(phone|smartphone|mobile|iphone|android|call|calling)\b/, 'mobile phone'],
   [/\b(laptop|computer|software|app|apps|code|coding|program)\b/, 'laptop'],
   [/\b(global|world|worldwide|market|country|international)\b/, 'globe showing europe-africa'],
   [/\b(sleep|sleeping|tired|rest|burnout)\b/, 'sleeping face'],

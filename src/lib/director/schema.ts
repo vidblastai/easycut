@@ -45,7 +45,7 @@ export const DirectorGraphicSchema = z.object({
   subtext: z.string().default(''),
   items: z.array(z.string()).default([]),
   /** How it arrives. Left empty, the pipeline picks one to suit the type. */
-  animation: z.enum(GRAPHIC_ANIMATIONS).optional(),
+  animation: z.enum(GRAPHIC_ANIMATIONS).nullish(),
   /** Iconify-style concept name: "rocket", "shield-check", "trending-up". */
   iconQuery: z.string().default(''),
   /** Only for `image` — a bespoke illustration prompt. Costs money, use sparingly. */

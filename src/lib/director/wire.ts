@@ -1,4 +1,5 @@
 import { z } from 'zod/v4';
+import { GRAPHIC_ANIMATIONS, GRAPHIC_TYPES } from '@/lib/edl/types';
 
 /**
  * The wire schema is deliberately separate from `DirectorPlanSchema`.
@@ -40,12 +41,34 @@ export const DirectorWireSchema = z.object({
     z.object({
       atSec: z.number(),
       durationSec: z.number(),
-      type: z.enum(['icon', 'stat', 'list', 'title-card', 'quote', 'arrow', 'image']),
+      /*
+       * Taken from the renderer's own list, never typed out again here.
+       *
+       * It WAS typed out again here, and it had already drifted: the six
+       * motion-graphic types the system prompt spends a paragraph explaining
+       * — counter, progress-ring, bar-chart, checklist, badge, underline —
+       * were missing from this enum, and a strict schema does not let the
+       * model emit what the enum does not list. So the director read the
+       * guidance, could not act on it, and every one of those graphics was
+       * silently unreachable.
+       */
+      type: z.enum(GRAPHIC_TYPES),
       text: z.string(),
       subtext: z.string(),
       items: z.array(z.string()),
       iconQuery: z.string(),
       imagePrompt: z.string(),
+      // Nullable rather than absent: strict structured output requires every
+      // property, and the prompt offers this as an optional choice. Null is
+      // how the model says "you pick".
+      animation: z.enum(GRAPHIC_ANIMATIONS).nullable(),
+    }),
+  ),
+  icons: z.array(
+    z.object({
+      atSec: z.number(),
+      word: z.string(),
+      query: z.string(),
     }),
   ),
   sfx: z.array(
