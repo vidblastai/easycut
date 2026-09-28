@@ -2,7 +2,7 @@ import React from 'react';
 import { AbsoluteFill, Img, OffthreadVideo, Sequence, useCurrentFrame, useVideoConfig } from 'remotion';
 import type { BrollClip, Edl } from '../../src/lib/edl/types';
 import { ramp } from '../lib/timing';
-import { ClipTransitionEffect, clipMotion, clipPhase, clipTransitionSec } from '../lib/clip-transition';
+import { ClipTransitionEffect, MotionBlurFilter, clipFilter, clipFrameStyle, clipPhase, clipTransitionSec, fitTransitions } from '../lib/clip-transition';
 import { layoutPlan, regionStyle } from '../../src/lib/styles/layouts';
 
 /**
@@ -85,15 +85,29 @@ const BrollInsert: React.FC<{
    * rather than a cut that was made. The style now names a vocabulary and the
    * builder cycles it, so consecutive inserts travel in from different edges.
    */
-  const enterFrames = Math.round(fps * clipTransitionSec(clip.enter));
-  const exitFrames = Math.round(fps * clipTransitionSec(clip.exit));
+  const size = { width, height };
+  // Shrunk to fit: a short insert cannot afford a full pair of slides, and
+  // arriving and immediately leaving reads as a wobble.
+  const { enterFrames, exitFrames } = fitTransitions(
+    durationInFrames,
+    Math.round(fps * clipTransitionSec(clip.enter, size)),
+    Math.round(fps * clipTransitionSec(clip.exit, size)),
+  );
   const { entering, leaving } = clipPhase(frame, durationInFrames, enterFrames, exitFrames);
 
   // The end being animated right now. Both curves are applied, so a clip too
   // short to finish arriving before it has to leave degrades instead of
   // jumping: the two opacities multiply and the two transforms compose.
-  const enterStyle = clipMotion(clip.enter, entering, false);
-  const exitStyle = clipMotion(clip.exit, leaving, true);
+  const shared = { width, height, fps, frame, seed: clip.id, cheap };
+  const enterStyle = clipFrameStyle(clip.enter, { ...shared, progress: entering, leaving: false });
+  const exitStyle = clipFrameStyle(clip.exit, { ...shared, progress: leaving, leaving: true });
+
+  // One blur at a time: only one end of the clip is ever moving, so whichever
+  // is mid-transition owns the smear. Adding them would double the sigma on a
+  // clip short enough for the two to overlap.
+  const moving = entering < 1 ? enterStyle : exitStyle;
+  const blurId = `blur-${clip.id}`;
+
   const effect = entering < 1 ? { type: clip.enter, progress: entering, leaving: false } : null;
   const outgoing = leaving < 1 ? { type: clip.exit, progress: leaving, leaving: true } : null;
 
@@ -111,10 +125,21 @@ const BrollInsert: React.FC<{
         // all in exactly the cases where both ends are animating.
         transform: [enterStyle.transform, exitStyle.transform].filter(Boolean).join(' ') || undefined,
         opacity: Number(enterStyle.opacity ?? 1) * Number(exitStyle.opacity ?? 1) * clip.opacity,
-        overflow: 'hidden',
+        filter: clipFilter(moving, blurId),
+        /*
+         * No `overflow: hidden` while the smear is on.
+         *
+         * A blur needs to paint OUTSIDE the element it came from — that is
+         * what a smear is — and clipping it to the clip's own box cuts the
+         * trailing edge off square, which reads as a hard band rather than as
+         * motion. Restored the moment the clip settles, where it is what stops
+         * a Ken Burns push spilling past the frame.
+         */
+        overflow: clipFilter(moving, blurId) ? 'visible' : 'hidden',
         backgroundColor: '#000',
       }}
     >
+      {moving.blur.x > 0 || moving.blur.y > 0 ? <MotionBlurFilter id={blurId} blur={moving.blur} /> : null}
       <AbsoluteFill
         style={{
           transform: `scale(${scale * clip.scale}) translate(${translateX}%, ${translateY}%)`,

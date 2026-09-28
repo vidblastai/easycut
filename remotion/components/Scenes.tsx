@@ -3,7 +3,7 @@ import { AbsoluteFill, Sequence, useCurrentFrame, useVideoConfig } from 'remotio
 import { sceneIsDrawn, type AnimatedScene, type Edl } from '../../src/lib/edl/types';
 import { FONT_FAMILY } from '../lib/fonts';
 import { easeOutCubic, kf, riseIn, stagger, transformOf } from '../lib/motion';
-import { ClipTransitionEffect, clipMotion, clipPhase, clipTransitionSec } from '../lib/clip-transition';
+import { ClipTransitionEffect, MotionBlurFilter, clipFilter, clipFrameStyle, clipPhase, clipTransitionSec, fitTransitions } from '../lib/clip-transition';
 import { lookFor } from '../looks';
 import { LOOK_META } from '../../src/lib/scenes/looks';
 import { styleGuideFor } from '../../src/lib/scenes/style-guides';
@@ -93,12 +93,21 @@ const SceneView: React.FC<{ scene: AnimatedScene; durationInFrames: number }> = 
   const enter = scene.enter ?? (look.entry === 'fade' ? 'fade' : 'cut');
   const exit = scene.exit ?? (look.entry === 'fade' ? 'fade' : 'cut');
 
-  const enterFrames = Math.max(1, Math.round(fps * clipTransitionSec(enter)));
-  const exitFrames = Math.max(1, Math.round(fps * clipTransitionSec(exit)));
+  const size = { width, height };
+  const { enterFrames, exitFrames } = fitTransitions(
+    durationInFrames,
+    Math.max(1, Math.round(fps * clipTransitionSec(enter, size))),
+    Math.max(1, Math.round(fps * clipTransitionSec(exit, size))),
+  );
   const { entering, leaving } = clipPhase(frame, durationInFrames, enterFrames, exitFrames);
 
-  const enterStyle = clipMotion(enter, entering, false);
-  const exitStyle = clipMotion(exit, leaving, true);
+  const shared = { width, height, fps, frame, seed: scene.id, cheap: false };
+  const enterStyle = clipFrameStyle(enter, { ...shared, progress: entering, leaving: false });
+  const exitStyle = clipFrameStyle(exit, { ...shared, progress: leaving, leaving: true });
+
+  // Whichever end is mid-transition owns the smear; only one ever is.
+  const moving = entering < 1 ? enterStyle : exitStyle;
+  const blurId = `blur-${scene.id}`;
 
   /*
    * One frame of guard at each end even on a hard cut.
@@ -114,9 +123,11 @@ const SceneView: React.FC<{ scene: AnimatedScene; durationInFrames: number }> = 
       style={{
         transform: [enterStyle.transform, exitStyle.transform].filter(Boolean).join(' ') || undefined,
         opacity: Number(enterStyle.opacity ?? 1) * Number(exitStyle.opacity ?? 1) * guard,
+        filter: clipFilter(moving, blurId),
         fontFamily: FONT_FAMILY,
       }}
     >
+      {moving.blur.x > 0 || moving.blur.y > 0 ? <MotionBlurFilter id={blurId} blur={moving.blur} /> : null}
       {/*
         ONE background, always.
         A drawn scene brings its own — the illustration's backdrop group runs

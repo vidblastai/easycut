@@ -562,9 +562,45 @@ Two families in one list, because the person picking does not care which:
   underneath is the mistake: a glitch over a half-faded picture looks like a
   rendering fault, which is the one thing a glitch must not look like.
 
-Moves take 0.34s, flavours 0.22s. Both ends are measured from their own edge
-and applied together (transforms composed, opacities multiplied), so a clip
-too short to finish arriving before it must leave degrades rather than jumps.
+### What made them look broken
+
+A slide crosses the whole frame in the time it is given. At ten frames that is
+**293 pixels of horizontal travel in one frame, and 520 vertical** — which is
+why `slide-up` was the one that looked worst. Nothing about it was a bug in
+the maths; it is what a hard cut between two positions 520px apart looks like
+thirty times a second, and the eye reads it as strobing.
+
+Two fixes, and they are the two things a camera does for free:
+
+1. **Time proportional to distance.** `clipTransitionSec` reads the frame. A
+   vertical slide in 9:16 travels 1.78× as far as a horizontal one and gets
+   1.78× as long, so both move at roughly the same pixels per second instead
+   of the same per cent per second. 0.42s to 0.72s, then `fitTransitions`
+   shrinks the pair to at most 60% of a short clip — a 1.5s insert cannot
+   afford two full slides, and arriving and immediately leaving reads as a
+   wobble.
+2. **Motion blur, modelled on a shutter.** A real shutter is open for half the
+   frame, so a moving subject smears across half its per-frame displacement;
+   a gaussian approximating a box of length L wants σ ≈ L/3.5, hence σ =
+   step/7, capped at 48px. Derived from the distance actually covered since
+   the last frame, so fast frames smear and the settle is sharp.
+
+**Directional, via an SVG `feGaussianBlur`** — CSS `blur()` is isotropic, and
+a horizontal slide blurred equally in both axes reads as out of focus rather
+than as moving. Two details that are not details: `colorInterpolationFilters`
+must be `sRGB` or every blurred edge lightens into a glow, and `overflow` goes
+to `visible` while the smear is on, because a blur has to paint outside the
+element it came from and clipping it cuts the trailing edge off square.
+
+The curve is `cubic-bezier(0.4, 0.6, 0.3, 1)`, not `easeOutCubic` — the latter
+puts 27% of the journey in the first frame of a ten-frame move. This one peaks
+near 15% and is still three quarters home at 40% of the time, so it loses no
+snap. It costs roughly 140ms per blurred frame at 1080×1920, and it is off in
+the editor, where a preview has to keep time.
+
+Both ends are measured from their own edge and applied together (transforms
+composed, opacities multiplied), so a clip too short to finish arriving before
+it must leave degrades rather than jumps.
 
 **Composing, not picking.** `transform: a b` is ONE declaration — writing
 `${a} ${b}` where either is undefined discards the whole thing, and the insert

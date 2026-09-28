@@ -21,7 +21,7 @@ const OUT = 'out/transition-clips';
 const SOURCE = 'out/fixture.mp4';
 
 /** Long enough to see the insert land, short enough to keep the strip watchable. */
-const HOLD_SEC = 1.5;
+const HOLD_SEC = 2.2;
 
 async function main() {
   await mkdir(OUT, { recursive: true });
