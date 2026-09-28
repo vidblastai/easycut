@@ -98,7 +98,7 @@ const Row: React.FC<{ cue: IconCue; startFrame: number; captions: CaptionStyle }
   // The same helper the builder placed the row with, so the card is exactly
   // the size the space under the captions was measured for. `cue.y` still
   // wins, because that is the one a user can move.
-  const { card, gap } = iconRowPlacement(captions, drawable.length, width, height);
+  const { card, gap } = iconRowPlacement(drawable.length, width, height);
 
   /*
    * Laid out for the row's FINAL width from the first frame.

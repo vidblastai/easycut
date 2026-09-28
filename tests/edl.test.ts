@@ -282,7 +282,7 @@ describe('icon cards', () => {
 
   it('puts every row BELOW the captions, where the face is not', () => {
     const edl = build({ icons: [{ atSec: 5, word: 'word10', query: 'banana' }] });
-    const { card } = iconRowPlacement(edl.captionStyle, 1, edl.format.width, edl.format.height);
+    const { card } = iconRowPlacement(1, edl.format.width, edl.format.height);
     const rowTop = edl.icons[0].y - card / edl.format.height / 2;
 
     // Under the words, and in the lower half — the upper half of a vertical

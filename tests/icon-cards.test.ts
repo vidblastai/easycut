@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { iconRowPlacement } from '../src/lib/edl/types';
+import { CAPTION_BAND, framedPositionY, iconRowPlacement } from '../src/lib/edl/types';
+import { CAPTION_PRESETS } from '../src/lib/captions/presets';
 import { iconMarkup, riseProgress } from '../remotion/components/IconCards';
 import { snapToWord } from '../src/lib/edl/builder';
 import type { Transcript } from '../src/lib/transcribe/types';
@@ -70,80 +71,88 @@ describe('the rise', () => {
 });
 
 describe('where the row sits', () => {
-  const captions = {
-    positionY: 0.74, fontSizeRatio: 0.058, maxLines: 2, emphasisOwnLine: false, splitLines: false,
-  };
   const FRAME = { w: 1080, h: 1920 };
 
-  function band(c: typeof captions, count = 1) {
-    const { y, card } = iconRowPlacement(c, count, FRAME.w, FRAME.h);
-    return { top: y - card / FRAME.h / 2, bottom: y + card / FRAME.h / 2, y, card };
+  function band(count = 1, w = FRAME.w, h = FRAME.h) {
+    const { y, card, gap } = iconRowPlacement(count, w, h);
+    return { top: y - card / h / 2, bottom: y + card / h / 2, y, card, gap };
   }
 
-  it('sits below the captions, not above them', () => {
-    // Above is where the room is, and it is the wrong place: in a vertical
-    // frame the speaker's face is in the upper half, and that is exactly what
-    // the first version put a card on.
-    expect(band(captions).top).toBeGreaterThan(captions.positionY);
+  it('lives in the bottom quarter, below the captions- own band', () => {
+    // Two fixed bands: the captions own the second quarter up from the bottom,
+    // the cards own the first. The version that measured the caption block and
+    // placed the row under whatever it found was wrong by up to eight per cent
+    // of the frame in both directions, because a caption block-s rendered
+    // height does not follow from its line height.
+    expect(band().top).toBeGreaterThan(CAPTION_BAND[1]);
+    expect(band().y).toBeGreaterThan(0.75);
   });
 
-  it('stays inside the frame', () => {
-    expect(band(captions).bottom).toBeLessThanOrEqual(1);
-    for (const positionY of [0.5, 0.62, 0.74, 0.8, 0.86]) {
-      expect(band({ ...captions, positionY }).bottom).toBeLessThanOrEqual(1.0001);
-    }
+  it('keeps clear of the bottom edge', () => {
+    // At three per cent the tile read as a thing that fell rather than a thing
+    // placed. The card gives up size before it gives up this margin.
+    expect(band().bottom).toBeLessThanOrEqual(0.94);
+    for (const count of [1, 2, 3]) expect(band(count).bottom).toBeLessThanOrEqual(0.94);
   });
 
-  it('shrinks the card rather than letting it hang off the bottom', () => {
-    // A preset with its words low leaves less room underneath. The card gets
-    // smaller; it does not move back up over the face, and it does not
-    // overflow.
-    const roomy = band({ ...captions, positionY: 0.55 });
-    const tight = band({ ...captions, positionY: 0.86 });
-    expect(tight.card).toBeLessThan(roomy.card);
-    expect(tight.bottom).toBeLessThanOrEqual(1.0001);
+  it('sits in the same place whatever the caption preset does', () => {
+    // The whole point of a band: a video does not move its icons when somebody
+    // tries a different caption look.
+    expect(band(1)).toEqual(band(1));
+    expect(band(1).y).toBe(band(1).y);
+  });
+
+  it('never exceeds the size the reference clip measured', () => {
+    expect(band(1).card).toBeLessThanOrEqual(FRAME.w * 0.3 + 0.001);
   });
 
   it('never shrinks below the size an icon stops reading at', () => {
-    const { card } = iconRowPlacement({ ...captions, positionY: 0.99 }, 1, FRAME.w, FRAME.h);
-    expect(card).toBeGreaterThanOrEqual(1080 * 0.15);
-  });
-
-  it('allows for the ways a caption block gets taller than its line height', () => {
-    // An emphasised word set on its own line adds a line `maxLines` does not
-    // count. Ignoring that is what put the first line of the captions through
-    // the bottom of the cards.
-    const plain = band(captions);
-    const ownLine = band({ ...captions, emphasisOwnLine: true });
-    expect(ownLine.top).toBeGreaterThan(plain.top);
-  });
-
-  it('caps the reference size, and never exceeds it', () => {
-    // 0.30 of the short edge is what the reference clip measured. More room
-    // does not mean a bigger card.
-    const { card } = iconRowPlacement({ ...captions, positionY: 0.3 }, 1, FRAME.w, FRAME.h);
-    expect(card).toBeCloseTo(1080 * 0.3, 0);
+    for (const [w, h] of [[1080, 1920], [1920, 1080], [1080, 1080]] as const) {
+      expect(iconRowPlacement(3, w, h).card).toBeGreaterThanOrEqual(Math.min(w, h) * 0.15);
+    }
   });
 });
 
 describe('card geometry', () => {
-  const captions = {
-    positionY: 0.6, fontSizeRatio: 0.05, maxLines: 1, emphasisOwnLine: false, splitLines: false,
-  };
-
-  it('sizes off the short edge, so a card is the same object in either format', () => {
-    // Not off the width: a third of a 16:9 frame's width is a poster.
-    const portrait = iconRowPlacement(captions, 1, 1080, 1920);
-    const landscape = iconRowPlacement(captions, 1, 1920, 1080);
-    expect(landscape.card).toBeLessThanOrEqual(portrait.card);
-    expect(landscape.card).toBeGreaterThan(1080 * 0.14);
-  });
-
-  it('keeps three cards inside the frame, across as well as down', () => {
+  it('fits three across as well as down, in every format', () => {
     for (const [w, h] of [[1080, 1920], [1920, 1080], [1080, 1080]] as const) {
-      const { card, gap } = iconRowPlacement(captions, 3, w, h);
+      const { card, gap } = iconRowPlacement(3, w, h);
       expect(3 * card + 2 * gap).toBeLessThanOrEqual(w * 0.87);
     }
+  });
+
+  it('gives one card at least as much room as three', () => {
+    const one = iconRowPlacement(1, 1080, 1920);
+    const three = iconRowPlacement(3, 1080, 1920);
+    expect(one.card).toBeGreaterThanOrEqual(three.card);
+  });
+});
+
+describe('the caption band', () => {
+  it('pulls every preset into the second quarter up from the bottom', () => {
+    // They had drifted from 0.54 — the middle of the frame — to 0.87, hard
+    // against the bottom edge, and where a video-s words live should not
+    // change when somebody tries a different caption look.
+    for (const preset of CAPTION_PRESETS) {
+      const framed = framedPositionY(preset.style);
+      expect(framed).toBeGreaterThanOrEqual(0.5);
+      expect(framed).toBeLessThanOrEqual(0.75);
+    }
+  });
+
+  it('leaves a preset alone when it already sits in the band', () => {
+    expect(framedPositionY({ positionY: 0.65 })).toBe(0.65);
+  });
+
+  it('pulls in the outliers at both ends', () => {
+    expect(framedPositionY({ positionY: 0.54 })).toBe(CAPTION_BAND[0]);
+    expect(framedPositionY({ positionY: 0.87 })).toBe(CAPTION_BAND[1]);
+  });
+
+  it('leaves room under itself for the cards', () => {
+    // The deepest a caption block reaches, measured across every preset, is
+    // about 0.068 below its centre.
+    expect(CAPTION_BAND[1] + 0.068).toBeLessThan(iconRowPlacement(1, 1080, 1920).y - iconRowPlacement(1, 1080, 1920).card / 1920 / 2);
   });
 });
 

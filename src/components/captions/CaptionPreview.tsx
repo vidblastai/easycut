@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useRef, useState } from 'react';
-import type { CaptionStyle } from '@/lib/edl/types';
+import { framedPositionY, type CaptionStyle } from '@/lib/edl/types';
 import {
   blockStyle,
   justifyFor,
@@ -111,7 +111,10 @@ function CaptionPreviewImpl({
           <div
             style={{
               position: 'absolute',
-              top: frameHeight * style.positionY,
+              // The band the renderer clamps every caption into, so a preview
+              // is a preview of the video rather than of the preset's raw
+              // number. See `framedPositionY`.
+              top: frameHeight * framedPositionY(style),
               left: style.align === 'left' ? frameWidth * 0.06 : undefined,
               right: style.align === 'right' ? frameWidth * 0.06 : undefined,
               transform: 'translateY(-50%)',
@@ -221,7 +224,7 @@ function CaptionBandImpl({
           left: 0,
           right: 0,
           top: '50%',
-          transform: `translateY(-${style.positionY * 100}%)`,
+          transform: `translateY(-${framedPositionY(style) * 100}%)`,
         }}
       >
         <CaptionPreview

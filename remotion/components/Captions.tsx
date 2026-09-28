@@ -1,6 +1,6 @@
 import React from 'react';
 import { AbsoluteFill, interpolate, useCurrentFrame, useVideoConfig } from 'remotion';
-import { sceneHasText, type CaptionCue, type CaptionStyle, type CaptionWord, type Edl } from '../../src/lib/edl/types';
+import { framedPositionY, sceneHasText, type CaptionCue, type CaptionStyle, type CaptionWord, type Edl } from '../../src/lib/edl/types';
 import { ensureCaptionFont } from '../lib/fonts';
 import { pop } from '../lib/timing';
 import {
@@ -119,10 +119,20 @@ export const Captions: React.FC<{ edl: Edl; positionY?: number | null; lowDetail
 
   if (!cue && !upcoming) return null;
 
-  // A split screen decides where the words go, not the caption preset: the seam
-  // is the one band that covers neither the face above it nor the picture
-  // below. Everywhere else the preset's own choice stands.
-  const style = positionY === null ? edl.captionStyle : { ...edl.captionStyle, positionY };
+  /*
+   * A split screen decides where the words go, not the caption preset: the
+   * seam is the one band that covers neither the face above it nor the picture
+   * below. Everywhere else the preset chooses — inside the caption band.
+   *
+   * The band exists because the presets had drifted from the middle of the
+   * frame to hard against the bottom edge, and where a video's words live
+   * should not change when somebody tries a different caption look. See
+   * `framedPositionY`.
+   */
+  const style =
+    positionY === null
+      ? { ...edl.captionStyle, positionY: framedPositionY(edl.captionStyle) }
+      : { ...edl.captionStyle, positionY };
 
   return (
     <>

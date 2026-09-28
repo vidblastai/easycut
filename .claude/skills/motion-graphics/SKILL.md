@@ -437,26 +437,43 @@ sliced down its sides.
 
 ### Where the row sits
 
-**Below the captions, in the lower half.** Above them is where there is most
-room and it is the wrong place: in a vertical talking-head frame the speaker's
-FACE is in the upper half, and that is exactly what the first version put a
-card on.
+**Two fixed bands, and they cannot be wrong about each other.** Cut the frame
+into quarters: the captions own the second one up from the bottom
+(`CAPTION_BAND`, which `framedPositionY` clamps every preset into), and the
+icon cards own the first (`iconRowPlacement`).
 
-`iconRowPlacement()` pins the row to the bottom margin and sizes the card to
-the room left under the caption band — between 0.15 and the reference 0.30 of
-the short edge. A fixed size cannot work, because that band is not a fixed
-height: two lines of `bold-pop` reach 0.88 and one line of `clean-plate` stops
-at 0.80. Where there is space the card is exactly the size the reference clip
-measured; where there is not it is a smaller version of the same object rather
-than one hanging off the bottom of the frame.
+That is a rule, not a calculation, and the version before it was a calculation.
+It measured the caption block and placed the row under whatever it found —
+which sounds more careful and was worse, because a caption block's rendered
+height does not follow from its `lineHeight` or its `maxLines`; it depends on
+how many lines the words actually made. The model was out by up to eight per
+cent of the frame in both directions: too small and the words sat on the
+cards, too large and the card shrank to a sixth of the frame to make room for
+space nothing occupied.
 
-The band itself is calibrated from renders, not derived from `lineHeight`: the
-ink of two lines of `bold-pop` spans 0.27 of the frame where
-`maxLines * fontSizeRatio * lineHeight` predicts 0.13. An emphasised word set
-on its own line adds a line `maxLines` does not count, and a display face's
-line box is half again its nominal size.
+Numbers, measured off renders of every preset:
 
-### Rows
+| | |
+|---|---|
+| caption band | `positionY` clamped to 0.63–0.70 |
+| ink vs `positionY` | within 0.05 — no correction factor needed |
+| deepest a block reaches | about 0.768, from a block centred at 0.70 |
+| cards' band | 0.77 to 0.93 |
+| card | that band's height, capped at the reference 0.30 of the short edge |
+
+Two things that look like details and are not. The presets had drifted from
+0.54 — the middle of the frame — to 0.87, hard against the bottom edge; where
+a video's words live must not change when somebody tries a different caption
+look, which is why this is a clamp on the style rather than a rewrite of
+twenty presets. And the cards' bottom margin is 0.07 rather than 0.03: at 0.03
+the tile read as a thing that fell rather than a thing placed. The card gives
+up size before it gives up that margin.
+
+A split layout is exempt from all of it. `LayoutPlan.captionY` hands the words
+the one strip covering neither the face above nor the picture below, and that
+strip is the whole point of the layout.
+
+### Rows### Rows
 
 Nouns said within 2.5s are ONE row: they arrive one at a time and leave
 together, because that is what "bananas and apples" does. The row is laid out

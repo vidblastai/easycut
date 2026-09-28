@@ -16,7 +16,6 @@ import {
   type ClipTransition,
   type BrollClip,
   type Edl,
-  type CaptionStyle,
   type GraphicElement,
   type IconCue,
   type OverlayElement,
@@ -172,7 +171,6 @@ export function buildEdl(input: BuildEdlInput): Edl {
     graphics,
     scenes,
     LOOK_META[style.sceneLook].tone,
-    style.captionStyle,
     dimensions,
   );
 
@@ -454,7 +452,6 @@ function placeIcons(
   graphics: GraphicElement[],
   scenes: AnimatedScene[],
   tone: 'light' | 'dark',
-  captions: CaptionStyle,
   dimensions: { width: number; height: number },
 ): IconCue[] {
   const placed: Array<{ atSec: number; word: string; query: string }> = [];
@@ -510,7 +507,7 @@ function placeIcons(
         outEndSec,
         // Under the captions, in the space nothing else uses — a card in the
         // upper half of a vertical frame lands on the speaker's face.
-        y: iconRowPlacement(captions, row.length, dimensions.width, dimensions.height).y,
+        y: iconRowPlacement(row.length, dimensions.width, dimensions.height).y,
         tone,
         cards: row.map((card) => ({
           // Relative to the row, so dragging it on the timeline keeps the

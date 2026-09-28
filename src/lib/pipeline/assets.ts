@@ -218,7 +218,7 @@ export async function resolveAssets(
     // running through the two that are left.
     .map((cue) => ({
       ...cue,
-      y: iconRowPlacement(edl.captionStyle, cue.cards.length, edl.format.width, edl.format.height).y,
+      y: iconRowPlacement(cue.cards.length, edl.format.width, edl.format.height).y,
     }));
 
   const droppedCards =

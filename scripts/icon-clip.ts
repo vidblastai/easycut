@@ -68,7 +68,7 @@ async function main() {
           id: 'icon-0',
           outStartSec: CARDS[0].atSec,
           outEndSec: 4.8,
-          y: iconRowPlacement(SAMPLE_EDL.captionStyle, CARDS.length, 1080, 1920).y,
+          y: iconRowPlacement(CARDS.length, 1080, 1920).y,
           tone,
           cards: CARDS.map((card, k) => ({
             offsetSec: card.atSec - CARDS[0].atSec,

@@ -465,7 +465,7 @@ function applyOne(edl: Edl, op: EdlOperation): Edl {
          */
         return { ...edl, icons: [...edl.icons, {
           id, outStartSec: start, outEndSec: end,
-          y: iconRowPlacement(edl.captionStyle, 1, edl.format.width, edl.format.height).y,
+          y: iconRowPlacement(1, edl.format.width, edl.format.height).y,
           tone: edl.icons[0]?.tone ?? 'light',
           cards: [{ offsetSec: 0, word: op.value, query: op.value, markup: null, iconId: '' }],
         }] };

@@ -574,25 +574,75 @@ export function iconCardAt(cue: IconCue, card: IconCard): number {
 }
 
 /**
+ * Where the captions sit, once the frame has had its say.
+ *
+ * ── The rule ────────────────────────────────────────────────────────────
+ *
+ * Cut the frame into quarters: the words belong in the SECOND quarter up from
+ * the bottom. High enough not to crowd the bottom edge, low enough to stay out
+ * of the speaker's face, and — the part that actually matters — the same for
+ * every style, so a video does not change where its words live when somebody
+ * tries a different caption look.
+ *
+ * ── Why a clamp and not a rewrite ───────────────────────────────────────
+ *
+ * The twenty presets had drifted from 0.54 to 0.87, which is the difference
+ * between the middle of the frame and hard against the bottom edge. Rewriting
+ * each one's `positionY` would fix today's and drift again by the twenty-first;
+ * clamping keeps whatever difference a preset meant INSIDE the band and pulls
+ * only the outliers back.
+ *
+ * Measured, not assumed: the rendered ink of a caption block tracks
+ * `positionY` to within about 0.05 of the frame across every preset, so
+ * clamping the number the style declares is enough — there is no correction
+ * factor hiding in here. The upper bound is set by what has to fit UNDER it:
+ * a block centred at 0.70 reaches about 0.768 at its deepest, and the icon
+ * cards' band starts at 0.77.
+ *
+ * Most presets end up at the top of the band, which is the point — this is a
+ * clamp rather than a constant so that a preset with a real reason to sit
+ * higher keeps it, and only the drift gets corrected.
+ *
+ * ── Not for a split screen ──────────────────────────────────────────────
+ *
+ * A split layout hands the captions its own band, which is the one strip
+ * covering neither the face above nor the picture below, and that band is the
+ * whole point of the layout. `LayoutPlan.captionY` wins outright; this is only
+ * consulted when the layout has no opinion.
+ */
+export const CAPTION_BAND: readonly [number, number] = [0.63, 0.7];
+
+export function framedPositionY(style: Pick<CaptionStyle, 'positionY'>): number {
+  const [low, high] = CAPTION_BAND;
+  return Math.min(high, Math.max(low, style.positionY));
+}
+
+/**
  * Where a row of cards sits and how big each one is.
  *
- * ── Below the captions, in the lower half ───────────────────────────────
+ * ── The bottom quarter, and only the bottom quarter ─────────────────────
  *
- * The first version put the row above the words, which is where there is most
- * room — and it is the wrong place, because in a vertical talking-head frame
- * the speaker's FACE is in the upper half and a card there lands on it. So the
- * row hangs under the caption band instead, in the space nothing else uses.
+ * Cut the frame into quarters. The captions own the second one up from the
+ * bottom (see `CAPTION_BAND`); the icon cards own the first. That is the whole
+ * rule, and it is a rule rather than a calculation on purpose.
  *
- * ── Why the size is computed here and not fixed ─────────────────────────
+ * The version before this one measured the caption block and placed the row
+ * under whatever it found, which sounds more careful and was worse: the
+ * rendered height of a caption block does not follow from its `lineHeight` or
+ * its `maxLines` — it depends on how many lines the words actually made — so
+ * the model was wrong by up to eight per cent of the frame in both directions.
+ * Too small, and the words sat on the cards. Too large, and the card shrank to
+ * a sixth of the frame to make room for space that was never occupied.
  *
- * That space is not always the same size. A caption preset can put two lines
- * of a display face at 0.74 and reach almost to 0.88; another puts one tidy
- * line at 0.78. A fixed card fits the first case or the second, never both,
- * and the failure mode of "too big" is a card hanging off the bottom of the
- * frame. So the card is sized to the room it has, between a floor and the
- * reference size — where there is space it is exactly as big as the clip this
- * was measured from, and where there is not it is a smaller version of the
- * same object rather than a broken one.
+ * Two fixed bands cannot be wrong about each other.
+ *
+ * ── Why the size is computed at all ─────────────────────────────────────
+ *
+ * The band is a fraction of the HEIGHT, and three cards side by side are
+ * limited by the WIDTH. In a wide frame the width bites first, so the card is
+ * whichever of the two allows it — never larger than the 0.30 of the short
+ * edge the reference clip measured, never smaller than the point an icon
+ * stops reading as an object.
  */
 export interface IconRowPlacement {
   /** Normalised centre of the row. */
@@ -609,20 +659,29 @@ const ICON_CARD_MAX = 0.3;
 /** Smaller than this and the icon stops reading as an object. */
 const ICON_CARD_MIN = 0.15;
 
-/** Clear air between the caption band and the top of the cards. */
-const ICON_CAPTION_GAP = 0.025;
+/**
+ * The top of the cards' quarter, with a little air under the captions.
+ *
+ * A caption block centred at the band's lowest point reaches about 0.768 at
+ * its deepest, measured across every preset — so 0.77 clears the words without
+ * leaving a visible gap between the two layers.
+ */
+const ICON_BAND_TOP = 0.77;
 
-/** And between the cards and the bottom of the frame. */
-const ICON_BOTTOM_MARGIN = 0.03;
+/**
+ * And between the cards and the bottom of the frame.
+ *
+ * Generous on purpose. At 0.03 the tile's bottom edge sat three per cent of
+ * the frame off the floor, which reads as a thing that fell rather than a
+ * thing placed — "very, very far down" was the note. The card gives up size
+ * before it gives up this margin: a smaller tile in the right place looks
+ * deliberate, and a big one wedged against the edge does not.
+ */
+const ICON_BOTTOM_MARGIN = 0.07;
 
-export function iconRowPlacement(
-  captions: Pick<CaptionStyle, 'positionY' | 'fontSizeRatio' | 'maxLines' | 'emphasisOwnLine' | 'splitLines'>,
-  count: number,
-  width: number,
-  height: number,
-): IconRowPlacement {
+export function iconRowPlacement(count: number, width: number, height: number): IconRowPlacement {
   const shortEdge = Math.min(width, height);
-  const room = 1 - captionBottom(captions) - ICON_CAPTION_GAP - ICON_BOTTOM_MARGIN;
+  const room = 1 - ICON_BAND_TOP - ICON_BOTTOM_MARGIN;
 
   /*
    * Three cards have to fit ACROSS as well as under, and the width limit bites
@@ -635,32 +694,11 @@ export function iconRowPlacement(
     Math.min(shortEdge * ICON_CARD_MAX, widthLimit, room * height),
   );
 
-  // Hung from the bottom margin up, so the row is as far from the captions as
-  // the frame allows rather than pressed against them.
+  // Hung from the bottom margin up, so the row keeps its distance from the
+  // frame edge whatever size it ended up.
   const y = 1 - ICON_BOTTOM_MARGIN - card / height / 2;
 
   return { y, card, gap: shortEdge * 0.055 };
-}
-
-/**
- * The lowest the captions reach, allowing for the ways they get taller.
- *
- * Measured rather than modelled from `lineHeight`, because the rendered band
- * is nothing like the nominal one: the ink of two lines of `bold-pop` spans
- * 0.27 of the frame where `maxLines * fontSizeRatio * lineHeight` predicts
- * 0.13. Two things account for most of it — an emphasised word set on its own
- * line adds a line that `maxLines` does not count, and a display face's line
- * box is half again its nominal size once ascenders and descenders are in.
- *
- * Calibrated against renders of three presets, and deliberately generous: the
- * cost of over-estimating is a slightly smaller card, and the cost of
- * under-estimating is the captions sitting on top of it.
- */
-function captionBottom(
-  captions: Pick<CaptionStyle, 'positionY' | 'fontSizeRatio' | 'maxLines' | 'emphasisOwnLine' | 'splitLines'>,
-): number {
-  const lines = Math.max(1, captions.maxLines) + (captions.emphasisOwnLine || captions.splitLines ? 1 : 0);
-  return captions.positionY + lines * captions.fontSizeRatio * 0.8;
 }
 
 /* ------------------------------------------------------------------ scenes */
