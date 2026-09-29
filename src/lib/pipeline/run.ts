@@ -491,7 +491,7 @@ async function stageTimeline(ctx: PipelineContext): Promise<void> {
     reframe: null,
     sfx: [],
     music: null,
-    audio: { targetLufs: -14, denoise: true, highPassHz: 80, compress: true },
+    audio: { targetLufs: -14, denoise: true, highPassHz: 80, compress: true, jCutSec: 0.14 },
     deliverable: { title: '', socialCaption: '', hashtags: [], thumbnailAtSec: 0, chapters: [] },
     degraded: [],
   };

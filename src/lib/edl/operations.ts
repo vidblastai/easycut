@@ -409,6 +409,7 @@ function applyOne(edl: Edl, op: EdlOperation): Edl {
         return { ...edl, sfx: [...edl.sfx, {
           id, atSec: start, sound: (op.value || 'pop') as never, gainDb: -15,
           url: `/audio/sfx/${op.value || 'pop'}.wav`,
+          reason: 'added by hand',
         }] };
       }
       if (op.track === 'transitions') {

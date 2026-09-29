@@ -107,11 +107,11 @@ export const SAMPLE_EDL: Edl = {
     ],
   },
   sfx: [
-    { id: 'sfx-0', atSec: 5, sound: 'whoosh', gainDb: -15, url: '/audio/sfx/whoosh.wav' },
-    { id: 'sfx-1', atSec: 7.6, sound: 'pop', gainDb: -17, url: '/audio/sfx/pop.wav' },
+    { id: 'sfx-0', atSec: 5, sound: 'whoosh', gainDb: -15, url: '/audio/sfx/whoosh.wav', reason: 'sample' },
+    { id: 'sfx-1', atSec: 7.6, sound: 'pop', gainDb: -17, url: '/audio/sfx/pop.wav', reason: 'sample' },
   ],
   music: null,
-  audio: { targetLufs: -14, denoise: true, highPassHz: 80, compress: true },
+  audio: { targetLufs: -14, denoise: true, highPassHz: 80, compress: true, jCutSec: 0.14 },
   deliverable: {
     title: 'Most people get this backwards',
     socialCaption: 'The 30-second fix nobody talks about.',

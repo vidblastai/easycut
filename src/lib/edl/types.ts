@@ -1151,6 +1151,16 @@ export const SfxCueSchema = z.object({
   sound: z.string(),
   gainDb: z.number().default(-12),
   url: z.string().optional(),
+  /**
+   * What put it here — "slide-left in · coffee", "icon card · banana".
+   *
+   * Written so the editor can say what a cue is FOR before you delete it. A
+   * sound-effect track is a row of identical marks otherwise, and the whole
+   * point of these living on their own layer is that you can remove the whoosh
+   * while keeping the slide it came from — a choice you cannot make about a
+   * mark you cannot identify.
+   */
+  reason: z.string().default(''),
 });
 export type SfxCue = z.infer<typeof SfxCueSchema>;
 
@@ -1178,6 +1188,24 @@ export const AudioSettingsSchema = z.object({
   /** Removes the low rumble of a room / desk bumps. */
   highPassHz: z.number().default(80),
   compress: z.boolean().default(true),
+  /**
+   * How far the audio crosses a cut ahead of the picture — the J/L cut.
+   *
+   * Every cut this product makes is a splice out of ONE continuous take, so
+   * the room, the mic and the voice are identical either side of it. Butt the
+   * two together and the only thing that changes at the join is the sentence,
+   * which is exactly what makes an automated edit sound automated: the audio
+   * lands on the same frame as the picture, every time, all the way down.
+   *
+   * A real editor never does that. The next line's audio starts a breath
+   * before you see the cut (a J cut) and the last line's room carries a breath
+   * past it (an L cut), so the join is heard somewhere the eye is not looking
+   * for it. 140ms is enough to feel and short enough never to sound like two
+   * people talking over each other.
+   *
+   * Zero turns it off and restores the hard butt-join.
+   */
+  jCutSec: z.number().min(0).max(0.5).default(0.14),
 });
 export type AudioSettings = z.infer<typeof AudioSettingsSchema>;
 

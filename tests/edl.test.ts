@@ -125,6 +125,69 @@ describe('EDL builder', () => {
     }
   });
 
+  it('puts a sound on the B-roll transition, and names what it came from', () => {
+    const edl = build({
+      broll: [{ atSec: 10, durationSec: 4, query: 'coffee', intent: '', kind: 'stock-video' }],
+    });
+    const clip = edl.broll[0];
+    // The style picks the transition; guard the assumption rather than letting
+    // the test quietly pass on a style change that removed the sound entirely.
+    expect(clip.enter).not.toBe('cut');
+    expect(clip.enter).not.toBe('fade');
+
+    const enter = edl.sfx.find((c) => Math.abs(c.atSec - clip.outStartSec) < 0.02);
+    expect(enter).toBeDefined();
+    // Named, because the person deleting it in the editor needs to know that
+    // the transition survives the deletion.
+    expect(enter!.reason).toBe(`${clip.enter} in · coffee`);
+  });
+
+  it('starts the exit sound before the clip ends, not on its last frame', () => {
+    const edl = build({
+      broll: [{ atSec: 10, durationSec: 4, query: 'coffee', intent: '', kind: 'stock-video' }],
+    });
+    const clip = edl.broll[0];
+    expect(clip.exit).not.toBe('cut');
+    const exit = edl.sfx.find((c) => c.reason === `${clip.exit} out · coffee`);
+    expect(exit).toBeDefined();
+    // One transition-length early: the whoosh scores the picture leaving, not
+    // the shot that replaced it.
+    expect(exit!.atSec).toBeLessThan(clip.outEndSec);
+    expect(exit!.atSec).toBeGreaterThan(clip.outStartSec);
+  });
+
+  it('gives every icon card its own swipe, not one for the row', () => {
+    const edl = build({
+      icons: [
+        { atSec: 20, word: 'banana', query: 'banana' },
+        { atSec: 20.4, word: 'apple', query: 'apple' },
+      ],
+    });
+    const cards = edl.icons.flatMap((cue) => cue.cards);
+    expect(cards.length).toBeGreaterThan(1);
+    for (const card of cards) {
+      const at = edl.icons.find((c) => c.cards.includes(card))!.outStartSec + card.offsetSec;
+      const cue = edl.sfx.find((c) => Math.abs(c.atSec - at) < 0.02);
+      expect(cue, `no sound for ${card.word}`).toBeDefined();
+      expect(cue!.reason).toContain(card.word);
+    }
+  });
+
+  it('mixes an icon swipe below a full-frame transition', () => {
+    const edl = build({
+      broll: [{ atSec: 10, durationSec: 4, query: 'coffee', intent: '', kind: 'stock-video' }],
+      icons: [{ atSec: 20, word: 'banana', query: 'banana' }],
+    });
+    const icon = edl.sfx.find((c) => c.reason.startsWith('icon card'))!;
+    const full = edl.sfx.find((c) => c.reason.endsWith('in · coffee'))!;
+    expect(icon.gainDb).toBeLessThan(full.gainDb);
+  });
+
+  it('leaves the sound track alone when the director asked for no inserts', () => {
+    // No B-roll and no icons means nothing moved, so nothing should whoosh.
+    expect(build({}).sfx.filter((c) => c.reason)).toHaveLength(0);
+  });
+
   it('keeps punch-ins clear of B-roll and of each other', () => {
     const edl = build({
       broll: [{ atSec: 10, durationSec: 3, query: 'a', intent: '', kind: 'stock-video' }],

@@ -11,6 +11,7 @@ import { TRANSITION_COPY, TRANSITION_GLYPH } from '@/lib/edl/transition-copy';
 import { OVERLAY_COPY } from '@/lib/edl/overlay-copy';
 import { OverlayGrid, OverlaySwatch } from '@/components/broll/OverlaySwatch';
 import { LOOK_LIST } from '@/lib/scenes/looks';
+import { SFX_NAMES } from '@/lib/assets/sfx';
 
 /**
  * The timeline editor.
@@ -1466,7 +1467,7 @@ function TimelineEditorImpl({
                 data-clip-id={cue.id}
                 data-track="sfx"
                 data-selected={selection?.kind === 'sfx' && selection.id === cue.id ? 'true' : undefined}
-                title={`${cue.sound} · ${formatTc(cue.atSec)}`}
+                title={[cue.sound, formatTc(cue.atSec), cue.reason].filter(Boolean).join(' · ')}
                 className="group absolute top-0 flex h-[19px] w-4 -translate-x-1/2 cursor-grab touch-none items-center justify-center"
                 style={{ left: (dragPreview?.id === cue.id ? dragPreview.start : cue.atSec) * pps }}
               >
@@ -2748,8 +2749,20 @@ function Inspector({
     return (
       <div>
         <h4 className="text-[11px] font-bold uppercase tracking-wider text-muted/70">Sound effect</h4>
+        {/* What this cue is FOR.
+
+            The sounds are placed automatically on the transitions and the icon
+            pop-ups, which means the person deleting one wants to know what it
+            was hung on before they delete it — and, more to the point, wants to
+            know that deleting the sound leaves the transition and the icon
+            alone. Saying "slide-left in · coffee" answers both at once. */}
+        {cue.reason ? (
+          <p className="mt-1 text-[11px] text-muted">
+            {cue.reason} · <span className="text-muted/60">deleting this keeps the transition</span>
+          </p>
+        ) : null}
         <div className="mt-2 flex flex-wrap gap-1.5">
-          {(['whoosh', 'pop', 'riser', 'impact', 'click', 'swipe', 'ding', 'sub-drop'] as const).map((sound) => (
+          {SFX_NAMES.map((sound) => (
             <button
               key={sound}
               type="button"
@@ -2763,6 +2776,32 @@ function Inspector({
             </button>
           ))}
         </div>
+
+        {/* Volume.
+
+            The defaults are set against speech at −14 LUFS, which is the right
+            answer on average and the wrong one for any particular video — a
+            quiet talking head wants these further back, a loud one further
+            forward. That is a judgement made by listening, so it belongs on a
+            slider rather than in a constant. */}
+        <label className="mt-3 block text-[11px] font-semibold text-muted">
+          Volume
+          <span className="ml-1.5 font-normal tabular-nums text-faint">{cue.gainDb.toFixed(0)} dB</span>
+          <input
+            type="range"
+            min={-34}
+            max={0}
+            step={1}
+            value={cue.gainDb}
+            onChange={(e) =>
+              onChange({
+                op: 'clip.update', track: 'sfx', id: cue.id,
+                patch: { gainDb: Number(e.target.value) },
+              })
+            }
+            className="mt-1 w-full accent-violet"
+          />
+        </label>
       </div>
     );
   }
@@ -2895,7 +2934,7 @@ function AddMenu({ atSec, onAdd }: { atSec: number; onAdd: (op: EdlOperation) =>
             Sound
           </div>
           <div className="flex flex-wrap gap-1 p-2 pt-0">
-            {(['whoosh', 'pop', 'impact', 'swipe', 'riser', 'ding', 'click', 'sub-drop'] as const).map((sound) => (
+            {SFX_NAMES.map((sound) => (
               <button
                 key={sound}
                 type="button"

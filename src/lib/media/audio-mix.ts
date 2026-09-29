@@ -17,6 +17,16 @@ import type { Edl } from '@/lib/edl/types';
  *   sfx[] ─ adelay ─ volume ────────────────────────────────────────────────────────┘
  */
 
+/**
+ * Past this many segments the J/L cut is dropped and the hard concat returns.
+ *
+ * The overlap costs one `amix` input per segment. A short has twenty and a
+ * forty-minute lecture can have six hundred, where the filter graph alone
+ * takes longer to parse than the polish is worth — and the audio pass has to
+ * finish inside the video render or the whole speed budget goes.
+ */
+const J_CUT_MAX_SEGMENTS = 160;
+
 export interface AudioMixOptions {
   sourceAudioPath: string;
   /** Local path per SFX name, resolved before the mix. */
@@ -41,16 +51,76 @@ export function buildAudioGraph(edl: Edl, options: AudioMixOptions): AudioMixPla
   const segments = [...edl.segments].sort((a, b) => a.outStartSec - b.outStartSec);
   const speechLabels: string[] = [];
 
+  /*
+   * ── J and L cuts ───────────────────────────────────────────────────────
+   *
+   * `concat` butts every segment's audio hard against the next, which puts
+   * the audio join on the same frame as the picture join, every time, all the
+   * way down a video. That is precisely what makes an automated edit sound
+   * automated — a real editor lets the next line's audio start a breath early
+   * and the last line's room carry a breath late, so the seam is heard
+   * somewhere the eye is not looking for it.
+   *
+   * So each segment is trimmed WIDER than its picture and placed absolutely
+   * with `adelay`, overlapping its neighbours by `jCutSec` at each end, with
+   * fades across the overlaps. One segment's fade-out and the next one's
+   * fade-in span the same moment, which is a crossfade — and because only the
+   * placement moved and not the length, the timeline is exactly as long as it
+   * was.
+   *
+   * It costs one mix input per segment, which is nothing for a short and a
+   * very large filter graph for an hour-long lecture. Past the cap the hard
+   * concat comes back: the effect is worth a few milliseconds of polish, not
+   * worth a render that takes longer than the video.
+   */
+  const lead = edl.audio.jCutSec;
+  const overlapping = lead > 0 && segments.length > 1 && segments.length <= J_CUT_MAX_SEGMENTS;
+
   segments.forEach((seg, i) => {
     const label = `s${i}`;
+    const outLen = Math.max(0.001, seg.outEndSec - seg.outStartSec);
+    const speed = Math.abs(seg.speed - 1) > 0.001 ? seg.speed : 1;
+
+    /*
+     * Never more than 40% of the segment from either end.
+     *
+     * A 0.3s segment given a 0.14s lead AND a 0.14s tail is a segment that is
+     * fading in until it starts fading out — no part of it is ever at full
+     * level, and a run of short segments turns into mush.
+     */
+    const room = outLen * 0.4;
+    // Nothing to lead into on the first, nothing to carry past on the last.
+    // And a lead can never reach back before the start of the source file.
+    const leadIn = overlapping && i > 0 ? Math.min(lead, room, seg.sourceStartSec / speed) : 0;
+    const tailOut = overlapping && i < segments.length - 1 ? Math.min(lead, room) : 0;
+
     const chain = [
-      `atrim=start=${seg.sourceStartSec.toFixed(4)}:end=${seg.sourceEndSec.toFixed(4)}`,
+      // Widened in SOURCE seconds: a lead of `leadIn` output-seconds is
+      // `leadIn * speed` of source, or a sped-up segment leads by the wrong
+      // amount and drifts off its own picture.
+      `atrim=start=${Math.max(0, seg.sourceStartSec - leadIn * speed).toFixed(4)}` +
+        `:end=${(seg.sourceEndSec + tailOut * speed).toFixed(4)}`,
       'asetpts=PTS-STARTPTS',
     ];
     // A speed change has to be applied to audio too or lips stop matching.
-    if (Math.abs(seg.speed - 1) > 0.001) chain.push(`atempo=${clampTempo(seg.speed)}`);
-    // Short fades at every join: a hard splice on a waveform is an audible click.
-    chain.push('afade=t=in:st=0:d=0.012', `afade=t=out:st=${Math.max(0, (seg.outEndSec - seg.outStartSec) - 0.012).toFixed(4)}:d=0.012`);
+    if (speed !== 1) chain.push(`atempo=${clampTempo(seg.speed)}`);
+
+    // 12ms minimum at every join even with no overlap: a hard splice on a
+    // waveform is an audible click.
+    const fadeIn = Math.max(0.012, leadIn);
+    const fadeOut = Math.max(0.012, tailOut);
+    const total = outLen + leadIn + tailOut;
+    chain.push(
+      `afade=t=in:st=0:d=${fadeIn.toFixed(4)}`,
+      `afade=t=out:st=${Math.max(0, total - fadeOut).toFixed(4)}:d=${fadeOut.toFixed(4)}`,
+    );
+
+    if (overlapping) {
+      // Placed absolutely rather than concatenated, which is what lets it sit
+      // earlier than its own picture.
+      const atMs = Math.max(0, Math.round((seg.outStartSec - leadIn) * 1000));
+      chain.push(`adelay=${atMs}|${atMs}:all=1`);
+    }
 
     parts.push(`[0:a]${chain.join(',')}[${label}]`);
     speechLabels.push(`[${label}]`);
@@ -60,8 +130,21 @@ export function buildAudioGraph(edl: Edl, options: AudioMixOptions): AudioMixPla
     // No segments at all — emit silence so the mux still produces a valid file.
     parts.push(`anullsrc=channel_layout=stereo:sample_rate=48000,atrim=duration=${edl.format.durationSec}[speech]`);
   } else {
-    parts.push(`${speechLabels.join('')}concat=n=${speechLabels.length}:v=0:a=1[speechRaw]`);
+    if (overlapping) {
+      // `normalize=0`, or mixing N streams divides every one of them by N and
+      // the whole voice track drops through the floor.
+      parts.push(
+        `${speechLabels.join('')}amix=inputs=${speechLabels.length}:duration=longest:dropout_transition=0:normalize=0[speechRaw]`,
+      );
+    } else {
+      parts.push(`${speechLabels.join('')}concat=n=${speechLabels.length}:v=0:a=1[speechRaw]`);
+    }
 
+    // The cleanup runs whichever way the segments were joined. Levelling the
+    // voice is not a property of the join — and `[speech]` is what the music
+    // and the final mix both read, so a branch that skips this stage does not
+    // merely sound unprocessed, it leaves the label undefined and ffmpeg
+    // refuses the whole graph.
     const cleanup: string[] = [];
     if (edl.audio.highPassHz > 0) cleanup.push(`highpass=f=${edl.audio.highPassHz}`);
     // Gentle spectral denoise: enough for room hiss, not enough to sound processed.

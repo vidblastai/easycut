@@ -723,6 +723,95 @@ first version used the same fixture for the speaker AND the inserts, which
 made it impossible to see where one ended and the other began — the exact
 thing the strip exists to show.
 
+## What a transition sounds like
+
+A transition makes a sound, and which sound is a table — `src/lib/edl/sfx-cues.ts`
+— not a prompt. A whoosh under a slide is the same decision every editor makes
+every time; asking a model to make it again per video buys variance and latency
+and nothing else. Slides get `swipe`, zoom and whip and the two optical ones get
+`whoosh`, `glitch` gets its own sound, `flash` gets `impact`. `fade` and `cut`
+get **silence**: a dissolve that whooshes is the most recognisable sign of
+somebody who has just found sound effects, and a cut has no movement to sell.
+
+Three things about placement:
+
+1. **An exit sound starts one transition-length before the clip ENDS**, not at
+   its end, where the movement is over and the whoosh scores the shot that
+   replaced it. The number that decides this is the same number the composition
+   animates with, which is why `clipTransitionSec` moved out of the renderer into
+   `src/lib/edl/transition-timing.ts`. Two copies of it drift apart; one cannot.
+2. **One sound per icon CARD, not per row.** A row of two arrives one at a time,
+   and a single swipe on the first leaves the second looking broken.
+3. **Cues within 120ms of each other are thinned**, keeping the earlier. Two
+   swipes 80ms apart is one sound with a flam on it. The gap is measured from the
+   last cue KEPT, not the last one seen, or a busy stretch silences itself.
+
+Every cue carries a `reason` (`"slide-left in · coffee"`, `"icon card · banana"`),
+shown in the editor's inspector. Sound lives on its own track, so deleting a cue
+leaves the transition, the insert and the icon exactly where they were — and the
+`reason` is what tells somebody that before they click.
+
+### The gains are only comparable because the files are normalised
+
+`defaultGainDb` in `src/lib/assets/sfx.ts` reads as a mix level: −7 for a swipe
+against −5 for an impact says the impact sits two decibels above it. That is only
+true if the files are equally loud to begin with, and synthesis recipes are
+nothing of the kind — a square wave runs to full scale on its own while a
+filtered noise sweep comes out twenty decibels down. `alimiter` in the generator
+does not fix it: it caps a loud peak and leaves a quiet one exactly where it was.
+
+So `generate-sfx.ts` renders, reads the file's real level back, and applies the
+gain that brings it to −20 dBFS **RMS**, with a −1 dBFS ceiling. Energy, not
+peak: a noise swish and a square wave at the same PEAK differ by fifteen
+decibels of crest factor and the swish is the one nobody hears. Peak-normalising
+first was a real wrong turn here — every file measured −1.0 dBFS and looked
+correct while `swipe` still played audibly under `glitch`.
+
+Against speech levelled to −14 LUFS the arithmetic is then simple: a sound plays
+`gain − 6` dB relative to the voice. Transitions sit 12–14 dB under, accents
+11–12, punctuation 16–22. `tests/sfx-library.test.ts` reads the shipped bytes and
+pins all of it.
+
+None of that was found by reading. It was found by rendering a clip and measuring
+the mix, which showed the transition sounds 20–28 dB under the voice — inaudible.
+`scripts/sfx-clip.ts` is that clip; it renders the picture through Remotion and
+the mix through the same ffmpeg graph the export uses, so the sounds can be
+heard against the cuts they are on.
+
+## J and L cuts
+
+`concat` butts every segment's audio hard against the next, which puts the audio
+join on the same frame as the picture join, every time, all the way down a video.
+That is precisely what makes an automated edit sound automated.
+
+So in `src/lib/media/audio-mix.ts` each segment is trimmed WIDER than its picture
+and placed absolutely with `adelay`, overlapping its neighbours by
+`edl.audio.jCutSec` (0.14s) with fades across the overlaps — one segment's
+fade-out and the next one's fade-in span the same moment, which is a crossfade.
+Only the placement moved, not the length, so the timeline is exactly as long as
+it was; `tests/jl-cut.test.ts` renders both ways and compares durations, because
+a J cut that desynced the video would be a catastrophe dressed as a polish pass.
+
+Four things it has to get right, each of which is a bug if it does not:
+
+- **Widen in SOURCE seconds** (`leadIn * speed`), or a sped-up segment leads by
+  the wrong amount and drifts off its own picture.
+- **Never more than 40% of a segment from either end**, or a 0.3s segment is
+  fading in until it starts fading out and a run of them turns to mush.
+- **Never reach back before the start of the source file**, which is a negative
+  timestamp.
+- **`amix` needs `normalize=0`**, or mixing N streams divides every one by N and
+  the whole voice track drops through the floor.
+
+Past `J_CUT_MAX_SEGMENTS` (160) the hard concat comes back: the effect is worth a
+few milliseconds of polish, not a filter graph that takes longer to parse than
+the render.
+
+The cleanup chain — highpass, denoise, compressor, `loudnorm` — runs whichever
+way the segments were joined. It lived inside the concat branch at first, which
+left `[speech]` (the label the music duck and the final mix both read) undefined
+the moment the overlap turned on, so ffmpeg refused the whole graph.
+
 ## What an insert wears
 
 Eleven treatments plus `none`, scoped to the B-roll clip, in two groups that

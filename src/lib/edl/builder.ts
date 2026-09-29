@@ -8,6 +8,8 @@ import { LOOK_META } from '@/lib/scenes/looks';
 import { TimeMapper } from '@/lib/timeline/time-mapper';
 import type { Transcript } from '@/lib/transcribe/types';
 import { buildCaptions } from './captions';
+import { thinCues, transitionCues } from './sfx-cues';
+import { sfxDefaultGain, type SfxName } from '@/lib/assets/sfx';
 import { fallbackScene } from './scene-fallback';
 import {
   ASPECT_DIMENSIONS,
@@ -164,10 +166,6 @@ export function buildEdl(input: BuildEdlInput): Edl {
 
   const transitions = placeTransitions(mapper, style.transitions, pacing.transitionDensity, durationSec);
 
-  /* --------------------------------- sfx ---------------------------------- */
-
-  const sfx = placeSfx(plan, mapper, durationSec, transitions, graphics, broll);
-
   /* ------------------------------ icon cards ------------------------------ */
 
   // After the three layers it defers to, because it needs to see what they
@@ -184,6 +182,13 @@ export function buildEdl(input: BuildEdlInput): Edl {
     LOOK_META[style.sceneLook].tone,
     dimensions,
   );
+
+  /* --------------------------------- sfx ---------------------------------- */
+
+  // Last of the cue layers, because it now reads all of them: a sound lands on
+  // a transition, and until the inserts and the icon cards are placed there is
+  // nothing for it to land on.
+  const sfx = placeSfx(plan, mapper, durationSec, transitions, graphics, broll, icons, dimensions);
 
   /* ------------------------------- overlays ------------------------------- */
 
@@ -221,6 +226,9 @@ export function buildEdl(input: BuildEdlInput): Edl {
       denoise: true,
       highPassHz: 80,
       compress: true,
+      // The audio crosses every cut a breath before the picture does. See
+      // `jCutSec` — it is the difference between an edit and a splice.
+      jCutSec: 0.14,
     },
     deliverable: {
       title: plan.deliverable.title,
@@ -757,21 +765,38 @@ function placeSfx(
   transitions: TransitionCue[],
   graphics: GraphicElement[],
   broll: BrollClip[],
+  icons: IconCue[],
+  frame: { width: number; height: number },
 ): SfxCue[] {
   const cues: SfxCue[] = [];
-  const push = (atSec: number, sound: SfxCue['sound'], gainDb: number) => {
+  const push = (atSec: number, sound: SfxCue['sound'], gainDb: number, reason: string) => {
     if (atSec < 0.05 || atSec > durationSec - 0.05) return;
     // Two effects within 150 ms is a click, not punctuation.
     if (cues.some((c) => Math.abs(c.atSec - atSec) < 0.15)) return;
-    cues.push({ id: `sfx-${cues.length}`, atSec, sound, gainDb });
+    cues.push({ id: `sfx-${cues.length}`, atSec, sound, gainDb, reason });
   };
 
-  // Director-chosen cues first — they have the context.
-  for (const cue of plan.sfx) push(mapper.toOutputClamped(cue.atSec), cue.sound, -14);
+  // Director-chosen cues first — they have the context, and where one of them
+  // collides with a structural cue below it is the structural one that goes.
+  for (const cue of plan.sfx) push(mapper.toOutputClamped(cue.atSec), cue.sound, -14, 'chosen by the edit');
   // Then the structural ones the director can't see, because they depend on cuts.
-  for (const t of transitions) push(t.atSec, t.type === 'zoom-punch' ? 'impact' : 'whoosh', -15);
-  for (const g of graphics) if (g.type !== 'title-card') push(g.outStartSec, 'pop', -17);
-  for (const b of broll) push(b.outStartSec, 'swipe', -18);
+  for (const t of transitions) {
+    push(t.atSec, t.type === 'zoom-punch' ? 'impact' : 'whoosh', -15, `${t.type} between shots`);
+  }
+  for (const g of graphics) if (g.type !== 'title-card') push(g.outStartSec, 'pop', -17, `${g.type} appears`);
+
+  /*
+   * And the ones that belong to a MOVE.
+   *
+   * This used to be one line — a swipe on every insert's entrance, whatever
+   * the insert actually did — so a glitch got a swipe, a fade got a swipe, and
+   * nothing at all marked an insert LEAVING. The sound now comes from the
+   * transition, lands where that transition starts, and is silent for the two
+   * transitions that are supposed to be silent. See `sfx-cues.ts`.
+   */
+  for (const cue of thinCues(transitionCues(broll, icons, frame))) {
+    push(cue.atSec, cue.sound, sfxDefaultGain(cue.sound as SfxName) + cue.gainTrimDb, cue.reason);
+  }
 
   return cues.sort((a, b) => a.atSec - b.atSec);
 }
