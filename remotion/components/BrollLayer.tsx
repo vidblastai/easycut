@@ -2,6 +2,7 @@ import React from 'react';
 import { AbsoluteFill, Img, OffthreadVideo, Sequence, useCurrentFrame, useVideoConfig } from 'remotion';
 import type { BrollClip, Edl } from '../../src/lib/edl/types';
 import { ramp } from '../lib/timing';
+import { BrollOverlay } from './BrollOverlay';
 import { ClipFrameFilter, ClipTransitionEffect, clipFilter, clipFrameStyle, clipNeedsFilter, clipPhase, clipTransitionSec, fitTransitions } from '../lib/clip-transition';
 import { layoutPlan, regionStyle } from '../../src/lib/styles/layouts';
 
@@ -164,6 +165,20 @@ const BrollInsert: React.FC<{
           <Img src={clip.url} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
         )}
       </AbsoluteFill>
+
+      {/* The treatment the insert is wearing.
+
+          Above the picture and BELOW the transition effect, which is the only
+          order that works: a glitch tears the shot, and a shot with grain on
+          it should tear with its grain. Painting the grain after the tear puts
+          a clean, undamaged layer on top of the damage.
+
+          Inside the clip's frame either way, so it stops where the insert
+          stops — grain over the B-roll and not over the speaker is an edit,
+          grain over both is a filter. */}
+      {clip.overlay !== 'none' ? (
+        <BrollOverlay type={clip.overlay} seed={clip.id} progress={progress} cheap={cheap} />
+      ) : null}
 
       {/* Over the picture, inside the clip's own frame — a glitch that spilled
           past the insert would tear the speaker either side of it too. */}

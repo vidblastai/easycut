@@ -723,6 +723,49 @@ first version used the same fixture for the speaker AND the inserts, which
 made it impossible to see where one ended and the other began — the exact
 thing the strip exists to show.
 
+## What an insert wears
+
+Six treatments, scoped to the B-roll clip: `dust`, `grain`, `light-leak`,
+`scanlines`, `prism`, `vignette`, and `none`. The style declares the default
+(`StylePreset.brollOverlay`) and the editor overrides it per clip, because it
+is a property of the SHOT as much as of the look — grain suits the archive
+photo and scanlines suit the screen capture two inserts later.
+
+**Drawn, never a plate.** The industry way is a library of 4K ProRes overlays
+screen-blended over the picture: gigabytes to store and serve, a licence each,
+a fixed length that has to be looped into a 2.4-second insert, and a look
+nobody can adjust afterwards. Drawn from the clip's seed they cost nothing,
+they are exactly as long as the insert, they scale to any aspect, and their
+strength is a number.
+
+**Inside the clip's frame, under the transition effect.** Over the B-roll and
+not over the speaker is an EDIT; over both is a filter, and `Overlays` is where
+a filter on the whole video belongs. Under the transition because a glitch
+tears the shot, and a shot with grain on it should tear with its grain —
+painting the grain after the tear puts a clean layer on top of the damage.
+
+Three things this got wrong on the first pass, all invisible in the diff and
+obvious in a render:
+
+- **Grain is not a sparse field of dots.** Copying the full-frame layer's 220
+  drawn circles gave one speck per nine thousand pixels at 1080×1920 — invisible
+  at native resolution and gone entirely on a phone. Grain is a property of
+  every pixel, and `feTurbulence` says that in one primitive. `fractalNoise`,
+  not `turbulence`: the latter takes the absolute value, which biases dark and
+  clumps into smoke.
+- **Every frequency and size scales off the frame.** A fixed `baseFrequency`
+  gives a 4K export four times finer grain than a 1080 one, which is exactly
+  the bug where an effect tuned in preview vanishes in the export.
+- **Everything was too weak to see.** Judged on flat colour plates first, which
+  proved nothing — they have no highlights for a leak to bloom in and no
+  texture for grain to sit on. Use a photograph.
+
+A permanent split-screen slot gets `none`: that is not an insert, it is the
+other half of the video for four minutes.
+
+    npx tsx scripts/broll-overlay.ts out/plates/real.png        # all six
+    npx tsx scripts/broll-overlay.ts out/plates/real.png dust   # just one
+
 ## Verifying
 
 Render stills, do not reason about it. Every failure this layer has had was

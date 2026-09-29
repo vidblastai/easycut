@@ -423,6 +423,9 @@ function applyOne(edl: Edl, op: EdlOperation): Edl {
           id, outStartSec: start, outEndSec: end, kind: 'stock-video' as const,
           url: '', clipStartSec: 0, scale: 1, kenBurns: 'in' as const,
           audioGainDb: -60, opacity: 1, intent: 'Added by hand', query: op.value, attribution: undefined,
+          // Matched to whatever the inserts already in this video wear, so a
+          // clip added by hand does not arrive naked beside four treated ones.
+          overlay: edl.broll[0]?.overlay ?? 'none',
           // Whatever the inserts either side of it do, so a hand-added clip
           // does not announce itself as the odd one out.
           enter: edl.broll[0]?.enter ?? 'fade', exit: edl.broll[0]?.exit ?? 'fade',

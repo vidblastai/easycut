@@ -93,6 +93,16 @@ export function buildEdl(input: BuildEdlInput): Edl {
     pacing.brollDurationSec,
     captions,
     layoutPlan(style.layout).alwaysOn,
+    /*
+     * A layout whose B-roll owns half the frame gets no treatment either.
+     *
+     * Same reason the transitions go to `cut`: that slot is not an insert, it
+     * is the other half of the video, on screen from the first frame to the
+     * last. Grain running for four minutes down one side of a split screen is
+     * a filter on the video, and the `overlays` layer is where a filter on the
+     * video belongs.
+     */
+    layoutPlan(style.layout).alwaysOn ? 'none' : style.brollOverlay,
     // A layout that gives B-roll a permanent half has nothing to transition
     // INTO — the slot is on screen from the first frame — so those cut.
     layoutPlan(style.layout).alwaysOn ? ['cut'] : style.clipTransitions,
@@ -241,6 +251,8 @@ function placeBroll(
    * black rectangle beside somebody's face.
    */
   alwaysOn: boolean,
+  /** The treatment every insert in this style wears. */
+  overlay: Edl['broll'][number]['overlay'],
   /** The style's vocabulary of enter/exit moves, cycled per insert. */
   transitions: readonly ClipTransition[],
 ): BrollClip[] {
@@ -294,6 +306,7 @@ function placeBroll(
       opacity: 1,
       intent: cue.intent,
       query: cue.query,
+      overlay,
     });
   }
 

@@ -406,6 +406,31 @@ export const CLIP_TRANSITION_MOVES: readonly ClipTransition[] = [
   'slide-left', 'slide-right', 'slide-up', 'slide-down', 'zoom',
 ];
 
+/**
+ * What an insert can wear.
+ *
+ * All six are DRAWN, every frame, from the clip's own seed — there is not a
+ * single overlay file anywhere in this product and that is deliberate. The
+ * usual way to do this is a library of 4K ProRes plates screen-blended over
+ * the picture, which means gigabytes to store and serve, a licence per plate,
+ * a fixed length that has to be looped or trimmed, and a look nobody can
+ * adjust afterwards. Drawn, they cost nothing, they are the exact length of
+ * the insert, they scale to any aspect, and their strength is a number.
+ *
+ * Two of atmosphere, two of screen, two of photography — chosen so that a
+ * person picking can tell them apart from the names.
+ */
+export const BROLL_OVERLAYS = [
+  'none',
+  'dust',        // particles drifting through the light
+  'grain',       // 16mm film grain
+  'light-leak',  // a warm bloom crossing the frame
+  'scanlines',   // CRT/VHS: line structure and a rolling band
+  'prism',       // chromatic fringe at the edges
+  'vignette',    // the quiet one: darkened corners
+] as const;
+export type BrollOverlay = (typeof BROLL_OVERLAYS)[number];
+
 export const BrollClipSchema = z.object({
   id: z.string(),
   outStartSec: z.number().nonnegative(),
@@ -434,6 +459,19 @@ export const BrollClipSchema = z.object({
    */
   enter: z.enum(CLIP_TRANSITIONS).default('fade'),
   exit: z.enum(CLIP_TRANSITIONS).default('fade'),
+  /**
+   * A treatment painted over this insert, and only this insert.
+   *
+   * Scoped to the clip rather than the frame, which is the whole difference
+   * between this and the `overlays` layer above: that one is the VIDEO's
+   * chrome — a progress bar, a vignette over everything — and this is
+   * something the insert is wearing. Grain over the B-roll and not over the
+   * speaker is an edit; grain over both is a filter.
+   *
+   * `none` by default, so a document written before these existed renders
+   * exactly the picture it rendered before.
+   */
+  overlay: z.enum(BROLL_OVERLAYS).default('none'),
 });
 export type BrollClip = z.infer<typeof BrollClipSchema>;
 

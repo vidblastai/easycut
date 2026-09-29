@@ -1,4 +1,4 @@
-import { CLIP_TRANSITIONS, SCENE_LOOKS, type Aspect, type CaptionStyle, type ClipTransition, type Layout, type SceneLook, type TransitionType } from '@/lib/edl/types';
+import { CLIP_TRANSITIONS, SCENE_LOOKS, type Aspect, type BrollOverlay, type CaptionStyle, type ClipTransition, type Layout, type SceneLook, type TransitionType } from '@/lib/edl/types';
 import { findCaptionPreset } from '@/lib/captions/presets';
 
 /**
@@ -92,6 +92,15 @@ export interface StylePreset {
    * the style's signature move rather than a rotating one.
    */
   clipTransitions: ClipTransition[];
+  /**
+   * The treatment every insert in this style wears.
+   *
+   * A property of the LOOK, like the transition vocabulary beside it, because
+   * grain belongs to a documentary and scanlines belong to something loud, and
+   * neither is a property of the clip that happened to be found. Overridable
+   * per clip in the editor.
+   */
+  brollOverlay: BrollOverlay;
   musicMood: string;
   musicGainDb: number;
   /** Silence handling aggressiveness for raw footage. */
@@ -117,6 +126,7 @@ const RAW_PRESETS: Record<StyleId, Omit<StylePreset, 'captionStyle'>> = {
     captionPreset: 'clean-plate',
     transitions: ['cut', 'dissolve'],
     clipTransitions: ['fade', 'slide-up', 'zoom'],
+    brollOverlay: 'none',
     musicMood: 'minimal ambient',
     musicGainDb: -22,
     silencePreset: 'balanced',
@@ -158,6 +168,7 @@ const RAW_PRESETS: Record<StyleId, Omit<StylePreset, 'captionStyle'>> = {
     captionPreset: 'impact',
     transitions: ['cut', 'whip-pan', 'zoom-punch', 'flash', 'glitch', 'zoom-blur', 'pixelate'],
     clipTransitions: ['glitch', 'slide-left', 'whip', 'slide-up', 'flash'],
+    brollOverlay: 'prism',
     musicMood: 'upbeat energetic',
     musicGainDb: -16,
     silencePreset: 'aggressive',
@@ -213,6 +224,7 @@ const RAW_PRESETS: Record<StyleId, Omit<StylePreset, 'captionStyle'>> = {
     captionPreset: 'bold-pop',
     transitions: ['cut', 'zoom-punch', 'flash', 'zoom-blur'],
     clipTransitions: ['whip', 'zoom', 'slide-left', 'flash'],
+    brollOverlay: 'scanlines',
     musicMood: 'upbeat energetic',
     musicGainDb: -19,
     silencePreset: 'aggressive',
@@ -271,6 +283,7 @@ const RAW_PRESETS: Record<StyleId, Omit<StylePreset, 'captionStyle'>> = {
     captionPreset: 'bold-pop',
     transitions: ['cut', 'dissolve'],
     clipTransitions: ['fade', 'zoom', 'slide-up'],
+    brollOverlay: 'grain',
     musicMood: 'low-key groove',
     musicGainDb: -21,
     silencePreset: 'balanced',
@@ -327,6 +340,7 @@ const RAW_PRESETS: Record<StyleId, Omit<StylePreset, 'captionStyle'>> = {
     captionPreset: 'subtitle',
     transitions: ['cut', 'slide', 'push'],
     clipTransitions: ['slide-left', 'slide-right', 'slide-up', 'fade'],
+    brollOverlay: 'none',
     musicMood: '',
     musicGainDb: -26,
     silencePreset: 'aggressive',
@@ -381,6 +395,7 @@ const RAW_PRESETS: Record<StyleId, Omit<StylePreset, 'captionStyle'>> = {
     captionPreset: 'bold-pop',
     transitions: ['cut', 'whip-pan', 'slide', 'push', 'barn-door'],
     clipTransitions: ['slide-up', 'slide-left', 'whip', 'slide-down'],
+    brollOverlay: 'prism',
     musicMood: 'upbeat energetic',
     musicGainDb: -18,
     silencePreset: 'aggressive',
@@ -437,6 +452,7 @@ const RAW_PRESETS: Record<StyleId, Omit<StylePreset, 'captionStyle'>> = {
     captionPreset: 'subtitle',
     transitions: ['cut', 'dissolve'],
     clipTransitions: ['fade', 'slide-up', 'zoom'],
+    brollOverlay: 'none',
     musicMood: '',
     musicGainDb: -26,
     silencePreset: 'balanced',
@@ -495,6 +511,7 @@ const RAW_PRESETS: Record<StyleId, Omit<StylePreset, 'captionStyle'>> = {
     captionPreset: 'editorial',
     transitions: ['cut', 'dissolve'],
     clipTransitions: ['fade', 'zoom', 'slide-up'],
+    brollOverlay: 'grain',
     musicMood: 'cinematic emotional',
     musicGainDb: -23,
     silencePreset: 'gentle',
@@ -544,6 +561,7 @@ const RAW_PRESETS: Record<StyleId, Omit<StylePreset, 'captionStyle'>> = {
     captionPreset: 'bold-pop',
     transitions: ['cut', 'whip-pan', 'zoom-punch'],
     clipTransitions: ['slide-left', 'slide-right', 'fade'],
+    brollOverlay: 'none',
     musicMood: 'upbeat energetic',
     musicGainDb: -18,
     silencePreset: 'aggressive',
@@ -600,6 +618,7 @@ const RAW_PRESETS: Record<StyleId, Omit<StylePreset, 'captionStyle'>> = {
     captionPreset: 'editorial',
     transitions: ['cut', 'dissolve', 'film-burn'],
     clipTransitions: ['film-burn', 'fade', 'light-leak', 'zoom'],
+    brollOverlay: 'grain',
     musicMood: 'cinematic emotional',
     musicGainDb: -20,
     silencePreset: 'gentle',
@@ -641,6 +660,7 @@ const RAW_PRESETS: Record<StyleId, Omit<StylePreset, 'captionStyle'>> = {
     captionPreset: 'highlight-box',
     transitions: ['cut', 'slide', 'zoom-punch'],
     clipTransitions: ['slide-up', 'slide-left', 'zoom', 'fade'],
+    brollOverlay: 'dust',
     musicMood: 'light curious',
     musicGainDb: -24,
     silencePreset: 'balanced',
@@ -682,6 +702,7 @@ const RAW_PRESETS: Record<StyleId, Omit<StylePreset, 'captionStyle'>> = {
     captionPreset: 'podcast',
     transitions: ['cut', 'dissolve'],
     clipTransitions: ['fade', 'slide-up'],
+    brollOverlay: 'grain',
     musicMood: 'low-key groove',
     musicGainDb: -26,
     silencePreset: 'gentle',
@@ -725,6 +746,7 @@ const RAW_PRESETS: Record<StyleId, Omit<StylePreset, 'captionStyle'>> = {
     captionPreset: 'subtitle',
     transitions: ['cut', 'dissolve'],
     clipTransitions: ['fade', 'slide-right', 'zoom'],
+    brollOverlay: 'none',
     musicMood: 'light curious',
     musicGainDb: -24,
     silencePreset: 'balanced',
@@ -765,6 +787,7 @@ const RAW_PRESETS: Record<StyleId, Omit<StylePreset, 'captionStyle'>> = {
     captionPreset: 'bold-pop',
     transitions: ['cut', 'whip-pan', 'dissolve', 'slide'],
     clipTransitions: ['light-leak', 'whip', 'slide-left', 'fade'],
+    brollOverlay: 'light-leak',
     musicMood: 'warm lo-fi',
     musicGainDb: -19,
     silencePreset: 'balanced',

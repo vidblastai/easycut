@@ -8,6 +8,7 @@ import { applyOperations, describeOperation, type ClipTrack, type EdlOperation }
 import { reorderIndexFor, resolveDrag, snapPointsFor, type DragKind } from '@/lib/timeline/drag';
 import { CLIP_TRANSITIONS, SCENE_KINDS, TRANSITION_TYPES, type ClipTransition, type Edl, type IconCue } from '@/lib/edl/types';
 import { TRANSITION_COPY, TRANSITION_GLYPH } from '@/lib/edl/transition-copy';
+import { OVERLAY_COPY, OVERLAY_LIST } from '@/lib/edl/overlay-copy';
 import { LOOK_LIST } from '@/lib/scenes/looks';
 
 /**
@@ -2353,6 +2354,34 @@ function Inspector({
             onChange({ op: 'clip.update', track: 'broll', id: clip.id, patch: { [which]: value } })
           }
         />
+
+        {/* The treatment this insert wears.
+
+            Per clip and not per video, because it is a property of the SHOT:
+            grain suits the archive photo and scanlines suit the screen capture
+            two inserts later, and a style that forced one on both would be
+            choosing for reasons it cannot see. The style picks the default;
+            this is where it stops being a default. */}
+        <div className="mt-3 border-t border-line-soft pt-3">
+          <p className="text-[11px] font-bold uppercase tracking-wider text-muted/70">Overlay</p>
+          <div className="mt-1.5 flex flex-wrap gap-1.5">
+            {OVERLAY_LIST.map((type) => (
+              <button
+                key={type}
+                type="button"
+                title={OVERLAY_COPY[type].note}
+                onClick={() => onChange({ op: 'clip.update', track: 'broll', id: clip.id, patch: { overlay: type } })}
+                className={clsx(
+                  'rounded border px-2 py-0.5 text-[11px] font-semibold',
+                  clip.overlay === type ? 'border-violet text-violet' : 'border-line text-muted hover:text-chalk',
+                )}
+              >
+                {OVERLAY_COPY[type].label}
+              </button>
+            ))}
+          </div>
+          <p className="mt-1.5 text-[11px] leading-snug text-faint">{OVERLAY_COPY[clip.overlay].note}</p>
+        </div>
       </div>
     );
   }

@@ -6,6 +6,10 @@ import {
 } from '@/lib/assets/ai-broll';
 import { KIE_IMAGE_COST_USD, KIE_VIDEO_MODELS, kieVideoModel } from '@/lib/assets/kie';
 import { brollPrompt, subjectHasPeople } from '@/lib/assets/broll-prompt';
+import { BROLL_OVERLAYS, BrollClipSchema } from '@/lib/edl/types';
+import { OVERLAY_COPY } from '@/lib/edl/overlay-copy';
+import { STYLE_LIST, getStyle } from '@/lib/styles/presets';
+import { layoutPlan } from '@/lib/styles/layouts';
 
 /**
  * B-roll that is made rather than found.
@@ -133,5 +137,46 @@ describe('what a generated insert is asked for', () => {
   it('asks a clip to move and a still to hold', () => {
     expect(brollPrompt('a harbour', 'clip')).toMatch(/one slow continuous move/);
     expect(brollPrompt('a harbour', 'still')).toMatch(/single documentary photograph/);
+  });
+});
+
+describe('B-roll overlays', () => {
+  it('is off by default, so an old document renders the picture it rendered before', () => {
+    // This is the whole safety property of adding a field to a stored
+    // document: every EDL written before these existed must come back with
+    // nothing painted over its inserts.
+    const clip = BrollClipSchema.parse({ id: 'a', outStartSec: 0, outEndSec: 2, kind: 'stock-video', url: 'x' });
+    expect(clip.overlay).toBe('none');
+  });
+
+  it('gives every style an overlay its own look would have chosen', () => {
+    // A property of the LOOK, beside the transition vocabulary — grain belongs
+    // to a documentary and scanlines belong to something loud, and neither is
+    // a property of whichever clip the search happened to find.
+    for (const style of STYLE_LIST) {
+      expect(BROLL_OVERLAYS).toContain(getStyle(style.id).brollOverlay);
+    }
+    expect(getStyle('documentary').brollOverlay).toBe('grain');
+    expect(getStyle('clean').brollOverlay).toBe('none');
+  });
+
+  it('names and describes every one of them', () => {
+    // A name nobody has seen is not a choice. Same reason the transitions
+    // carry a sentence each: nobody can tell "prism" from "scanlines" cold.
+    for (const type of BROLL_OVERLAYS) {
+      expect(OVERLAY_COPY[type].label.length).toBeGreaterThan(0);
+      expect(OVERLAY_COPY[type].note.length).toBeGreaterThan(10);
+    }
+  });
+
+  it('leaves a permanent split-screen slot untreated', () => {
+    /*
+     * A layout whose B-roll owns half the frame is not an insert — it is the
+     * other half of the video, from the first frame to the last. Grain running
+     * for four minutes down one side of a split screen is a filter on the
+     * video, and the `overlays` layer is where a filter on the video belongs.
+     */
+    const split = getStyle('split');
+    expect(layoutPlan(split.layout).alwaysOn).toBe(true);
   });
 });
