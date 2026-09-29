@@ -1,4 +1,5 @@
 import { mkdir, rm } from 'node:fs/promises';
+import { isBrollSource } from '@/lib/assets/ai-broll';
 import { stageDetail } from './detail';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
@@ -592,6 +593,9 @@ async function stageAssets(ctx: PipelineContext): Promise<void> {
     mode: ctx.mode,
     musicMood: ctx.plan.musicMood || ctx.style.musicMood,
     ledger: ctx.ledger,
+    // Validated here rather than trusted: a stale value in a months-old
+    // project should cost a preference, not the render.
+    brollSource: isBrollSource(ctx.request.brollSource) ? ctx.request.brollSource : 'stock',
   });
 
   ctx.edl = resolved.edl;

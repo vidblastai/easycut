@@ -181,6 +181,21 @@ export const env = {
     maxPerVideo: num('GENERATED_BROLL_MAX', 2),
   },
 
+  /**
+   * Kie, the generation account.
+   *
+   * A second media provider beside WaveSpeed rather than a replacement,
+   * because the thing it is best at is the STILL: GPT Image 2 at 1K is three
+   * cents and lands in seconds, which is the only generated asset cheap
+   * enough and fast enough to put in front of every video. Its video
+   * catalogue is here too, priced per second — see src/lib/assets/kie.ts.
+   */
+  kie: {
+    apiKey: str('KIE_API_KEY'),
+    /** Which model a video insert is generated with, when AI B-roll is on. */
+    videoModel: str('KIE_VIDEO_MODEL') ?? 'bytedance/v1-pro-text-to-video',
+  },
+
   imagegen: {
     provider: (str('IMAGEGEN_PROVIDER') ?? 'auto') as 'auto' | 'replicate' | 'fal' | 'none',
     replicateToken: str('REPLICATE_API_TOKEN'),
@@ -384,6 +399,17 @@ export function capabilities(): Capability[] {
       // this list.
       envVars: ['WAVESPEED_API_KEY', 'ANTHROPIC_API_KEY', 'GEMINI_API_KEY'],
       signupUrl: 'https://wavespeed.ai/llm',
+    },
+    {
+      key: 'aibroll',
+      label: 'AI B-roll',
+      configured: Boolean(env.kie.apiKey),
+      // Stated as the price, because the price IS the feature: a still that
+      // costs three cents and lands in seconds is the only generated asset
+      // cheap enough to put in front of every video.
+      fallback: 'Inserts come from the stock libraries only. With a Kie key you can also have a picture made per cue for about 3c, or real generated footage.',
+      envVars: ['KIE_API_KEY'],
+      signupUrl: 'https://kie.ai/api-key',
     },
     {
       key: 'stock',

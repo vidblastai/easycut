@@ -77,6 +77,8 @@ export interface PipelineRequest {
    * the edit style's own vocabulary.
    */
   clipTransitions?: readonly string[] | null;
+  /** Where the inserts come from — found, or made. See assets/ai-broll.ts. */
+  brollSource?: string | null;
   inputMode: 'raw' | 'roughcut';
   userNote?: string;
   /**

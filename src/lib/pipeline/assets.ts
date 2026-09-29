@@ -5,6 +5,7 @@ import { getStyle } from '@/lib/styles/presets';
 import { generateImage, isImageGenConfigured } from '@/lib/assets/images';
 import { selectMusic } from '@/lib/assets/music';
 import { searchStock, isStockConfigured, type StockClip } from '@/lib/assets/broll';
+import { isAiBrollConfigured, makeBrollAsset, type AiClip, type BrollSource } from '@/lib/assets/ai-broll';
 import { sfxDefaultGain, sfxUrl, type SfxName } from '@/lib/assets/sfx';
 import type { CostLedger } from '@/lib/pricing/cost';
 import { iconRowPlacement, type Edl } from '@/lib/edl/types';
@@ -28,7 +29,13 @@ export interface ResolveAssetsResult {
 
 export async function resolveAssets(
   edl: Edl,
-  options: { mode: 'short' | 'long'; musicMood: string; ledger: CostLedger },
+  options: {
+    mode: 'short' | 'long';
+    musicMood: string;
+    ledger: CostLedger;
+    /** Where the inserts come from. Defaults to stock — see ai-broll.ts. */
+    brollSource?: BrollSource;
+  },
 ): Promise<ResolveAssetsResult> {
   const degraded: string[] = [];
   const orientation = edl.format.height > edl.format.width ? 'portrait' : edl.format.width === edl.format.height ? 'square' : 'landscape';
@@ -38,17 +45,44 @@ export async function resolveAssets(
   const imageBudget = options.mode === 'short' ? 1 : 2;
   let imagesGenerated = 0;
 
+  const brollSource: BrollSource = options.brollSource ?? 'stock';
+  /** Inserts that asked to be made and had to fall back to stock. */
+  let aiMisses = 0;
+
   const [brollResults, graphicResults, sceneIcons, cardIcons, music] = await Promise.all([
     /* -------------------------------- b-roll ------------------------------- */
     Promise.all(
-      edl.broll.map(async (clip) => {
-        if (!env.features.broll || !isStockConfigured()) return { clip, resolved: null as StockClip | null };
+      edl.broll.map(async (clip, index) => {
+        if (!env.features.broll) return { clip, resolved: null as StockClip | AiClip | null };
+        const insertLength = clip.outEndSec - clip.outStartSec;
+
+        /*
+         * Made first when somebody asked for made.
+         *
+         * The fallback direction is deliberate and it is one way only: a
+         * generation that fails or times out falls back to stock search,
+         * because stock is free and instant and a video with a found clip
+         * beats a video with a hole. Stock never escalates to generation on
+         * its own — spending money and two minutes is a decision somebody
+         * makes, not one a search miss makes for them.
+         */
+        if (brollSource !== 'stock' && isAiBrollConfigured(brollSource)) {
+          const made = await makeBrollAsset(brollSource, clip.query, {
+            orientation,
+            durationSec: insertLength,
+            index,
+          }).catch(() => null);
+          if (made) return { clip, resolved: made as StockClip | AiClip };
+          aiMisses++;
+        }
+
+        if (!isStockConfigured()) return { clip, resolved: null as StockClip | AiClip | null };
         const results = await searchStock(clip.query, {
           orientation,
-          minDurationSec: clip.outEndSec - clip.outStartSec,
+          minDurationSec: insertLength,
           limit: 1,
         }).catch(() => []);
-        return { clip, resolved: results[0] ?? null };
+        return { clip, resolved: (results[0] ?? null) as StockClip | AiClip | null };
       }),
     ),
 
@@ -128,20 +162,37 @@ export async function resolveAssets(
     .map(({ clip, resolved }) => {
       if (!resolved) return null;
       const insertLength = clip.outEndSec - clip.outStartSec;
+      const made = 'costUsd' in resolved ? (resolved as AiClip) : null;
+      if (made?.costUsd) options.ledger.add('broll-generation', made.costUsd, made.prompt.slice(0, 60));
       return {
         ...clip,
         url: resolved.url,
         kind: resolved.kind,
         // Skip the first beat of a stock clip: the interesting part is rarely
         // frame one, and the head often contains a slate or a slow start.
-        clipStartSec: resolved.durationSec > insertLength + 1.5 ? 1 : 0,
+        // Never for a generated one — it was made to this exact length, and
+        // trimming a second off the front is a second of missing insert.
+        clipStartSec: !made && resolved.durationSec > insertLength + 1.5 ? 1 : 0,
         attribution: resolved.attribution,
+        /*
+         * A generated still is not a static insert.
+         *
+         * It lands as a `stock-photo`, which the renderer animates — a slow
+         * push or a drift across the frame for as long as it is up. Cycled
+         * per insert rather than fixed, because four stills all pushing in at
+         * the same rate read as a slideshow with a zoom effect on it.
+         */
+        kenBurns: made?.kenBurns ?? clip.kenBurns,
       };
     })
     .filter((c): c is NonNullable<typeof c> => c !== null);
 
   if (edl.broll.length && broll.length === 0) {
     degraded.push(isStockConfigured() ? 'broll (no matching stock found)' : 'broll (no stock API key)');
+  } else if (aiMisses) {
+    // Said out loud rather than silently absorbed: somebody who paid for
+    // generated inserts and got stock ones is owed the sentence.
+    degraded.push(`broll (${aiMisses} generated insert${aiMisses === 1 ? '' : 's'} fell back to stock)`);
   }
 
   const graphics = graphicResults

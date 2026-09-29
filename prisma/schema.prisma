@@ -83,6 +83,12 @@ model Project {
   // declares", the same contract as the two looks above.
   clipTransitions String?
 
+  // Where the B-roll inserts come from: "stock" (found, free, instant),
+  // "ai-image" (made, three cents each, animated on the timeline) or
+  // "ai-video" (made, dollars and minutes). Null means stock, which is what
+  // every project before this column had. See src/lib/assets/ai-broll.ts.
+  brollSource String?
+
   // Optional free-text steer, e.g. "focus on the pricing section".
   userNote String?
 

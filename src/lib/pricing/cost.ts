@@ -16,6 +16,16 @@ export type CostLine =
   | 'transcription'
   | 'director'
   | 'image-generation'
+  /**
+   * B-roll that was made rather than found.
+   *
+   * Its own line and not folded into `image-generation`, because it is the one
+   * line that can be a different order of magnitude depending on a choice
+   * somebody made at upload: nothing at all for stock, twelve cents for four
+   * generated stills, two and a half dollars for four Seedance clips. A cost
+   * report that hides that inside "images" cannot explain its own total.
+   */
+  | 'broll-generation'
   | 'stock'
   | 'render'
   | 'storage';
@@ -92,6 +102,10 @@ export function estimateCost(inputs: CostInputs): CostEstimate {
     transcription,
     director,
     'image-generation': imageGeneration,
+    // Estimated as zero and charged for real by the assets stage, which is the
+    // only place that knows whether a generation succeeded. Quoting it up
+    // front would mean charging for clips that fell back to stock.
+    'broll-generation': 0,
     stock,
     render,
     storage,

@@ -20,6 +20,8 @@ const CreateProjectSchema = z.object({
   sceneLook: z.string().optional(),
   /** Transitions the person picked, in cycling order. Omitted takes the style's. */
   clipTransitions: z.array(z.string()).max(CLIP_TRANSITIONS.length).optional(),
+  /** Found, or made. Omitted means found — see src/lib/assets/ai-broll.ts. */
+  brollSource: z.enum(['stock', 'ai-image', 'ai-video']).optional(),
   inputMode: z.enum(['raw', 'roughcut']).default('raw'),
   /**
    * Layers the person declined, before anything is made.
@@ -89,6 +91,7 @@ export async function POST(request: Request) {
         ? input.sceneLook
         : null,
       clipTransitions: transitions ? JSON.stringify(transitions) : null,
+      brollSource: input.brollSource ?? null,
       inputMode: input.inputMode,
       userNote: input.userNote,
       status: 'draft',

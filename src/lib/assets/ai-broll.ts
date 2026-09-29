@@ -1,0 +1,336 @@
+import { env } from '@/lib/config/env';
+import {
+  KIE_IMAGE_COST_USD,
+  KIE_IMAGE_MODEL,
+  KIE_IMAGE_RESOLUTION,
+  KIE_IMAGE_TIMEOUT_MS,
+  isKieConfigured,
+  kieVideoModel,
+  runKieJob,
+} from './kie';
+import { generateBrollClip, isGeneratedBrollConfigured } from './generated-broll';
+import type { StockClip } from './broll';
+
+/**
+ * B-roll that is made rather than found.
+ *
+ * ── The three sources, and why they are a choice ────────────────────────
+ *
+ * Stock search finds a literal calculator in 200 milliseconds and costs
+ * nothing. For most cues it is simply the better answer, which is why it stays
+ * the default and why this is opt-in. What it cannot do is the specific and
+ * the abstract — your product, your diagram, the thing no library has filmed —
+ * and that is what this exists for.
+ *
+ * Between the two generated kinds, the trade is not subtle:
+ *
+ * | source     | per insert | wait per insert | four inserts |
+ * |------------|-----------:|----------------:|-------------:|
+ * | stock      |      $0.00 |           0.2 s |        $0.00 |
+ * | AI picture |      $0.03 |            ~8 s |        $0.12 |
+ * | AI video   | $0.11-0.62 |        1-4 min  |  $0.45-2.48 |
+ *
+ * So a generated STILL is the one that can go in front of everybody: three
+ * cents, seconds, and inside the one-dollar short-form budget four times over.
+ * A generated CLIP is a deliberate purchase, and the picker says the price.
+ *
+ * ── A still is not a static insert ──────────────────────────────────────
+ *
+ * The picture moves. A generated image lands on the timeline as a
+ * `stock-photo` clip with a Ken Burns move, which the renderer animates on
+ * every frame — a slow push or a drift across the frame for the two and a half
+ * seconds it is up. That is done in the composition rather than by baking a
+ * clip with ffmpeg first, which would mean a second encode, a second file to
+ * store, and a move nobody can change afterwards; as a property of the clip it
+ * is editable on the timeline like any other.
+ *
+ * The move is CHOSEN rather than fixed. Four inserts all pushing in at the
+ * same rate is its own kind of still — it reads as a slideshow with a zoom
+ * effect — so consecutive stills alternate between a push and a drift, and
+ * which drift depends on the clip so the same edit cuts the same way twice.
+ */
+
+export type BrollSource = 'stock' | 'ai-image' | 'ai-video';
+
+export const BROLL_SOURCES: readonly BrollSource[] = ['stock', 'ai-image', 'ai-video'];
+
+export function isBrollSource(value: unknown): value is BrollSource {
+  return typeof value === 'string' && (BROLL_SOURCES as readonly string[]).includes(value);
+}
+
+/** The moves a generated still is given, in the order they cycle. */
+const STILL_MOVES = ['in', 'pan-right', 'out', 'pan-left'] as const;
+export type StillMove = (typeof STILL_MOVES)[number];
+
+/**
+ * Which move this still gets.
+ *
+ * By index rather than at random, so the same footage cuts the same way twice
+ * — the whole pipeline is deterministic and a generated insert must not be the
+ * one thing that is not.
+ */
+export function moveForStill(index: number): StillMove {
+  return STILL_MOVES[index % STILL_MOVES.length];
+}
+
+export interface AiClip extends StockClip {
+  provider: 'generated';
+  costUsd: number;
+  prompt: string;
+  /** Set for a still, so the builder knows to keep the picture moving. */
+  kenBurns?: StillMove;
+}
+
+export function isAiBrollConfigured(source: BrollSource): boolean {
+  if (source === 'stock') return true;
+  if (source === 'ai-image') return isKieConfigured();
+  return isKieConfigured() || isGeneratedBrollConfigured();
+}
+
+/** What the picker quotes and the ledger expects, before anything is made. */
+export function estimateAiBrollUsd(source: BrollSource, inserts: number, secondsEach: number): number {
+  if (source === 'stock') return 0;
+  if (source === 'ai-image') return inserts * KIE_IMAGE_COST_USD;
+  if (!isKieConfigured()) return inserts * 0.04; // the WaveSpeed fallback's own rate
+  const model = kieVideoModel(env.kie.videoModel);
+  return inserts * snapTo(secondsEach, model.durations) * model.usdPerSec;
+}
+
+/** How long somebody waits for all of them, given they run at once. */
+export function estimateAiBrollSeconds(source: BrollSource): number {
+  if (source === 'stock') return 0;
+  if (source === 'ai-image') return 12;
+  return isKieConfigured() ? kieVideoModel(env.kie.videoModel).typicalSec : 110;
+}
+
+/**
+ * One insert, made to order, shaped like a stock clip.
+ *
+ * Returns null rather than throwing on every failure, because the caller's
+ * only sane response is the same in all of them: use the next source. A video
+ * with one fewer insert is a video; a thrown error here is no video at all.
+ */
+export async function makeBrollAsset(
+  source: Exclude<BrollSource, 'stock'>,
+  subject: string,
+  options: {
+    orientation: 'portrait' | 'landscape' | 'square';
+    durationSec: number;
+    /** Position in the video, so the still's move cycles rather than repeats. */
+    index: number;
+  },
+): Promise<AiClip | null> {
+  if (source === 'ai-image') return makeStill(subject, options);
+
+  if (isKieConfigured()) return makeClip(subject, options);
+  // WaveSpeed is the other account this product already asks for, and it has
+  // its own video catalogue — so a deployment with that key and no Kie key
+  // still gets AI B-roll rather than an error about a key it never needed.
+  const clip = await generateBrollClip(subject, options);
+  return clip ? { ...clip } : null;
+}
+
+/* ----------------------------------------------------------------- stills */
+
+/**
+ * The look is ours; the subject is the director's.
+ *
+ * Without a house style every picture arrives in whatever aesthetic the model
+ * felt like, and four inserts in one video then look like four different
+ * videos. The negative clause earns its length: generated images love adding
+ * captions and logos, and burnt-in type underneath our own caption track is
+ * the one artefact nobody can edit away afterwards.
+ *
+ * "Room around the subject" is not decoration either — the picture is going to
+ * be pushed into and panned across, so anything tight against an edge leaves
+ * the frame halfway through the insert.
+ */
+function stillPrompt(subject: string): string {
+  return (
+    `${subject}. Photographic, cinematic still, shallow depth of field, soft directional light, ` +
+    `muted contemporary colour grade, single clear subject with generous room around it, ` +
+    `no on-screen text, no captions, no logos, no watermark, no borders, no collage.`
+  );
+}
+
+async function makeStill(
+  subject: string,
+  options: { orientation: 'portrait' | 'landscape' | 'square'; durationSec: number; index: number },
+): Promise<AiClip | null> {
+  const aspect =
+    options.orientation === 'portrait' ? '9:16' : options.orientation === 'square' ? '1:1' : '16:9';
+
+  try {
+    const { urls } = await runKieJob({
+      model: KIE_IMAGE_MODEL,
+      input: {
+        prompt: stillPrompt(subject),
+        aspect_ratio: aspect,
+        resolution: KIE_IMAGE_RESOLUTION,
+      },
+      timeoutMs: KIE_IMAGE_TIMEOUT_MS,
+      pollMs: 1500,
+    });
+
+    const [width, height] =
+      aspect === '9:16' ? [1024, 1792] : aspect === '1:1' ? [1024, 1024] : [1792, 1024];
+
+    return {
+      id: `ai-still-${slug(subject)}`,
+      provider: 'generated',
+      url: urls[0],
+      previewUrl: urls[0],
+      width,
+      height,
+      // A still has no length of its own: it lasts exactly as long as the
+      // insert, which is why it can never be the clip that runs out early.
+      durationSec: options.durationSec,
+      kind: 'stock-photo',
+      attribution: 'Generated',
+      // Made for this cue, so it matches by construction — but deliberately
+      // below a strong stock match, so this can sit in the same ranking
+      // without a special case.
+      score: 0.8,
+      costUsd: KIE_IMAGE_COST_USD,
+      prompt: subject,
+      kenBurns: moveForStill(options.index),
+    };
+  } catch (error) {
+    console.warn(`[easycut] AI still failed for "${subject}": ${(error as Error).message}`);
+    return null;
+  }
+}
+
+/* ------------------------------------------------------------------ clips */
+
+function clipPrompt(subject: string): string {
+  return (
+    `${subject}. Cinematic live-action B-roll, shallow depth of field, natural motion, ` +
+    `soft directional light, muted contemporary colour grade, no on-screen text, ` +
+    `no captions, no subtitles, no logos, no watermark, no people speaking to camera.`
+  );
+}
+
+async function makeClip(
+  subject: string,
+  options: { orientation: 'portrait' | 'landscape' | 'square'; durationSec: number },
+): Promise<AiClip | null> {
+  const model = kieVideoModel(env.kie.videoModel);
+  const aspect =
+    options.orientation === 'portrait' ? '9:16' : options.orientation === 'square' ? '1:1' : '16:9';
+
+  /*
+   * Snapped UP to a length the model will accept.
+   *
+   * These models take one of a fixed set and reject anything else outright
+   * rather than rounding. Snapping DOWN would hand the timeline a clip shorter
+   * than the insert it has to cover, and an insert that runs out early is a
+   * frozen frame in the middle of a finished video — much worse than a second
+   * of unused tail, which simply gets trimmed.
+   */
+  const duration = snapTo(options.durationSec, model.durations);
+
+  try {
+    const { urls } = await runKieJob({
+      model: model.id,
+      input: {
+        prompt: clipPrompt(subject),
+        aspect_ratio: aspect,
+        resolution: model.resolution,
+        // The Seedance 1.x models want a STRING here and the 2.x ones a
+        // number, and each rejects the other's shape. Sent as a string with
+        // the 2.x id switched, rather than as whatever the caller had.
+        duration: model.id.startsWith('bytedance/v1-') ? String(duration) : duration,
+      },
+      timeoutMs: Math.max(120_000, model.typicalSec * 3_000),
+      pollMs: 5000,
+    });
+
+    const [width, height] =
+      aspect === '9:16' ? [720, 1280] : aspect === '1:1' ? [1024, 1024] : [1280, 720];
+
+    return {
+      id: `ai-clip-${slug(subject)}`,
+      provider: 'generated',
+      url: urls[0],
+      previewUrl: urls[0],
+      width,
+      height,
+      durationSec: duration,
+      kind: 'stock-video',
+      attribution: 'Generated',
+      score: 0.8,
+      costUsd: duration * model.usdPerSec,
+      prompt: subject,
+    };
+  } catch (error) {
+    console.warn(`[easycut] AI clip failed for "${subject}": ${(error as Error).message}`);
+    return null;
+  }
+}
+
+/* ---------------------------------------------------------------- helpers */
+
+function snapTo(seconds: number, ladder: readonly number[]): number {
+  const wanted = Math.ceil(seconds);
+  return ladder.find((rung) => rung >= wanted) ?? ladder[ladder.length - 1];
+}
+
+function slug(subject: string): string {
+  return Buffer.from(subject).toString('base64url').slice(0, 16);
+}
+
+/* ------------------------------------------------------------ the offers */
+
+/**
+ * The three choices, priced, for the picker.
+ *
+ * Built on the server because only the server knows which keys are set, and
+ * computed from the same catalogue the pipeline bills against rather than from
+ * a sentence somebody wrote once — a price on a tile that does not match the
+ * price on the invoice is worse than no price at all.
+ *
+ * `inserts` and `secondsEach` are the shape of a typical video of this mode,
+ * not a promise: the director decides how many inserts a video gets. It is an
+ * estimate and the tile reads as one.
+ */
+export function brollSourceOffers(inserts: number, secondsEach: number): Array<{
+  source: BrollSource;
+  label: string;
+  body: string;
+  costUsd: number;
+  waitSec: number;
+  available: boolean;
+  missing?: string;
+}> {
+  const videoLabel = isKieConfigured() ? kieVideoModel(env.kie.videoModel).label : 'a video model';
+
+  return [
+    {
+      source: 'stock',
+      label: 'Stock footage',
+      body: 'Searched from Pexels and Pixabay. Right for most cues, and it costs nothing.',
+      costUsd: 0,
+      waitSec: 0,
+      available: true,
+    },
+    {
+      source: 'ai-image',
+      label: 'AI pictures',
+      body: 'A still made for each cue, pushed and panned across the frame so it moves like footage.',
+      costUsd: estimateAiBrollUsd('ai-image', inserts, secondsEach),
+      waitSec: estimateAiBrollSeconds('ai-image'),
+      available: isKieConfigured(),
+      missing: 'Needs a Kie API key (KIE_API_KEY) for GPT Image 2.',
+    },
+    {
+      source: 'ai-video',
+      label: 'AI video',
+      body: `Real generated footage from ${videoLabel}. The best picture, and by far the slowest.`,
+      costUsd: estimateAiBrollUsd('ai-video', inserts, secondsEach),
+      waitSec: estimateAiBrollSeconds('ai-video'),
+      available: isKieConfigured() || isGeneratedBrollConfigured(),
+      missing: 'Needs a Kie API key (KIE_API_KEY) or a WaveSpeed key.',
+    },
+  ];
+}

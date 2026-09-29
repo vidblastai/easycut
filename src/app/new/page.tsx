@@ -4,6 +4,7 @@ import { STYLE_LIST, FORMAT_PRESETS, leadsWithCards } from '@/lib/styles/presets
 import { capabilities } from '@/lib/config/env';
 import { db } from '@/lib/db';
 import { recentsFor } from '@/lib/ui/recents';
+import { brollSourceOffers } from '@/lib/assets/ai-broll';
 
 export const dynamic = 'force-dynamic';
 
@@ -52,6 +53,16 @@ export default async function NewProjectPage() {
               chapterCards: { short: leadsWithCards(s, 'short'), long: leadsWithCards(s, 'long') },
             }))}
             formats={[FORMAT_PRESETS.short, FORMAT_PRESETS.long]}
+            /*
+             * Priced on the server, because only the server knows which keys
+             * are set — and priced from the catalogue the pipeline bills
+             * against, so the number on the tile is the number on the invoice.
+             *
+             * Four inserts of two and a half seconds is the shape of a typical
+             * short. It is an estimate of a video that does not exist yet; the
+             * director decides how many inserts it actually gets.
+             */
+            brollOffers={brollSourceOffers(4, 2.5)}
           />
         </div>
       </ShellMain>

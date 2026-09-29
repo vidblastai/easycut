@@ -121,6 +121,37 @@ open-source icons, free, no key needed — and cover the other 95 %.
 *Alternative:* [fal.ai](https://fal.ai/dashboard/keys) (`FAL_KEY`), same model,
 same price, often slightly faster.
 
+### 5. Kie — B-roll that is made instead of found
+
+Optional, and the most interesting optional one. Stock search finds a literal
+calculator in 200 ms for nothing and is the better answer for most cues. This
+is for what no library has filmed: your product, a diagram, an abstraction.
+
+- Sign up: **https://kie.ai/api-key**
+- Set: `KIE_API_KEY`
+
+Two things come with that one key, and they are not two flavours of the same
+feature:
+
+| | what you get | per insert | wait | four inserts |
+|---|---|---:|---:|---:|
+| **AI pictures** | GPT Image 2 at 1K, pushed and panned across the frame | **$0.03** | seconds | **$0.12** |
+| **AI video** | Seedance 1.0 Pro, 720p, real generated motion | $0.15 | ~70 s | $0.60 |
+| | Seedance 2.0 Fast, 720p — best picture by a distance | $0.62 | ~4 min | $2.48 |
+
+The pictures are the ones worth switching on for real work: twelve cents sits
+inside the one-dollar short-form budget four times over, and a still that
+pushes and drifts for two and a half seconds reads as B-roll. The clips are a
+deliberate purchase — Seedance 2.0 alone is two and a half times the budget for
+one video, before a frame is rendered.
+
+Which video model is used is `KIE_VIDEO_MODEL`; the catalogue and the prices
+are in `src/lib/assets/kie.ts`, and the picker on the Edits step quotes from
+that same table, so the number on the tile is the number on the invoice.
+
+If a generation fails or times out, that insert falls back to a stock clip and
+the cost report says how many did. It never fails the video.
+
 ---
 
 ## Tier 3 — when you have real users
@@ -128,7 +159,7 @@ same price, often slightly faster.
 You do not need any of these to make videos. You need them to make videos *for
 other people, at the same time*.
 
-### 5. Cloudflare R2 — storage
+### 6. Cloudflare R2 — storage
 
 The default writes to `./.storage`, which is fine for one machine and impossible
 for two.
@@ -144,7 +175,7 @@ largest line on the bill; on R2 it is free.
 
 Any S3-compatible provider works (Backblaze B2, Wasabi, S3 itself).
 
-### 6. AWS Lambda — cloud rendering
+### 7. AWS Lambda — cloud rendering
 
 The default renders on whatever machine runs the worker: correct, and roughly 8×
 slower for long-form. Remotion Lambda fans frame ranges across many workers.
@@ -161,7 +192,7 @@ Lower `RENDER_FRAMES_PER_LAMBDA` for faster turnaround at the same price.
 > four people, and requires a paid company licence above that. Check
 > https://remotion.dev/license before you launch.
 
-### 7. Redis — durable job queue
+### 8. Redis — durable job queue
 
 The default queue is in-process: jobs are lost if the server restarts mid-run,
 and you cannot run two workers.

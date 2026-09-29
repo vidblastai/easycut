@@ -14,6 +14,8 @@ import { CaptionPicker } from '@/components/captions/CaptionPicker';
 import { takePendingUpload } from '@/lib/ui/pending-upload';
 import { ScenePicker } from '@/components/scenes/ScenePicker';
 import { TransitionPicker } from '@/components/transitions/TransitionPicker';
+import { BrollSourcePicker, type BrollSourceOffer } from '@/components/broll/BrollSourcePicker';
+import type { BrollSource } from '@/lib/assets/ai-broll';
 
 /**
  * The upload wizard: one question per screen.
@@ -94,7 +96,16 @@ const QUESTIONS = ['style', 'edits'] as const;
 const STEP_OF: Record<Question, StepKey> = { style: 'style', edits: 'edits' };
 type Question = (typeof QUESTIONS)[number];
 
-export function UploadFlow({ styles, formats }: { styles: StyleOption[]; formats: FormatOption[] }) {
+export function UploadFlow({
+  styles,
+  formats,
+  brollOffers,
+}: {
+  styles: StyleOption[];
+  formats: FormatOption[];
+  /** Priced on the server — see `brollSourceOffers`. */
+  brollOffers: BrollSourceOffer[];
+}) {
   const router = useRouter();
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -142,6 +153,16 @@ export function UploadFlow({ styles, formats }: { styles: StyleOption[]; formats
    * order is the user's: it is the order they cycle in.
    */
   const [transitions, setTransitions] = useState<ClipTransition[]>([]);
+
+  /**
+   * Found, or made.
+   *
+   * Stock by default and not out of caution: search finds a literal calculator
+   * in 200ms for nothing, and for most cues that is the better answer as well
+   * as the cheaper one. Generation is for what no library has filmed, which is
+   * something somebody knows about their own video and the software does not.
+   */
+  const [brollSource, setBrollSource] = useState<BrollSource>('stock');
   useEffect(() => {
     // On mount, not during render: localStorage is not there on the server and
     // can throw in a private window, and a mismatch would flash the wrong tile.
@@ -255,6 +276,9 @@ export function UploadFlow({ styles, formats }: { styles: StyleOption[]; formats
           // Omitted when empty, which is how "the style's own set" is spelled
           // everywhere else on this request.
           clipTransitions: transitions.length ? transitions : undefined,
+          // Omitted when it is the default, like everything else on this
+          // request — an explicit "stock" says nothing the absence did not.
+          brollSource: brollSource === 'stock' ? undefined : brollSource,
           inputMode,
           // Only the ones being declined: the default is everything on, and a
           // request that spells out six `true`s says nothing the absence did not.
@@ -499,6 +523,18 @@ export function UploadFlow({ styles, formats }: { styles: StyleOption[]; formats
             {/* Same rule: only where the layer is actually going in. */}
             {layers.scenes ? (
               <ScenePicker value={sceneLook} onChange={setSceneLook} className="mt-7" />
+            ) : null}
+
+            {/* Only where inserts are actually going in. Offering a source
+                for a layer somebody has just switched off is offering a
+                decision that cannot matter. */}
+            {layers.broll ? (
+              <BrollSourcePicker
+                offers={brollOffers}
+                value={brollSource}
+                onChange={setBrollSource}
+                className="mt-7"
+              />
             ) : null}
 
             {/* Transitions belong to whatever takes the whole frame, and both
