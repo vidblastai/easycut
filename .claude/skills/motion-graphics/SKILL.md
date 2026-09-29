@@ -731,8 +731,9 @@ choose:
 
 - **Subtle** — `dust`, `grain`, `light-leak`, `scanlines`, `prism`, `vignette`.
   The video looks better and nobody notices a filter was applied.
-- **Loud** — `bokeh`, `vhs`, `datamosh`, `duotone`, `halftone`. The insert is
-  wearing something and the viewer is meant to see it.
+- **Strong** — `bloom`, `bokeh`, `crt`, `vhs`, `super8`. Unmistakable, and
+  every one of them a look somebody would actually choose: a diffusion filter,
+  an old television, a worn tape, 8mm stock.
 
 Chosen in three places: the style declares the default
 (`StylePreset.brollOverlay`), the upload wizard overrides it for the video, and
@@ -740,23 +741,48 @@ the editor overrides it per clip — because it is a property of the SHOT as muc
 as of the look, and grain suits the archive photo where scanlines suit the
 screen capture two inserts later.
 
+**Visible means TREATED, never replaced.** An earlier pass read "more extreme"
+as "more destructive" and shipped datamosh, duotone and halftone — inverted
+bands, a two-colour posterise, a print screen. All certainly visible, and all
+things nobody puts on their own video, because each one throws the footage
+away and the footage is what the insert is for. They are gone, and a test pins
+them gone by name: the only thing that stops a judgement call recurring is
+writing it down somewhere that fails.
+
 **Nothing flashes.** A hard strobe is the obvious way to make an overlay
-unmissable and it is a photosensitivity risk, so it is not on the list.
-`datamosh` and `vhs` get their energy from structure changing every frame
-rather than from the whole frame changing brightness.
+unmissable and it is a photosensitivity risk. `super8`'s gate flicker is a few
+per cent of exposure at about four hertz, which is the film tell and nowhere
+near the threshold.
 
-**The loud five reach the picture through blend modes**, because the overlay is
-a SIBLING of the image and not a filter on it — it has no source pixels. That
-constraint is the design: `color` takes hue from the layer and luminance from
-the backdrop, which is exactly what a duotone is; `difference` inverts what it
-covers, so datamosh's bands are made of the footage rather than painted on it;
-`multiply` darkens, which is why halftone's dots read as ink rather than as a
-screen door. They cost more per frame than the quiet six — a blend forces a
-readback — and that is affordable for a 2.5s insert and would not be for a
-whole video.
+**`overlay` parses with `.catch('none')`.** The set gets tuned, and a stored
+document naming a treatment that no longer exists must degrade to an untreated
+insert rather than failing — a whole project that will not open because a
+treatment was renamed is not a trade worth making for stricter typing.
 
-**A resolved `accent` lives on the clip.** Only `duotone` reads it, and
-reaching across to `src/lib/styles/presets.ts` for it cost a build: that module
+**What makes each screen look read as itself**, since three of the five are
+screens and they must not blur together:
+
+- `crt` is the GLASS, not the lines. Radiused corners the picture stops short
+  of, an aperture grille (vertical RGB stripes) under the horizontal scan, and
+  phosphor bloom. The mask does more than any amount of line work.
+- `vhs` is a worn tape, not a broken one — the first version had five tracking
+  tears jumping 9% of the width every third frame, which is a cassette the
+  machine has given up on. The look lives in the chroma smear (to the RIGHT of
+  an edge only, because that is the direction the subcarrier lags) and the
+  head-switch hash along the very bottom; the tearing is punctuation.
+- `bloom` is the only one that reads the picture: `backdrop-filter` is the one
+  CSS property that can see what is UNDER a layer, so the halation is the
+  shot's own highlights spreading rather than a glow painted on.
+
+**Blend modes are the only door to the picture**, because the overlay is a
+SIBLING of the image and not a filter on it — it has no source pixels.
+`screen` adds light, `soft-light` grades, `multiply` darkens, and
+`backdrop-filter` reads. They cost more per frame than a plain layer — a blend
+forces a readback — which is affordable for a 2.5s insert and would not be for
+a whole video.
+
+**A resolved `accent` lives on the clip.** Nothing reads it since duotone was
+dropped, and it stays because the next recolouring treatment will — reaching across to `src/lib/styles/presets.ts` for it cost a build: that module
 uses `@/` imports, Remotion's webpack carries no such alias, and the bundle
 simply failed. The composition draws the document and never imports the style
 presets — that is the rule, and this is the second time it has been learned.

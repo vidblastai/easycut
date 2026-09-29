@@ -62,16 +62,16 @@ export const BrollOverlay: React.FC<{
     case 'vignette':
       return <Vignette />;
 
+    case 'bloom':
+      return <Bloom cheap={cheap} />;
     case 'bokeh':
       return <Bokeh seed={seed} cheap={cheap} />;
+    case 'crt':
+      return <Crt cheap={cheap} />;
     case 'vhs':
       return <Vhs seed={seed} progress={progress} cheap={cheap} />;
-    case 'datamosh':
-      return <Datamosh seed={seed} cheap={cheap} />;
-    case 'duotone':
-      return <Duotone accent={accent} cheap={cheap} />;
-    case 'halftone':
-      return <Halftone cheap={cheap} />;
+    case 'super8':
+      return <Super8 seed={seed} cheap={cheap} />;
     default:
       return null;
   }
@@ -438,8 +438,14 @@ const Bokeh: React.FC<{ seed: string; cheap: boolean }> = ({ seed, cheap }) => {
 /**
  * A tape the machine cannot quite track.
  *
- * Scanlines is the picture on a working CRT; this is the picture on a worn
- * tape, and the difference is that it FAILS. Three failures, stacked:
+ * A WORN tape, not a broken one, and that distinction is the whole tuning.
+ * The first version had five tracking tears jumping nine per cent of the width
+ * every third frame, which is a cassette the machine has given up on — very
+ * visible, and not a thing anybody puts under their own footage. Two small
+ * ones, drifting slowly, is a tape that has been played a lot. The look is in
+ * the colour and the line structure; the tearing is punctuation.
+ *
+ * Three characteristics, stacked:
  *
  *  - **Tracking tears.** Bands that jump sideways, re-rolled every third frame
  *    so they stutter rather than crawl. Every third rather than every frame
@@ -455,15 +461,15 @@ const Bokeh: React.FC<{ seed: string; cheap: boolean }> = ({ seed, cheap }) => {
 const Vhs: React.FC<{ seed: string; progress: number; cheap: boolean }> = ({ seed, progress, cheap }) => {
   const frame = useCurrentFrame();
   const { height } = useVideoConfig();
-  const roll = Math.floor(frame / 3);
+  const roll = Math.floor(frame / 5);
   const pitch = Math.max(2, height / 300);
 
   const tears = React.useMemo(
     () =>
-      Array.from({ length: 5 }, (_, i) => ({
+      Array.from({ length: 2 }, (_, i) => ({
         top: seeded(`${seed}-vt-${roll}`, i) * 100,
-        h: 0.6 + seeded(`${seed}-vh-${roll}`, i) * 5,
-        shift: (seeded(`${seed}-vs-${roll}`, i) - 0.5) * 9,
+        h: 0.4 + seeded(`${seed}-vh-${roll}`, i) * 1.6,
+        shift: (seeded(`${seed}-vs-${roll}`, i) - 0.5) * 3.5,
       })),
     [seed, roll],
   );
@@ -482,8 +488,8 @@ const Vhs: React.FC<{ seed: string; progress: number; cheap: boolean }> = ({ see
       <div
         style={{
           ...COVER,
-          opacity: cheap ? 0.2 : 0.34,
-          transform: 'translateX(0.9%)',
+          opacity: cheap ? 0.16 : 0.28,
+          transform: 'translateX(1.1%)',
           background: 'linear-gradient(90deg, rgba(255,0,110,0.45), rgba(255,0,110,0.1))',
           ...(cheap ? null : { mixBlendMode: 'screen' as const }),
         }}
@@ -491,8 +497,8 @@ const Vhs: React.FC<{ seed: string; progress: number; cheap: boolean }> = ({ see
       <div
         style={{
           ...COVER,
-          opacity: cheap ? 0.18 : 0.3,
-          transform: 'translateX(-0.6%)',
+          opacity: cheap ? 0.14 : 0.24,
+          transform: 'translateX(-0.8%)',
           background: 'linear-gradient(90deg, rgba(0,200,255,0.1), rgba(0,200,255,0.45))',
           ...(cheap ? null : { mixBlendMode: 'screen' as const }),
         }}
@@ -507,7 +513,7 @@ const Vhs: React.FC<{ seed: string; progress: number; cheap: boolean }> = ({ see
             top: `${tear.top.toFixed(1)}%`,
             height: `${tear.h.toFixed(2)}%`,
             transform: `translateX(${tear.shift.toFixed(2)}%)`,
-            background: 'rgba(255,255,255,0.55)',
+            background: 'rgba(255,255,255,0.4)',
             ...(cheap ? null : { mixBlendMode: 'overlay' as const }),
           }}
         />
@@ -517,8 +523,8 @@ const Vhs: React.FC<{ seed: string; progress: number; cheap: boolean }> = ({ see
         style={{
           ...COVER,
           top: `${(progress * 150 - 25).toFixed(1)}%`,
-          height: '14%',
-          opacity: 0.26,
+          height: '12%',
+          opacity: 0.14,
           background: 'linear-gradient(180deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.9) 50%, rgba(255,255,255,0) 100%)',
           ...(cheap ? null : { mixBlendMode: 'overlay' as const }),
         }}
@@ -530,8 +536,8 @@ const Vhs: React.FC<{ seed: string; progress: number; cheap: boolean }> = ({ see
           left: 0,
           right: 0,
           bottom: 0,
-          height: '2.2%',
-          opacity: 0.8,
+          height: '1.5%',
+          opacity: 0.7,
           transform: `translateX(${((seeded(`${seed}-hs`, roll) - 0.5) * 6).toFixed(2)}%)`,
           background:
             'repeating-linear-gradient(90deg, rgba(255,255,255,0.7) 0px, rgba(0,0,0,0.8) 3px, rgba(190,190,190,0.5) 6px, rgba(20,20,20,0.9) 9px)',
@@ -541,144 +547,202 @@ const Vhs: React.FC<{ seed: string; progress: number; cheap: boolean }> = ({ see
   );
 };
 
-/* --------------------------------------------------------------- datamosh */
+/* ------------------------------------------------------------------- crt */
 
 /**
- * Bands of the picture with their colour inverted, re-rolled every frame.
+ * An old television, which is four things and not one.
  *
- * `difference` is what makes this work from a layer ABOVE the picture: a white
- * band over the shot comes out as a full inversion of whatever it covers, so
- * the bands are made of the footage rather than painted on it. A coloured band
- * inverts only part of the spectrum, which is where the acid green and magenta
- * come from — they are not chosen, they are what is left.
+ * Scanlines gets you the line structure and stops. What actually makes a
+ * picture read as a CRT is the GLASS:
  *
- * Every frame, not every third: this is a decoder that has lost its reference
- * frame, and the whole character of that is that it never settles.
+ *  1. **The tube is not rectangular.** Its corners are radiused and the
+ *     picture stops short of them. One rounded mask does more for this look
+ *     than any amount of line work.
+ *  2. **An aperture grille**, vertical RGB stripes, under the horizontal
+ *     scanlines. Together they make the dot pitch you can see if you put your
+ *     nose against an old monitor, and it is the thing nobody thinks to add.
+ *  3. **Bloom off the phosphor.** A CRT's highlights glow into their
+ *     neighbours because the phosphor is physically lit, so the whole picture
+ *     sits slightly soft and slightly bright.
+ *  4. **Falloff at the edges**, because the electron beam is travelling
+ *     further and hitting at an angle.
+ *
+ * The stripe and line pitches are both sized off the frame, or a 4K export
+ * gets four times the structure of a 1080 one and reads as a fine mesh.
  */
-const Datamosh: React.FC<{ seed: string; cheap: boolean }> = ({ seed, cheap }) => {
-  const frame = useCurrentFrame();
-  const roll = Math.floor(frame);
-
-  const bands = React.useMemo(
-    () =>
-      Array.from({ length: 7 }, (_, i) => ({
-        top: seeded(`${seed}-dm-t-${roll}`, i) * 100,
-        h: 1 + seeded(`${seed}-dm-h-${roll}`, i) * 11,
-        shift: (seeded(`${seed}-dm-s-${roll}`, i) - 0.5) * 22,
-        tone: seeded(`${seed}-dm-c-${roll}`, i),
-      })),
-    [seed, roll],
-  );
+const Crt: React.FC<{ cheap: boolean }> = ({ cheap }) => {
+  const { width, height } = useVideoConfig();
+  const line = Math.max(2, height / 260);
+  const stripe = Math.max(2, width / 320);
 
   return (
-    <div style={{ ...COVER }}>
-      {bands.map((band, i) => (
-        <div
-          key={i}
-          style={{
-            position: 'absolute',
-            left: 0,
-            right: 0,
-            top: `${band.top.toFixed(1)}%`,
-            height: `${band.h.toFixed(2)}%`,
-            transform: `translateX(${band.shift.toFixed(2)}%)`,
-            opacity: cheap ? 0.55 : 0.9,
-            background:
-              band.tone < 0.4
-                ? 'rgba(255,255,255,0.95)'
-                : band.tone < 0.7
-                  ? 'rgba(120,255,160,0.9)'
-                  : 'rgba(255,90,210,0.9)',
-            ...(cheap ? null : { mixBlendMode: 'difference' as const }),
-          }}
-        />
-      ))}
-    </div>
+    <>
+      {/* Phosphor bloom: the picture lifts and softens before anything else
+          is drawn over it, which is the order it happens in the tube. */}
+      <div
+        style={{
+          ...COVER,
+          opacity: 0.16,
+          background: 'radial-gradient(ellipse at 50% 42%, rgba(210,255,240,0.9) 0%, rgba(150,220,255,0.25) 60%, rgba(0,0,0,0) 100%)',
+          ...(cheap ? null : { mixBlendMode: 'screen' as const }),
+        }}
+      />
+      {/* Horizontal scan structure. */}
+      <div
+        style={{
+          ...COVER,
+          opacity: 0.34,
+          background: `repeating-linear-gradient(180deg, rgba(0,0,0,0.6) 0px, rgba(0,0,0,0.6) ${(line / 2).toFixed(2)}px, rgba(0,0,0,0) ${(line / 2).toFixed(2)}px, rgba(0,0,0,0) ${line.toFixed(2)}px)`,
+        }}
+      />
+      {/* The aperture grille. Low opacity on purpose — at full strength it is
+          a colour filter, and at this strength it is dot pitch. */}
+      <div
+        style={{
+          ...COVER,
+          opacity: cheap ? 0.12 : 0.2,
+          background: `repeating-linear-gradient(90deg, rgba(255,60,60,0.55) 0px, rgba(255,60,60,0.55) ${(stripe / 3).toFixed(2)}px, rgba(60,255,120,0.55) ${(stripe / 3).toFixed(2)}px, rgba(60,255,120,0.55) ${((stripe * 2) / 3).toFixed(2)}px, rgba(80,120,255,0.55) ${((stripe * 2) / 3).toFixed(2)}px, rgba(80,120,255,0.55) ${stripe.toFixed(2)}px)`,
+          ...(cheap ? null : { mixBlendMode: 'screen' as const }),
+        }}
+      />
+      {/* Beam falloff toward the edges. */}
+      <div
+        style={{
+          ...COVER,
+          background: 'radial-gradient(ellipse at center, rgba(0,0,0,0) 40%, rgba(0,0,0,0.55) 100%)',
+        }}
+      />
+      {/*
+        The glass itself: a rounded mask painted in black OUTSIDE a radius.
+        A border with a huge radius and a spread shadow is the cheapest way to
+        say "the picture does not reach the corner" without clipping the
+        element, which would take the other layers with it.
+      */}
+      <div
+        style={{
+          ...COVER,
+          borderRadius: `${Math.round(Math.min(width, height) * 0.09)}px`,
+          boxShadow: `0 0 0 ${Math.round(Math.min(width, height) * 0.12)}px #000`,
+        }}
+      />
+    </>
   );
 };
 
-/* ---------------------------------------------------------------- duotone */
+/* ----------------------------------------------------------------- bloom */
 
 /**
- * The whole insert in two colours, keyed to the video's own accent.
+ * A diffusion filter on the lens, which is the most-used look on this list.
  *
- * `mix-blend-mode: color` is exactly the right primitive and it is worth
- * knowing why: it takes HUE and SATURATION from this layer and LUMINANCE from
- * the picture underneath. So a two-stop gradient laid over a photograph maps
- * its shadows to one colour and its highlights to the other while keeping
- * every tone — which is what a duotone is. Nothing has to touch the source.
+ * Not a glow drawn on top — a real one takes the picture's own highlights and
+ * spreads them. `backdrop-filter` is the one CSS property that can read what
+ * is UNDER a layer, so a full-cover div that blurs and brightens its backdrop,
+ * composited back at a third, is genuinely the shot's own light bleeding into
+ * its shadows. That is what a Pro-Mist does and it is why it flatters
+ * everything: contrast comes down, highlights bloom, and nothing is added.
  *
- * The accent is the video's, so an insert treated this way belongs to the
- * video rather than to whatever palette looked good in isolation.
+ * The second layer lifts the blacks a little, because diffusion also fogs —
+ * a bloom with crushed shadows under it looks like a glow effect rather than
+ * like glass.
  */
-const Duotone: React.FC<{ accent: string; cheap: boolean }> = ({ accent, cheap }) => (
-  <>
-    <div
-      style={{
-        ...COVER,
-        // Contrast first: a duotone over a flat mid-grey picture is a flat
-        // mid-tone, and the whole effect lives in the separation.
-        opacity: 0.35,
-        background: 'linear-gradient(180deg, rgba(0,0,0,0.55), rgba(0,0,0,0.2))',
-        ...(cheap ? null : { mixBlendMode: 'multiply' as const }),
-      }}
-    />
-    <div
-      style={{
-        ...COVER,
-        opacity: cheap ? 0.7 : 1,
-        background: `linear-gradient(155deg, #0B0A1E 0%, ${accent} 58%, #FFE9C2 100%)`,
-        ...(cheap ? null : { mixBlendMode: 'color' as const }),
-      }}
-    />
-  </>
-);
-
-/* --------------------------------------------------------------- halftone */
-
-/**
- * Print dots, the size of a newspaper blown up past where it should be.
- *
- * `multiply` rather than an opacity, so the dots darken what is under them
- * instead of greying it: a halftone is ink ON paper, and ink does not lighten.
- * The grid is sized off the frame, or a 4K export gets four times as many dots
- * and reads as texture instead of as print.
- *
- * Rotated 15 degrees for the same reason a real press rotates its screens —
- * a dot grid square to the pixel grid moirés against it, which is a shimmer
- * nobody can explain and everybody can see.
- */
-const Halftone: React.FC<{ cheap: boolean }> = ({ cheap }) => {
+const Bloom: React.FC<{ cheap: boolean }> = ({ cheap }) => {
   const { height } = useVideoConfig();
-  const cell = Math.max(3, height / 190);
+  const radius = Math.round(height * 0.012);
 
   return (
     <>
       <div
         style={{
           ...COVER,
-          opacity: cheap ? 0.45 : 0.72,
-          // Oversized so the rotation cannot uncover a corner.
-          left: '-15%',
-          top: '-15%',
-          right: '-15%',
-          bottom: '-15%',
-          transform: 'rotate(15deg)',
-          backgroundImage: `radial-gradient(circle at center, rgba(0,0,0,0.92) ${(cell * 0.3).toFixed(2)}px, rgba(0,0,0,0) ${(cell * 0.52).toFixed(2)}px)`,
-          backgroundSize: `${cell.toFixed(2)}px ${cell.toFixed(2)}px`,
-          ...(cheap ? null : { mixBlendMode: 'multiply' as const }),
+          opacity: cheap ? 0.24 : 0.38,
+          // Scaled off the frame like everything else: a fixed blur is a
+          // different effect at 4K than at 1080.
+          backdropFilter: `blur(${radius}px) brightness(1.35) saturate(1.1)`,
+          WebkitBackdropFilter: `blur(${radius}px) brightness(1.35) saturate(1.1)`,
         }}
       />
-      {/* Paper. Without it the dots sit on the photograph and it reads as a
-          screen door rather than as something printed. */}
       <div
         style={{
           ...COVER,
-          opacity: 0.3,
-          background: '#FFF8EC',
-          ...(cheap ? null : { mixBlendMode: 'overlay' as const }),
+          opacity: 0.1,
+          background: 'linear-gradient(180deg, rgba(255,240,225,1), rgba(225,235,255,1))',
+          ...(cheap ? null : { mixBlendMode: 'screen' as const }),
         }}
       />
+    </>
+  );
+};
+
+/* ---------------------------------------------------------------- super 8 */
+
+/**
+ * 8mm stock: warm, faded, and never quite steady.
+ *
+ * The grade is two layers and the order matters. Blacks lift first — old
+ * reversal stock has no true black left in it — and then the whole thing takes
+ * an amber cast, because that is what happens to dye over forty years.
+ *
+ * The flicker is the tell. A Super 8 camera's shutter and the film's exposure
+ * never quite agree frame to frame, so brightness wanders by a few per cent at
+ * around four hertz. Small enough to be nowhere near a photosensitivity
+ * threshold, and it is the single thing that separates "warm colour grade"
+ * from "this was shot on film".
+ *
+ * And the gate is dirty: a hair or a scratch that holds for a few frames and
+ * then is gone, never the same one twice.
+ */
+const Super8: React.FC<{ seed: string; cheap: boolean }> = ({ seed, cheap }) => {
+  const frame = useCurrentFrame();
+  const { fps, width } = useVideoConfig();
+  const t = frame / fps;
+
+  // Two out-of-phase waves, so the wander never finds a rhythm.
+  const flicker = 1 + Math.sin(t * 25) * 0.028 + Math.sin(t * 9.3) * 0.02;
+
+  // A hair in the gate, for about a third of a second at a time.
+  const hairSlot = Math.floor(t * 3);
+  const hairOn = seeded(`${seed}-hair`, hairSlot) > 0.62;
+  const hairX = seeded(`${seed}-hx`, hairSlot);
+
+  return (
+    <>
+      {/* Lifted blacks first. */}
+      <div
+        style={{
+          ...COVER,
+          opacity: 0.3 * flicker,
+          background: 'linear-gradient(180deg, rgba(120,96,64,1), rgba(96,80,72,1))',
+          ...(cheap ? null : { mixBlendMode: 'screen' as const }),
+        }}
+      />
+      {/* Then the amber cast over everything. */}
+      <div
+        style={{
+          ...COVER,
+          opacity: cheap ? 0.36 : 0.5,
+          background: 'linear-gradient(150deg, #FFB74D 0%, #FF8A3D 45%, #B9683F 100%)',
+          ...(cheap ? null : { mixBlendMode: 'soft-light' as const }),
+        }}
+      />
+      {/* The heavy soft vignette of a tiny, cheap lens. */}
+      <div
+        style={{
+          ...COVER,
+          background: 'radial-gradient(ellipse at center, rgba(0,0,0,0) 28%, rgba(48,22,8,0.78) 100%)',
+        }}
+      />
+      {hairOn && !cheap ? (
+        <div
+          style={{
+            position: 'absolute',
+            top: 0,
+            bottom: 0,
+            left: `${(hairX * 100).toFixed(1)}%`,
+            width: Math.max(1, width / 900),
+            background: 'rgba(255,248,232,0.5)',
+          }}
+        />
+      ) : null}
     </>
   );
 };

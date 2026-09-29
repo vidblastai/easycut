@@ -169,7 +169,34 @@ describe('B-roll overlays', () => {
     }
   });
 
-  it('sorts every one of them into subtle or loud, and none into both', () => {
+  it('never ships a treatment that throws the footage away', () => {
+    /*
+     * The line an earlier pass crossed. "More visible" was read as "more
+     * destructive" and it shipped datamosh, duotone and halftone — inverted
+     * bands, a two-colour posterise, a print screen. All certainly visible,
+     * and all things nobody puts on their own video, because each one throws
+     * the FOOTAGE away and the footage is what the insert is for.
+     *
+     * Pinned by name because the failure was a judgement call, not a bug, and
+     * the only thing that stops a judgement call recurring is writing it down
+     * somewhere that fails.
+     */
+    for (const gone of ['datamosh', 'duotone', 'halftone']) {
+      expect(BROLL_OVERLAYS).not.toContain(gone);
+    }
+  });
+
+  it('opens an old document that names a treatment since removed', () => {
+    // Degrades to an untreated insert rather than failing to parse. A whole
+    // project that will not open because a treatment was renamed is not a
+    // trade worth making for stricter typing.
+    const clip = BrollClipSchema.parse({
+      id: 'a', outStartSec: 0, outEndSec: 2, kind: 'stock-video', url: 'x', overlay: 'datamosh',
+    });
+    expect(clip.overlay).toBe('none');
+  });
+
+  it('sorts every one of them into subtle or strong, and none into both', () => {
     /*
      * The grouping is not decoration — it is the only distinction that helps
      * somebody choose. Subtle makes a video look better without anybody
@@ -180,9 +207,9 @@ describe('B-roll overlays', () => {
     const grouped = OVERLAY_GROUPS.flatMap((g) => g.types);
     expect([...grouped].sort()).toEqual([...BROLL_OVERLAYS].sort());
     expect(new Set(grouped).size).toBe(grouped.length);
-    // `none` belongs with the quiet ones: it is the absence of a statement.
+    // `none` belongs with the subtle ones: it is the absence of a treatment.
     expect(OVERLAY_GROUPS[0].types).toContain('none');
-    expect(OVERLAY_GROUPS[1].types).toContain('datamosh');
+    expect(OVERLAY_GROUPS[1].types).toContain('crt');
   });
 
   it('leaves a permanent split-screen slot untreated', () => {

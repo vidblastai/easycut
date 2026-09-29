@@ -417,16 +417,24 @@ export const CLIP_TRANSITION_MOVES: readonly ClipTransition[] = [
  * adjust afterwards. Drawn, they cost nothing, they are the exact length of
  * the insert, they scale to any aspect, and their strength is a number.
  *
- * Two groups, and the split is the useful part. The quiet six are treatments —
- * you notice the video looks better and not that anything was applied. The
- * loud five are a STATEMENT: the insert is wearing something and the viewer is
- * meant to see it. Mixing them on one video is usually a mistake, which is why
- * they are listed apart rather than shuffled into one alphabetical row.
+ * Two groups, and the split is how visible each one is rather than how weird.
+ * The subtle six are felt more than seen; the strong five are unmistakable and
+ * are still, every one of them, a look somebody would actually choose — a
+ * diffusion filter, an old television, 8mm stock.
  *
- * Nothing here flashes. A hard strobe is the obvious way to make an overlay
- * unmissable and it is a photosensitivity risk, so it is not on the list —
- * `datamosh` and `vhs` get their energy from structure changing every frame
- * rather than from the whole frame changing brightness.
+ * ── The line that was crossed once ──────────────────────────────────────
+ *
+ * An earlier pass read "more extreme" as "more destructive" and shipped
+ * datamosh, duotone and halftone: inverted bands, a two-colour posterise and
+ * a print screen. They were certainly visible. They were also things nobody
+ * puts on their own video, because each of them throws the FOOTAGE away —
+ * and the footage is what the insert is for. Visible has to mean the shot
+ * looking treated, never the shot being replaced by the treatment.
+ *
+ * Nothing here flashes, either. A hard strobe is the obvious way to make an
+ * overlay unmissable and it is a photosensitivity risk. `super8`'s gate
+ * flicker is a few per cent of exposure at about four hertz, which is the
+ * film tell and nowhere near the threshold.
  */
 export const BROLL_OVERLAYS = [
   'none',
@@ -437,12 +445,12 @@ export const BROLL_OVERLAYS = [
   'scanlines',   // CRT line structure and a rolling band
   'prism',       // chromatic fringe at the edges
   'vignette',    // darkened corners, nothing else
-  /* ── loud: the insert is wearing something and everyone can see it ──── */
-  'bokeh',       // big out-of-focus orbs of light
-  'vhs',         // tracking tears, chroma bleed, a picture that will not hold
-  'datamosh',    // hard bands of inverted colour, re-rolled every frame
-  'duotone',     // the whole insert in two colours
-  'halftone',    // print dots
+  /* ── strong: you can see it, and it still flatters the shot ─────────── */
+  'bloom',       // diffusion filter: highlights bloom and halate
+  'bokeh',       // out-of-focus orbs of light drifting across
+  'crt',         // an old television: curved glass, phosphor stripe, bloom
+  'vhs',         // a worn tape: chroma bleed, tracking, head-switch noise
+  'super8',      // 8mm: warm faded stock, gate flicker, dust and hairs
 ] as const;
 export type BrollOverlay = (typeof BROLL_OVERLAYS)[number];
 
@@ -486,7 +494,15 @@ export const BrollClipSchema = z.object({
    * `none` by default, so a document written before these existed renders
    * exactly the picture it rendered before.
    */
-  overlay: z.enum(BROLL_OVERLAYS).default('none'),
+  /*
+   * `.catch` rather than a bare enum, deliberately.
+   *
+   * Overlays get added and dropped as the set is tuned, and a stored document
+   * naming one that no longer exists must degrade to an untreated insert
+   * rather than failing to parse — a whole project that will not open because
+   * a treatment was renamed is not a trade worth making for stricter typing.
+   */
+  overlay: z.enum(BROLL_OVERLAYS).catch('none').default('none'),
   /**
    * The video's accent, resolved into the clip.
    *

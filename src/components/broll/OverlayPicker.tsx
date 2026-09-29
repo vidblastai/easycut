@@ -148,21 +148,27 @@ const TILE_CSS = `
   filter:blur(3px);mix-blend-mode:screen}
 
 .ov-vhs{background:
-  linear-gradient(90deg,rgba(255,0,110,.35),transparent 40%),
-  linear-gradient(270deg,rgba(0,200,255,.35),transparent 40%),
-  repeating-linear-gradient(180deg,rgba(0,0,0,.6) 0 1.5px,transparent 1.5px 3px)}
-.ov-vhs::after{content:'';position:absolute;left:-6%;right:-6%;top:34%;height:5%;
-  background:rgba(255,255,255,.6);transform:translateX(7%)}
+  linear-gradient(90deg,rgba(255,0,110,.3),transparent 38%),
+  linear-gradient(270deg,rgba(0,200,255,.3),transparent 38%),
+  repeating-linear-gradient(180deg,rgba(0,0,0,.55) 0 1.5px,transparent 1.5px 3px)}
+/* The head-switching hash along the bottom, which is the single most
+   recognisable thing about the format and the one everybody forgets. */
+.ov-vhs::after{content:'';position:absolute;left:0;right:0;bottom:0;height:5%;
+  background:repeating-linear-gradient(90deg,rgba(255,255,255,.7) 0 2px,rgba(0,0,0,.8) 2px 4px)}
 
-.ov-datamosh{background:
-  linear-gradient(90deg,transparent 0 12%,rgba(120,255,160,.95) 12% 88%,transparent 88%) 0 22%/100% 9% no-repeat,
-  linear-gradient(90deg,transparent 0 30%,rgba(255,90,210,.95) 30% 100%) 0 48%/100% 6% no-repeat,
-  linear-gradient(90deg,rgba(255,255,255,.95) 0 62%,transparent 62%) 0 70%/100% 11% no-repeat}
+.ov-bloom{backdrop-filter:blur(2.5px) brightness(1.3);opacity:.5}
 
-.ov-duotone{background:linear-gradient(155deg,#0B0A1E 0%,#9B7BFF 58%,#FFE9C2 100%);mix-blend-mode:color}
+.ov-crt{background:
+  repeating-linear-gradient(90deg,rgba(255,60,60,.25) 0 1px,rgba(60,255,120,.25) 1px 2px,rgba(80,120,255,.25) 2px 3px),
+  repeating-linear-gradient(180deg,rgba(0,0,0,.55) 0 1.5px,transparent 1.5px 3px),
+  radial-gradient(ellipse at center,rgba(0,0,0,0) 40%,rgba(0,0,0,.55) 100%)}
+/* The tube is not rectangular: its corners are radiused and the picture stops
+   short of them. One mask does more for this look than any amount of lines. */
+.ov-crt::after{content:'';position:absolute;inset:0;border-radius:14px;box-shadow:0 0 0 18px #000}
 
-.ov-halftone{background-image:radial-gradient(circle at center,rgba(0,0,0,.92) .9px,transparent 1.6px);
-  background-size:3.2px 3.2px;mix-blend-mode:multiply}
+.ov-super8{background:
+  linear-gradient(150deg,rgba(255,183,77,.55) 0%,rgba(255,138,61,.5) 45%,rgba(185,104,63,.55) 100%),
+  radial-gradient(ellipse at center,transparent 28%,rgba(48,22,8,.78) 100%)}
 
 @media (prefers-reduced-motion:reduce){.ov-fx{animation:none!important}}
 `;

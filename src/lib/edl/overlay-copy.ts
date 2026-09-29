@@ -17,20 +17,22 @@ export const OVERLAY_COPY: Record<BrollOverlay, { label: string; note: string }>
   prism: { label: 'Prism', note: 'Chromatic fringe at the edges, the way a fast lens disperses.' },
   vignette: { label: 'Vignette', note: 'Corners down. The quiet one.' },
 
-  bokeh: { label: 'Bokeh', note: 'Big out-of-focus orbs of light drifting across.' },
-  vhs: { label: 'VHS', note: 'Tracking tears, chroma bleed and a picture that will not hold.' },
-  datamosh: { label: 'Datamosh', note: 'Hard bands of inverted colour, re-rolled every frame.' },
-  duotone: { label: 'Duotone', note: 'The whole insert in two colours, keyed to your accent.' },
-  halftone: { label: 'Halftone', note: 'Print dots, like a newspaper blown up.' },
+  bloom: { label: 'Diffusion', note: 'Highlights bloom and halate, the way a mist filter does it.' },
+  bokeh: { label: 'Bokeh', note: 'Out-of-focus orbs of light drifting across the shot.' },
+  crt: { label: 'Old TV', note: 'Curved glass, phosphor stripe and a bloom off the tube.' },
+  vhs: { label: 'VHS', note: 'A worn tape: chroma bleed, tracking, head-switch noise.' },
+  super8: { label: 'Super 8', note: '8mm stock — warm and faded, with gate flicker and dust.' },
 };
 
 /**
  * Which are felt and which are seen.
  *
  * The pickers group by this rather than listing twelve in a row, because it is
- * the only distinction that helps somebody choose: the quiet ones make a video
- * look better without anybody noticing a filter was applied, and the loud ones
- * are a statement. Mixing the two on one video is usually a mistake.
+ * the only distinction that helps somebody choose: the subtle ones make a
+ * video look better without anybody noticing a filter was applied, and the
+ * strong ones are seen. Both groups are things a person would pick on
+ * purpose — visible has to mean the shot looking TREATED, never the shot
+ * being replaced by the treatment.
  */
 export const OVERLAY_GROUPS: ReadonlyArray<{ label: string; note: string; types: BrollOverlay[] }> = [
   {
@@ -39,9 +41,9 @@ export const OVERLAY_GROUPS: ReadonlyArray<{ label: string; note: string; types:
     types: ['none', 'dust', 'grain', 'light-leak', 'scanlines', 'prism', 'vignette'],
   },
   {
-    label: 'Loud',
-    note: 'Meant to be noticed.',
-    types: ['bokeh', 'vhs', 'datamosh', 'duotone', 'halftone'],
+    label: 'Strong',
+    note: 'Unmistakable, and still flattering.',
+    types: ['bloom', 'bokeh', 'crt', 'vhs', 'super8'],
   },
 ];
 
