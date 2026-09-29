@@ -6,9 +6,10 @@ import { clsx } from 'clsx';
 import type { PlayerRef } from '@remotion/player';
 import { applyOperations, describeOperation, type ClipTrack, type EdlOperation } from '@/lib/edl/operations';
 import { reorderIndexFor, resolveDrag, snapPointsFor, type DragKind } from '@/lib/timeline/drag';
-import { CLIP_TRANSITIONS, SCENE_KINDS, TRANSITION_TYPES, type ClipTransition, type Edl, type IconCue } from '@/lib/edl/types';
+import { CLIP_TRANSITIONS, SCENE_KINDS, TRANSITION_TYPES, type BrollOverlay, type ClipTransition, type Edl, type IconCue } from '@/lib/edl/types';
 import { TRANSITION_COPY, TRANSITION_GLYPH } from '@/lib/edl/transition-copy';
-import { OVERLAY_COPY, OVERLAY_LIST } from '@/lib/edl/overlay-copy';
+import { OVERLAY_COPY } from '@/lib/edl/overlay-copy';
+import { OverlayGrid, OverlaySwatch } from '@/components/broll/OverlaySwatch';
 import { LOOK_LIST } from '@/lib/scenes/looks';
 
 /**
@@ -143,6 +144,9 @@ function TimelineEditorImpl({
    * clip it is editing. The trade is that it has to close on scroll, which is
    * the right behaviour anyway: the badge moves, so the menu must not stay.
    */
+  /** The overlay menu a swatch on a B-roll clip opened. Same contract as `txMenu`. */
+  const [ovMenu, setOvMenu] = useState<{ id: string; x: number; y: number } | null>(null);
+
   const [txMenu, setTxMenu] = useState<{
     track: string;
     id: string;
@@ -663,6 +667,21 @@ function TimelineEditorImpl({
      * a drag has captured the pointer by the time a click would have fired —
      * so a badge that waited for `onClick` would never see one.
      */
+    /*
+     * The overlay swatch is a menu too, and it is checked BEFORE the
+     * transition badges only because it is cheaper to ask — neither can match
+     * the other's element, so the order is arbitrary and the grouping is for
+     * whoever reads this next.
+     */
+    const swatch = (event.target as HTMLElement).closest('[data-overlay]') as HTMLElement | null;
+    if (swatch) {
+      event.preventDefault();
+      const box = swatch.getBoundingClientRect();
+      setSelection({ kind: track as Exclude<Selection, null>['kind'], id });
+      setOvMenu({ id, x: box.left + box.width / 2, y: box.bottom + 4 });
+      return;
+    }
+
     const edge = (event.target as HTMLElement).closest('[data-transition]') as HTMLElement | null;
     const which = edge?.dataset.transition;
     if (edge && (which === 'enter' || which === 'exit')) {
@@ -1235,7 +1254,7 @@ function TimelineEditorImpl({
         // The menu is placed in viewport coordinates against a badge that
         // scrolls, so it has to go when the badge moves — leaving it behind
         // would have it editing a clip it is no longer pointing at.
-        onScroll={() => setTxMenu(null)}
+        onScroll={() => { setTxMenu(null); setOvMenu(null); }}
       >
         <div style={{ width: width + TRACK_LABEL_W, minWidth: '100%' }}>
           {/* ruler */}
@@ -1385,6 +1404,7 @@ function TimelineEditorImpl({
                   text={clip.query || 'B-roll'}
                   enter={clip.enter}
                   exit={clip.exit}
+                  overlay={clip.overlay}
                 />
               );
             })}
@@ -1555,6 +1575,18 @@ function TimelineEditorImpl({
       </div>
 
       {showKeys ? <ShortcutSheet onClose={() => setShowKeys(false)} /> : null}
+
+      {ovMenu ? (
+        <OverlayMenu
+          at={ovMenu}
+          current={edl.broll.find((c) => c.id === ovMenu.id)?.overlay ?? 'none'}
+          onClose={() => setOvMenu(null)}
+          onPick={(type) => {
+            push({ op: 'clip.update', track: 'broll', id: ovMenu.id, patch: { overlay: type } });
+            setOvMenu(null);
+          }}
+        />
+      ) : null}
 
       {txMenu ? (
         <TransitionMenu
@@ -1825,6 +1857,7 @@ const Clip = React.memo(function Clip({
   text,
   enter,
   exit,
+  overlay,
 }: {
   /** On the element as well as in React, so a drag can be driven and measured. */
   id: string;
@@ -1856,6 +1889,8 @@ const Clip = React.memo(function Clip({
    */
   enter?: ClipTransition;
   exit?: ClipTransition;
+  /** The treatment this insert wears. `none` draws nothing. */
+  overlay?: BrollOverlay;
 }) {
   const handle = width >= 14 ? Math.max(4, Math.min(8, Math.round(width * 0.2))) : 0;
 
@@ -1932,6 +1967,23 @@ const Clip = React.memo(function Clip({
       ) : null}
       {exit && width >= 34 ? (
         <TransitionBadge which="exit" type={exit} />
+      ) : null}
+
+      {/* What this insert is WEARING, as a swatch of the treatment itself.
+
+          Bottom-left, because the two top corners belong to the transitions
+          and an edge is a different kind of property from a surface: the
+          transitions are about the clip's two ENDS, this is about all of it.
+          Drawn only when there is something to show — an empty square on
+          every untreated insert is noise on a track that is mostly untreated. */}
+      {overlay && overlay !== 'none' && width >= 34 ? (
+        <span
+          data-overlay
+          title={`Overlay: ${OVERLAY_COPY[overlay].label} — ${OVERLAY_COPY[overlay].note}`}
+          className="absolute bottom-0 left-0 z-10 block h-[13px] w-[17px] cursor-pointer overflow-hidden rounded-tr-[4px] ring-1 ring-ink/60 hover:ring-violet"
+        >
+          <OverlaySwatch className="!h-full !w-full !aspect-auto" type={overlay} />
+        </span>
       ) : null}
     </div>
   );
@@ -2245,6 +2297,80 @@ function TransitionMenu({
   );
 }
 
+/**
+ * The eleven treatments, as a menu hung off the swatch on a clip.
+ *
+ * Swatches rather than a list of words, for the same reason the panel and the
+ * wizard show pictures: "prism" and "bloom" are not distinguishable as words
+ * by anybody who has not already watched them. The panel is where you go when
+ * a clip is selected and you are working down its settings; this is where you
+ * go when you are reading the track and one insert is wearing the wrong thing.
+ */
+function OverlayMenu({
+  at,
+  current,
+  onPick,
+  onClose,
+}: {
+  at: { x: number; y: number };
+  current: BrollOverlay;
+  onPick: (type: BrollOverlay) => void;
+  onClose: () => void;
+}) {
+  const ref = React.useRef<HTMLDivElement>(null);
+
+  React.useEffect(() => {
+    const away = (event: PointerEvent) => {
+      if (!ref.current?.contains(event.target as Node)) onClose();
+    };
+    const key = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') { event.stopPropagation(); onClose(); }
+    };
+    // Armed next tick: the pointerdown that opened this is still travelling
+    // up, and a capture listener added now would catch it and close again.
+    const armed = window.setTimeout(() => window.addEventListener('pointerdown', away, true), 0);
+    window.addEventListener('keydown', key, true);
+    return () => {
+      window.clearTimeout(armed);
+      window.removeEventListener('pointerdown', away, true);
+      window.removeEventListener('keydown', key, true);
+    };
+  }, [onClose]);
+
+  const width = 320;
+  const height = 360;
+  const view = typeof window === 'undefined'
+    ? { w: 1280, h: 900 }
+    : { w: window.innerWidth, h: window.innerHeight };
+  const left = Math.max(8, Math.min(at.x - width / 2, view.w - width - 8));
+  /*
+   * Opens upward when there is no room below.
+   *
+   * The swatch sits at the BOTTOM edge of a clip, and the B-roll track is
+   * usually in the lower half of a docked timeline — so the obvious placement
+   * puts a 360px menu off the bottom of the window more often than not, where
+   * the tiles that are furthest from the current one are the ones you cannot
+   * reach. `at.y` is already below the swatch; `at.y - 21` puts the menu's
+   * foot back above it.
+   */
+  const below = at.y + height <= view.h - 8;
+  const top = below ? at.y : Math.max(8, at.y - 21 - height);
+
+  return (
+    <div
+      ref={ref}
+      role="menu"
+      className="fixed z-50 overflow-hidden rounded-xl border border-line bg-ink/95 p-2.5 shadow-card backdrop-blur"
+      style={{ left, top, width, maxHeight: height }}
+    >
+      <p className="px-0.5 pb-1 text-[10.5px] font-bold uppercase tracking-wider text-muted/70">Overlay</p>
+      <div className="max-h-[316px] overflow-y-auto">
+        <OverlayGrid value={current} onPick={(type) => onPick(type ?? 'none')} compact />
+      </div>
+    </div>
+  );
+}
+
 /** What a given edge is set to now, so the menu can tick it. */
 function currentTransition(edl: Edl, track: string, id: string, which: 'enter' | 'exit'): ClipTransition | null {
   if (track === 'broll') return edl.broll.find((c) => c.id === id)?.[which] ?? null;
@@ -2364,23 +2490,29 @@ function Inspector({
             this is where it stops being a default. */}
         <div className="mt-3 border-t border-line-soft pt-3">
           <p className="text-[11px] font-bold uppercase tracking-wider text-muted/70">Overlay</p>
-          <div className="mt-1.5 flex flex-wrap gap-1.5">
-            {OVERLAY_LIST.map((type) => (
-              <button
-                key={type}
-                type="button"
-                title={OVERLAY_COPY[type].note}
-                onClick={() => onChange({ op: 'clip.update', track: 'broll', id: clip.id, patch: { overlay: type } })}
-                className={clsx(
-                  'rounded border px-2 py-0.5 text-[11px] font-semibold',
-                  clip.overlay === type ? 'border-violet text-violet' : 'border-line text-muted hover:text-chalk',
-                )}
-              >
-                {OVERLAY_COPY[type].label}
-              </button>
-            ))}
-          </div>
-          <p className="mt-1.5 text-[11px] leading-snug text-faint">{OVERLAY_COPY[clip.overlay].note}</p>
+          {/*
+            The same grid the upload wizard shows, from the same component.
+            This used to be a flat row of eleven CHIPS while the wizard showed
+            pictures — the same question answered two different ways, in the
+            one product, and the words are the half that does not work: nobody
+            can tell "prism" from "bloom" without having seen them.
+
+            Clicking the one already chosen clears it back to `none`, which is
+            how the wizard's tiles behave too.
+          */}
+          <OverlayGrid
+            value={clip.overlay}
+            onPick={(type) =>
+              onChange({
+                op: 'clip.update',
+                track: 'broll',
+                id: clip.id,
+                patch: { overlay: type ?? 'none' },
+              })
+            }
+            compact
+          />
+          <p className="mt-2 text-[11px] leading-snug text-faint">{OVERLAY_COPY[clip.overlay].note}</p>
         </div>
       </div>
     );

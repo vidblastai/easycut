@@ -741,6 +741,24 @@ the editor overrides it per clip — because it is a property of the SHOT as muc
 as of the look, and grain suits the archive photo where scanlines suit the
 screen capture two inserts later.
 
+**All three show the same pictures, from `components/broll/OverlaySwatch.tsx`.**
+Briefly the wizard showed tiles and the editor showed a flat row of eleven
+words, which is the same question answered two different ways in one product —
+and the words are the half that does not work, because nobody can tell "prism"
+from "bloom" without having watched them. One `OverlayGrid`, so a treatment
+added to the list appears everywhere with no further work. The tile paints its
+own stand-in photograph rather than loading an image, so the pickers ship no
+assets and cannot show a broken thumbnail.
+
+**A treated insert wears its swatch on the timeline**, bottom-left, opening the
+same grid as a menu. Bottom-left because the two top corners belong to the
+transition badges, and an edge is a different kind of property from a surface:
+those are about the clip's two ENDS, this is about all of it. Drawn only when
+there is something to show — an empty square on every untreated insert is noise
+on a track that is mostly untreated. The menu flips above the swatch when there
+is no room below, which there usually is not: the B-roll track sits low in a
+docked timeline and the swatch is on a clip's bottom edge.
+
 **Visible means TREATED, never replaced.** An earlier pass read "more extreme"
 as "more destructive" and shipped datamosh, duotone and halftone — inverted
 bands, a two-colour posterise, a print screen. All certainly visible, and all
