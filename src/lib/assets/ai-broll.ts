@@ -9,6 +9,7 @@ import {
   runKieJob,
 } from './kie';
 import { generateBrollClip, isGeneratedBrollConfigured } from './generated-broll';
+import { brollPrompt } from './broll-prompt';
 import type { StockClip } from './broll';
 
 /**
@@ -132,27 +133,6 @@ export async function makeBrollAsset(
 
 /* ----------------------------------------------------------------- stills */
 
-/**
- * The look is ours; the subject is the director's.
- *
- * Without a house style every picture arrives in whatever aesthetic the model
- * felt like, and four inserts in one video then look like four different
- * videos. The negative clause earns its length: generated images love adding
- * captions and logos, and burnt-in type underneath our own caption track is
- * the one artefact nobody can edit away afterwards.
- *
- * "Room around the subject" is not decoration either — the picture is going to
- * be pushed into and panned across, so anything tight against an edge leaves
- * the frame halfway through the insert.
- */
-function stillPrompt(subject: string): string {
-  return (
-    `${subject}. Photographic, cinematic still, shallow depth of field, soft directional light, ` +
-    `muted contemporary colour grade, single clear subject with generous room around it, ` +
-    `no on-screen text, no captions, no logos, no watermark, no borders, no collage.`
-  );
-}
-
 async function makeStill(
   subject: string,
   options: { orientation: 'portrait' | 'landscape' | 'square'; durationSec: number; index: number },
@@ -164,7 +144,7 @@ async function makeStill(
     const { urls } = await runKieJob({
       model: KIE_IMAGE_MODEL,
       input: {
-        prompt: stillPrompt(subject),
+        prompt: brollPrompt(subject, 'still'),
         aspect_ratio: aspect,
         resolution: KIE_IMAGE_RESOLUTION,
       },
@@ -203,14 +183,6 @@ async function makeStill(
 
 /* ------------------------------------------------------------------ clips */
 
-function clipPrompt(subject: string): string {
-  return (
-    `${subject}. Cinematic live-action B-roll, shallow depth of field, natural motion, ` +
-    `soft directional light, muted contemporary colour grade, no on-screen text, ` +
-    `no captions, no subtitles, no logos, no watermark, no people speaking to camera.`
-  );
-}
-
 async function makeClip(
   subject: string,
   options: { orientation: 'portrait' | 'landscape' | 'square'; durationSec: number },
@@ -234,7 +206,7 @@ async function makeClip(
     const { urls } = await runKieJob({
       model: model.id,
       input: {
-        prompt: clipPrompt(subject),
+        prompt: brollPrompt(subject, 'clip'),
         aspect_ratio: aspect,
         resolution: model.resolution,
         // The Seedance 1.x models want a STRING here and the 2.x ones a

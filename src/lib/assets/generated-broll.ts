@@ -1,6 +1,7 @@
 import { env } from '@/lib/config/env';
 import { isWavespeedMediaConfigured, runMediaJob } from './wavespeed-media';
 import type { StockClip } from './broll';
+import { brollPrompt } from './broll-prompt';
 
 /**
  * B-roll that does not exist yet.
@@ -73,23 +74,6 @@ export function estimateGeneratedBrollCostUsd(count: number): number {
   return count * generatedBrollCostFor();
 }
 
-/**
- * The look is ours, the subject is the director's.
- *
- * Without a house style every clip arrives in whatever aesthetic the model
- * felt like, and four inserts in one video then look like four different
- * videos. The negative clause matters as much: generated footage loves adding
- * captions and logos, and a burnt-in caption underneath our caption track is
- * the one artefact nobody can edit away afterwards.
- */
-function stylePrompt(subject: string): string {
-  return (
-    `${subject}. Cinematic live-action B-roll, shallow depth of field, natural motion, ` +
-    `soft directional light, muted contemporary colour grade, no on-screen text, ` +
-    `no captions, no subtitles, no logos, no watermark, no people speaking to camera.`
-  );
-}
-
 export interface GeneratedClip extends StockClip {
   provider: 'generated';
   costUsd: number;
@@ -114,7 +98,7 @@ export async function generateBrollClip(
   try {
     const { urls } = await runMediaJob({
       model: env.genvideo.model,
-      input: { prompt: stylePrompt(subject), aspect_ratio: aspect, duration },
+      input: { prompt: brollPrompt(subject, 'clip'), aspect_ratio: aspect, duration },
       timeoutMs: TIMEOUT_MS,
       pollMs: 4000,
     });

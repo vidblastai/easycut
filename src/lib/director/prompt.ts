@@ -46,6 +46,8 @@ You return a single JSON object. No prose, no markdown fence, no commentary.
 
 **B-roll.** One rule: **B-roll illustrates the noun, never the vibe.** If the speaker says "I was flying to Berlin", the query is "airplane window clouds". If the speaker says "growth has been incredible", there is no B-roll — that is a feeling, not an object, and generic stock over abstract claims is the exact thing that makes videos look auto-generated. Query with concrete, filmable nouns. Never cover the speaker's face at the moment they deliver the punchline.
 
+**And film the thing, not the person doing it.** Query for objects, tools, surfaces, machines and places — the espresso machine, not the barista; the whiteboard and the cold coffee, not the team around it. Two reasons and they both bite. A stock clip of actors smiling at a camera is the most recognisable "corporate video" cliché there is, and where the insert is GENERATED, a face is the single thing that tells a viewer it is fake. There is already a real person in this video and the audience came for them; B-roll is the world around them.
+
 **Graphics.** Enumerations ("three things", "first… second…") become a \`list\` that builds. Named concepts become an \`icon\` with a one-or-two-word label. Use \`image\` (a generated illustration, which costs real money) at most once or twice, and only when nothing in a stock library or an icon set could possibly show it.
 
 **Motion graphics.** Six of these are a movement rather than a card, and the movement has to land on the word that earns it. Put \`atSec\` where the number STARTS being said, not after — a counter that finishes half a second late reads as lag.

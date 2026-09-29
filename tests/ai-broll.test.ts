@@ -5,6 +5,7 @@ import {
   moveForStill,
 } from '@/lib/assets/ai-broll';
 import { KIE_IMAGE_COST_USD, KIE_VIDEO_MODELS, kieVideoModel } from '@/lib/assets/kie';
+import { brollPrompt, subjectHasPeople } from '@/lib/assets/broll-prompt';
 
 /**
  * B-roll that is made rather than found.
@@ -70,5 +71,67 @@ describe('AI B-roll', () => {
     expect(isBrollSource('ai-image')).toBe(true);
     expect(isBrollSource('ai-everything')).toBe(false);
     expect(isBrollSource(undefined)).toBe(false);
+  });
+});
+
+describe('what a generated insert is asked for', () => {
+  it('bans people even when the director asked for one', () => {
+    /*
+     * The giveaway, and it is not a matter of degree: a face is where every
+     * one of these models fails, and hands are the second place — which is
+     * why "hands only" is not the escape hatch it looks like.
+     *
+     * So the shot is RECAST rather than refused. The cue is illustrating a
+     * noun either way; the noun that survives is the one that cannot look fake.
+     */
+    const asked = brollPrompt('a barista making coffee in a cafe', 'clip');
+    expect(subjectHasPeople('a barista making coffee in a cafe')).toBe(true);
+    expect(asked).toMatch(/OBJECTS and the SPACE/);
+    expect(asked).toMatch(/NO PEOPLE/);
+    expect(asked).toMatch(/no hands/);
+    // The subject survives — the model still knows what the cue is about.
+    expect(asked).toContain('a barista making coffee in a cafe');
+  });
+
+  it('still bans people when the subject never mentioned one', () => {
+    // A model will put a figure in a street or an office unprompted, so the
+    // clause is unconditional and only the recast sentence is conditional.
+    const plain = brollPrompt('an espresso machine on a counter', 'still');
+    expect(subjectHasPeople('an espresso machine on a counter')).toBe(false);
+    expect(plain).not.toMatch(/OBJECTS and the SPACE/);
+    expect(plain).toMatch(/NO PEOPLE/);
+  });
+
+  it('asks for something unremarkable rather than something cinematic', () => {
+    /*
+     * The words that read as quality in a prompt — cinematic, epic, 8K,
+     * hyperreal — are the words that produce the over-lit, over-graded look
+     * everybody now recognises on sight. This has to sit next to real footage
+     * of a real person and not announce itself.
+     */
+    for (const medium of ['still', 'clip'] as const) {
+      const prompt = brollPrompt('a rain-soaked bicycle against a wall', medium);
+      expect(prompt).toMatch(/natural available light/);
+      expect(prompt).toMatch(/unremarkable frame from real footage/);
+      // "cinematic" appears, as something the shot must NOT be. The check is
+      // that it is never asked FOR — an easy thing to reintroduce by accident
+      // while making a prompt sound better.
+      expect(prompt).toMatch(/Not cinematic, not stylised/);
+      expect(prompt).not.toMatch(/\b(8k|hyperreal|award-winning|epic)\b/i);
+    }
+  });
+
+  it('bans lettering in the scene, not just captions over it', () => {
+    // The first test render put TKO SES LYOPE MOM across a cafe wall. Under
+    // our own caption track that is the one artefact nobody can edit away.
+    const prompt = brollPrompt('a quiet office at night', 'clip');
+    expect(prompt).toMatch(/no signage/);
+    expect(prompt).toMatch(/no labels/);
+    expect(prompt).toMatch(/No text of any kind anywhere in the frame/);
+  });
+
+  it('asks a clip to move and a still to hold', () => {
+    expect(brollPrompt('a harbour', 'clip')).toMatch(/one slow continuous move/);
+    expect(brollPrompt('a harbour', 'still')).toMatch(/single documentary photograph/);
   });
 });
