@@ -62,6 +62,7 @@ export async function processProject(payload: ProcessJobPayload): Promise<void> 
         sceneLook: project.sceneLook,
         clipTransitions: parseTransitions(project.clipTransitions),
         brollSource: project.brollSource,
+        brollOverlay: project.brollOverlay,
         inputMode: project.inputMode as 'raw' | 'roughcut',
         userNote: project.userNote ?? undefined,
         layersOff: parseLayersOff(project.layersOff),

@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { clsx } from 'clsx';
 import { StylePreview } from '@/components/styles/StylePreview';
 import { detectFormat, probeInBrowser, type Detected } from '@/lib/styles/detect';
-import type { ClipTransition, Layout } from '@/lib/edl/types';
+import type { BrollOverlay, ClipTransition, Layout } from '@/lib/edl/types';
 import { layoutPlan } from '@/lib/styles/layouts';
 import { IconArrowRight, IconCheck } from '@/components/shell/Icons';
 import { Stepper, type StepKey } from '@/components/shell/Stepper';
@@ -15,6 +15,7 @@ import { takePendingUpload } from '@/lib/ui/pending-upload';
 import { ScenePicker } from '@/components/scenes/ScenePicker';
 import { TransitionPicker } from '@/components/transitions/TransitionPicker';
 import { BrollSourcePicker, type BrollSourceOffer } from '@/components/broll/BrollSourcePicker';
+import { OverlayPicker } from '@/components/broll/OverlayPicker';
 import type { BrollSource } from '@/lib/assets/ai-broll';
 
 /**
@@ -40,6 +41,8 @@ interface StyleOption {
   accent: string;
   layout: Layout;
   formats: ('short' | 'long')[];
+  /** The treatment this style gives its inserts — see BROLL_OVERLAYS. */
+  brollOverlay: BrollOverlay;
   /** Whether the preview should draw a title card — see `leadsWithCards`. */
   chapterCards?: { short: boolean; long: boolean };
 }
@@ -163,6 +166,9 @@ export function UploadFlow({
    * something somebody knows about their own video and the software does not.
    */
   const [brollSource, setBrollSource] = useState<BrollSource>('stock');
+
+  /** What every insert wears. Null means whatever the edit style declares. */
+  const [brollOverlay, setBrollOverlay] = useState<BrollOverlay | null>(null);
   useEffect(() => {
     // On mount, not during render: localStorage is not there on the server and
     // can throw in a private window, and a mismatch would flash the wrong tile.
@@ -186,6 +192,9 @@ export function UploadFlow({
      falls back to one that is, rather than submitting something unbuildable. */
   const choices = useMemo(() => styles.filter((s) => s.formats.includes(mode)), [styles, mode]);
   const chosen = choices.some((s) => s.id === styleId) ? styleId : (choices[0]?.id ?? styleId);
+  // What the chosen style would put on its inserts, so the overlay picker can
+  // say what "let the style choose" means rather than leaving it abstract.
+  const styleOverlay = choices.find((s) => s.id === chosen)?.brollOverlay ?? 'none';
 
   /*
    * Some layouts ARE the B-roll: a split screen with the insert switched off
@@ -279,6 +288,7 @@ export function UploadFlow({
           // Omitted when it is the default, like everything else on this
           // request — an explicit "stock" says nothing the absence did not.
           brollSource: brollSource === 'stock' ? undefined : brollSource,
+          brollOverlay: brollOverlay ?? undefined,
           inputMode,
           // Only the ones being declined: the default is everything on, and a
           // request that spells out six `true`s says nothing the absence did not.
@@ -529,12 +539,20 @@ export function UploadFlow({
                 for a layer somebody has just switched off is offering a
                 decision that cannot matter. */}
             {layers.broll ? (
-              <BrollSourcePicker
-                offers={brollOffers}
-                value={brollSource}
-                onChange={setBrollSource}
-                className="mt-7"
-              />
+              <>
+                <BrollSourcePicker
+                  offers={brollOffers}
+                  value={brollSource}
+                  onChange={setBrollSource}
+                  className="mt-7"
+                />
+                <OverlayPicker
+                  value={brollOverlay}
+                  onChange={setBrollOverlay}
+                  styleDefault={styleOverlay}
+                  className="mt-7"
+                />
+              </>
             ) : null}
 
             {/* Transitions belong to whatever takes the whole frame, and both

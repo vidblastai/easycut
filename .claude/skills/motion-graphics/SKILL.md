@@ -725,11 +725,41 @@ thing the strip exists to show.
 
 ## What an insert wears
 
-Six treatments, scoped to the B-roll clip: `dust`, `grain`, `light-leak`,
-`scanlines`, `prism`, `vignette`, and `none`. The style declares the default
-(`StylePreset.brollOverlay`) and the editor overrides it per clip, because it
-is a property of the SHOT as much as of the look — grain suits the archive
-photo and scanlines suit the screen capture two inserts later.
+Eleven treatments plus `none`, scoped to the B-roll clip, in two groups that
+the pickers keep apart because it is the only split that helps somebody
+choose:
+
+- **Subtle** — `dust`, `grain`, `light-leak`, `scanlines`, `prism`, `vignette`.
+  The video looks better and nobody notices a filter was applied.
+- **Loud** — `bokeh`, `vhs`, `datamosh`, `duotone`, `halftone`. The insert is
+  wearing something and the viewer is meant to see it.
+
+Chosen in three places: the style declares the default
+(`StylePreset.brollOverlay`), the upload wizard overrides it for the video, and
+the editor overrides it per clip — because it is a property of the SHOT as much
+as of the look, and grain suits the archive photo where scanlines suit the
+screen capture two inserts later.
+
+**Nothing flashes.** A hard strobe is the obvious way to make an overlay
+unmissable and it is a photosensitivity risk, so it is not on the list.
+`datamosh` and `vhs` get their energy from structure changing every frame
+rather than from the whole frame changing brightness.
+
+**The loud five reach the picture through blend modes**, because the overlay is
+a SIBLING of the image and not a filter on it — it has no source pixels. That
+constraint is the design: `color` takes hue from the layer and luminance from
+the backdrop, which is exactly what a duotone is; `difference` inverts what it
+covers, so datamosh's bands are made of the footage rather than painted on it;
+`multiply` darkens, which is why halftone's dots read as ink rather than as a
+screen door. They cost more per frame than the quiet six — a blend forces a
+readback — and that is affordable for a 2.5s insert and would not be for a
+whole video.
+
+**A resolved `accent` lives on the clip.** Only `duotone` reads it, and
+reaching across to `src/lib/styles/presets.ts` for it cost a build: that module
+uses `@/` imports, Remotion's webpack carries no such alias, and the bundle
+simply failed. The composition draws the document and never imports the style
+presets — that is the rule, and this is the second time it has been learned.
 
 **Drawn, never a plate.** The industry way is a library of 4K ProRes overlays
 screen-blended over the picture: gigabytes to store and serve, a licence each,

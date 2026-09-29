@@ -197,6 +197,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
       // rebuild that silently undoes two choices the user made on the way in.
       sceneLook: project.sceneLook,
       clipTransitions: patch.clipTransitions ?? parseTransitions(project.clipTransitions),
+      brollOverlay: project.brollOverlay,
       mode: (patch.mode ?? project.mode) as 'short' | 'long',
       aspect: patch.aspect,
       maxDurationSec: patch.maxDurationSec,

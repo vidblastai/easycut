@@ -7,7 +7,7 @@ import { FORMAT_PRESETS, getStyle, sanitiseTransitions } from '@/lib/styles/pres
 import { findCaptionPreset } from '@/lib/captions/presets';
 import { currentUserId, ensureUser, isAuthEnabled } from '@/lib/auth';
 import { LAYER_NAMES, type LayerName } from '@/lib/edl/layers';
-import { CLIP_TRANSITIONS, SCENE_LOOKS } from '@/lib/edl/types';
+import { BROLL_OVERLAYS, CLIP_TRANSITIONS, SCENE_LOOKS } from '@/lib/edl/types';
 
 export const runtime = 'nodejs';
 
@@ -22,6 +22,8 @@ const CreateProjectSchema = z.object({
   clipTransitions: z.array(z.string()).max(CLIP_TRANSITIONS.length).optional(),
   /** Found, or made. Omitted means found — see src/lib/assets/ai-broll.ts. */
   brollSource: z.enum(['stock', 'ai-image', 'ai-video']).optional(),
+  /** The treatment every insert wears. Omitted takes the edit style's. */
+  brollOverlay: z.enum(BROLL_OVERLAYS).optional(),
   inputMode: z.enum(['raw', 'roughcut']).default('raw'),
   /**
    * Layers the person declined, before anything is made.
@@ -92,6 +94,7 @@ export async function POST(request: Request) {
         : null,
       clipTransitions: transitions ? JSON.stringify(transitions) : null,
       brollSource: input.brollSource ?? null,
+      brollOverlay: input.brollOverlay ?? null,
       inputMode: input.inputMode,
       userNote: input.userNote,
       status: 'draft',

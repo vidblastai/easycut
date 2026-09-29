@@ -108,6 +108,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
         captionPreset: project.captionPreset,
         sceneLook: project.sceneLook,
         clipTransitions: parseTransitions(project.clipTransitions),
+        brollOverlay: project.brollOverlay,
         mode: project.mode as 'short' | 'long',
         aspect: input.aspect,
         degraded: currentEdl.degraded,

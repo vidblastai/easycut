@@ -51,6 +51,9 @@ export default async function NewProjectPage() {
               // a client component and should not have to carry the pacing
               // tables across the wire to work out what to draw.
               chapterCards: { short: leadsWithCards(s, 'short'), long: leadsWithCards(s, 'long') },
+              // What this style's inserts wear, so "let the style choose" on
+              // the overlay picker can name what it is choosing.
+              brollOverlay: s.brollOverlay,
             }))}
             formats={[FORMAT_PRESETS.short, FORMAT_PRESETS.long]}
             /*

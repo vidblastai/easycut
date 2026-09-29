@@ -1,4 +1,4 @@
-import { CLIP_TRANSITIONS, SCENE_LOOKS, type Aspect, type BrollOverlay, type CaptionStyle, type ClipTransition, type Layout, type SceneLook, type TransitionType } from '@/lib/edl/types';
+import { BROLL_OVERLAYS, CLIP_TRANSITIONS, SCENE_LOOKS, type Aspect, type BrollOverlay, type CaptionStyle, type ClipTransition, type Layout, type SceneLook, type TransitionType } from '@/lib/edl/types';
 import { findCaptionPreset } from '@/lib/captions/presets';
 
 /**
@@ -863,6 +863,7 @@ export function styleFor(
   captionPreset?: string | null,
   sceneLook?: string | null,
   clipTransitions?: readonly string[] | null,
+  brollOverlay?: string | null,
 ): StylePreset {
   const base = getStyle(styleId);
 
@@ -874,13 +875,17 @@ export function styleFor(
     ? (sceneLook as SceneLook)
     : null;
   const moves = sanitiseTransitions(clipTransitions);
+  const overlay = brollOverlay && (BROLL_OVERLAYS as readonly string[]).includes(brollOverlay)
+    ? (brollOverlay as BrollOverlay)
+    : null;
 
-  if (!caption && !look && !moves) return base;
+  if (!caption && !look && !moves && !overlay) return base;
   return {
     ...base,
     ...(caption ? { captionStyle: { ...caption.style } } : {}),
     ...(look ? { sceneLook: look } : {}),
     ...(moves ? { clipTransitions: moves } : {}),
+    ...(overlay ? { brollOverlay: overlay } : {}),
   };
 }
 

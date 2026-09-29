@@ -103,6 +103,7 @@ export function buildEdl(input: BuildEdlInput): Edl {
      * video belongs.
      */
     layoutPlan(style.layout).alwaysOn ? 'none' : style.brollOverlay,
+    style.accent,
     // A layout that gives B-roll a permanent half has nothing to transition
     // INTO — the slot is on screen from the first frame — so those cut.
     layoutPlan(style.layout).alwaysOn ? ['cut'] : style.clipTransitions,
@@ -253,6 +254,8 @@ function placeBroll(
   alwaysOn: boolean,
   /** The treatment every insert in this style wears. */
   overlay: Edl['broll'][number]['overlay'],
+  /** The video's accent, for the treatments that recolour the picture. */
+  accent: string,
   /** The style's vocabulary of enter/exit moves, cycled per insert. */
   transitions: readonly ClipTransition[],
 ): BrollClip[] {
@@ -307,6 +310,7 @@ function placeBroll(
       intent: cue.intent,
       query: cue.query,
       overlay,
+      accent,
     });
   }
 

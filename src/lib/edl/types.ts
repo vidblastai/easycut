@@ -417,17 +417,32 @@ export const CLIP_TRANSITION_MOVES: readonly ClipTransition[] = [
  * adjust afterwards. Drawn, they cost nothing, they are the exact length of
  * the insert, they scale to any aspect, and their strength is a number.
  *
- * Two of atmosphere, two of screen, two of photography — chosen so that a
- * person picking can tell them apart from the names.
+ * Two groups, and the split is the useful part. The quiet six are treatments —
+ * you notice the video looks better and not that anything was applied. The
+ * loud five are a STATEMENT: the insert is wearing something and the viewer is
+ * meant to see it. Mixing them on one video is usually a mistake, which is why
+ * they are listed apart rather than shuffled into one alphabetical row.
+ *
+ * Nothing here flashes. A hard strobe is the obvious way to make an overlay
+ * unmissable and it is a photosensitivity risk, so it is not on the list —
+ * `datamosh` and `vhs` get their energy from structure changing every frame
+ * rather than from the whole frame changing brightness.
  */
 export const BROLL_OVERLAYS = [
   'none',
+  /* ── quiet: felt more than seen ─────────────────────────────────────── */
   'dust',        // particles drifting through the light
   'grain',       // 16mm film grain
   'light-leak',  // a warm bloom crossing the frame
-  'scanlines',   // CRT/VHS: line structure and a rolling band
+  'scanlines',   // CRT line structure and a rolling band
   'prism',       // chromatic fringe at the edges
-  'vignette',    // the quiet one: darkened corners
+  'vignette',    // darkened corners, nothing else
+  /* ── loud: the insert is wearing something and everyone can see it ──── */
+  'bokeh',       // big out-of-focus orbs of light
+  'vhs',         // tracking tears, chroma bleed, a picture that will not hold
+  'datamosh',    // hard bands of inverted colour, re-rolled every frame
+  'duotone',     // the whole insert in two colours
+  'halftone',    // print dots
 ] as const;
 export type BrollOverlay = (typeof BROLL_OVERLAYS)[number];
 
@@ -472,6 +487,18 @@ export const BrollClipSchema = z.object({
    * exactly the picture it rendered before.
    */
   overlay: z.enum(BROLL_OVERLAYS).default('none'),
+  /**
+   * The video's accent, resolved into the clip.
+   *
+   * Only `duotone` reads it, but it lives HERE rather than being looked up at
+   * paint time, and that is the rule the whole renderer runs on: the
+   * composition draws the document and never imports the style presets.
+   * Reaching across for it cost a build — `src/lib/styles/presets.ts` uses
+   * `@/` imports, Remotion's webpack carries no such alias, and the bundle
+   * simply failed. A resolved value has no such problem and makes the clip
+   * describe itself.
+   */
+  accent: z.string().default('#9B7BFF'),
 });
 export type BrollClip = z.infer<typeof BrollClipSchema>;
 

@@ -68,6 +68,7 @@ async function main() {
         enter: 'fade' as const,
         exit: 'fade' as const,
         overlay: type,
+        accent: '#9B7BFF',
       })),
       // The word on screen names the overlay you are watching, which is the
       // only way to tell six of them apart on one strip.

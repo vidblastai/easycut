@@ -73,7 +73,7 @@ export async function runPipeline(
     request,
     // Provisional until ingest has the file in hand and ffprobe has measured it.
     mode: request.mode,
-    style: styleFor(request.styleId, request.captionPreset, request.sceneLook, request.clipTransitions),
+    style: styleFor(request.styleId, request.captionPreset, request.sceneLook, request.clipTransitions, request.brollOverlay),
     ledger: new CostLedger(),
     workDir,
     degraded: [],

@@ -426,6 +426,7 @@ function applyOne(edl: Edl, op: EdlOperation): Edl {
           // Matched to whatever the inserts already in this video wear, so a
           // clip added by hand does not arrive naked beside four treated ones.
           overlay: edl.broll[0]?.overlay ?? 'none',
+          accent: edl.broll[0]?.accent ?? '#9B7BFF',
           // Whatever the inserts either side of it do, so a hand-added clip
           // does not announce itself as the odd one out.
           enter: edl.broll[0]?.enter ?? 'fade', exit: edl.broll[0]?.exit ?? 'fade',

@@ -42,8 +42,10 @@ export const BrollOverlay: React.FC<{
   seed: string;
   /** 0..1 across the insert's life, for the ones that travel. */
   progress: number;
+  /** The video's accent, for the ones that recolour rather than cover. */
+  accent: string;
   cheap: boolean;
-}> = ({ type, seed, progress, cheap }) => {
+}> = ({ type, seed, progress, accent, cheap }) => {
   if (type === 'none') return null;
 
   switch (type) {
@@ -59,6 +61,17 @@ export const BrollOverlay: React.FC<{
       return <Prism cheap={cheap} />;
     case 'vignette':
       return <Vignette />;
+
+    case 'bokeh':
+      return <Bokeh seed={seed} cheap={cheap} />;
+    case 'vhs':
+      return <Vhs seed={seed} progress={progress} cheap={cheap} />;
+    case 'datamosh':
+      return <Datamosh seed={seed} cheap={cheap} />;
+    case 'duotone':
+      return <Duotone accent={accent} cheap={cheap} />;
+    case 'halftone':
+      return <Halftone cheap={cheap} />;
     default:
       return null;
   }
@@ -344,3 +357,328 @@ const Vignette: React.FC = () => (
     }}
   />
 );
+
+/* ══════════════════════════════════════════════════════ the loud ones ══ */
+
+/*
+ * Everything below changes how the picture LOOKS rather than adding something
+ * over it, and none of these has the source pixels to work with — the overlay
+ * is a sibling of the image, not a filter on it. That constraint is why they
+ * are built out of blend modes: `color` takes hue from the layer and luminance
+ * from the picture underneath, `difference` inverts what it covers, `multiply`
+ * darkens by it. A blend mode is the only way to reach the backdrop from a
+ * layer above it, and it is why these cost more per frame than the quiet six —
+ * the browser has to read the composited picture back and blend it by hand.
+ *
+ * Affordable because an insert is two and a half seconds. It would not be
+ * affordable across a whole video, which is what the `overlays` layer learned.
+ */
+
+/* ------------------------------------------------------------------ bokeh */
+
+/**
+ * Dust, but the lens is wide open and the lights are behind the subject.
+ *
+ * Same field of motes and a completely different look, from three numbers:
+ * an order of magnitude bigger, much softer, and tinted rather than white.
+ * Real bokeh is not white — it is whatever light made it — so each orb takes
+ * a hue off its own seed, which is what stops a field of them reading as
+ * smudges on the lens.
+ */
+const Bokeh: React.FC<{ seed: string; cheap: boolean }> = ({ seed, cheap }) => {
+  const frame = useCurrentFrame();
+  const { fps, width, height } = useVideoConfig();
+  const short = Math.min(width, height);
+  const t = frame / fps;
+
+  const orbs = React.useMemo(
+    () =>
+      Array.from({ length: 9 }, (_, i) => {
+        const near = seeded(`${seed}-bk`, i);
+        return {
+          x: seeded(`${seed}-bx`, i),
+          y: seeded(`${seed}-by`, i),
+          size: short * (0.16 + near * 0.38),
+          // A real out-of-focus highlight is brighter at its rim than its
+          // middle — that is the aperture blades, and it is the whole tell.
+          hue: 20 + seeded(`${seed}-bh`, i) * 300,
+          opacity: 0.34 + (1 - near) * 0.5,
+          driftX: (seeded(`${seed}-bdx`, i) - 0.5) * 0.06,
+          driftY: -0.015 - seeded(`${seed}-bdy`, i) * 0.03,
+        };
+      }),
+    [seed, short],
+  );
+
+  return (
+    <div style={{ ...COVER, ...(cheap ? null : { mixBlendMode: 'screen' as const }) }}>
+      {orbs.map((o, i) => (
+        <span
+          key={i}
+          style={{
+            position: 'absolute',
+            left: 0,
+            top: 0,
+            width: o.size,
+            height: o.size,
+            borderRadius: '50%',
+            background: `radial-gradient(circle, hsla(${o.hue.toFixed(0)},90%,70%,0.7) 52%, hsla(${o.hue.toFixed(0)},100%,82%,1) 80%, hsla(${o.hue.toFixed(0)},100%,82%,0) 100%)`,
+            opacity: cheap ? o.opacity * 0.7 : o.opacity,
+            transform: `translate3d(${(o.x + o.driftX * t) * width}px, ${(o.y + o.driftY * t) * height}px, 0)`,
+            ...(cheap ? null : { filter: 'blur(14px)' }),
+          }}
+        />
+      ))}
+    </div>
+  );
+};
+
+/* -------------------------------------------------------------------- vhs */
+
+/**
+ * A tape the machine cannot quite track.
+ *
+ * Scanlines is the picture on a working CRT; this is the picture on a worn
+ * tape, and the difference is that it FAILS. Three failures, stacked:
+ *
+ *  - **Tracking tears.** Bands that jump sideways, re-rolled every third frame
+ *    so they stutter rather than crawl. Every third rather than every frame
+ *    because a tear that changes 30 times a second is static, and a tape drops
+ *    tracking in bursts.
+ *  - **Chroma bleed.** The colour signal has less bandwidth than the
+ *    luminance, so colour smears to the RIGHT of an edge and never to the
+ *    left. Two offset tints, one direction.
+ *  - **Head switching noise.** The band of hash along the very bottom of every
+ *    VHS frame, which is the single most recognisable thing about the format
+ *    and the one everybody forgets.
+ */
+const Vhs: React.FC<{ seed: string; progress: number; cheap: boolean }> = ({ seed, progress, cheap }) => {
+  const frame = useCurrentFrame();
+  const { height } = useVideoConfig();
+  const roll = Math.floor(frame / 3);
+  const pitch = Math.max(2, height / 300);
+
+  const tears = React.useMemo(
+    () =>
+      Array.from({ length: 5 }, (_, i) => ({
+        top: seeded(`${seed}-vt-${roll}`, i) * 100,
+        h: 0.6 + seeded(`${seed}-vh-${roll}`, i) * 5,
+        shift: (seeded(`${seed}-vs-${roll}`, i) - 0.5) * 9,
+      })),
+    [seed, roll],
+  );
+
+  return (
+    <>
+      <div
+        style={{
+          ...COVER,
+          opacity: 0.36,
+          background: `repeating-linear-gradient(180deg, rgba(0,0,0,0.6) 0px, rgba(0,0,0,0.6) ${(pitch / 2).toFixed(2)}px, rgba(0,0,0,0) ${(pitch / 2).toFixed(2)}px, rgba(0,0,0,0) ${pitch.toFixed(2)}px)`,
+        }}
+      />
+      {/* Chroma bleed: to the right of the edge only, because that is the
+          direction the colour subcarrier lags. */}
+      <div
+        style={{
+          ...COVER,
+          opacity: cheap ? 0.2 : 0.34,
+          transform: 'translateX(0.9%)',
+          background: 'linear-gradient(90deg, rgba(255,0,110,0.45), rgba(255,0,110,0.1))',
+          ...(cheap ? null : { mixBlendMode: 'screen' as const }),
+        }}
+      />
+      <div
+        style={{
+          ...COVER,
+          opacity: cheap ? 0.18 : 0.3,
+          transform: 'translateX(-0.6%)',
+          background: 'linear-gradient(90deg, rgba(0,200,255,0.1), rgba(0,200,255,0.45))',
+          ...(cheap ? null : { mixBlendMode: 'screen' as const }),
+        }}
+      />
+      {tears.map((tear, i) => (
+        <div
+          key={i}
+          style={{
+            position: 'absolute',
+            left: 0,
+            right: 0,
+            top: `${tear.top.toFixed(1)}%`,
+            height: `${tear.h.toFixed(2)}%`,
+            transform: `translateX(${tear.shift.toFixed(2)}%)`,
+            background: 'rgba(255,255,255,0.55)',
+            ...(cheap ? null : { mixBlendMode: 'overlay' as const }),
+          }}
+        />
+      ))}
+      {/* The vertical hold, drifting once across the insert. */}
+      <div
+        style={{
+          ...COVER,
+          top: `${(progress * 150 - 25).toFixed(1)}%`,
+          height: '14%',
+          opacity: 0.26,
+          background: 'linear-gradient(180deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.9) 50%, rgba(255,255,255,0) 100%)',
+          ...(cheap ? null : { mixBlendMode: 'overlay' as const }),
+        }}
+      />
+      {/* Head-switching noise, always at the very bottom. */}
+      <div
+        style={{
+          position: 'absolute',
+          left: 0,
+          right: 0,
+          bottom: 0,
+          height: '2.2%',
+          opacity: 0.8,
+          transform: `translateX(${((seeded(`${seed}-hs`, roll) - 0.5) * 6).toFixed(2)}%)`,
+          background:
+            'repeating-linear-gradient(90deg, rgba(255,255,255,0.7) 0px, rgba(0,0,0,0.8) 3px, rgba(190,190,190,0.5) 6px, rgba(20,20,20,0.9) 9px)',
+        }}
+      />
+    </>
+  );
+};
+
+/* --------------------------------------------------------------- datamosh */
+
+/**
+ * Bands of the picture with their colour inverted, re-rolled every frame.
+ *
+ * `difference` is what makes this work from a layer ABOVE the picture: a white
+ * band over the shot comes out as a full inversion of whatever it covers, so
+ * the bands are made of the footage rather than painted on it. A coloured band
+ * inverts only part of the spectrum, which is where the acid green and magenta
+ * come from — they are not chosen, they are what is left.
+ *
+ * Every frame, not every third: this is a decoder that has lost its reference
+ * frame, and the whole character of that is that it never settles.
+ */
+const Datamosh: React.FC<{ seed: string; cheap: boolean }> = ({ seed, cheap }) => {
+  const frame = useCurrentFrame();
+  const roll = Math.floor(frame);
+
+  const bands = React.useMemo(
+    () =>
+      Array.from({ length: 7 }, (_, i) => ({
+        top: seeded(`${seed}-dm-t-${roll}`, i) * 100,
+        h: 1 + seeded(`${seed}-dm-h-${roll}`, i) * 11,
+        shift: (seeded(`${seed}-dm-s-${roll}`, i) - 0.5) * 22,
+        tone: seeded(`${seed}-dm-c-${roll}`, i),
+      })),
+    [seed, roll],
+  );
+
+  return (
+    <div style={{ ...COVER }}>
+      {bands.map((band, i) => (
+        <div
+          key={i}
+          style={{
+            position: 'absolute',
+            left: 0,
+            right: 0,
+            top: `${band.top.toFixed(1)}%`,
+            height: `${band.h.toFixed(2)}%`,
+            transform: `translateX(${band.shift.toFixed(2)}%)`,
+            opacity: cheap ? 0.55 : 0.9,
+            background:
+              band.tone < 0.4
+                ? 'rgba(255,255,255,0.95)'
+                : band.tone < 0.7
+                  ? 'rgba(120,255,160,0.9)'
+                  : 'rgba(255,90,210,0.9)',
+            ...(cheap ? null : { mixBlendMode: 'difference' as const }),
+          }}
+        />
+      ))}
+    </div>
+  );
+};
+
+/* ---------------------------------------------------------------- duotone */
+
+/**
+ * The whole insert in two colours, keyed to the video's own accent.
+ *
+ * `mix-blend-mode: color` is exactly the right primitive and it is worth
+ * knowing why: it takes HUE and SATURATION from this layer and LUMINANCE from
+ * the picture underneath. So a two-stop gradient laid over a photograph maps
+ * its shadows to one colour and its highlights to the other while keeping
+ * every tone — which is what a duotone is. Nothing has to touch the source.
+ *
+ * The accent is the video's, so an insert treated this way belongs to the
+ * video rather than to whatever palette looked good in isolation.
+ */
+const Duotone: React.FC<{ accent: string; cheap: boolean }> = ({ accent, cheap }) => (
+  <>
+    <div
+      style={{
+        ...COVER,
+        // Contrast first: a duotone over a flat mid-grey picture is a flat
+        // mid-tone, and the whole effect lives in the separation.
+        opacity: 0.35,
+        background: 'linear-gradient(180deg, rgba(0,0,0,0.55), rgba(0,0,0,0.2))',
+        ...(cheap ? null : { mixBlendMode: 'multiply' as const }),
+      }}
+    />
+    <div
+      style={{
+        ...COVER,
+        opacity: cheap ? 0.7 : 1,
+        background: `linear-gradient(155deg, #0B0A1E 0%, ${accent} 58%, #FFE9C2 100%)`,
+        ...(cheap ? null : { mixBlendMode: 'color' as const }),
+      }}
+    />
+  </>
+);
+
+/* --------------------------------------------------------------- halftone */
+
+/**
+ * Print dots, the size of a newspaper blown up past where it should be.
+ *
+ * `multiply` rather than an opacity, so the dots darken what is under them
+ * instead of greying it: a halftone is ink ON paper, and ink does not lighten.
+ * The grid is sized off the frame, or a 4K export gets four times as many dots
+ * and reads as texture instead of as print.
+ *
+ * Rotated 15 degrees for the same reason a real press rotates its screens —
+ * a dot grid square to the pixel grid moirés against it, which is a shimmer
+ * nobody can explain and everybody can see.
+ */
+const Halftone: React.FC<{ cheap: boolean }> = ({ cheap }) => {
+  const { height } = useVideoConfig();
+  const cell = Math.max(3, height / 190);
+
+  return (
+    <>
+      <div
+        style={{
+          ...COVER,
+          opacity: cheap ? 0.45 : 0.72,
+          // Oversized so the rotation cannot uncover a corner.
+          left: '-15%',
+          top: '-15%',
+          right: '-15%',
+          bottom: '-15%',
+          transform: 'rotate(15deg)',
+          backgroundImage: `radial-gradient(circle at center, rgba(0,0,0,0.92) ${(cell * 0.3).toFixed(2)}px, rgba(0,0,0,0) ${(cell * 0.52).toFixed(2)}px)`,
+          backgroundSize: `${cell.toFixed(2)}px ${cell.toFixed(2)}px`,
+          ...(cheap ? null : { mixBlendMode: 'multiply' as const }),
+        }}
+      />
+      {/* Paper. Without it the dots sit on the photograph and it reads as a
+          screen door rather than as something printed. */}
+      <div
+        style={{
+          ...COVER,
+          opacity: 0.3,
+          background: '#FFF8EC',
+          ...(cheap ? null : { mixBlendMode: 'overlay' as const }),
+        }}
+      />
+    </>
+  );
+};

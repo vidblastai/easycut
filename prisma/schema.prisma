@@ -89,6 +89,10 @@ model Project {
   // every project before this column had. See src/lib/assets/ai-broll.ts.
   brollSource String?
 
+  // The treatment every insert wears — see BROLL_OVERLAYS. Null means "the
+  // one this edit style declares", the same contract as the looks above.
+  brollOverlay String?
+
   // Optional free-text steer, e.g. "focus on the pricing section".
   userNote String?
 

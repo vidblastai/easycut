@@ -38,7 +38,12 @@ export const BrollLayer: React.FC<{ edl: Edl; onMediaError?: (message: string) =
 
     return (
       <Sequence key={clip.id} from={from} durationInFrames={durationInFrames} premountFor={Math.round(fps * 2)}>
-        <BrollInsert clip={clip} durationInFrames={durationInFrames} onMediaError={onMediaError} cheap={cheap} />
+        <BrollInsert
+          clip={clip}
+          durationInFrames={durationInFrames}
+          onMediaError={onMediaError}
+          cheap={cheap}
+        />
       </Sequence>
     );
   });
@@ -177,7 +182,7 @@ const BrollInsert: React.FC<{
           stops — grain over the B-roll and not over the speaker is an edit,
           grain over both is a filter. */}
       {clip.overlay !== 'none' ? (
-        <BrollOverlay type={clip.overlay} seed={clip.id} progress={progress} cheap={cheap} />
+        <BrollOverlay type={clip.overlay} seed={clip.id} progress={progress} accent={clip.accent} cheap={cheap} />
       ) : null}
 
       {/* Over the picture, inside the clip's own frame — a glitch that spilled

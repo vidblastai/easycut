@@ -7,7 +7,7 @@ import {
 import { KIE_IMAGE_COST_USD, KIE_VIDEO_MODELS, kieVideoModel } from '@/lib/assets/kie';
 import { brollPrompt, subjectHasPeople } from '@/lib/assets/broll-prompt';
 import { BROLL_OVERLAYS, BrollClipSchema } from '@/lib/edl/types';
-import { OVERLAY_COPY } from '@/lib/edl/overlay-copy';
+import { OVERLAY_COPY, OVERLAY_GROUPS } from '@/lib/edl/overlay-copy';
 import { STYLE_LIST, getStyle } from '@/lib/styles/presets';
 import { layoutPlan } from '@/lib/styles/layouts';
 
@@ -167,6 +167,22 @@ describe('B-roll overlays', () => {
       expect(OVERLAY_COPY[type].label.length).toBeGreaterThan(0);
       expect(OVERLAY_COPY[type].note.length).toBeGreaterThan(10);
     }
+  });
+
+  it('sorts every one of them into subtle or loud, and none into both', () => {
+    /*
+     * The grouping is not decoration — it is the only distinction that helps
+     * somebody choose. Subtle makes a video look better without anybody
+     * noticing a filter; loud is a statement. An overlay missing from the
+     * groups is one the pickers would never show, which is a silent way to
+     * ship something nobody can reach.
+     */
+    const grouped = OVERLAY_GROUPS.flatMap((g) => g.types);
+    expect([...grouped].sort()).toEqual([...BROLL_OVERLAYS].sort());
+    expect(new Set(grouped).size).toBe(grouped.length);
+    // `none` belongs with the quiet ones: it is the absence of a statement.
+    expect(OVERLAY_GROUPS[0].types).toContain('none');
+    expect(OVERLAY_GROUPS[1].types).toContain('datamosh');
   });
 
   it('leaves a permanent split-screen slot untreated', () => {
