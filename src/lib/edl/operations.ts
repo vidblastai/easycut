@@ -526,6 +526,10 @@ function applyOne(edl: Edl, op: EdlOperation): Edl {
         'enter', 'exit',
         // An icon row's white-or-black tile, switchable per row.
         'tone',
+        // And which way it is laid out. `x`/`y` are already here and travel
+        // with it — see `placeIconRow` in the editor, because setting the side
+        // without the coordinates leaves a column at a floor row's height.
+        'side',
       ]);
       const patch = Object.fromEntries(Object.entries(op.patch).filter(([k]) => allowed.has(k)));
 

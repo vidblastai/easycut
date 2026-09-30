@@ -6,7 +6,7 @@ import { clsx } from 'clsx';
 import type { PlayerRef } from '@remotion/player';
 import { applyOperations, describeOperation, type ClipTrack, type EdlOperation } from '@/lib/edl/operations';
 import { reorderIndexFor, resolveDrag, snapPointsFor, type DragKind } from '@/lib/timeline/drag';
-import { CLIP_TRANSITIONS, SCENE_KINDS, TRANSITION_TYPES, type BrollOverlay, type ClipTransition, type Edl, type IconCue } from '@/lib/edl/types';
+import { CLIP_TRANSITIONS, SCENE_KINDS, TRANSITION_TYPES, hasSideRoom, iconRowPlacement, type BrollOverlay, type ClipTransition, type Edl, type IconCue } from '@/lib/edl/types';
 import { TRANSITION_COPY, TRANSITION_GLYPH } from '@/lib/edl/transition-copy';
 import { OVERLAY_COPY } from '@/lib/edl/overlay-copy';
 import { OverlayGrid, OverlaySwatch } from '@/components/broll/OverlaySwatch';
@@ -2029,7 +2029,39 @@ function TransitionBadge({ which, type }: { which: 'enter' | 'exit'; type: ClipT
  * alternative — type, save, re-render, look — is four steps to find out you
  * got a games console instead of a video camera.
  */
-function IconInspector({ cue, onChange }: { cue: IconCue; onChange: (op: EdlOperation) => void }) {
+const PLACEMENTS = [
+  { side: 'left' as const, label: 'Left' },
+  { side: 'below' as const, label: 'Below' },
+  { side: 'right' as const, label: 'Right' },
+];
+
+/**
+ * Moving a row to a side moves its COORDINATES with it.
+ *
+ * `side` alone is not the position — the renderer reads `x` and `y`, and those
+ * were computed for the layout the row had. Flipping the flag without them
+ * leaves a column at the height of a floor row, which is exactly the bug the
+ * asset stage had.
+ */
+function placeIconRow(
+  cue: IconCue,
+  side: 'below' | 'left' | 'right',
+  frame: { width: number; height: number },
+): EdlOperation {
+  const spot = iconRowPlacement(cue.cards.length, frame.width, frame.height, side);
+  return { op: 'clip.update', track: 'icons', id: cue.id, patch: { side, x: spot.x, y: spot.y } };
+}
+
+function IconInspector({
+  cue,
+  onChange,
+  frame,
+}: {
+  cue: IconCue;
+  onChange: (op: EdlOperation) => void;
+  frame: { width: number; height: number };
+}) {
+  const sideRoom = hasSideRoom(frame.width, frame.height);
   const [busy, setBusy] = React.useState<number | null>(null);
   const [failed, setFailed] = React.useState<Record<number, string>>({});
   const span = Math.max(0.2, cue.outEndSec - cue.outStartSec);
@@ -2121,6 +2153,44 @@ function IconInspector({ cue, onChange }: { cue: IconCue; onChange: (op: EdlOper
           </div>
         ))}
       </div>
+
+      {/* Where the row sits.
+
+          Offered only in a frame that has a margin to offer: in a vertical
+          picture the subject fills it, and "left" would mean "over their
+          shoulder". And a group of three cannot go to the side, for the same
+          reason the builder never puts one there — three side by side is the
+          shape the effect was designed around, and stacked in a column it
+          stops being a group and becomes a list. */}
+      {sideRoom ? (
+        <div className="mt-3">
+          <span className="text-[11px] font-semibold text-muted">Where it sits</span>
+          <div className="mt-1.5 flex flex-wrap gap-1.5">
+            {PLACEMENTS.map((spot) => {
+              const blocked = spot.side !== 'below' && cue.cards.length >= 3;
+              return (
+                <button
+                  key={spot.side}
+                  type="button"
+                  disabled={blocked}
+                  title={blocked ? 'Three cards go across the middle, not down one side.' : undefined}
+                  onClick={() => onChange(placeIconRow(cue, spot.side, frame))}
+                  className={clsx(
+                    'rounded border px-2 py-0.5 text-[11px] font-semibold transition-colors',
+                    cue.side === spot.side
+                      ? 'border-violet text-violet'
+                      : blocked
+                        ? 'cursor-not-allowed border-line text-faint opacity-50'
+                        : 'border-line text-muted hover:text-chalk',
+                  )}
+                >
+                  {spot.label}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      ) : null}
 
       <div className="mt-3 flex items-center gap-2">
         {cue.cards.length < 3 ? (
@@ -2545,7 +2615,7 @@ function Inspector({
   if (selection.kind === 'icons') {
     const cue = edl.icons.find((c) => c.id === selection.id);
     if (!cue) return null;
-    return <IconInspector cue={cue} onChange={onChange} />;
+    return <IconInspector cue={cue} onChange={onChange} frame={edl.format} />;
   }
 
   if (selection.kind === 'scenes') {

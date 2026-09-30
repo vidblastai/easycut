@@ -8,7 +8,8 @@ import { searchStock, isStockConfigured, type StockClip } from '@/lib/assets/bro
 import { isAiBrollConfigured, makeBrollAsset, type AiClip, type BrollSource } from '@/lib/assets/ai-broll';
 import { sfxDefaultGain, sfxUrl, type SfxName } from '@/lib/assets/sfx';
 import type { CostLedger } from '@/lib/pricing/cost';
-import { iconRowPlacement, type Edl } from '@/lib/edl/types';
+import { type Edl } from '@/lib/edl/types';
+import { relayoutIconRows } from '@/lib/edl/icon-rows';
 import { alignToBeat } from '@/lib/edl/beat-sync';
 
 /**
@@ -248,34 +249,33 @@ export async function resolveAssets(
    * Flat results back onto rows, in the order they were flattened.
    *
    * A card whose icon did not resolve is DROPPED rather than drawn empty — an
-   * empty tile rising on a word is worse than no tile — and a row that loses
-   * all its cards goes with it.
+   * empty tile rising on a word is worse than no tile. What that leaves of the
+   * row may be a different SHAPE from the one the builder laid out, which is
+   * `relayoutIconRows`' problem, not this one's.
    */
   let cardCursor = 0;
-  const icons = edl.icons
-    .map((cue) => ({
-      ...cue,
-      cards: cue.cards
-        .map((card) => {
-          const resolved = cardIcons[cardCursor++] ?? null;
-          return resolved ? { ...card, markup: resolved.markup, iconId: resolved.id } : null;
-        })
-        .filter((card): card is NonNullable<typeof card> => card !== null),
-    }))
-    .filter((cue) => cue.cards.length > 0)
-    // Re-placed for the cards that SURVIVED. A card's size depends on how many
-    // share its row, and the row's height is what keeps it clear of the
-    // captions — so a three-card row that lost one to a failed lookup would
-    // otherwise sit at the height a smaller card needed, with the words
-    // running through the two that are left.
-    .map((cue) => ({
-      ...cue,
-      y: iconRowPlacement(cue.cards.length, edl.format.width, edl.format.height).y,
-    }));
+  const withIcons = edl.icons.map((cue) => ({
+    ...cue,
+    cards: cue.cards
+      .map((card) => {
+        const resolved = cardIcons[cardCursor++] ?? null;
+        return resolved ? { ...card, markup: resolved.markup, iconId: resolved.id } : null;
+      })
+      .filter((card): card is NonNullable<typeof card> => card !== null),
+  }));
+  const icons = relayoutIconRows(withIcons, edl.format);
+
 
   const droppedCards =
     edl.icons.reduce((n, cue) => n + cue.cards.length, 0) - icons.reduce((n, cue) => n + cue.cards.length, 0);
   if (droppedCards > 0) degraded.push(`icon cards (${droppedCards} word(s) had no icon)`);
+
+  // And say when a whole row went, which is a different thing from losing a
+  // card: the row is gone because what was left of it had nowhere to go.
+  const droppedRows = edl.icons.length - icons.length;
+  if (droppedRows > 0) {
+    degraded.push(`icon cards (${droppedRows} row(s) left too few cards to place)`);
+  }
 
   const scenes = edl.scenes.map((scene, i) => ({
     ...scene,

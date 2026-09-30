@@ -812,6 +812,31 @@ way the segments were joined. It lived inside the concat branch at first, which
 left `[speech]` (the label the music duck and the final mix both read) undefined
 the moment the overlap turned on, so ffmpeg refused the whole graph.
 
+## A row is laid out twice, and the second time is the one that ships
+
+The builder places icon rows before anything has been fetched, so it places
+them for the cards the DIRECTOR asked for. By the time the icons come back some
+of those words have no icon, and the row arrives at the asset stage a different
+size from the one that was laid out. `relayoutIconRows` is where that is
+resolved, and it has to do two things:
+
+- **Re-place for the cards that survived, IN THE SHAPE IT ENDED UP.** Passing
+  `side` matters as much as passing the count. Without it every row was
+  recomputed with the below-row geometry, which dragged a side column's `y`
+  from the middle of the frame down into the caption band while leaving its `x`
+  out in the margin — so it rendered in the bottom corner.
+- **Not let a failed lookup break the three-card rule.** A floor row that loses
+  a card would otherwise become the exact pair the rule exists to prevent, and
+  here it would literally be "a third that failed to load". It moves out to the
+  side instead, and is dropped only where the frame has no margin to move it
+  into. Both outcomes are reported through `degraded`.
+
+The same trap applies in the editor: `side` is not the position. The renderer
+reads `x` and `y`, and those were computed for the layout the row used to have,
+so `placeIconRow` recomputes them alongside the flag. And `side` has to be on
+the `clip.update` whitelist — a field left off it is dropped in silence, so the
+control looks like it worked and the row does not move.
+
 ## Cuts on the beat
 
 Every track in the music library carries a `bpm`, the asset stage has always
