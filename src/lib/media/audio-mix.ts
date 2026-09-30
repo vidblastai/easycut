@@ -1,3 +1,6 @@
+import { unlink, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { ffmpeg } from './ffmpeg';
 import type { Edl } from '@/lib/edl/types';
 
@@ -20,12 +23,21 @@ import type { Edl } from '@/lib/edl/types';
 /**
  * Past this many segments the J/L cut is dropped and the hard concat returns.
  *
- * The overlap costs one `amix` input per segment. A short has twenty and a
- * forty-minute lecture can have six hundred, where the filter graph alone
- * takes longer to parse than the polish is worth — and the audio pass has to
- * finish inside the video render or the whole speed budget goes.
+ * The overlap costs one `amix` input per segment, and the cost is not linear.
+ * Measured on this machine, mixing a graph built from N two-second segments:
+ *
+ *     160 segments   32s        320 segments   76s
+ *     640 segments  387s       1000 segments   failed
+ *
+ * 320 is the last point that still finishes well inside the video render it
+ * runs beside — a ten-minute edit needs about 76 segments, so this covers a
+ * pause-heavy hour — and 640 is where it goes superlinear and starts costing
+ * more than the polish is worth.
+ *
+ * The 1000-segment failure was something else entirely, and it is fixed rather
+ * than capped: see `runGraph`.
  */
-const J_CUT_MAX_SEGMENTS = 160;
+const J_CUT_MAX_SEGMENTS = 320;
 
 export interface AudioMixOptions {
   sourceAudioPath: string;
@@ -222,22 +234,36 @@ export function buildAudioGraph(edl: Edl, options: AudioMixOptions): AudioMixPla
   return { filterGraph: parts.join(';'), inputs, outputLabel: '[out]' };
 }
 
+/**
+ * Runs a filter graph, passing it by FILE rather than on the command line.
+ *
+ * Linux caps a single argument at MAX_ARG_STRLEN — 128KB — regardless of how
+ * generous `ARG_MAX` is, and a filter graph is one argument. A long, choppy
+ * video crosses that: a thousand segments builds a ~149KB graph, and ffmpeg is
+ * never even reached, because `spawn` fails with E2BIG. That looks like a
+ * corrupt render rather than a limit, and it hits the plain concat too — the
+ * overlap only gets there sooner.
+ *
+ * `-filter_complex_script` reads the same graph from a file, so the size of
+ * the edit stops being an operating-system question.
+ */
+async function runGraph(plan: AudioMixPlan, outputPath: string, tail: string[]): Promise<void> {
+  const scriptPath = join(tmpdir(), `easycut-mix-${process.pid}-${Date.now()}.txt`);
+  await writeFile(scriptPath, plan.filterGraph, 'utf8');
+  try {
+    const args = ['-y'];
+    for (const input of plan.inputs) args.push('-i', input);
+    args.push('-filter_complex_script', scriptPath, '-map', plan.outputLabel, ...tail, outputPath);
+    await ffmpeg(args, { timeoutMs: 20 * 60 * 1000 });
+  } finally {
+    // Best effort: a leaked temp file is not worth failing a finished render.
+    await unlink(scriptPath).catch(() => {});
+  }
+}
+
 export async function renderAudio(edl: Edl, options: AudioMixOptions): Promise<string> {
   const plan = buildAudioGraph(edl, options);
-
-  const args = ['-y'];
-  for (const input of plan.inputs) args.push('-i', input);
-  args.push(
-    '-filter_complex', plan.filterGraph,
-    '-map', plan.outputLabel,
-    '-c:a', 'aac',
-    '-b:a', '192k',
-    '-ar', '48000',
-    '-ac', '2',
-    options.outputPath,
-  );
-
-  await ffmpeg(args, { timeoutMs: 10 * 60 * 1000 });
+  await runGraph(plan, options.outputPath, ['-c:a', 'aac', '-b:a', '192k', '-ar', '48000', '-ac', '2']);
   return options.outputPath;
 }
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { CUE_MIN_GAP_SEC, thinCues, transitionCues } from '@/lib/edl/sfx-cues';
+import { CUE_MIN_GAP_SEC, cuesForDensity, thinCues, transitionCues } from '@/lib/edl/sfx-cues';
 import { clipTransitionSec } from '@/lib/edl/transition-timing';
 import { BrollClipSchema, IconCueSchema, type BrollClip, type ClipTransition, type IconCue } from '@/lib/edl/types';
 
@@ -114,5 +114,57 @@ describe('cues that land on top of one another', () => {
 
   it('is a short enough window to leave real placements alone', () => {
     expect(CUE_MIN_GAP_SEC).toBeLessThan(0.2);
+  });
+});
+
+
+describe('how much a restrained style keeps', () => {
+  /*
+   * This is the whole mechanism by which long form is quieter than short:
+   * every style's long profile asks for roughly half the sfx density of its
+   * short one, and half the density drops the smallest moves first. There is
+   * deliberately no `mode` check anywhere in the cue placement.
+   */
+  const all = () =>
+    transitionCues(
+      [broll('slide-up', 'zoom', [2, 6])],  // one move, one soft
+      [icons(9, [0])],                      // one accent
+      FRAME,
+    );
+
+  it('keeps everything at a busy style density', () => {
+    expect(cuesForDensity(all(), 0.8).map((c) => c.tier)).toEqual(['move', 'soft', 'accent']);
+  });
+
+  it('drops the icon accent first', () => {
+    const tiers = cuesForDensity(all(), 0.2).map((c) => c.tier);
+    expect(tiers).toContain('move');
+    expect(tiers).toContain('soft');
+    expect(tiers).not.toContain('accent');
+  });
+
+  it('keeps only the full-frame move at the quietest densities', () => {
+    // podcast long asks for 0.05, the lowest in the catalogue.
+    expect(cuesForDensity(all(), 0.05).map((c) => c.tier)).toEqual(['move']);
+  });
+
+  it('never silences a move, however restrained the style', () => {
+    // A picture that flies across the screen in silence does not read as
+    // restraint. It reads as a dropped frame.
+    for (const density of [0, 0.01, 0.05, 0.12]) {
+      const kept = cuesForDensity(transitionCues([broll('whip', 'glitch', [2, 6])], [], FRAME), density);
+      expect(kept, `density ${density}`).toHaveLength(2);
+    }
+  });
+
+  it('thins AFTER the density filter, not before', () => {
+    // A dropped accent must not be able to shoulder out the move beside it:
+    // thinning first would let a cue that is not going to play anyway consume
+    // the 120ms gap that the surviving one needed.
+    const cues = transitionCues([broll('slide-up', 'cut', [2, 6])], [icons(2.02, [0])], FRAME);
+    expect(cues).toHaveLength(2);
+    const kept = thinCues(cuesForDensity(cues, 0.05));
+    expect(kept).toHaveLength(1);
+    expect(kept[0].tier).toBe('move');
   });
 });

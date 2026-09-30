@@ -129,3 +129,57 @@ describe('with the overlap off', () => {
     expect(g).not.toContain('adelay=0|0:all=1');
   });
 });
+
+
+describe('a very long, very choppy edit', () => {
+  /*
+   * Long form is where the segment count gets big, and two limits live out
+   * here. One is a choice: past `J_CUT_MAX_SEGMENTS` the overlap is dropped
+   * because mixing that many inputs goes superlinear (measured: 160 segments
+   * 32s, 320 76s, 640 387s). The other was a bug: a filter graph is ONE
+   * argument, Linux caps a single argument at 128KB whatever ARG_MAX says, and
+   * a thousand-segment edit builds a ~149KB graph — so `spawn` failed with
+   * E2BIG and the audio never rendered at all. That one is fixed rather than
+   * capped, by handing ffmpeg the graph as a file.
+   */
+  const bigEdl = (n: number) =>
+    makeEdl({ spans: Array.from({ length: n }, (_, i) => [i * 3, i * 3 + 2] as [number, number]) });
+
+  it('still overlaps a ten-minute edit, which is about 76 segments', () => {
+    const g = graph(bigEdl(76));
+    expect(g).toContain('amix=inputs=76');
+  });
+
+  it('keeps overlapping right up to the cap', () => {
+    expect(graph(bigEdl(320))).toContain('amix=inputs=320');
+  });
+
+  it('falls back to the concat past it, rather than taking longer than the render', () => {
+    const g = graph(bigEdl(321));
+    expect(g).toContain('concat=n=321');
+    expect(g).not.toContain('amix=inputs=321');
+  });
+
+  it('builds a graph too large to pass as a command-line argument', () => {
+    /*
+     * The guard rail for the fix: if this stops being true the E2BIG failure
+     * has stopped being reachable and the file handoff could be dropped.
+     *
+     * Linux caps ONE argument at MAX_ARG_STRLEN — 128KB — however generous
+     * ARG_MAX is, and a filter graph is one argument. 1600 two-second segments
+     * is a fifty-minute lecture cut on every pause, and its graph is ~204KB, so
+     * ffmpeg was never reached: `spawn` failed, which looks like a broken
+     * render rather than a limit. Note the count is past the overlap cap, so
+     * this is the PLAIN concat path — the J cut only got there sooner.
+     */
+    const g = graph(bigEdl(1600));
+    expect(g).toContain('concat=');
+    expect(g.length).toBeGreaterThan(128 * 1024);
+  });
+
+  it('levels the voice at every size, so the fallback is not a quality cliff', () => {
+    for (const n of [2, 76, 320, 321, 1000]) {
+      expect(graph(bigEdl(n)), `${n} segments`).toContain('loudnorm=I=-14');
+    }
+  });
+});

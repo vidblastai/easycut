@@ -9,7 +9,11 @@ import { SAMPLE_EDL } from '../remotion/sample-edl';
 /**
  * Every B-roll overlay, back to back, on one strip.
  *
- *   npx tsx scripts/broll-overlay.ts [out/broll.mp4] [dust,grain]
+ *   npx tsx scripts/broll-overlay.ts [out/broll.mp4] [dust,grain] [--wide]
+ *
+ * `--wide` renders at 16:9. Several of these are tied to a frame dimension —
+ * the grain's feature size to the width, the scanline pitch to the height — so
+ * a treatment that reads correctly vertical can read as a fault widescreen.
  *
  * None of these can be judged from a still — dust drifts, grain re-rolls, the
  * leak crosses once and the scanline band rolls down — and none of them can be
@@ -21,9 +25,15 @@ const OUT = 'out/broll-overlays';
 const HOLD_SEC = 2.6;
 
 async function main() {
-  const footage = process.argv[2] ?? 'out/broll.mp4';
-  const only = process.argv[3]?.split(',').filter(Boolean);
+  const args = process.argv.slice(2);
+  const wide = args.includes('--wide');
+  const positional = args.filter((a) => !a.startsWith('--'));
+  const footage = positional[0] ?? 'out/broll.mp4';
+  const only = positional[1]?.split(',').filter(Boolean);
   const types = (only?.length ? only : BROLL_OVERLAYS.filter((t) => t !== 'none')) as string[];
+  const shape = wide
+    ? { aspect: '16:9' as const, width: 1920, height: 1080 }
+    : { aspect: '9:16' as const, width: 1080, height: 1920 };
 
   await mkdir(OUT, { recursive: true });
   const assets = await startAssetServer(process.cwd());
@@ -43,7 +53,7 @@ async function main() {
     edl: EdlSchema.parse({
       ...SAMPLE_EDL,
       projectId: 'broll-overlays',
-      format: { ...SAMPLE_EDL.format, durationSec: seconds },
+      format: { ...SAMPLE_EDL.format, ...shape, durationSec: seconds },
       source: { ...SAMPLE_EDL.source, url: speaker },
       segments: [
         { ...SAMPLE_EDL.segments[0], sourceStartSec: 0, sourceEndSec: seconds, outStartSec: 0, outEndSec: seconds },
@@ -99,7 +109,7 @@ async function main() {
     browserExecutable: env.render.browserExecutable,
     chromiumOptions: { ignoreCertificateErrors: env.render.ignoreCertificateErrors },
   });
-  const output = join(OUT, 'overlays.mp4');
+  const output = join(OUT, wide ? 'overlays-wide.mp4' : 'overlays.mp4');
   await renderMedia({
     composition, serveUrl, inputProps, codec: 'h264', outputLocation: output, audioCodec: null,
     browserExecutable: env.render.browserExecutable,

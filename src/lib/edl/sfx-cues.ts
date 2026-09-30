@@ -43,6 +43,42 @@ const TRANSITION_SOUND: Record<ClipTransition, string | null> = {
 const ICON_SOUND = 'swipe';
 
 /**
+ * How much picture a cue is scoring, which is what decides if it survives.
+ *
+ * A style's `sfxDensity` is a request for restraint, and restraint is not
+ * thinning at random — it is knowing which sounds are load-bearing. So each cue
+ * declares what it is under:
+ *
+ *  - `move`   the whole frame travels or breaks: a slide, a whip, a glitch, a
+ *             flash. Never dropped. A picture that flies across the screen in
+ *             silence does not read as restraint, it reads as a dropped frame.
+ *  - `soft`   the frame changes without crossing: a zoom, a film burn, a leak.
+ *             Real, but the picture already sells it.
+ *  - `accent` an icon card arriving. The smallest thing on screen, and the
+ *             first to go.
+ *
+ * This is what makes long form quieter than short without a single `mode`
+ * check: every style's long profile asks for roughly half the density of its
+ * short one, and half the density drops the accents first and the softs next.
+ */
+export type CueTier = 'move' | 'soft' | 'accent';
+
+/** The lowest `sfxDensity` at which a tier still plays. */
+const TIER_FLOOR: Record<CueTier, number> = {
+  move: 0,
+  soft: 0.15,
+  accent: 0.3,
+};
+
+/** Which tier each transition's sound belongs to. */
+const TRANSITION_TIER: Record<ClipTransition, CueTier> = {
+  cut: 'move', fade: 'move',
+  'slide-left': 'move', 'slide-right': 'move', 'slide-up': 'move', 'slide-down': 'move',
+  whip: 'move', glitch: 'move', flash: 'move',
+  zoom: 'soft', 'film-burn': 'soft', 'light-leak': 'soft',
+};
+
+/**
  * Gain per placement, relative to the sound's own default.
  *
  * An icon card is punctuation under a sentence somebody is still speaking, so
@@ -58,6 +94,18 @@ export interface CueSource {
   sound: string;
   atSec: number;
   gainTrimDb: number;
+  /** What it is scoring, which decides whether a restrained style keeps it. */
+  tier: CueTier;
+}
+
+/**
+ * Drops the cues a style this restrained would not place.
+ *
+ * Applied before `thinCues`, so the gap rule runs on what actually survives —
+ * thinning first would let a dropped accent shoulder out the move next to it.
+ */
+export function cuesForDensity<T extends { tier: CueTier }>(cues: T[], sfxDensity: number): T[] {
+  return cues.filter((cue) => sfxDensity >= TIER_FLOOR[cue.tier]);
 }
 
 /**
@@ -79,6 +127,7 @@ export function transitionCues(
     if (enter) {
       cues.push({
         reason: `${clip.enter} in · ${clip.query || 'insert'}`,
+        tier: TRANSITION_TIER[clip.enter],
         sound: enter,
         // The picture starts moving the instant the insert appears, so this is
         // exact rather than approximate.
@@ -103,6 +152,7 @@ export function transitionCues(
       if (at > clip.outStartSec) {
         cues.push({
           reason: `${clip.exit} out · ${clip.query || 'insert'}`,
+          tier: TRANSITION_TIER[clip.exit],
           sound: exit,
           atSec: at,
           gainTrimDb: EXIT_TRIM_DB,
@@ -123,6 +173,7 @@ export function transitionCues(
     for (const card of cue.cards) {
       cues.push({
         reason: `icon card · ${card.word || card.query}`,
+        tier: 'accent',
         sound: ICON_SOUND,
         atSec: cue.outStartSec + card.offsetSec,
         gainTrimDb: ICON_TRIM_DB,

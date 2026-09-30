@@ -14,7 +14,13 @@ import { SAMPLE_EDL } from '../remotion/sample-edl';
  * one family, and whether any of them reads as a rendering fault rather than
  * as an edit.
  *
- *   npx tsx scripts/transition-clip.ts [only,these]
+ *   npx tsx scripts/transition-clip.ts [only,these] [--wide]
+ *
+ * `--wide` renders at 16:9 instead of 9:16. Not a nicety: a transition's travel
+ * is proportional to the distance it has to cross, so a slide in a widescreen
+ * frame moves 1920px where a vertical one moves 1080, and the clamp on that
+ * duration means the two are NOT the same animation at a different size. Long
+ * form has to be watched in its own shape.
  */
 
 const OUT = 'out/transition-clips';
@@ -25,8 +31,13 @@ const HOLD_SEC = 2.2;
 
 async function main() {
   await mkdir(OUT, { recursive: true });
-  const only = process.argv[2]?.split(',').filter(Boolean) as ClipTransition[] | undefined;
+  const args = process.argv.slice(2);
+  const wide = args.includes('--wide');
+  const only = args.find((a) => !a.startsWith('--'))?.split(',').filter(Boolean) as ClipTransition[] | undefined;
   const types = (only?.length ? only : CLIP_TRANSITIONS.filter((t) => t !== 'cut')) as ClipTransition[];
+  const shape = wide
+    ? { aspect: '16:9' as const, width: 1920, height: 1080 }
+    : { aspect: '9:16' as const, width: 1080, height: 1920 };
 
   const assets = await startAssetServer(process.cwd());
   const source = assets.urlFor(resolve(SOURCE)) ?? '';
@@ -75,7 +86,7 @@ async function main() {
       // The composition's length comes from `format`, not from the
       // deliverable — setting only the latter renders the sample's ten
       // seconds and silently truncates the strip.
-      format: { ...SAMPLE_EDL.format, durationSec: seconds },
+      format: { ...SAMPLE_EDL.format, ...shape, durationSec: seconds },
       source: { ...SAMPLE_EDL.source, url: source },
       segments: [
         { ...SAMPLE_EDL.segments[0], sourceStartSec: 0, sourceEndSec: seconds, outStartSec: 0, outEndSec: seconds },
@@ -112,7 +123,7 @@ async function main() {
     chromiumOptions: { ignoreCertificateErrors: env.render.ignoreCertificateErrors },
   });
 
-  const output = join(OUT, 'transitions.mp4');
+  const output = join(OUT, wide ? 'transitions-wide.mp4' : 'transitions.mp4');
   await renderMedia({
     composition, serveUrl, inputProps, codec: 'h264', outputLocation: output, audioCodec: null,
     browserExecutable: env.render.browserExecutable,
@@ -121,7 +132,7 @@ async function main() {
   });
 
   await assets.close();
-  console.log(`\n${output}  (${types.length} transitions, ${seconds.toFixed(1)}s)`);
+  console.log(`\n${output}  (${types.length} transitions, ${seconds.toFixed(1)}s, ${shape.width}×${shape.height})`);
 }
 
 void main();

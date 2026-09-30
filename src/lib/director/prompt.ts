@@ -1,6 +1,7 @@
 import type { Transcript } from '@/lib/transcribe/types';
 import type { FormatMode, StylePreset } from '@/lib/styles/presets';
 import { pacingFor } from '@/lib/styles/presets';
+import { SFX_NAMES } from '@/lib/assets/sfx';
 
 export interface DirectorBrief {
   transcript: Transcript;
@@ -147,7 +148,7 @@ Return JSON exactly matching this shape:
   "broll": [{ "atSec": number, "durationSec": number, "query": string, "intent": string, "kind": "stock-video"|"stock-photo"|"generated-image" }],
   "graphics": [{ "atSec": number, "durationSec": number, "type": "icon"|"stat"|"list"|"title-card"|"quote"|"arrow"|"image"|"counter"|"progress-ring"|"bar-chart"|"checklist"|"badge"|"underline", "text": string, "subtext": string, "items": string[], "iconQuery": string, "imagePrompt": string, "animation"?: "pop"|"slide-up"|"slide-left"|"fade"|"draw"|"count-up"|"spin-in"|"bounce"|"pulse"|"wipe" }],
   "icons": [{ "atSec": number, "word": string, "query": string }],
-  "sfx": [{ "atSec": number, "sound": "whoosh"|"pop"|"riser"|"impact"|"click"|"swipe"|"ding"|"sub-drop" }],
+  "sfx": [{ "atSec": number, "sound": ${SFX_NAMES.map((n) => `"${n}"`).join('|')} }],
   "punchIns": [{ "atSec": number, "durationSec": number, "intensity": "subtle"|"medium"|"strong" }],
   "chapters": [{ "atSec": number, "title": string }],
   "titleCard": { "text": string, "subtext": string } | null,

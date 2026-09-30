@@ -29,8 +29,17 @@ const CARDS = [
 
 async function main() {
   await mkdir(OUT, { recursive: true });
-  const tone = (process.argv[2] as 'light' | 'dark') ?? 'light';
-  const seconds = Number(process.argv[3] ?? 6);
+  const args = process.argv.slice(2);
+  const wide = args.includes('--wide');
+  const positional = args.filter((a) => !a.startsWith('--'));
+  const tone = (positional[0] as 'light' | 'dark') ?? 'light';
+  const seconds = Number(positional[1] ?? 6);
+  // `--wide` renders at 16:9. The row's size is limited by the WIDTH in a wide
+  // frame and by the height in a tall one, so the two shapes exercise opposite
+  // sides of `iconRowPlacement` and a row that fits one can overflow the other.
+  const shape = wide
+    ? { aspect: '16:9' as const, width: 1920, height: 1080 }
+    : { aspect: '9:16' as const, width: 1080, height: 1920 };
 
   process.stdout.write('resolving icons… ');
   const icons = await resolveCardIcons(CARDS.map((c) => c.query), '#9B7BFF');
@@ -49,7 +58,7 @@ async function main() {
       // The composition's length comes from `format`, not from the
       // deliverable — setting only the latter renders the sample's ten
       // seconds and silently truncates the strip.
-      format: { ...SAMPLE_EDL.format, durationSec: seconds },
+      format: { ...SAMPLE_EDL.format, ...shape, durationSec: seconds },
       source: { ...SAMPLE_EDL.source, url: source },
       segments: [
         { ...SAMPLE_EDL.segments[0], sourceStartSec: 0, sourceEndSec: seconds, outStartSec: 0, outEndSec: seconds },
@@ -68,7 +77,10 @@ async function main() {
           id: 'icon-0',
           outStartSec: CARDS[0].atSec,
           outEndSec: 4.8,
-          y: iconRowPlacement(CARDS.length, 1080, 1920).y,
+          // From the frame being rendered, not from a constant: passing
+          // portrait dimensions while rendering widescreen put the row where it
+          // would have gone in the other shape.
+          y: iconRowPlacement(CARDS.length, shape.width, shape.height).y,
           tone,
           cards: CARDS.map((card, k) => ({
             offsetSec: card.atSec - CARDS[0].atSec,
@@ -118,7 +130,7 @@ async function main() {
     chromiumOptions: { ignoreCertificateErrors: env.render.ignoreCertificateErrors },
   });
 
-  const output = join(OUT, `icons-${tone}.mp4`);
+  const output = join(OUT, `icons-${tone}${wide ? "-wide" : ""}.mp4`);
   await renderMedia({
     composition,
     serveUrl,

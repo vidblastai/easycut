@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { GRAPHIC_ANIMATIONS, GRAPHIC_TYPES } from '@/lib/edl/types';
+import { SFX_NAMES, type SfxName } from '@/lib/assets/sfx';
 
 /**
  * The director's output. Everything here is expressed in **source time** — the
@@ -80,7 +81,13 @@ export const DirectorEmphasisSchema = z.object({
 
 export const DirectorSfxSchema = z.object({
   atSec: z.number().nonnegative(),
-  sound: z.enum(['whoosh', 'pop', 'riser', 'impact', 'click', 'swipe', 'ding', 'sub-drop']),
+  /*
+   * Taken from the library rather than written out, because a hand-copied list
+   * silently drops whatever was added last: `glitch` shipped with the
+   * transition sounds and never reached this enum, so the one style most
+   * likely to want it could not ask for it.
+   */
+  sound: z.enum(SFX_NAMES as [SfxName, ...SfxName[]]),
 });
 
 export const DirectorPunchInSchema = z.object({

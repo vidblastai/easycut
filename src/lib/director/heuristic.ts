@@ -90,7 +90,9 @@ export function runHeuristicDirector(brief: DirectorBrief): DirectorPlan {
 
   /* ------------------ B-roll: one per pacing interval, on nouns --------------- */
   const broll: DirectorPlan['broll'] = [];
-  const brollCount = Math.floor(windowSec / pacing.brollEverySec);
+  // Same rule in divisor form: an interval of zero is "never", not "every
+  // instant" — and without the guard the count is Infinity.
+  const brollCount = pacing.brollEverySec > 0 ? Math.floor(windowSec / pacing.brollEverySec) : 0;
   for (let i = 0; i < brollCount; i++) {
     const targetSec = windowStartSec + pacing.brollEverySec * (i + 0.6);
     const sentence = sentenceAt(sentences, targetSec);
@@ -108,7 +110,7 @@ export function runHeuristicDirector(brief: DirectorBrief): DirectorPlan {
 
   /* ------------------- graphics: stats from numbers, else icons --------------- */
   const graphics: DirectorPlan['graphics'] = [];
-  const graphicCount = Math.floor(windowSec / pacing.graphicEverySec);
+  const graphicCount = pacing.graphicEverySec > 0 ? Math.floor(windowSec / pacing.graphicEverySec) : 0;
   const usedSentences = new Set<number>();
   for (let i = 0; i < graphicCount; i++) {
     const targetSec = windowStartSec + pacing.graphicEverySec * (i + 0.45);
@@ -155,9 +157,21 @@ export function runHeuristicDirector(brief: DirectorBrief): DirectorPlan {
     if (Math.random() < pacing.sfxDensity) sfx.push({ atSec: b.atSec, sound: 'whoosh' });
   }
 
+  /*
+   * A cadence of zero means the style does not punch in at all.
+   *
+   * Four styles say exactly that — commentary, news, tutorial and essay all
+   * carry `punchInEverySec: [0, 0]`, because a locked-off frame is the point of
+   * them. Read literally by the loop below it was not "never", it was a step of
+   * zero: `t` stopped advancing, the condition stayed true, and the array grew
+   * until the heap died. Eight style-and-format combinations, short and long
+   * alike, hung the rule-based director and took the process with them — and
+   * the rule-based director is what runs when nobody has configured a model
+   * key, so it was the default path for half the catalogue.
+   */
   const punchIns: DirectorPlan['punchIns'] = [];
   const cadence = (pacing.punchInEverySec[0] + pacing.punchInEverySec[1]) / 2;
-  for (let t = windowStartSec + cadence; t < windowEndSec - 2; t += cadence) {
+  for (let t = windowStartSec + cadence; cadence > 0 && t < windowEndSec - 2; t += cadence) {
     const sentence = sentenceAt(sentences, t);
     if (!sentence) continue;
     // Never punch in during a B-roll insert — the viewer can't see the camera move.

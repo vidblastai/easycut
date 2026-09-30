@@ -8,7 +8,7 @@ import { LOOK_META } from '@/lib/scenes/looks';
 import { TimeMapper } from '@/lib/timeline/time-mapper';
 import type { Transcript } from '@/lib/transcribe/types';
 import { buildCaptions } from './captions';
-import { thinCues, transitionCues } from './sfx-cues';
+import { cuesForDensity, thinCues, transitionCues } from './sfx-cues';
 import { sfxDefaultGain, type SfxName } from '@/lib/assets/sfx';
 import { fallbackScene } from './scene-fallback';
 import {
@@ -188,7 +188,7 @@ export function buildEdl(input: BuildEdlInput): Edl {
   // Last of the cue layers, because it now reads all of them: a sound lands on
   // a transition, and until the inserts and the icon cards are placed there is
   // nothing for it to land on.
-  const sfx = placeSfx(plan, mapper, durationSec, transitions, graphics, broll, icons, dimensions);
+  const sfx = placeSfx(plan, mapper, durationSec, transitions, graphics, broll, icons, dimensions, pacing.sfxDensity);
 
   /* ------------------------------- overlays ------------------------------- */
 
@@ -767,6 +767,7 @@ function placeSfx(
   broll: BrollClip[],
   icons: IconCue[],
   frame: { width: number; height: number },
+  sfxDensity: number,
 ): SfxCue[] {
   const cues: SfxCue[] = [];
   const push = (atSec: number, sound: SfxCue['sound'], gainDb: number, reason: string) => {
@@ -794,7 +795,14 @@ function placeSfx(
    * transition, lands where that transition starts, and is silent for the two
    * transitions that are supposed to be silent. See `sfx-cues.ts`.
    */
-  for (const cue of thinCues(transitionCues(broll, icons, frame))) {
+  /*
+   * `sfxDensity` is the style's request for restraint, and it is also what
+   * makes long form quieter than short without a `mode` check anywhere in
+   * here: every style's long profile asks for about half the density of its
+   * short one. Half the density drops the icon accents first and the soft
+   * transitions next, and never the full-frame moves — see `cuesForDensity`.
+   */
+  for (const cue of thinCues(cuesForDensity(transitionCues(broll, icons, frame), sfxDensity))) {
     push(cue.atSec, cue.sound, sfxDefaultGain(cue.sound as SfxName) + cue.gainTrimDb, cue.reason);
   }
 
