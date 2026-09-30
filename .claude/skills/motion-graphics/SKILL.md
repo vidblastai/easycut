@@ -812,6 +812,43 @@ way the segments were joined. It lived inside the concat branch at first, which
 left `[speech]` (the label the music duck and the final mix both read) undefined
 the moment the overlap turned on, so ffmpeg refused the whole graph.
 
+## Cuts on the beat
+
+Every track in the music library carries a `bpm`, the asset stage has always
+copied it onto the document, and for a long time nothing read it.
+`src/lib/edl/beat-sync.ts` is what it was for.
+
+Only the layers that sit ON TOP of the speech move — a B-roll insert arriving, a
+graphic appearing. Those are free to land a frame or two either side of where
+the director put them, because what they illustrate is a whole sentence.
+Anything tied to a syllable stays exactly where it is: an icon card rises on the
+word it names and a caption IS the word, so a grid would break the one
+relationship that makes them work. The speech segments are the edit and are not
+touched at all.
+
+Three things this has to get right:
+
+- **The grid is offset by `startAtSec`.** The bed is trimmed from there and laid
+  at video zero, so a track entered part-way through a bar arrives part-way
+  through a bar. Assuming video zero is a beat is the obvious mistake and puts
+  every "aligned" cue a fraction of a beat out — worse than not aligning.
+- **The nudge is small, and capped twice.** A quarter beat keeps it musically
+  small at any tempo; 0.15s keeps it imperceptible at slow ones, where a quarter
+  beat is nearly a third of a second. Measured across 90–160bpm this moves about
+  45% of inserts by at most four frames; the rest stay where the director put
+  them, which is the right answer for those. The point is to remove a wrongness,
+  not to impose a rhythm.
+- **A clip slides, it does not stretch.** Moving the start and leaving the end
+  changes how long the viewer looks at it, which is a different decision.
+
+A move is abandoned when it would collide or overrun, and the collision check is
+against where the neighbours STILL are rather than where they are going — two
+clips nudging toward each other would otherwise each see a gap the other is
+about to vacate.
+
+It runs in the asset stage, not the builder, and it has to: the builder runs
+before a track is chosen, so `music` is null and the BPM does not exist yet.
+
 ## Where things go depends on where the subject is
 
 A talking head is framed centrally whatever the aspect, so a widescreen picture

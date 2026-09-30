@@ -9,6 +9,7 @@ import { isAiBrollConfigured, makeBrollAsset, type AiClip, type BrollSource } fr
 import { sfxDefaultGain, sfxUrl, type SfxName } from '@/lib/assets/sfx';
 import type { CostLedger } from '@/lib/pricing/cost';
 import { iconRowPlacement, type Edl } from '@/lib/edl/types';
+import { alignToBeat } from '@/lib/edl/beat-sync';
 
 /**
  * Resolves every placeholder in an EDL into a real URL.
@@ -283,11 +284,19 @@ export async function resolveAssets(
     iconSvgs: scene.items.map((_, k) => sceneIcons[i]?.[k] ?? null),
   }));
 
-  return {
-    edl: {
-      ...edl, broll, graphics, icons, scenes, sfx, music: musicTrack,
-      degraded: [...edl.degraded, ...degraded],
-    },
-    degraded,
+  /*
+   * And now the bed's tempo is known, the inserts can land on it.
+   *
+   * This has to happen HERE and not in the builder, because the builder runs
+   * before a track has been chosen — `music` is null at that point and the BPM
+   * does not exist yet. Only what sits on top of the speech moves, and only by
+   * a few frames; see `alignToBeat`.
+   */
+  const withAssets: Edl = {
+    ...edl, broll, graphics, icons, scenes, sfx, music: musicTrack,
+    degraded: [...edl.degraded, ...degraded],
   };
+  const aligned = alignToBeat(withAssets);
+
+  return { edl: aligned, degraded };
 }
