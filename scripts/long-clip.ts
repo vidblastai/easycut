@@ -44,9 +44,10 @@ const ICON_HOLD_GUESS = 3;
  */
 const LINE =
   'The first thing nobody tells you about pricing is that it is a positioning decision. ' +
-  'You can move the number later, but the one you picked on day one is the anchor, and ' +
-  'every price you set after it is measured against that first one. So before you decide, ' +
-  'put a banana, a calendar and a telephone on the table, and ask which is worth the most.';
+  'You can move the number later, but the one you picked on day one is the anchor. ' +
+  'Every rocket you launch after it is measured against that very first one, which is ' +
+  'why the opening matters. So before you decide, put a banana, a calendar and a ' +
+  'telephone on the table, and ask which of them is worth the most.';
 
 async function main() {
   const styleId = process.argv[2] ?? 'documentary';
@@ -87,18 +88,32 @@ async function main() {
    * `snapToWord` only searches within two seconds of the timestamp it is
    * given, so these are read off the words rather than guessed at.
    */
-  const NOUNS = ['banana', 'calendar', 'telephone'];
+  /*
+   * A group of three AND a lone noun, because they are laid out differently.
+   *
+   * Three is a group and goes across the middle from the floor; one is not,
+   * and goes out to the side. A demo with only one of those shapes in it
+   * proves half the layout.
+   */
+  const NOUNS = ['rocket', 'banana', 'calendar', 'telephone'];
   const nounAt = NOUNS.map(
     (word) => words.find((w) => w.text.replace(/[^a-z]/gi, '').toLowerCase() === word)?.startSec ?? 0,
   );
-  const breath: [number, number] = [Math.min(...nounAt) - 1, Math.max(...nounAt) + ICON_HOLD_GUESS];
+  /*
+   * One protected window per WORD, not one spanning all of them.
+   *
+   * Spanning them reserved everything between the first noun and the last,
+   * which here is most of the video — so every insert and graphic got walked
+   * off the end of the timeline and the render came back with none of them.
+   */
+  const keepClear: Array<[number, number]> = nounAt.map((t) => [t - 1, t + ICON_HOLD_GUESS]);
 
-  /** Somewhere this long that does not overlap the breath, or the scene band. */
+  /** Somewhere this long that does not sit on any of the icon words. */
   const clearOf = (wanted: number, length: number): number => {
-    const collides = (t: number) => t < breath[1] && t + length > breath[0];
+    const collides = (t: number) => keepClear.some(([a, b]) => t < b && t + length > a);
     let t = wanted;
-    // Walk forward in half-seconds rather than solving it: the only thing that
-    // matters is that the demo is deterministic and the cues do not overlap.
+    // Walked in half-seconds rather than solved: all that matters is that the
+    // demo is deterministic and the cues do not land on each other.
     while (collides(t) && t + length < seconds - 1) t += 0.5;
     return t;
   };
@@ -141,7 +156,7 @@ async function main() {
   console.log(
     `scenes ${edl.scenes.map((x) => `${x.outStartSec.toFixed(1)}-${x.outEndSec.toFixed(1)}`).join(',') || 'none'}` +
     ` | graphics ${edl.graphics.map((g) => `${g.type}@${g.outStartSec.toFixed(1)}-${g.outEndSec.toFixed(1)}`).join(',')}` +
-    ` | icons ${edl.icons.map((c) => `${c.side}:${c.cards.length}`).join(',') || 'none'}`,
+    ` | icons ${edl.icons.map((c) => `${c.side}:${c.cards.length}@${c.outStartSec.toFixed(1)}-${c.outEndSec.toFixed(1)}x${c.x.toFixed(2)}`).join(',') || 'none'}`,
   );
   for (const clip of edl.broll) clip.url = insert;
 

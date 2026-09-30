@@ -33,8 +33,21 @@ describe('which frames have room beside the subject', () => {
 describe('a column in the margin', () => {
   const column = (count: number) => iconRowPlacement(count, WIDE.width, WIDE.height, 'right');
 
-  it('sits out at the side, not over the middle of the frame', () => {
-    expect(column(3).x).toBeGreaterThan(0.7);
+  it('sits just outside the face, not pinned to the edge', () => {
+    /*
+     * A talking head takes up roughly the middle 40% of a widescreen picture,
+     * so the band that is both empty and still part of the composition is the
+     * one just outside them. Measured from the edge instead, the column drifted
+     * out to 0.86 and read as something that had slid off the frame.
+     */
+    for (const count of [1, 2]) {
+      expect(column(count).x, `${count} cards`).toBeGreaterThan(0.7);
+      expect(column(count).x, `${count} cards`).toBeLessThan(0.82);
+    }
+  });
+
+  it('stays clear of the middle, where the face is', () => {
+    expect(column(1).x).toBeGreaterThan(0.7);
   });
 
   it('mirrors exactly when it goes to the other side', () => {
@@ -122,10 +135,17 @@ const THREE = [
 ];
 
 describe('what the builder does with each shape', () => {
-  it('sends a widescreen row out to the margin', () => {
+  /*
+   * How many cards there are decides where they go, and the aspect only
+   * decides whether the side is available at all. Three is a GROUP and belongs
+   * on the horizontal, centred, in either aspect; one or two are not a group
+   * and go out to the margin where a single card reads as deliberate.
+   */
+  it('keeps a full group of three below and centred, in a wide frame too', () => {
     const edl = build('long', THREE);
-    expect(edl.icons[0].side).toBe('right');
-    expect(edl.icons[0].x).toBeGreaterThan(0.7);
+    expect(edl.icons[0].side).toBe('below');
+    expect(edl.icons[0].x).toBe(0.5);
+    expect(edl.icons[0].cards).toHaveLength(3);
   });
 
   it('keeps a vertical row under the captions', () => {
@@ -135,12 +155,33 @@ describe('what the builder does with each shape', () => {
     expect(edl.icons[0].y).toBeGreaterThan(0.5);
   });
 
-  it('lets a widescreen column hold one card, where a floor row could not', () => {
-    // The three-card rule is about rising from a floor. A single big card in
-    // an empty margin is a deliberate-looking thing on its own.
+  it('sends a short row out to the side, where a wide frame has room', () => {
     const one = [{ atSec: 10, word: 'word20', query: 'banana' }];
-    expect(build('long', one).icons).toHaveLength(1);
+    const edl = build('long', one);
+    expect(edl.icons).toHaveLength(1);
+    expect(edl.icons[0].side).not.toBe('below');
+  });
+
+  it('drops a short row where there is no margin to put it in', () => {
+    const one = [{ atSec: 10, word: 'word20', query: 'banana' }];
     expect(build('short', one).icons).toHaveLength(0);
+  });
+
+  it('alternates the sides, counting only the rows that take one', () => {
+    // A group in the middle must not eat a turn, or the two singles either
+    // side of it stack up in the same margin.
+    const edl = build('long', [
+      { atSec: 4, word: 'word8', query: 'banana' },
+      { atSec: 12, word: 'word24', query: 'red apple' },
+      { atSec: 13, word: 'word26', query: 'grapes' },
+      { atSec: 14, word: 'word28', query: 'hourglass' },
+      { atSec: 22, word: 'word44', query: 'calendar' },
+    ]);
+    const sides = edl.icons.map((c) => c.side);
+    expect(sides).toContain('below');
+    const taken = sides.filter((x) => x !== 'below');
+    expect(taken).toHaveLength(2);
+    expect(taken[0]).not.toBe(taken[1]);
   });
 
   it('moves the number off the subject in a widescreen frame', () => {

@@ -833,23 +833,41 @@ The box is centred on `x`, so a flat `maxWidth: width * 0.8` at `x: 0.79` runs
 off the edge; doubling the smaller side is what keeps it inside wherever it is
 put, and it still leaves a centred graphic the 80% it always had.
 
-**Icon rows become a column in that margin, and get bigger for it.** A row
-carries a `side` — `below | left | right` — on the cue rather than derived at
-paint time, for the same reason `tone` is: somebody can move a row to the other
-side and a rule recomputed from the aspect would put it straight back. In the
-margin a card is up to 0.30 of the short edge, the reference clip's own size,
-which the band under the captions had to give up to avoid competing with a line
-of words. The column sizes itself to the height it has: one card gets the full
-0.30, three share the band.
+**How many cards there are decides where they go — the aspect only decides
+whether the side exists at all.**
 
-**A row rising from the floor is always three cards.** `ICON_ROW_BELOW_COUNT` is
-a hard count, not a maximum. One card climbing out of the floor on its own reads
-as something that happened rather than something designed, and two read as a
-third that failed to load. A window that finds only one or two nouns gets NO
-row — that throws away real cues, and it is the trade. The grouping window went
-from 2.5s to 5s so three in the same breath actually land in the same row. A
-side column has no such rule: a single big card in an empty margin is
-deliberate-looking on its own.
+A full set of three is a GROUP, and a group belongs on the horizontal: side by
+side, centred, rising out of the floor under the words, in either aspect. Three
+across the middle is balanced, and stacking them in a column beside the subject
+makes a list out of something that is not one.
+
+One or two cards are not a group, and from the floor they look like a group that
+failed to arrive — one on its own reads as something that happened rather than
+something designed, and two read as a third that did not load. Those go out to
+the side, where a single big card in an empty margin is deliberate-looking on
+its own, and where it can be up to 0.30 of the short edge: the reference clip's
+size, which the band under the captions had to give up to avoid competing with a
+line of words. Short rows alternate left and right, counted over the rows that
+actually take a side so a group in between does not eat a turn and leave two
+singles stacked in the same margin.
+
+Which leaves the case with nowhere to go: a vertical frame has no margin,
+because the subject fills it. There a short row is dropped — that throws away
+real cues, and it is the trade. The grouping window went from 2.5s to 5s so
+three nouns in the same breath actually land in the same row.
+
+`ICON_ROW_BELOW_COUNT` is therefore a hard count, not a maximum, and a row
+carries its `side` on the cue rather than deriving it at paint time — for the
+same reason `tone` does: somebody can move a row, and a rule recomputed from the
+aspect would put it straight back.
+
+**A side column is measured from the MIDDLE outwards, not from the edge in.** A
+talking head takes up roughly the central 40% of a widescreen picture, so the
+band that is both empty and still part of the composition is the one just
+outside them — `ICON_SIDE_OFFSET` puts it at 0.22 and 0.78. Pinned to the edge
+instead, the column drifted to 0.86 and read as something that had slid off the
+frame rather than something placed beside the subject. It is deliberately not
+further in: the face is at 0.5.
 
 **A row leaves before anything takes the frame off it.** Each CARD was already
 kept out of a B-roll insert or a scene, but the row outlives its last card by

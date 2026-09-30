@@ -898,8 +898,24 @@ export type IconSide = 'below' | 'left' | 'right';
  */
 const ICON_CARD_SIDE_MAX = 0.3;
 
-/** Between the column and the edge of the frame, as a fraction of the width. */
-const ICON_SIDE_MARGIN = 0.055;
+/**
+ * How far off centre a side column sits, as a fraction of the width.
+ *
+ * Measured from the MIDDLE outwards, not from the edge inwards, and that is
+ * the whole point of the number. A talking head is framed centrally and takes
+ * up roughly the middle 40% of a widescreen picture, so the band that is both
+ * empty and still part of the composition is the one just outside them —
+ * around 0.22 and 0.78. Pinned to the edge instead, the column drifted out to
+ * 0.86 and read as something that had slid off the frame rather than something
+ * placed beside the subject.
+ *
+ * It is deliberately not further in: the face is at 0.5, and a card on top of
+ * it is the problem this whole layout exists to avoid.
+ */
+const ICON_SIDE_OFFSET = 0.28;
+
+/** But never so far out that a card hangs off the frame. */
+const ICON_SIDE_EDGE_MIN = 0.03;
 
 /** Above and below the column. */
 const ICON_SIDE_BAND = [0.1, 0.92] as const;
@@ -937,11 +953,17 @@ export function iconRowPlacement(
       shortEdge * ICON_CARD_MIN,
       Math.min(shortEdge * ICON_CARD_SIDE_MAX, (band - (count - 1) * gap) / count),
     );
-    // Measured from the edge inwards, so a bigger card sits further in rather
-    // than hanging off the side of the frame.
-    const inset = ICON_SIDE_MARGIN + card / width / 2;
+    /*
+     * Placed off the centre line, then pushed back in if the card would spill.
+     *
+     * The clamp almost never fires at 16:9 — a 0.30 card is 0.17 of the width
+     * there — but it is what keeps the rule honest on a wider frame or a much
+     * bigger card, where "0.28 off centre" and "on screen" stop agreeing.
+     */
+    const half = card / width / 2;
+    const offset = Math.min(ICON_SIDE_OFFSET, 0.5 - half - ICON_SIDE_EDGE_MIN);
     return {
-      x: side === 'right' ? 1 - inset : inset,
+      x: side === 'right' ? 0.5 + offset : 0.5 - offset,
       y: (ICON_SIDE_BAND[0] + ICON_SIDE_BAND[1]) / 2,
       card,
       gap,

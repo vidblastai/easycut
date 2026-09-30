@@ -518,16 +518,6 @@ function placeIcons(
 
   /* ------------------------------- into rows ------------------------------ */
 
-  /*
-   * Which way these rows go, decided once from the frame.
-   *
-   * A widescreen picture has a centred subject and two empty columns beside
-   * them, so the cards go out into one of those and can be bigger for it. A
-   * vertical picture has no such room — the subject fills it — so the cards
-   * rise from a floor under the captions, the way they always have.
-   */
-  const side: IconSide = hasSideRoom(dimensions.width, dimensions.height) ? 'right' : 'below';
-
   const rows: Array<typeof placed> = [];
   for (const card of placed) {
     const row = rows[rows.length - 1];
@@ -540,22 +530,42 @@ function placeIcons(
   }
 
   /*
-   * A row from below is three cards or it is nothing.
+   * ── How many cards there are decides where they go ──────────────────────
    *
-   * One card climbing out of the floor on its own reads as something that
-   * happened rather than something that was designed, and two read as a third
-   * that failed to load. The group is the point: they arrive one at a time and
-   * they fill the space under the words evenly.
+   * A full set of three is a GROUP, and a group belongs on the horizontal:
+   * side by side, centred, rising out of the floor under the words. That is
+   * the shape the effect was designed around and it reads the same in either
+   * aspect — three across the middle is balanced, and stacking them in a
+   * column beside the subject makes a list out of something that is not one.
    *
-   * This throws away real cues, and that is the trade — a short with two
-   * concrete nouns in it gets no icons rather than a lopsided pair. A side
-   * column has no such rule, because a single big card in an empty margin is a
-   * deliberate-looking thing on its own.
+   * One or two cards are not a group, and from the floor they look like a
+   * group that failed to arrive — one on its own reads as something that
+   * happened rather than something designed, and two read as a third that
+   * did not load. Those go out to the side instead, where a single big card in
+   * an empty margin is a deliberate-looking thing on its own.
+   *
+   * Which leaves the case with nowhere to put them: a vertical frame has no
+   * margin, because the subject fills it. There a short row is dropped.
    */
-  const usable = side === 'below' ? rows.filter((row) => row.length === ICON_ROW_BELOW_COUNT) : rows;
+  const roomBeside = hasSideRoom(dimensions.width, dimensions.height);
+  const usable = rows.filter((row) => row.length === ICON_ROW_BELOW_COUNT || roomBeside);
+
+  /*
+   * And short rows alternate sides.
+   *
+   * Counted over the rows that actually take a side, not over all of them, so
+   * a three-card group in between does not silently eat a turn and leave two
+   * consecutive singles stacked in the same margin.
+   */
+  let sidesTaken = 0;
 
   return usable
     .map((row, index) => {
+      const side: IconSide =
+        row.length === ICON_ROW_BELOW_COUNT ? 'below' : sidesTaken++ % 2 === 0 ? 'right' : 'left';
+      return { row, index, side };
+    })
+    .map(({ row, index, side }) => {
       const outStartSec = row[0].atSec;
       const last = row[row.length - 1].atSec;
       const next = usable[index + 1]?.[0]?.atSec ?? Infinity;
