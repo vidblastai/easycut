@@ -3,6 +3,7 @@ import { normalizeWord } from '@/lib/transcribe/types';
 import type { TranscriptSentence } from '@/lib/transcribe/types';
 import type { DirectorBrief } from './prompt';
 import { DirectorPlanSchema, type DirectorPlan } from './schema';
+import { trimToWords } from '@/lib/text';
 
 /**
  * The keyless director.
@@ -209,7 +210,8 @@ export function runHeuristicDirector(brief: DirectorBrief): DirectorPlan {
     deliverable: isFirstWindow
       ? {
           title: headline,
-          socialCaption: sentences.slice(0, 2).map((s) => s.text).join(' ').slice(0, 220),
+          // Whole words — this is copy somebody pastes under their video.
+          socialCaption: trimToWords(sentences.slice(0, 2).map((s) => s.text).join(' '), 220),
           hashtags: keywords.map((k) => `#${k.replace(/\s+/g, '')}`),
         }
       : { title: '', socialCaption: '', hashtags: [] },

@@ -13,11 +13,12 @@ import { resolveCardIcons } from '../src/lib/assets/icon-cards';
 import { deriveSentences, type TranscriptWord } from '../src/lib/transcribe/types';
 import { muxVideoAudio, renderAudio } from '../src/lib/media/audio-mix';
 import { sfxUrl, type SfxName } from '../src/lib/assets/sfx';
+import { probe } from '../src/lib/media/ffmpeg';
 
 /**
  * A long-form minute with every layer on, built by the real builder.
  *
- *   npx tsx scripts/long-clip.ts [style] [seconds]
+ *   npx tsx scripts/long-clip.ts [style] [seconds] [--short]
  *
  * The strips each prove one layer in isolation. This is the one that answers
  * the question they cannot: whether the layers a widescreen edit gets are
@@ -50,8 +51,33 @@ const LINE =
   'telephone on the table, and ask which of them is worth the most.';
 
 async function main() {
-  const styleId = process.argv[2] ?? 'documentary';
-  const seconds = Number(process.argv[3] ?? 42);
+  const args = process.argv.slice(2);
+  /*
+   * `--short` renders the vertical funnel instead.
+   *
+   * Same script, because the whole question it answers is whether the layers
+   * are right TOGETHER, and the answer differs by shape: three icons go across
+   * the middle in both, a lone one goes to the margin only where there is a
+   * margin, and the numbers move off the subject only in a wide frame. Two
+   * scripts would drift, and the one nobody ran would be the one that broke.
+   */
+  const short = args.includes('--short');
+  const positional = args.filter((a) => !a.startsWith('--'));
+  const styleId = positional[0] ?? (short ? 'punchy' : 'documentary');
+  const seconds = Number(positional[1] ?? 42);
+  /*
+   * Both shapes read the ten-minute fixture, and the vertical one is not a
+   * mistake: a 16:9 source in a 9:16 frame is exactly what the real pipeline
+   * gets and reframes.
+   *
+   * `out/fixture.mp4` is twenty seconds, so asking it for a forty-second edit
+   * produced twenty seconds of speech, and `-shortest` in the mux quietly cut
+   * the picture to match — a render that looked fine and was missing half its
+   * layers. A short source is a silent truncation, so this one refuses.
+   */
+  const shape = short
+    ? { mode: 'short' as const, aspect: '9:16' as const, source: 'out/long.mp4' }
+    : { mode: 'long' as const, aspect: '16:9' as const, source: 'out/long.mp4' };
   await mkdir(OUT, { recursive: true });
 
   const words: TranscriptWord[] = LINE.split(/\s+/).map((text, i, all) => {
@@ -66,10 +92,19 @@ async function main() {
     text: LINE, words, sentences: deriveSentences(words),
   };
 
+  const sourceSec = (await probe(shape.source)).durationSec;
+  if (sourceSec < seconds) {
+    throw new Error(
+      `${shape.source} is ${sourceSec.toFixed(1)}s but this asks for ${seconds}s. ` +
+      'The mux would cut the picture to the length of the audio and the render would ' +
+      'silently lose whatever came after.',
+    );
+  }
+
   const assets = await startAssetServer(process.cwd());
-  const speaker = assets.urlFor(resolve('out/long.mp4')) ?? '';
+  const speaker = assets.urlFor(resolve(shape.source)) ?? '';
   const insert = assets.urlFor(resolve('out/broll.mp4')) ?? '';
-  if (!speaker || !insert) throw new Error('Cannot serve out/long.mp4 and out/broll.mp4');
+  if (!speaker || !insert) throw new Error(`Cannot serve ${shape.source} and out/broll.mp4`);
 
   const style = getStyle(styleId);
 
@@ -132,7 +167,7 @@ async function main() {
   });
 
   const edl = buildEdl({
-    projectId: `long-${styleId}`, style, mode: 'long', aspect: '16:9', fps: 30,
+    projectId: `${shape.mode}-${styleId}`, style, mode: shape.mode, aspect: shape.aspect, fps: 30,
     transcript, plan,
     segments: layoutSegments([{ sourceStartSec: 0, sourceEndSec: seconds }]),
     source: {
@@ -154,7 +189,7 @@ async function main() {
     // the script ends up testing a layout the pipeline would never produce.
   }
   console.log(
-    `scenes ${edl.scenes.map((x) => `${x.outStartSec.toFixed(1)}-${x.outEndSec.toFixed(1)}`).join(',') || 'none'}` +
+    `scenes ${edl.scenes.map((x) => `${x.kind} head="${x.headline}" items=[${x.items.join(' | ')}]`).join(',') || 'none'}` +
     ` | graphics ${edl.graphics.map((g) => `${g.type}@${g.outStartSec.toFixed(1)}-${g.outEndSec.toFixed(1)}`).join(',')}` +
     ` | icons ${edl.icons.map((c) => `${c.side}:${c.cards.length}@${c.outStartSec.toFixed(1)}-${c.outEndSec.toFixed(1)}x${c.x.toFixed(2)}`).join(',') || 'none'}`,
   );
@@ -184,7 +219,8 @@ async function main() {
     chromiumOptions: { ignoreCertificateErrors: env.render.ignoreCertificateErrors },
   });
 
-  const silent = join(OUT, `${styleId}-silent.mp4`);
+  const tag = short ? `${styleId}-short` : styleId;
+  const silent = join(OUT, `${tag}-silent.mp4`);
   await renderMedia({
     composition, serveUrl, inputProps, codec: 'h264', outputLocation: silent, audioCodec: null,
     browserExecutable: env.render.browserExecutable,
@@ -194,15 +230,15 @@ async function main() {
 
   process.stdout.write('\nmixing audio… ');
   const audio = await renderAudio(inputProps.edl, {
-    sourceAudioPath: resolve('out/long.mp4'),
+    sourceAudioPath: resolve(shape.source),
     sfxPaths: Object.fromEntries(
       edl.sfx.map((c) => [c.sound, join('public', sfxUrl(c.sound as SfxName))]),
     ),
-    outputPath: join(OUT, `${styleId}.m4a`),
+    outputPath: join(OUT, `${tag}.m4a`),
   });
   console.log('ok');
 
-  const output = join(OUT, `${styleId}.mp4`);
+  const output = join(OUT, `${tag}.mp4`);
   await muxVideoAudio(silent, audio, output);
   await assets.close();
   console.log(`\n${output}`);

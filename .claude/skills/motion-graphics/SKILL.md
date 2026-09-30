@@ -837,6 +837,47 @@ so `placeIconRow` recomputes them alongside the flag. And `side` has to be on
 the `clip.update` whitelist — a field left off it is dropped in silence, so the
 control looks like it worked and the row does not move.
 
+## Figures, and the scene built on one
+
+`shapeOf` in `scene-fallback.ts` decides whether a sentence is worth a
+full-frame scene. Speech-to-text writes what was SAID, so every figure arrives
+as words, and four things there were quietly wrong at once — each one reaching
+the screen at the size a big-number scene draws:
+
+- **A scale word multiplies the number before it.** The matcher found the first
+  number word and stopped, so "one hundred dollars" was the figure 1 and "three
+  thousand users" was 3. The word doing all the work was never looked at.
+- **`\b` after an optional unit group drops a `%`.** The boundary has to fall
+  between "%" and a space, and both are non-word characters, so there is no
+  boundary there — the group backtracked to empty. "40%" rendered as a bare
+  **40** with the "%" stranded in the line underneath ("revenue grew % this
+  quarter"). Use a `(?![a-z])` lookahead instead: it does the job the boundary
+  was for — stop "day" matching inside "daylight" — without needing one to
+  exist.
+- **"one" is a pronoun far more often than a quantity.** "the one you picked",
+  "no one showed up" — each produced a full-frame scene shouting a figure that
+  carried none of the sentence's meaning, with the word torn out of the middle
+  of the line beneath it. A bare 1 needs a unit ("one minute") or a digit ("1%")
+  to earn the scene.
+- **A suffix unit hugs its figure.** "40 %" and "2.5 x" read as typos at that
+  size; "40 minutes" needs the space.
+
+The sentence under the figure is the line with the figure removed, and it gets
+`trimToWords`, not `slice` — see below.
+
+## Cutting prose to length
+
+`slice` is the reflex and it is wrong everywhere the result is read as words.
+It put "…but the you picke" on screen under a scene, and cut the social caption
+a creator pastes under their video the same way. `src/lib/text.ts` has
+`trimToWords`: whole words, an ellipsis so the cut reads as deliberate, no
+punctuation left hanging before it, and a mid-word break only for a single word
+longer than the whole budget, where there is no earlier boundary to fall back
+to.
+
+Log lines and error bodies can keep using `slice` — nobody reads those as
+prose. Anything a viewer or a creator sees cannot.
+
 ## Cuts on the beat
 
 Every track in the music library carries a `bpm`, the asset stage has always
