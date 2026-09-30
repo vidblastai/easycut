@@ -161,6 +161,7 @@ describe('EDL builder', () => {
       icons: [
         { atSec: 20, word: 'banana', query: 'banana' },
         { atSec: 20.4, word: 'apple', query: 'apple' },
+        { atSec: 20.8, word: 'grapes', query: 'grapes' },
       ],
     });
     const cards = edl.icons.flatMap((cue) => cue.cards);
@@ -176,7 +177,11 @@ describe('EDL builder', () => {
   it('mixes an icon swipe below a full-frame transition', () => {
     const edl = build({
       broll: [{ atSec: 10, durationSec: 4, query: 'coffee', intent: '', kind: 'stock-video' }],
-      icons: [{ atSec: 20, word: 'banana', query: 'banana' }],
+      icons: [
+        { atSec: 20, word: 'banana', query: 'banana' },
+        { atSec: 20.4, word: 'apple', query: 'apple' },
+        { atSec: 20.8, word: 'grapes', query: 'grapes' },
+      ],
     });
     const icon = edl.sfx.find((c) => c.reason.startsWith('icon card'))!;
     const full = edl.sfx.find((c) => c.reason.endsWith('in · coffee'))!;
@@ -279,18 +284,19 @@ describe('icon cards', () => {
       icons: [
         { atSec: 5, word: 'word10', query: 'banana' },
         { atSec: 6, word: 'word12', query: 'red apple' },
+        { atSec: 7, word: 'word14', query: 'grapes' },
       ],
     });
 
     expect(edl.icons).toHaveLength(1);
-    expect(edl.icons[0].cards.map((c) => c.query)).toEqual(['banana', 'red apple']);
+    expect(edl.icons[0].cards.map((c) => c.query)).toEqual(['banana', 'red apple', 'grapes']);
     // They arrive one at a time…
     expect(edl.icons[0].cards[0].offsetSec).toBeLessThan(edl.icons[0].cards[1].offsetSec);
     // …the first one opens the row…
     expect(edl.icons[0].cards[0].offsetSec).toBe(0);
-    // …and there is one exit for the pair.
+    // …and there is one exit for the set.
     expect(edl.icons[0].outEndSec).toBeGreaterThan(
-      edl.icons[0].outStartSec + edl.icons[0].cards[1].offsetSec,
+      edl.icons[0].outStartSec + edl.icons[0].cards[2].offsetSec,
     );
   });
 
@@ -298,7 +304,11 @@ describe('icon cards', () => {
     const edl = build({
       icons: [
         { atSec: 4, word: 'word8', query: 'banana' },
+        { atSec: 4.5, word: 'word9', query: 'red apple' },
+        { atSec: 5, word: 'word10', query: 'grapes' },
         { atSec: 14, word: 'word28', query: 'hourglass' },
+        { atSec: 14.5, word: 'word29', query: 'calendar' },
+        { atSec: 15, word: 'word30', query: 'clock' },
       ],
     });
     expect(edl.icons).toHaveLength(2);
@@ -323,6 +333,8 @@ describe('icon cards', () => {
         { atSec: 5, word: 'word10', query: 'red apple' },
         { atSec: 6, word: 'word12', query: 'grapes' },
         { atSec: 7, word: 'word14', query: 'hourglass' },
+        { atSec: 8, word: 'word16', query: 'calendar' },
+        { atSec: 9, word: 'word18', query: 'clock' },
       ],
     });
     expect(edl.icons[0].cards).toHaveLength(3);
@@ -331,7 +343,13 @@ describe('icon cards', () => {
 
   it('snaps each card to the real timing of the word it names', () => {
     // The fixture speaks word20 at 10.0s; the director guessed 10.4.
-    const edl = build({ icons: [{ atSec: 10.4, word: 'word20', query: 'banana' }] });
+    const edl = build({
+      icons: [
+        { atSec: 10.4, word: 'word20', query: 'banana' },
+        { atSec: 11, word: 'word22', query: 'red apple' },
+        { atSec: 12, word: 'word24', query: 'grapes' },
+      ],
+    });
     expect(edl.icons[0].outStartSec).toBeCloseTo(10, 2);
   });
 
@@ -346,15 +364,74 @@ describe('icon cards', () => {
   });
 
   it('carries the video-s tone, so the tile is white or near-black to match', () => {
-    const light = build({ icons: [{ atSec: 5, word: 'word10', query: 'banana' }] }, 'clean');
-    const dark = build({ icons: [{ atSec: 5, word: 'word10', query: 'banana' }] }, 'punchy');
+    const three = [
+      { atSec: 5, word: 'word10', query: 'banana' },
+      { atSec: 6, word: 'word12', query: 'red apple' },
+      { atSec: 7, word: 'word14', query: 'grapes' },
+    ];
+    const light = build({ icons: three }, 'clean');
+    const dark = build({ icons: three }, 'punchy');
     expect(light.icons[0].tone).toBe('light');
     expect(dark.icons[0].tone).toBe('dark');
   });
 
+  it('takes the row away before an insert takes the frame', () => {
+    /*
+     * Each card is already kept out of an insert, but the row outlives its
+     * last card by a hold — and nothing used to check where that hold ended,
+     * so a row whose cards all landed in the clear sat on top of the shot that
+     * came next and held through it.
+     */
+    // The last card lands at 13 and the row holds for two seconds, so without
+    // the clamp it would still be up at 15 — a second into the insert.
+    const edl = build({
+      broll: [{ atSec: 14, durationSec: 4, query: 'a', intent: '', kind: 'stock-video' }],
+      icons: [
+        { atSec: 11, word: 'word22', query: 'banana' },
+        { atSec: 12, word: 'word24', query: 'red apple' },
+        { atSec: 13, word: 'word26', query: 'grapes' },
+      ],
+    });
+    expect(edl.icons).toHaveLength(1);
+    const insert = edl.broll[0];
+    const row = edl.icons[0];
+    // The hold really would have overrun, or this test proves nothing.
+    expect(row.outStartSec + row.cards[2].offsetSec + 2).toBeGreaterThan(insert.outStartSec);
+    expect(row.outEndSec).toBeLessThanOrEqual(insert.outStartSec);
+  });
+
+  it('drops a row that could not find three nouns, rather than showing a lonely one', () => {
+    // One card climbing out of the floor on its own reads as something that
+    // happened rather than something designed — and two read as a third that
+    // failed to load.
+    expect(build({ icons: [{ atSec: 5, word: 'word10', query: 'banana' }] }).icons).toHaveLength(0);
+    expect(build({
+      icons: [
+        { atSec: 5, word: 'word10', query: 'banana' },
+        { atSec: 6, word: 'word12', query: 'red apple' },
+      ],
+    }).icons).toHaveLength(0);
+  });
+
+  it('gives a row from below exactly three, never more', () => {
+    const edl = build({
+      icons: Array.from({ length: 6 }, (_, i) => ({
+        atSec: 4 + i * 0.6, word: `word${8 + i * 2}`, query: `thing ${i}`,
+      })),
+    });
+    expect(edl.icons.length).toBeGreaterThan(0);
+    for (const row of edl.icons) expect(row.cards).toHaveLength(3);
+  });
+
   it('puts every row BELOW the captions, where the face is not', () => {
-    const edl = build({ icons: [{ atSec: 5, word: 'word10', query: 'banana' }] });
-    const { card } = iconRowPlacement(1, edl.format.width, edl.format.height);
+    const edl = build({
+      icons: [
+        { atSec: 5, word: 'word10', query: 'banana' },
+        { atSec: 6, word: 'word12', query: 'red apple' },
+        { atSec: 7, word: 'word14', query: 'grapes' },
+      ],
+    });
+    const { card } = iconRowPlacement(3, edl.format.width, edl.format.height);
     const rowTop = edl.icons[0].y - card / edl.format.height / 2;
 
     // Under the words, and in the lower half — the upper half of a vertical

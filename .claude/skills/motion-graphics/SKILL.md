@@ -812,6 +812,60 @@ way the segments were joined. It lived inside the concat branch at first, which
 left `[speech]` (the label the music duck and the final mix both read) undefined
 the moment the overlap turned on, so ffmpeg refused the whole graph.
 
+## Where things go depends on where the subject is
+
+A talking head is framed centrally whatever the aspect, so a widescreen picture
+has two empty columns beside them and a vertical one has none. `hasSideRoom`
+reads that off the FRAME, not off the format, because it is a claim about the
+subject's position rather than about which platform the video is for.
+
+**Numbers go out to the margin in a wide frame.** `positionFor` used to return
+`x: 0.5` for everything, which is right when the subject fills a vertical frame
+and is a number sitting on the speaker's face when they do not. The compact
+self-contained ones — stat, counter, progress ring, badge, bar chart — move to
+`x: 0.79`. A list, a quote and a checklist do not: those are blocks of TEXT
+whose line length is what makes them readable, and a third of the frame sets
+them four words to a line. An underline has to stay with its word, and a title
+card is the whole frame by definition.
+
+A side-placed graphic also needs its width bounded by the room it actually has.
+The box is centred on `x`, so a flat `maxWidth: width * 0.8` at `x: 0.79` runs
+off the edge; doubling the smaller side is what keeps it inside wherever it is
+put, and it still leaves a centred graphic the 80% it always had.
+
+**Icon rows become a column in that margin, and get bigger for it.** A row
+carries a `side` — `below | left | right` — on the cue rather than derived at
+paint time, for the same reason `tone` is: somebody can move a row to the other
+side and a rule recomputed from the aspect would put it straight back. In the
+margin a card is up to 0.30 of the short edge, the reference clip's own size,
+which the band under the captions had to give up to avoid competing with a line
+of words. The column sizes itself to the height it has: one card gets the full
+0.30, three share the band.
+
+**A row rising from the floor is always three cards.** `ICON_ROW_BELOW_COUNT` is
+a hard count, not a maximum. One card climbing out of the floor on its own reads
+as something that happened rather than something designed, and two read as a
+third that failed to load. A window that finds only one or two nouns gets NO
+row — that throws away real cues, and it is the trade. The grouping window went
+from 2.5s to 5s so three in the same breath actually land in the same row. A
+side column has no such rule: a single big card in an empty margin is
+deliberate-looking on its own.
+
+**A row leaves before anything takes the frame off it.** Each CARD was already
+kept out of a B-roll insert or a scene, but the row outlives its last card by
+`ICON_HOLD_SEC` and nothing checked where that hold ended — so a row whose cards
+all landed in the clear sat on top of the shot that came next and held through
+it. Clamp `outEndSec` to the start of the next insert or scene.
+
+That last one is also the trap in the demo scripts, and it wastes an hour every
+time. A card whose word is spoken while an insert, a scene or a graphic owns the
+frame is dropped, correctly. So a fixture that scatters cues at round fractions
+of the runtime lands them on the nouns about half the time and renders an empty
+margin — which is indistinguishable from the column being broken until you go
+and look. `long-clip.ts` finds the icon words first and places everything else
+around them, and puts its three-noun breath at the END, because the builder's
+animated scene sits near the top of the video.
+
 ## Long form is not short form scaled up
 
 Everything above applies to both formats — there is no `mode` branch in the

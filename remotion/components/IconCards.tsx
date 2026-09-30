@@ -96,21 +96,23 @@ const Row: React.FC<{ cue: IconCue; startFrame: number; captions: CaptionStyle }
   if (!drawable.length) return null;
 
   // The same helper the builder placed the row with, so the card is exactly
-  // the size the space under the captions was measured for. `cue.y` still
-  // wins, because that is the one a user can move.
-  const { card, gap } = iconRowPlacement(drawable.length, width, height);
+  // the size the space it was measured for. `cue.x`/`cue.y` still win, because
+  // those are the ones a user can move.
+  const { card, gap } = iconRowPlacement(drawable.length, width, height, cue.side);
+  const column = cue.side !== 'below';
 
   /*
-   * Laid out for the row's FINAL width from the first frame.
+   * Laid out for the row's FINAL extent from the first frame.
    *
    * The alternative — centring whatever is on screen right now — makes the
    * banana slide left when the apple arrives, and a card that moves after it
    * has landed breaks the one thing this effect is selling, which is that it
    * lands and stops.
    */
-  const rowWidth = drawable.length * card + (drawable.length - 1) * gap;
-  const left = (width - rowWidth) / 2;
-  const top = cue.y * height - card / 2;
+  const span = drawable.length * card + (drawable.length - 1) * gap;
+  // A column runs down from its centre; a row runs across from its own.
+  const left = column ? cue.x * width - card / 2 : (width - span) / 2;
+  const top = column ? cue.y * height - span / 2 : cue.y * height - card / 2;
 
   const riseFrames = Math.max(1, Math.round(fps * RISE_SEC));
   const fadeFrames = Math.max(1, Math.round(fps * FADE_SEC));
@@ -137,8 +139,8 @@ const Row: React.FC<{ cue: IconCue; startFrame: number; captions: CaptionStyle }
             key={index}
             style={{
               position: 'absolute',
-              left: left + index * (card + gap) - pad,
-              top: top - pad,
+              left: (column ? left : left + index * (card + gap)) - pad,
+              top: (column ? top + index * (card + gap) : top) - pad,
               width: card + pad * 2,
               // Down to the floor the card climbs out of: its own height below
               // where it comes to rest.

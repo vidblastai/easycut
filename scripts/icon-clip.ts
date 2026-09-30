@@ -20,11 +20,19 @@ import { SAMPLE_EDL } from '../remotion/sample-edl';
 const OUT = 'out/icon-clips';
 const SOURCE_FILE = 'out/fixture.mp4';
 
-/** The sentence from the brief, so the two-card row is what gets tested. */
-const LINE = 'The best two fruits are bananas and apples'.split(' ');
+/**
+ * Three cards, because a row rising from the floor is always three.
+ *
+ * `ICON_ROW_BELOW_COUNT` is a hard count in the builder, not a maximum — one
+ * card climbing out of the floor on its own reads as something that happened
+ * rather than something designed. A strip that draws two is a strip of a
+ * layout the pipeline will not produce.
+ */
+const LINE = 'The best three fruits are bananas and apples and grapes'.split(' ');
 const CARDS = [
   { word: 'bananas', query: 'banana', atSec: 1.6 },
   { word: 'apples', query: 'red apple', atSec: 2.6 },
+  { word: 'grapes', query: 'grapes', atSec: 3.6 },
 ];
 
 async function main() {
@@ -33,7 +41,7 @@ async function main() {
   const wide = args.includes('--wide');
   const positional = args.filter((a) => !a.startsWith('--'));
   const tone = (positional[0] as 'light' | 'dark') ?? 'light';
-  const seconds = Number(positional[1] ?? 6);
+  const seconds = Number(positional[1] ?? 7);
   // `--wide` renders at 16:9. The row's size is limited by the WIDTH in a wide
   // frame and by the height in a tall one, so the two shapes exercise opposite
   // sides of `iconRowPlacement` and a row that fits one can overflow the other.
@@ -76,11 +84,14 @@ async function main() {
         {
           id: 'icon-0',
           outStartSec: CARDS[0].atSec,
-          outEndSec: 4.8,
+          outEndSec: 5.8,
           // From the frame being rendered, not from a constant: passing
           // portrait dimensions while rendering widescreen put the row where it
           // would have gone in the other shape.
-          y: iconRowPlacement(CARDS.length, shape.width, shape.height).y,
+          ...(({ x, y }) => ({ x, y }))(
+            iconRowPlacement(CARDS.length, shape.width, shape.height, wide ? 'right' : 'below'),
+          ),
+          side: wide ? ('right' as const) : ('below' as const),
           tone,
           cards: CARDS.map((card, k) => ({
             offsetSec: card.atSec - CARDS[0].atSec,

@@ -13,7 +13,10 @@ import { sfxDefaultGain, type SfxName } from '@/lib/assets/sfx';
 import { fallbackScene } from './scene-fallback';
 import {
   ASPECT_DIMENSIONS,
+  hasSideRoom,
   iconRowPlacement,
+  ICON_ROW_BELOW_COUNT,
+  type IconSide,
   type Aspect,
   type ClipTransition,
   type BrollClip,
@@ -113,7 +116,7 @@ export function buildEdl(input: BuildEdlInput): Edl {
 
   /* ------------------------------- graphics ------------------------------- */
 
-  const graphics = placeGraphics(plan, mapper, durationSec, broll, style.accent);
+  const graphics = placeGraphics(plan, mapper, durationSec, broll, style.accent, dimensions);
 
   /* --------------------------------- scenes -------------------------------- */
 
@@ -442,8 +445,16 @@ export function placeScenes(
 /** How long a row sits after its last card lands. */
 const ICON_HOLD_SEC = 2;
 
-/** Cards this close together belong to the same row. */
-const ICON_ROW_WINDOW_SEC = 2.5;
+/**
+ * Cards this close together belong to the same row.
+ *
+ * Wider than it was, and the reason is the count below. A row rising from the
+ * floor has to have three cards, so the window has to be long enough that
+ * three nouns in the same breath actually land in the same row — at 2.5s a
+ * sentence with its objects spread across it produced a two and a one, and
+ * under the hard count that is one row and one discard rather than one row.
+ */
+const ICON_ROW_WINDOW_SEC = 5;
 
 /** Three side by side is the most a vertical frame can hold and stay readable. */
 const ICON_ROW_MAX = 3;
@@ -507,6 +518,16 @@ function placeIcons(
 
   /* ------------------------------- into rows ------------------------------ */
 
+  /*
+   * Which way these rows go, decided once from the frame.
+   *
+   * A widescreen picture has a centred subject and two empty columns beside
+   * them, so the cards go out into one of those and can be bigger for it. A
+   * vertical picture has no such room — the subject fills it — so the cards
+   * rise from a floor under the captions, the way they always have.
+   */
+  const side: IconSide = hasSideRoom(dimensions.width, dimensions.height) ? 'right' : 'below';
+
   const rows: Array<typeof placed> = [];
   for (const card of placed) {
     const row = rows[rows.length - 1];
@@ -518,21 +539,54 @@ function placeIcons(
     }
   }
 
-  return rows
+  /*
+   * A row from below is three cards or it is nothing.
+   *
+   * One card climbing out of the floor on its own reads as something that
+   * happened rather than something that was designed, and two read as a third
+   * that failed to load. The group is the point: they arrive one at a time and
+   * they fill the space under the words evenly.
+   *
+   * This throws away real cues, and that is the trade — a short with two
+   * concrete nouns in it gets no icons rather than a lopsided pair. A side
+   * column has no such rule, because a single big card in an empty margin is a
+   * deliberate-looking thing on its own.
+   */
+  const usable = side === 'below' ? rows.filter((row) => row.length === ICON_ROW_BELOW_COUNT) : rows;
+
+  return usable
     .map((row, index) => {
       const outStartSec = row[0].atSec;
       const last = row[row.length - 1].atSec;
-      const next = rows[index + 1]?.[0]?.atSec ?? Infinity;
+      const next = usable[index + 1]?.[0]?.atSec ?? Infinity;
+
+      /*
+       * And it leaves before anything takes the frame off it.
+       *
+       * Each CARD is already kept out of a B-roll insert or a scene, but the
+       * row outlives its last card by `ICON_HOLD_SEC`, and nothing was
+       * checking where that hold ended. So a row whose cards all landed safely
+       * in the clear could still be sitting there two seconds later when the
+       * insert cut in — which is how three icons ended up parked on top of a
+       * full-frame shot, holding through the whole of it.
+       */
+      const covered = [...broll, ...scenes]
+        .map((clip) => clip.outStartSec)
+        .filter((startsAt) => startsAt > outStartSec);
+      const takenOver = covered.length ? Math.min(...covered) : Infinity;
+
       // A row leaves before the next one arrives, and never overruns the edit.
-      const outEndSec = Math.min(last + ICON_HOLD_SEC, next - 0.3, durationSec - 0.1);
+      const outEndSec = Math.min(last + ICON_HOLD_SEC, next - 0.3, takenOver - 0.2, durationSec - 0.1);
 
       return {
         id: `icon-${index}`,
         outStartSec,
         outEndSec,
-        // Under the captions, in the space nothing else uses — a card in the
-        // upper half of a vertical frame lands on the speaker's face.
-        y: iconRowPlacement(row.length, dimensions.width, dimensions.height).y,
+        // Under the captions, or out in the side margin — see `iconRowPlacement`.
+        ...(({ x, y }) => ({ x, y }))(
+          iconRowPlacement(row.length, dimensions.width, dimensions.height, side),
+        ),
+        side,
         tone,
         cards: row.map((card) => ({
           // Relative to the row, so dragging it on the timeline keeps the
@@ -586,6 +640,7 @@ function placeGraphics(
   durationSec: number,
   broll: BrollClip[],
   accent: string,
+  frame: { width: number; height: number },
 ): GraphicElement[] {
   const graphics: GraphicElement[] = [];
 
@@ -607,7 +662,7 @@ function placeGraphics(
       // The director's choice wins; `animationFor` is the fallback, and is
       // what runs for the (common) case where it did not express one.
       animation: cue.animation ?? animationFor(cue.type),
-      ...positionFor(cue.type),
+      ...positionFor(cue.type, frame),
       scale: 1,
       text: cue.text,
       subtext: cue.subtext,
@@ -664,8 +719,42 @@ function animationFor(type: GraphicElement['type']): GraphicElement['animation']
   }
 }
 
-/** Keeps graphics clear of the caption band and the speaker's face. */
-function positionFor(type: GraphicElement['type']): { x: number; y: number } {
+/**
+ * The graphics that move out to the side when there is a side to move to.
+ *
+ * A number is a small, self-contained object: it reads perfectly well in a
+ * column beside the subject, and putting it there gets it off their face. The
+ * ones left out are left out for a reason — a list, a quote and a checklist
+ * are blocks of TEXT whose line length is the thing that makes them readable,
+ * and squeezing them into a third of the frame sets them four words to a line;
+ * an underline has to stay with the word it underlines; a title card is the
+ * whole frame by definition; and an arrow already points from somewhere.
+ */
+const SIDE_GRAPHICS = new Set<GraphicElement['type']>([
+  'stat', 'counter', 'progress-ring', 'badge', 'bar-chart',
+]);
+
+/** Where a side-placed graphic sits: out in the margin, above the middle. */
+const GRAPHIC_SIDE_X = 0.79;
+const GRAPHIC_SIDE_Y = 0.36;
+
+/**
+ * Keeps graphics clear of the caption band and the speaker's face.
+ *
+ * In a widescreen frame "clear of the speaker's face" stops meaning ABOVE it
+ * and starts meaning BESIDE it. The subject is framed centrally whatever the
+ * aspect, so a 16:9 picture has two empty columns either side of them while a
+ * 9:16 picture has none — and a number pinned to the horizontal centre of a
+ * wide frame is a number sitting on top of the person talking.
+ */
+function positionFor(
+  type: GraphicElement['type'],
+  frame: { width: number; height: number },
+): { x: number; y: number } {
+  if (hasSideRoom(frame.width, frame.height) && SIDE_GRAPHICS.has(type)) {
+    return { x: GRAPHIC_SIDE_X, y: GRAPHIC_SIDE_Y };
+  }
+
   switch (type) {
     case 'title-card': return { x: 0.5, y: 0.5 };
     case 'list': return { x: 0.5, y: 0.34 };

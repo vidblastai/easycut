@@ -7,6 +7,7 @@ import {
   TRANSITION_TYPES,
   SCENE_LOOKS,
   EdlSchema,
+  hasSideRoom,
   iconRowPlacement,
   type CaptionCue,
   type Edl,
@@ -476,9 +477,17 @@ function applyOne(edl: Edl, op: EdlOperation): Edl {
          * placeholder tile rising on a word would be worse than no tile, and
          * the inspector fills it the moment you type.
          */
+        // Laid out the way this frame lays rows out, and the way the rows
+        // already in the document are: a card added by hand into a widescreen
+        // edit belongs in the same margin as the ones the builder placed.
+        const side = edl.icons[0]?.side
+          ?? (hasSideRoom(edl.format.width, edl.format.height) ? 'right' : 'below');
+        const spot = iconRowPlacement(1, edl.format.width, edl.format.height, side);
         return { ...edl, icons: [...edl.icons, {
           id, outStartSec: start, outEndSec: end,
-          y: iconRowPlacement(1, edl.format.width, edl.format.height).y,
+          x: spot.x,
+          y: spot.y,
+          side,
           tone: edl.icons[0]?.tone ?? 'light',
           cards: [{ offsetSec: 0, word: op.value, query: op.value, markup: null, iconId: '' }],
         }] };

@@ -1,7 +1,7 @@
 import { mkdir } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 import '../src/lib/config/load-env';
-import { EdlSchema, iconRowPlacement } from '../src/lib/edl/types';
+import { EdlSchema } from '../src/lib/edl/types';
 import { env } from '../src/lib/config/env';
 import { startAssetServer } from '../src/lib/render/asset-server';
 import { SAMPLE_EDL } from '../remotion/sample-edl';
@@ -29,12 +29,24 @@ import { sfxUrl, type SfxName } from '../src/lib/assets/sfx';
 
 const OUT = 'out/long-clip';
 
-/** Said aloud, so the captions and the cues have something real to sit on. */
+/** Long enough to cover a row's own hold, so nothing is placed under its exit. */
+const ICON_HOLD_GUESS = 3;
+
+/**
+ * Said aloud, so the captions and the cues have something real to sit on.
+ *
+ * The three nouns in the LAST sentence are deliberately in one breath. Two
+ * things are being dodged at once: a row of cards only forms from words said
+ * within `ICON_ROW_WINDOW_SEC` of each other, so nouns spread seven seconds
+ * apart make three separate single-card rows and prove nothing about the
+ * column — and the builder puts its animated scene near the top of the video,
+ * where it owns the frame and every card underneath it is correctly dropped.
+ */
 const LINE =
   'The first thing nobody tells you about pricing is that it is a positioning decision. ' +
-  'You can move the number later but the banana you picked on day one is the anchor. ' +
-  'Every deadline you set after that is measured against it, and the phone call you dread ' +
-  'is the one where somebody asks you to justify it.';
+  'You can move the number later, but the one you picked on day one is the anchor, and ' +
+  'every price you set after it is measured against that first one. So before you decide, ' +
+  'put a banana, a calendar and a telephone on the table, and ask which is worth the most.';
 
 async function main() {
   const styleId = process.argv[2] ?? 'documentary';
@@ -59,20 +71,49 @@ async function main() {
   if (!speaker || !insert) throw new Error('Cannot serve out/long.mp4 and out/broll.mp4');
 
   const style = getStyle(styleId);
-  const at = (f: number) => seconds * f;
 
-  // Three inserts and two icon words — roughly what this length earns.
+  /*
+   * The icon words first, off the transcript — everything else is placed
+   * around them.
+   *
+   * That order matters, and getting it wrong is most of what makes a fixture
+   * like this lie. An icon card is dropped when its word is spoken while a
+   * B-roll insert, an animated scene or a graphic owns the frame, which is
+   * correct — it would be a second focal point over the first. So a demo that
+   * scatters inserts and graphics at round fractions of the runtime lands them
+   * on the nouns roughly half the time and renders an empty margin, which is
+   * indistinguishable from the column being broken until you go and look.
+   *
+   * `snapToWord` only searches within two seconds of the timestamp it is
+   * given, so these are read off the words rather than guessed at.
+   */
+  const NOUNS = ['banana', 'calendar', 'telephone'];
+  const nounAt = NOUNS.map(
+    (word) => words.find((w) => w.text.replace(/[^a-z]/gi, '').toLowerCase() === word)?.startSec ?? 0,
+  );
+  const breath: [number, number] = [Math.min(...nounAt) - 1, Math.max(...nounAt) + ICON_HOLD_GUESS];
+
+  /** Somewhere this long that does not overlap the breath, or the scene band. */
+  const clearOf = (wanted: number, length: number): number => {
+    const collides = (t: number) => t < breath[1] && t + length > breath[0];
+    let t = wanted;
+    // Walk forward in half-seconds rather than solving it: the only thing that
+    // matters is that the demo is deterministic and the cues do not overlap.
+    while (collides(t) && t + length < seconds - 1) t += 0.5;
+    return t;
+  };
+
   const plan = DirectorPlanSchema.parse({
     broll: [
-      { atSec: at(0.16), durationSec: 4.5, query: 'coffee on a desk', intent: '', kind: 'stock-video' },
-      { atSec: at(0.46), durationSec: 4.5, query: 'city at night', intent: '', kind: 'stock-video' },
-      { atSec: at(0.76), durationSec: 4.5, query: 'open notebook', intent: '', kind: 'stock-video' },
+      { atSec: clearOf(seconds * 0.06, 4), durationSec: 4, query: 'coffee on a desk', intent: '', kind: 'stock-video' },
+      { atSec: clearOf(seconds * 0.62, 4), durationSec: 4, query: 'city at night', intent: '', kind: 'stock-video' },
+      { atSec: clearOf(seconds * 0.84, 4), durationSec: 4, query: 'open notebook', intent: '', kind: 'stock-video' },
     ],
-    icons: [
-      { atSec: at(0.36), word: 'banana', query: 'banana' },
-      { atSec: at(0.66), word: 'deadline', query: 'calendar' },
-    ],
-    graphics: [{ atSec: at(0.30), durationSec: 3, type: 'stat', text: '40%', subtext: 'of the decision' }],
+    icons: NOUNS.map((word, i) => ({ word, query: word, atSec: nounAt[i] })),
+    graphics: [{
+      atSec: clearOf(seconds * 0.42, 3), durationSec: 3,
+      type: 'stat', text: '40%', subtext: 'of the decision',
+    }],
   });
 
   const edl = buildEdl({
@@ -94,9 +135,14 @@ async function main() {
       card.markup = found[k]?.markup ?? null;
       card.iconId = found[k]?.id ?? '';
     });
-    cue.y = iconRowPlacement(cue.cards.length, edl.format.width, edl.format.height).y;
+    // The builder already placed it — side, x and y. Recomputing here is how
+    // the script ends up testing a layout the pipeline would never produce.
   }
-  console.log(`${edl.icons.length} rows`);
+  console.log(
+    `scenes ${edl.scenes.map((x) => `${x.outStartSec.toFixed(1)}-${x.outEndSec.toFixed(1)}`).join(',') || 'none'}` +
+    ` | graphics ${edl.graphics.map((g) => `${g.type}@${g.outStartSec.toFixed(1)}-${g.outEndSec.toFixed(1)}`).join(',')}` +
+    ` | icons ${edl.icons.map((c) => `${c.side}:${c.cards.length}`).join(',') || 'none'}`,
+  );
   for (const clip of edl.broll) clip.url = insert;
 
   console.log(

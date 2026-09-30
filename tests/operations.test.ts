@@ -443,7 +443,9 @@ describe('icon cards on the timeline', () => {
           id: 'icon-0',
           outStartSec: 3,
           outEndSec: 6,
+          x: 0.5,
           y: 0.86,
+          side: 'below' as const,
           tone: 'light' as const,
           cards: [
             { offsetSec: 0, word: 'bananas', query: 'banana', markup: '<svg><path d="M0 0"/></svg>', iconId: 'noto:banana' },

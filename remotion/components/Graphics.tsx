@@ -100,7 +100,17 @@ const GraphicElementView: React.FC<{ graphic: GraphicElement; durationInFrames: 
           fontFamily: FONT_FAMILY,
           color: '#F5F5F7',
           textAlign: 'center',
-          maxWidth: width * 0.8,
+          /*
+           * As wide as its position allows, not a flat 80% of the frame.
+           *
+           * The box is centred on `x`, so it reaches `x` either way — a
+           * graphic parked out in the side margin of a widescreen frame at
+           * x=0.79 has only 21% of the width to its right, and a flat 80%
+           * maxWidth let it run off the edge. Doubling the smaller side is
+           * what keeps it inside the picture wherever it has been put, and it
+           * still leaves a centred graphic the 80% it always had.
+           */
+          maxWidth: Math.min(width * 0.8, 2 * Math.min(graphic.x, 1 - graphic.x) * width * 0.92),
         }}
       >
         {renderBody(graphic, { frame, fps, unit, durationInFrames, edl })}

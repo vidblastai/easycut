@@ -650,6 +650,19 @@ export const IconCueSchema = z.object({
   /** Normalised centre of the row. The builder keeps it clear of the captions. */
   y: z.number().default(0.56),
   /**
+   * And across the frame. Only meaningful for a side column; a row rising from
+   * the floor is centred on the frame, because that is what "from below" means.
+   */
+  x: z.number().default(0.5),
+  /**
+   * Which way this row is laid out — see `IconSide`.
+   *
+   * On the cue rather than derived at paint time for the same reason `tone` is:
+   * a person can move a row to the other side of a widescreen frame, and a
+   * rule recomputed from the aspect would put it straight back.
+   */
+  side: z.enum(['below', 'left', 'right']).catch('below').default('below'),
+  /**
    * White tile or near-black one.
    *
    * Carried on the cue rather than read from the style at paint time, and that
@@ -799,6 +812,8 @@ function clampTo(n: number, [low, high]: readonly [number, number]): number {
  * stops reading as an object.
  */
 export interface IconRowPlacement {
+  /** Normalised centre of the row, across the frame. */
+  x: number;
   /** Normalised centre of the row. */
   y: number;
   /** Card side, in pixels. */
@@ -848,8 +863,91 @@ const ICON_BAND_TOP = 0.7;
  */
 const ICON_BOTTOM_MARGIN = 0.07;
 
-export function iconRowPlacement(count: number, width: number, height: number): IconRowPlacement {
+/**
+ * How many cards a row rising from the floor has. Always this many.
+ *
+ * One card climbing up out of the bottom of the frame on its own reads as a
+ * thing that happened rather than a thing that was designed — the eye has
+ * nothing to relate it to, and it lands off to one side of a centred subject
+ * looking like a mistake. Three is a group: it arrives one at a time, it fills
+ * the space under the words evenly, and it reads as punctuation.
+ *
+ * It is a hard count, not a maximum. A window that can only find one or two
+ * nouns does not get a short row, it gets no row.
+ */
+export const ICON_ROW_BELOW_COUNT = 3;
+
+/**
+ * Where a row of cards goes.
+ *
+ * `below` is the original: a horizontal row rising out of a floor under the
+ * captions, which is right when the picture is a vertical frame the subject
+ * fills. `left` and `right` are a vertical column in the margin, which is what
+ * a widescreen frame wants — there the subject sits in the middle and the
+ * sides are empty, so a row squeezed under the captions is crowding the one
+ * part of the frame that was already busy.
+ */
+export type IconSide = 'below' | 'left' | 'right';
+
+/**
+ * A card in the side margin is bigger than one under the captions.
+ *
+ * It can afford to be: nothing else is out there. This is the reference clip's
+ * own 0.30 of the short edge, which the band under the captions had to give up
+ * to avoid competing with a line of words.
+ */
+const ICON_CARD_SIDE_MAX = 0.3;
+
+/** Between the column and the edge of the frame, as a fraction of the width. */
+const ICON_SIDE_MARGIN = 0.055;
+
+/** Above and below the column. */
+const ICON_SIDE_BAND = [0.1, 0.92] as const;
+
+/**
+ * Whether this frame has room beside the subject.
+ *
+ * A talking head is framed centrally whatever the aspect, so a 16:9 picture
+ * has two empty columns either side of them and a 9:16 picture has none. That
+ * is the whole reason this is decided from the frame rather than from the
+ * format: it is a fact about where the subject is, not about which platform
+ * the video is for.
+ */
+export function hasSideRoom(width: number, height: number): boolean {
+  return width / height > 1.2;
+}
+
+export function iconRowPlacement(
+  count: number,
+  width: number,
+  height: number,
+  side: IconSide = 'below',
+): IconRowPlacement {
   const shortEdge = Math.min(width, height);
+
+  if (side !== 'below') {
+    /*
+     * A column, sized to fit the height it has rather than to a fixed cap:
+     * one card in the margin can be the full reference size, and three have to
+     * share the band between them.
+     */
+    const gap = shortEdge * 0.055;
+    const band = (ICON_SIDE_BAND[1] - ICON_SIDE_BAND[0]) * height;
+    const card = Math.max(
+      shortEdge * ICON_CARD_MIN,
+      Math.min(shortEdge * ICON_CARD_SIDE_MAX, (band - (count - 1) * gap) / count),
+    );
+    // Measured from the edge inwards, so a bigger card sits further in rather
+    // than hanging off the side of the frame.
+    const inset = ICON_SIDE_MARGIN + card / width / 2;
+    return {
+      x: side === 'right' ? 1 - inset : inset,
+      y: (ICON_SIDE_BAND[0] + ICON_SIDE_BAND[1]) / 2,
+      card,
+      gap,
+    };
+  }
+
   const room = 1 - ICON_BAND_TOP - ICON_BOTTOM_MARGIN;
 
   /*
@@ -875,7 +973,7 @@ export function iconRowPlacement(count: number, width: number, height: number): 
    */
   const y = ICON_BAND_TOP + card / height / 2;
 
-  return { y, card, gap: shortEdge * 0.055 };
+  return { x: 0.5, y, card, gap: shortEdge * 0.055 };
 }
 
 /* ------------------------------------------------------------------ scenes */
