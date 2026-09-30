@@ -98,14 +98,34 @@ export interface CueSource {
   tier: CueTier;
 }
 
+/** Loudest first, which is the order restraint gives things up in. */
+const TIER_ORDER: CueTier[] = ['move', 'soft', 'accent'];
+
 /**
  * Drops the cues a style this restrained would not place.
  *
  * Applied before `thinCues`, so the gap rule runs on what actually survives —
  * thinning first would let a dropped accent shoulder out the move next to it.
+ *
+ * ── Restraint is not silence ────────────────────────────────────────────
+ *
+ * The floors alone can zero a whole style, and one of them did. Documentary
+ * long asks for 0.10, and every transition it uses — film burn, light leak,
+ * zoom, and a fade that is silent by design — is in the `soft` tier, so the
+ * filter removed every sound in the video. That is not the restrained version
+ * of the feature, it is the feature switched off, and from the outside it
+ * looks like the sounds were never built.
+ *
+ * So when the floors would take everything, the best tier present stays. A
+ * style gets its quietest sounds rather than none, and the rule holds for
+ * whatever transition set some future style picks.
  */
 export function cuesForDensity<T extends { tier: CueTier }>(cues: T[], sfxDensity: number): T[] {
-  return cues.filter((cue) => sfxDensity >= TIER_FLOOR[cue.tier]);
+  const kept = cues.filter((cue) => sfxDensity >= TIER_FLOOR[cue.tier]);
+  if (kept.length || !cues.length) return kept;
+
+  const best = TIER_ORDER.find((tier) => cues.some((cue) => cue.tier === tier));
+  return cues.filter((cue) => cue.tier === best);
 }
 
 /**

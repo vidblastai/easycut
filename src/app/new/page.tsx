@@ -4,7 +4,7 @@ import { STYLE_LIST, FORMAT_PRESETS, leadsWithCards } from '@/lib/styles/presets
 import { capabilities } from '@/lib/config/env';
 import { db } from '@/lib/db';
 import { recentsFor } from '@/lib/ui/recents';
-import { brollSourceOffers } from '@/lib/assets/ai-broll';
+import { brollSourceRates } from '@/lib/assets/ai-broll';
 
 export const dynamic = 'force-dynamic';
 
@@ -54,18 +54,29 @@ export default async function NewProjectPage() {
               // What this style's inserts wear, so "let the style choose" on
               // the overlay picker can name what it is choosing.
               brollOverlay: s.brollOverlay,
+              // How often this style cuts away, per format. The B-roll price
+              // is per insert, and the insert count is this number against the
+              // length of the file — which the browser knows and the server
+              // does not, since nothing has been uploaded yet.
+              brollPacing: {
+                short: { everySec: s.short.brollEverySec, durationSec: s.short.brollDurationSec },
+                long: { everySec: s.long.brollEverySec, durationSec: s.long.brollDurationSec },
+              },
             }))}
             formats={[FORMAT_PRESETS.short, FORMAT_PRESETS.long]}
             /*
-             * Priced on the server, because only the server knows which keys
-             * are set — and priced from the catalogue the pipeline bills
-             * against, so the number on the tile is the number on the invoice.
+             * RATES from the server, because only the server knows which keys
+             * are set, and the catalogue the pipeline bills against belongs
+             * there — so the number on the tile is the number on the invoice.
              *
-             * Four inserts of two and a half seconds is the shape of a typical
-             * short. It is an estimate of a video that does not exist yet; the
-             * director decides how many inserts it actually gets.
+             * The multiplying happens in the browser, because how many inserts
+             * this video gets depends on its length and the chosen style, and
+             * neither is known here: nothing has been uploaded yet. It used to
+             * send a finished price for four inserts of two and a half seconds
+             * — the shape of a typical short — which quoted the same figure for
+             * a ten-minute edit that gets twenty times as many.
              */
-            brollOffers={brollSourceOffers(4, 2.5)}
+            brollRates={brollSourceRates()}
           />
         </div>
       </ShellMain>

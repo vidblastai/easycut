@@ -98,10 +98,41 @@ export function estimateAiBrollUsd(source: BrollSource, inserts: number, seconds
 }
 
 /** How long somebody waits for all of them, given they run at once. */
-export function estimateAiBrollSeconds(source: BrollSource): number {
+export function estimateAiBrollSeconds(source: BrollSource, inserts = 1): number {
   if (source === 'stock') return 0;
-  if (source === 'ai-image') return 12;
-  return isKieConfigured() ? kieVideoModel(env.kie.videoModel).typicalSec : 110;
+  const one = source === 'ai-image' ? 12 : isKieConfigured() ? kieVideoModel(env.kie.videoModel).typicalSec : 110;
+
+  /*
+   * Inserts are made concurrently — `Promise.all` over the whole B-roll track —
+   * so the wall clock is one clip, not the sum of them. That holds for a short
+   * with four. It does not hold for a long-form edit with seventy, where the
+   * provider's own concurrency limit starts queueing them, and quoting one
+   * clip's time for an hour of work is the same kind of wrong as quoting one
+   * clip's price.
+   *
+   * `BATCH` is the number in flight before queueing begins. Waves past that
+   * cost another `one` each, which is the honest shape of the curve even if
+   * the exact limit moves.
+   */
+  const BATCH = 8;
+  return Math.round(one * Math.max(1, Math.ceil(inserts / BATCH)));
+}
+
+/**
+ * How many inserts a video of this shape gets, and how long each runs.
+ *
+ * Read off the same pacing profile the director is budgeted from, so the tile
+ * quotes the video somebody is about to make rather than a typical one. The
+ * spread is what makes this matter: a short gets about four inserts and a
+ * ten-minute commentary edit gets seventy-five, so a fixed guess is not a
+ * rounding error on the price, it is an order of magnitude.
+ */
+export function brollShapeFor(
+  pacing: { brollEverySec: number; brollDurationSec: readonly [number, number] },
+  durationSec: number,
+): { inserts: number; secondsEach: number } {
+  const inserts = pacing.brollEverySec > 0 ? Math.max(1, Math.floor(durationSec / pacing.brollEverySec)) : 0;
+  return { inserts, secondsEach: (pacing.brollDurationSec[0] + pacing.brollDurationSec[1]) / 2 };
 }
 
 /**
@@ -275,34 +306,93 @@ export function brollSourceOffers(inserts: number, secondsEach: number): Array<{
   available: boolean;
   missing?: string;
 }> {
+  return brollSourceRates().map((rate) => ({
+    source: rate.source,
+    label: rate.label,
+    body: rate.body,
+    costUsd: priceBrollRate(rate, inserts, secondsEach),
+    waitSec: estimateAiBrollSeconds(rate.source, inserts),
+    available: rate.available,
+    missing: rate.missing,
+  }));
+}
+
+/** What a source charges, without deciding yet how big the video is. */
+export interface BrollSourceRate {
+  source: BrollSource;
+  label: string;
+  body: string;
+  available: boolean;
+  missing?: string;
+  /** Charged once per insert, whatever its length. */
+  usdPerInsert: number;
+  /** Charged per second of insert, after snapping to `durations`. */
+  usdPerSecond: number;
+  /** The lengths the provider actually bills in: a 4.2s clip costs a 5s one. */
+  durations: readonly number[];
+  /** Wall clock for one insert. */
+  oneSec: number;
+}
+
+/**
+ * The rates, separated from the size of the video.
+ *
+ * The wizard has to price the video somebody is ABOUT to make, and that
+ * depends on their file's length and the style they picked — both of which
+ * live in the browser, while the keys and the billing catalogue live on the
+ * server and must stay there. So the server sends what things cost and the
+ * client multiplies by how many.
+ *
+ * It replaced a single hardcoded `brollSourceOffers(4, 2.5)`: four inserts of
+ * two and a half seconds, the shape of a typical short, quoted at the same
+ * price for a ten-minute edit that gets twenty times as many.
+ */
+export function brollSourceRates(): BrollSourceRate[] {
   const videoLabel = isKieConfigured() ? kieVideoModel(env.kie.videoModel).label : 'a video model';
+  const model = isKieConfigured() ? kieVideoModel(env.kie.videoModel) : null;
 
   return [
     {
       source: 'stock',
       label: 'Stock footage',
       body: 'Searched from Pexels and Pixabay. Right for most cues, and it costs nothing.',
-      costUsd: 0,
-      waitSec: 0,
       available: true,
+      usdPerInsert: 0, usdPerSecond: 0, durations: [1], oneSec: 0,
     },
     {
       source: 'ai-image',
       label: 'AI pictures',
       body: 'A still made for each cue, pushed and panned across the frame so it moves like footage.',
-      costUsd: estimateAiBrollUsd('ai-image', inserts, secondsEach),
-      waitSec: estimateAiBrollSeconds('ai-image'),
       available: isKieConfigured(),
       missing: 'Needs a Kie API key (KIE_API_KEY) for GPT Image 2.',
+      // A picture is priced per picture; its length on screen costs nothing.
+      usdPerInsert: KIE_IMAGE_COST_USD, usdPerSecond: 0, durations: [1], oneSec: 12,
     },
     {
       source: 'ai-video',
       label: 'AI video',
       body: `Real generated footage from ${videoLabel}. The best picture, and by far the slowest.`,
-      costUsd: estimateAiBrollUsd('ai-video', inserts, secondsEach),
-      waitSec: estimateAiBrollSeconds('ai-video'),
       available: isKieConfigured() || isGeneratedBrollConfigured(),
       missing: 'Needs a Kie API key (KIE_API_KEY) or a WaveSpeed key.',
+      usdPerInsert: 0,
+      usdPerSecond: model?.usdPerSec ?? 0.008,
+      durations: model?.durations ?? [5, 10],
+      oneSec: model?.typicalSec ?? 110,
     },
   ];
 }
+
+/** Applies a rate to a video of a given shape. Safe to run in the browser. */
+export function priceBrollRate(rate: BrollSourceRate, inserts: number, secondsEach: number): number {
+  if (!inserts) return 0;
+  const billed = rate.usdPerSecond ? snapTo(secondsEach, rate.durations) : 0;
+  return inserts * (rate.usdPerInsert + billed * rate.usdPerSecond);
+}
+
+/** The wall clock for a whole batch, given the rate's one-insert time. */
+export function waitForBrollRate(rate: BrollSourceRate, inserts: number): number {
+  if (!rate.oneSec || !inserts) return 0;
+  const BATCH = 8;
+  return Math.round(rate.oneSec * Math.max(1, Math.ceil(inserts / BATCH)));
+}
+

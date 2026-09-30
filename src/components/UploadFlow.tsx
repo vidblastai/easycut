@@ -14,7 +14,8 @@ import { CaptionPicker } from '@/components/captions/CaptionPicker';
 import { takePendingUpload } from '@/lib/ui/pending-upload';
 import { ScenePicker } from '@/components/scenes/ScenePicker';
 import { TransitionPicker } from '@/components/transitions/TransitionPicker';
-import { BrollSourcePicker, type BrollSourceOffer } from '@/components/broll/BrollSourcePicker';
+import { BrollSourcePicker } from '@/components/broll/BrollSourcePicker';
+import { brollShapeFor, priceBrollRate, waitForBrollRate, type BrollSourceRate } from '@/lib/assets/ai-broll';
 import { OverlayPicker } from '@/components/broll/OverlayPicker';
 import type { BrollSource } from '@/lib/assets/ai-broll';
 
@@ -45,6 +46,11 @@ interface StyleOption {
   brollOverlay: BrollOverlay;
   /** Whether the preview should draw a title card — see `leadsWithCards`. */
   chapterCards?: { short: boolean; long: boolean };
+  /** How often this style cuts away, per format. Prices the B-roll source. */
+  brollPacing?: {
+    short: { everySec: number; durationSec: [number, number] };
+    long: { everySec: number; durationSec: [number, number] };
+  };
 }
 
 interface FormatOption {
@@ -102,12 +108,12 @@ type Question = (typeof QUESTIONS)[number];
 export function UploadFlow({
   styles,
   formats,
-  brollOffers,
+  brollRates,
 }: {
   styles: StyleOption[];
   formats: FormatOption[];
-  /** Priced on the server — see `brollSourceOffers`. */
-  brollOffers: BrollSourceOffer[];
+  /** What each source charges — see `brollSourceRates`. Multiplied below. */
+  brollRates: BrollSourceRate[];
 }) {
   const router = useRouter();
   const inputRef = useRef<HTMLInputElement>(null);
@@ -195,6 +201,39 @@ export function UploadFlow({
   // What the chosen style would put on its inserts, so the overlay picker can
   // say what "let the style choose" means rather than leaving it abstract.
   const styleOverlay = choices.find((s) => s.id === chosen)?.brollOverlay ?? 'none';
+
+  /*
+   * What the inserts will cost, for THIS file and THIS style.
+   *
+   * The price is per insert, and the insert count is the style's cut-away
+   * cadence against the length of the video — which is why it is worked out
+   * here rather than sent down finished. The old version quoted four inserts
+   * of two and a half seconds to everybody, the shape of a typical short, so a
+   * ten-minute edit that gets seventy-five of them was quoted a twentieth of
+   * what it would actually bill.
+   *
+   * Falls back to that same short-shaped guess only while the browser has not
+   * read the file's length yet, which is the one moment when nothing better is
+   * known.
+   */
+  const brollOffers = useMemo(() => {
+    const pacing = choices.find((s) => s.id === chosen)?.brollPacing?.[mode];
+    const seconds = detected?.durationSec ?? 0;
+    const shape = pacing && seconds > 0
+      ? brollShapeFor({ brollEverySec: pacing.everySec, brollDurationSec: pacing.durationSec }, seconds)
+      : { inserts: 4, secondsEach: 2.5 };
+
+    return brollRates.map((rate) => ({
+      source: rate.source,
+      label: rate.label,
+      body: rate.body,
+      available: rate.available,
+      missing: rate.missing,
+      costUsd: priceBrollRate(rate, shape.inserts, shape.secondsEach),
+      waitSec: waitForBrollRate(rate, shape.inserts),
+      inserts: shape.inserts,
+    }));
+  }, [brollRates, choices, chosen, mode, detected?.durationSec]);
 
   /*
    * Some layouts ARE the B-roll: a split screen with the insert switched off

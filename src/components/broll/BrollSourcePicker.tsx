@@ -15,6 +15,16 @@ export interface BrollSourceOffer {
   /** False when the key it needs is not set — shown, greyed, with the reason. */
   available: boolean;
   missing?: string;
+  /**
+   * How many inserts that price is for.
+   *
+   * On the tile because the number is the whole explanation for the price, and
+   * because it is the figure that changes most between a short and a long
+   * edit: the same style that cuts away four times in a minute cuts away
+   * seventy-five times in ten. Without it, a long-form quote reads as the
+   * software having got the sum wrong.
+   */
+  inserts?: number;
 }
 
 /**
@@ -49,11 +59,15 @@ export function BrollSourcePicker({
   onChange: (source: BrollSource) => void;
   className?: string;
 }) {
+  // Every offer prices the same video, so any of them carries the count.
+  const inserts = offers.find((o) => o.inserts)?.inserts ?? 0;
   return (
     <div className={className}>
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <h3 className="text-[13px] font-bold">Where the B-roll comes from</h3>
-        <span className="text-[12px] text-faint">Stock is free and instant</span>
+        <span className="text-[12px] text-faint">
+          {inserts ? `Priced for about ${inserts} insert${inserts === 1 ? '' : 's'}` : 'Stock is free and instant'}
+        </span>
       </div>
 
       <ul className="mt-2 grid gap-2.5 sm:grid-cols-3">
@@ -97,9 +111,10 @@ export function BrollSourcePicker({
           needed to know before the progress bar started. */}
       {value === 'ai-video' ? (
         <p className="mt-2.5 rounded-xl border border-warn/40 bg-warn/[0.08] px-3.5 py-2.5 text-[12px] leading-relaxed text-chalk/90">
-          Generated clips are made one at a time by a video model, so this edit will take minutes rather
-          than seconds. Anything that fails or times out falls back to a stock clip, and the cost report
-          shows what was actually made.
+          Generated clips come from a video model, so this edit will take minutes rather than seconds
+          {inserts > 8 ? ` — and at ${inserts} inserts they will not all be made at once` : ''}. Anything
+          that fails or times out falls back to a stock clip, and the cost report shows what was
+          actually made.
         </p>
       ) : null}
     </div>

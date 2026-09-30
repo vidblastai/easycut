@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { runHeuristicDirector } from '@/lib/director/heuristic';
+import { cuesForDensity, thinCues, transitionCues } from '@/lib/edl/sfx-cues';
+import { BrollClipSchema } from '@/lib/edl/types';
 import { STYLE_LIST, pacingFor, type FormatMode } from '@/lib/styles/presets';
 import { deriveSentences, type Transcript, type TranscriptWord } from '@/lib/transcribe/types';
 
@@ -106,4 +108,42 @@ describe('a pacing interval of zero', () => {
       expect(long.sfxDensity, `${style.id} sfx`).toBeLessThanOrEqual(short.sfxDensity);
     }
   });
+});
+
+
+describe('every style makes some sound', () => {
+  /*
+   * A style picks its own clip transitions and its own sfx density, and the two
+   * are set in different places by different judgements. Cross them and a style
+   * can end up with every transition it uses below the floor its density
+   * clears — which is exactly what happened to documentary in long form, where
+   * film burn, light leak, zoom and a deliberately silent fade added up to a
+   * video with no transition sounds at all.
+   *
+   * The pairing is what has to be tested, because neither half is wrong alone.
+   */
+  it.each(COMBINATIONS.map((c) => [`${c.style.id} · ${c.mode}`, c] as const))(
+    'has at least one audible transition in %s',
+    (_label, { style, mode }) => {
+      const density = pacingFor(style, mode).sfxDensity;
+      const frame = mode === 'short'
+        ? { width: 1080, height: 1920 }
+        : { width: 1920, height: 1080 };
+
+      // One insert per transition the style is allowed to use.
+      const broll = style.clipTransitions.map((transition, i) =>
+        BrollClipSchema.parse({
+          id: `b-${i}`, outStartSec: 2 + i * 6, outEndSec: 6 + i * 6,
+          kind: 'stock-video', url: 'u', query: 'thing',
+          enter: transition, exit: transition,
+        }),
+      );
+
+      const kept = thinCues(cuesForDensity(transitionCues(broll, [], frame), density));
+      expect(
+        kept.length,
+        `${style.id}/${mode} (density ${density}) uses ${style.clipTransitions.join(', ')} and makes no sound`,
+      ).toBeGreaterThan(0);
+    },
+  );
 });

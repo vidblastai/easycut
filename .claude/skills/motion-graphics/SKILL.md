@@ -812,6 +812,72 @@ way the segments were joined. It lived inside the concat branch at first, which
 left `[speech]` (the label the music duck and the final mix both read) undefined
 the moment the overlap turned on, so ffmpeg refused the whole graph.
 
+## Long form is not short form scaled up
+
+Everything above applies to both formats — there is no `mode` branch in the
+transition code, the overlays, the icon row or the cue placement, and there
+should not be. What differs is carried by data: every style has a `short` and a
+`long` pacing profile, and the long one asks for roughly half the sfx density
+and two to four times the gap between inserts.
+
+Four things nearly broke on that, and none of them showed up in short form:
+
+1. **A pacing interval of zero means NEVER, not "every instant."** Commentary,
+   news, tutorial and essay all write `punchInEverySec: [0, 0]`, and the loop
+   that read it stepped by the cadence — so `t` stopped advancing and the array
+   grew until the heap died. Guard every `t += step` and every
+   `Math.floor(x / interval)` against a zero interval. `tests/pacing-guards.test.ts`
+   builds the whole catalogue, because a unit test on the guard passes while
+   the styles stay broken.
+
+2. **The sound density has to reach the transitions.** `transitionCues` put a
+   sound on every move regardless of style, which gave a restrained long-form
+   edit a short-form soundtrack. Cues now declare a tier — `move` (the frame
+   travels or breaks) is never dropped, `soft` (zoom, burn, leak) goes below
+   0.15, an icon `accent` below 0.30 — and `cuesForDensity` filters before
+   `thinCues`, so the 120ms gap rule runs on what actually survives.
+
+3. **Restraint must never mean silence.** The floors alone zeroed documentary
+   long: every transition it uses is soft or silent, so the filter removed every
+   sound in the video, which looks from outside like the feature was never
+   built. When the floors take everything, the best tier present stays.
+
+4. **A filter graph is one argument, and Linux caps one argument at 128KB.** A
+   fifty-minute lecture cut on every pause builds a ~204KB graph, so `spawn`
+   failed with E2BIG before ffmpeg was reached — on the plain concat as well as
+   the J cut. Hand it over with `-filter_complex_script` instead.
+
+The visual strips take `--wide`, and it is not a nicety. A transition travels a
+distance proportional to the frame, so a slide crosses 1920px widescreen where
+it crosses 1080 vertical and the duration clamp means those are not the same
+animation at a different size. The grain's feature size is tied to the width and
+the scanline pitch to the height. The icon row is width-limited in a wide frame
+and height-limited in a tall one. None of it can be judged in the wrong shape:
+
+    npx tsx scripts/transition-clip.ts --wide
+    npx tsx scripts/broll-overlay.ts out/plates/real.png --wide
+    npx tsx scripts/icon-clip.ts light 6 --wide
+    npx tsx scripts/long-clip.ts documentary 42   # all layers at once, with sound
+
+`long-clip.ts` is the one that answers what the others cannot: whether the
+layers are right TOGETHER at 16:9. It goes through `buildEdl`, so what comes out
+is what the pipeline would have made.
+
+### The price on the tile is per insert, so it depends on the format
+
+The B-roll source picker quotes what this video will cost, and the insert count
+is the style's cut-away cadence against the length of the file: four for a
+minute of `explainer`, seventy-five for ten minutes of `commentary`. The wizard
+used to send one finished price computed from a hardcoded four inserts of two
+and a half seconds, which under-quoted a long-form AI-video edit by more than an
+order of magnitude — and by nearly three with a fast video model configured.
+
+The server sends RATES (`brollSourceRates`) because only it knows which keys are
+set and the billing catalogue belongs there; the browser multiplies, because
+only it knows the file's length and the chosen style. Keep that split. The count
+goes on the tile next to the price — without it a long-form quote reads as the
+software having got the sum wrong.
+
 ## What an insert wears
 
 Eleven treatments plus `none`, scoped to the B-roll clip, in two groups that

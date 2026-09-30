@@ -168,3 +168,41 @@ describe('how much a restrained style keeps', () => {
     expect(kept[0].tier).toBe('move');
   });
 });
+
+
+describe('restraint versus silence', () => {
+  /*
+   * Documentary long asks for 0.10 and every transition it uses — film burn,
+   * light leak, zoom, and a fade that is silent by design — sits in the soft
+   * tier. The floors alone removed every sound in the video, which is not the
+   * restrained version of the feature, it is the feature switched off.
+   */
+  const allSoft = () => transitionCues([broll('film-burn', 'light-leak', [2, 8])], [], FRAME);
+
+  it('keeps a style whose transitions are ALL soft from going silent', () => {
+    const kept = cuesForDensity(allSoft(), 0.1);
+    expect(kept.length).toBeGreaterThan(0);
+    expect(kept.every((c) => c.tier === 'soft')).toBe(true);
+  });
+
+  it('falls back to the best tier present, not to everything', () => {
+    // A move and an accent at a density that clears neither floor: the move
+    // survives alone, and the accent still does not get in on its coat-tails.
+    const cues = transitionCues([broll('cut', 'cut', [2, 8])], [icons(3, [0])], FRAME);
+    expect(cues.map((c) => c.tier)).toEqual(['accent']);
+    // Accents only — so accents are the best tier present, and they play.
+    expect(cuesForDensity(cues, 0.01)).toHaveLength(1);
+  });
+
+  it('does not invent cues where the edit made none', () => {
+    expect(cuesForDensity([], 0.01)).toHaveLength(0);
+  });
+
+  it('leaves the normal case alone', () => {
+    // The rescue must only fire when the filter took everything — a style that
+    // keeps its moves should still lose its accents.
+    const cues = transitionCues([broll('slide-up', 'cut', [2, 8])], [icons(5, [0])], FRAME);
+    const kept = cuesForDensity(cues, 0.05);
+    expect(kept.map((c) => c.tier)).toEqual(['move']);
+  });
+});
