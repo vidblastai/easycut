@@ -135,7 +135,7 @@ feature:
 
 | | what you get | per insert | wait | four inserts |
 |---|---|---:|---:|---:|
-| **AI pictures** | GPT Image 2 at 1K, pushed and panned across the frame | **$0.03** | seconds | **$0.12** |
+| **AI pictures** | Z-Image Turbo, pushed and panned across the frame | **$0.004** | seconds | **$0.016** |
 | **AI video** | Seedance 1.0 Pro, 720p, real generated motion | $0.15 | ~70 s | $0.60 |
 | | Seedance 2.0 Fast, 720p — best picture by a distance | $0.62 | ~4 min | $2.48 |
 

@@ -185,9 +185,9 @@ export const env = {
    * Kie, the generation account.
    *
    * A second media provider beside WaveSpeed rather than a replacement,
-   * because the thing it is best at is the STILL: GPT Image 2 at 1K is three
-   * cents and lands in seconds, which is the only generated asset cheap
-   * enough and fast enough to put in front of every video. Its video
+   * because the thing it is best at is the STILL: Z-Image Turbo is four
+   * tenths of a cent and lands in seconds, which is the only generated asset
+   * cheap enough and fast enough to put in front of every video. Its video
    * catalogue is here too, priced per second — see src/lib/assets/kie.ts.
    */
   kie: {
@@ -405,7 +405,7 @@ export function capabilities(): Capability[] {
       label: 'AI B-roll',
       configured: Boolean(env.kie.apiKey),
       // Stated as the price, because the price IS the feature: a still that
-      // costs three cents and lands in seconds is the only generated asset
+      // costs four tenths of a cent and lands in seconds is the only asset
       // cheap enough to put in front of every video.
       fallback: 'Inserts come from the stock libraries only. With a Kie key you can also have a picture made per cue for about 3c, or real generated footage.',
       envVars: ['KIE_API_KEY'],

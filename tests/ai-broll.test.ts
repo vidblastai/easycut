@@ -21,16 +21,25 @@ import { layoutPlan } from '@/lib/styles/layouts';
  */
 describe('AI B-roll', () => {
   it('keeps a still an order of magnitude cheaper than a clip', () => {
-    // Four inserts of stills is twelve cents, inside a one-dollar short four
-    // times over. Four clips from the best model is $2.48 — over budget on its
-    // own, before a single frame is rendered. That gap is the design.
+    // Four inserts of stills is under two cents, which does not register
+    // against a one-dollar short. Four clips from the best model is $2.48 —
+    // over budget on its own, before a single frame is rendered. That gap is
+    // the design, and it is the whole reason these are two choices rather
+    // than one feature with a quality slider.
     const stills = 4 * KIE_IMAGE_COST_USD;
     const best = KIE_VIDEO_MODELS.find((m) => m.id === 'bytedance/seedance-2-fast')!;
     const clips = 4 * 5 * best.usdPerSec;
 
-    expect(stills).toBeCloseTo(0.12, 5);
+    expect(stills).toBeLessThan(0.05);
     expect(clips).toBeGreaterThan(2);
     expect(clips / stills).toBeGreaterThan(10);
+  });
+
+  it('prices a long-form edit\u2019s worth of stills at pocket change', () => {
+    // Seventy-odd inserts is what ten minutes of commentary asks for, and it
+    // is the number that decides whether generated stills can be the default
+    // rather than a treat. At three cents a picture it was $2.10.
+    expect(70 * KIE_IMAGE_COST_USD).toBeLessThan(0.4);
   });
 
   it('prices every video model per second, and orders them by what they cost', () => {

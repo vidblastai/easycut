@@ -8,8 +8,8 @@ import { env } from '@/lib/config/env';
  * Because the two things this product wants to generate have completely
  * different economics, and no single catalogue is best at both.
  *
- * A generated STILL is the cheap one and the fast one. GPT Image 2 at 1K is
- * three cents and lands in seconds, and a still that pushes and drifts across
+ * A generated STILL is the cheap one and the fast one. Z-Image Turbo is
+ * fractions of a cent and lands in seconds, and a still that pushes and drifts across
  * the frame for two and a half seconds reads as B-roll — which is the whole
  * job. Four of them is twelve cents inside a one-dollar short.
  *
@@ -33,7 +33,7 @@ import { env } from '@/lib/config/env';
 const API_BASE = 'https://api.kie.ai/api/v1/jobs';
 
 export interface KieJob {
-  /** The model id, e.g. `gpt-image-2-text-to-image`. */
+  /** The model id, e.g. `bytedance/v1-pro-text-to-video`. */
   model: string;
   input: Record<string, unknown>;
   /** Stills land in seconds and clips in minutes; callers pass their own. */
@@ -187,14 +187,22 @@ export function kieVideoModel(id: string): KieVideoModel {
 }
 
 /**
- * GPT Image 2, at the resolution this product uses.
+ * Z-Image Turbo, which is the cheap one.
  *
- * 1K, because a B-roll insert is composited over at most one frame of a 1080
- * -wide video and then panned across — 2K costs five cents for detail that is
- * downscaled away before anybody sees it.
+ * It replaced GPT Image 2 at three cents a picture, and the saving is not
+ * marginal: a ten-minute edit wants seventy-odd inserts, which is $2.10 of
+ * stills against nine cents. For a B-roll insert — composited into one frame
+ * of a 1080-wide video and then panned across — the extra detail three cents
+ * buys is downscaled away before anybody sees it.
+ *
+ * Six billion parameters at eight steps, so it is also faster: measured at
+ * nine seconds against twelve.
+ *
+ * It takes no `resolution`, unlike the model it replaced. Sending one is not
+ * an error, which is the problem — the extra field is ignored in silence, so
+ * a leftover would look like it was doing something.
  */
-export const KIE_IMAGE_MODEL = 'gpt-image-2-text-to-image';
-export const KIE_IMAGE_RESOLUTION = '1K';
-export const KIE_IMAGE_COST_USD = 0.03;
+export const KIE_IMAGE_MODEL = 'z-image';
+export const KIE_IMAGE_COST_USD = 0.004;
 /** Measured in seconds, not minutes; this is the give-up point. */
 export const KIE_IMAGE_TIMEOUT_MS = 120_000;

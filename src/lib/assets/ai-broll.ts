@@ -2,7 +2,6 @@ import { env } from '@/lib/config/env';
 import {
   KIE_IMAGE_COST_USD,
   KIE_IMAGE_MODEL,
-  KIE_IMAGE_RESOLUTION,
   KIE_IMAGE_TIMEOUT_MS,
   isKieConfigured,
   kieVideoModel,
@@ -109,9 +108,9 @@ export function estimateAiBrollSeconds(source: BrollSource, inserts = 1): number
   if (source === 'stock') return 0;
   const one =
     source === 'ai-image'
-      // Measured: GPT Image 2 at 1K takes about twelve seconds, the WaveSpeed
-      // image model about eight.
-      ? (isKieConfigured() ? 12 : 8)
+      // Measured: Z-Image Turbo about nine seconds, the WaveSpeed image
+      // model about eight.
+      ? (isKieConfigured() ? 9 : 8)
       : isKieConfigured() ? kieVideoModel(env.kie.videoModel).typicalSec : 110;
 
   /*
@@ -224,7 +223,6 @@ async function makeStill(
       input: {
         prompt: brollPrompt(subject, 'still'),
         aspect_ratio: aspect,
-        resolution: KIE_IMAGE_RESOLUTION,
       },
       timeoutMs: KIE_IMAGE_TIMEOUT_MS,
       pollMs: 1500,
@@ -409,14 +407,14 @@ export function brollSourceRates(): BrollSourceRate[] {
     {
       source: 'ai-image',
       label: 'AI pictures',
-      body: `A still made for each cue by ${isKieConfigured() ? 'GPT Image 2' : 'an image model'}, pushed and panned across the frame so it moves like footage.`,
+      body: `A still made for each cue by ${isKieConfigured() ? 'Z-Image Turbo' : 'an image model'}, pushed and panned across the frame so it moves like footage.`,
       available: isKieConfigured() || isImageGenConfigured(),
       missing: 'Needs a Kie API key (KIE_API_KEY) or a WaveSpeed key.',
       // A picture is priced per picture; its length on screen costs nothing.
       usdPerInsert: isKieConfigured() ? KIE_IMAGE_COST_USD : estimateImageCostUsd(1),
       usdPerSecond: 0,
       durations: [1],
-      oneSec: isKieConfigured() ? 12 : 8,
+      oneSec: isKieConfigured() ? 9 : 8,
     },
     {
       source: 'ai-video',
