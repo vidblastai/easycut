@@ -1039,6 +1039,7 @@ export const SCENE_KINDS = [
   'orbit',        // one idea in the middle, its parts arriving around it
   'stack',        // layers settling on top of each other
   'big-number',   // one figure, filling the frame
+  'transform',    // this thing becoming that one: two photographs and an arrow
 ] as const;
 export type SceneKind = (typeof SCENE_KINDS)[number];
 
@@ -1100,6 +1101,19 @@ export const AnimatedSceneSchema = z.object({
    * kind reads without icons.
    */
   iconSvgs: z.array(z.string().nullable()).default([]),
+  /**
+   * Photographs, for the kinds that show a real thing rather than an idea.
+   *
+   * Parallel to `items`, the way `iconSvgs` is. URLs rather than inlined
+   * markup, because these are raster images and `<Img>` decodes those in
+   * headless Chromium perfectly well — it is only the SVG icons that cannot
+   * be loaded that way.
+   *
+   * Null is a normal state. A `transform` scene whose photographs did not
+   * resolve falls back to naming the two things in type, which is worse and
+   * still says what the sentence said.
+   */
+  photoUrls: z.array(z.string().nullable()).default([]),
   /**
    * The drawing, in the pieces it should arrive in.
    *

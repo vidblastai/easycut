@@ -38,16 +38,29 @@ const CONTENT: Record<SceneKind, { headline: string; items: string[] }> = {
   orbit: { headline: 'Everything in one place', items: ['Captions', 'B-roll', 'Music', 'Cuts'] },
   stack: { headline: 'clients', items: ['Noah Martinez', 'Sofia Rossi', 'Rami Khalil', 'Lucas Dupont'] },
   'big-number': { headline: '95% of your ideas', items: ['never get posted'] },
+  transform: { headline: 'How a banana gets here', items: ['banana seedling', 'banana tree'] },
 };
 
 /** A drawing from `scripts/draw-scene.ts`, when one has been made for this look. */
 const ART: Record<string, Illustration | null> = {};
+
+/**
+ * `--wide` renders at 16:9 instead of 9:16.
+ *
+ * Read at module scope because `edlFor` needs it and runs outside `main`. A
+ * scene whose layout is limited by the WIDTH — `transform` is two panels and
+ * an arrow across the frame — cannot be judged in the other shape.
+ */
+const wide = process.argv.includes('--wide');
 
 function edlFor(look: SceneLook, kind: SceneKind) {
   const content = CONTENT[kind];
   return EdlSchema.parse({
     ...SAMPLE_EDL,
     projectId: `scene-${look}-${kind}`,
+    format: wide
+      ? { ...SAMPLE_EDL.format, aspect: '16:9' as const, width: 1920, height: 1080 }
+      : SAMPLE_EDL.format,
     source: { ...SAMPLE_EDL.source, url: SOURCE },
     segments: [{ ...SAMPLE_EDL.segments[0], sourceStartSec: 0, sourceEndSec: 5, outStartSec: 0, outEndSec: 5 }],
     scenes: [
@@ -62,6 +75,7 @@ function edlFor(look: SceneLook, kind: SceneKind) {
         items: content.items,
         iconQueries: content.items.map(() => ''),
         iconSvgs: content.items.map(() => null),
+        photoUrls: content.items.map(() => null),
         art: ART[look] ?? null,
         accent: '#9B7BFF',
         reason: 'sheet',
@@ -82,11 +96,12 @@ function edlFor(look: SceneLook, kind: SceneKind) {
 
 async function main() {
   await mkdir(OUT, { recursive: true });
-  const looks = (process.argv[2] ? [process.argv[2] as SceneLook] : [...SCENE_LOOKS]);
-  const kinds = (process.argv[3] ? [process.argv[3] as SceneKind] : [...SCENE_KINDS]);
+  const args = process.argv.slice(2).filter((a) => !a.startsWith('--'));
+  const looks = (args[0] ? [args[0] as SceneLook] : [...SCENE_LOOKS]);
+  const kinds = (args[1] ? [args[1] as SceneKind] : [...SCENE_KINDS]);
   // Late enough that every stagger has landed, early enough to be inside the
   // shortest scene anyone would place.
-  const frame = Number(process.argv[4] ?? 60);
+  const frame = Number(args[2] ?? 60);
 
   // The programmatic API, not the CLI: `remotion still` runs a version check
   // that trips over this repo's zod pin, and the renderer itself is fine.
@@ -133,7 +148,7 @@ async function main() {
           composition,
           serveUrl,
           inputProps,
-          output: join(OUT, `${look}-${kind}.png`),
+          output: join(OUT, `${look}-${kind}${wide ? '-wide' : ''}.png`),
           frame,
           browserExecutable: env.render.browserExecutable,
           chromiumOptions: { gl: env.render.gl, ignoreCertificateErrors: env.render.ignoreCertificateErrors },

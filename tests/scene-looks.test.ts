@@ -7,7 +7,7 @@ import { splitFigure } from '../remotion/components/Scenes';
 
 const scene = (over: Partial<AnimatedScene> = {}): AnimatedScene => ({
   id: 'sc1', outStartSec: 4, outEndSec: 8, kind: 'kinetic-text', look: 'studio', backdrop: 'gradient',
-  headline: 'You do not need a team', items: [], iconQueries: [], iconSvgs: [], art: null,
+  headline: 'You do not need a team', items: [], iconQueries: [], iconSvgs: [], photoUrls: [], art: null,
   accent: '#9B7BFF', reason: '', enter: null, exit: null, ...over,
 });
 

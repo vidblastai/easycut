@@ -1,5 +1,5 @@
 import React from 'react';
-import { AbsoluteFill, Sequence, useCurrentFrame, useVideoConfig } from 'remotion';
+import { AbsoluteFill, Img, Sequence, useCurrentFrame, useVideoConfig } from 'remotion';
 import { sceneIsDrawn, type AnimatedScene, type Edl } from '../../src/lib/edl/types';
 import { FONT_FAMILY } from '../lib/fonts';
 import { easeOutCubic, kf, riseIn, stagger, transformOf } from '../lib/motion';
@@ -219,6 +219,15 @@ const Arrangement: React.FC<{ ctx: LookContext; look: Look }> = ({ ctx, look }) 
         </AbsoluteFill>
       );
 
+    case 'transform':
+      return (
+        <AbsoluteFill style={{ ...centred, flexDirection: 'column' }}>
+          {scene.headline ? <look.Title ctx={ctx} text={scene.headline} at={0} /> : null}
+          <Transform ctx={ctx} />
+          <Props ctx={ctx} look={look} />
+        </AbsoluteFill>
+      );
+
     case 'compare':
       return (
         <AbsoluteFill style={{ ...centred, flexDirection: 'column' }}>
@@ -322,6 +331,191 @@ function journeyArrange(ctx: LookContext): Arrange {
 }
 
 /** Atmosphere a look may add over the top. Only `neon` has any. */
+/**
+ * One thing becoming another: two photographs, and an arrow between them.
+ *
+ * ── Why photographs and not icons ───────────────────────────────────────
+ *
+ * Every other scene here draws an IDEA — a path, a ring, a figure — and an
+ * icon is the right weight for that. This one makes a claim about the world:
+ * a seedling turns into a tree, raw footage turns into a cut video. The
+ * evidence for a claim like that is a picture of the thing, and two line icons
+ * either side of an arrow reads as a diagram of a process rather than as the
+ * before and after it is.
+ *
+ * ── The order is the whole animation ────────────────────────────────────
+ *
+ * Both panels arriving together is a comparison. One, then the arrow, then the
+ * other is a SEQUENCE, and the sequence is what says the left thing caused the
+ * right one. So the timing is not decoration: it is the sentence.
+ *
+ * ── It has to work with no pictures at all ──────────────────────────────
+ *
+ * The photographs are searched for, and a search can come back empty. A panel
+ * with nothing in it falls back to naming its thing in type, which is a worse
+ * version of the same scene rather than a broken one — and it is also what the
+ * editor shows before the assets have been fetched.
+ */
+const Transform: React.FC<{ ctx: LookContext }> = ({ ctx }) => {
+  const { scene, unit, width, height } = ctx;
+  const [before, after] = scene.items;
+
+  /*
+   * Sized from the WIDTH, not from `unit`.
+   *
+   * Every other size in these scenes is written in `unit`, a thousandth of the
+   * frame HEIGHT, so a look composes identically at 1080x1920 and 1920x1080.
+   * That is exactly wrong here: this is the one scene whose layout is limited
+   * by how much room there is ACROSS, and sizing the panels in `unit` made
+   * them 576px each in a vertical frame — two of them and an arrow, 1474px
+   * wide, in a frame 1080 wide. They ran off both edges.
+   *
+   * So the row is solved the other way round: take the width it may use, give
+   * the arrow and the gaps their share, and the panels get what is left.
+   */
+  const gap = unit * 22;
+  const row = width * 0.84;
+  const arrowW = Math.min(unit * 130, row * 0.19);
+
+  /*
+   * Portrait in BOTH shapes, which means the aspect is fixed and the size
+   * gives way — not the other way round.
+   *
+   * Clamping the height alone turned the panels landscape in a widescreen
+   * frame: there was width to spare and the ceiling bit first, so a 712-wide
+   * panel got a 562 height. A photograph of a tree in a letterbox is the wrong
+   * crop of the wrong thing. So both limits are measured as a WIDTH, the
+   * tighter one wins, and the height follows from it.
+   */
+  const PORTRAIT = 1.34;
+  const byWidth = (row - arrowW - gap * 2) / 2;
+  const byHeight = (height * 0.56) / PORTRAIT;
+  const panelW = Math.min(byWidth, byHeight);
+  const panelH = panelW * PORTRAIT;
+
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap }}>
+      <Panel ctx={ctx} label={before} url={scene.photoUrls[0] ?? null} at={2} width={panelW} height={panelH} />
+      <Arrow ctx={ctx} at={13} width={arrowW} />
+      <Panel ctx={ctx} label={after} url={scene.photoUrls[1] ?? null} at={20} width={panelW} height={panelH} />
+    </div>
+  );
+};
+
+/** One side of the pair. */
+const Panel: React.FC<{
+  ctx: LookContext;
+  label: string | undefined;
+  url: string | null;
+  at: number;
+  width: number;
+  height: number;
+}> = ({ ctx, label, url, at, width, height }) => {
+  const frame = useCurrentFrame();
+  const { unit, scene } = ctx;
+  /*
+   * The look's own palette, because half of these worlds are LIGHT.
+   *
+   * The first version hardcoded near-white type on a 4%-white plate, which is
+   * the right pair in `neon` and invisible in `studio` — white text on a white
+   * panel on a white ground. An empty panel is the normal state here, so the
+   * one colour that must never be wrong is the one it falls back to.
+   */
+  const guide = styleGuideFor(scene.look);
+  const ink = guide.palette[0]?.hex ?? '#0D0D10';
+  const plate = guide.palette[3]?.hex ?? '#E8E8EE';
+
+  /*
+   * It arrives at full size, moving — not scaled up from nothing.
+   *
+   * The same decision as the icon cards, for the same reason: a pop makes a
+   * photograph into a sticker, where a thing that is already its own size and
+   * is still settling reads as an object that was placed there.
+   */
+  const entry = riseIn(frame, at, unit * 30, 10);
+
+  return (
+    <div
+      style={{
+        width,
+        height,
+        borderRadius: unit * 14,
+        overflow: 'hidden',
+        position: 'relative',
+        background: plate,
+        boxShadow: `0 ${unit * 18}px ${unit * 44}px rgba(0,0,0,0.45)`,
+        opacity: entry.opacity,
+        transform: transformOf(entry),
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+      }}
+    >
+      {url ? (
+        <Img src={url} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+      ) : (
+        // No picture is a normal state. The thing still gets named.
+        <span
+          style={{
+            fontFamily: FONT_FAMILY,
+            fontSize: unit * 30,
+            fontWeight: 700,
+            lineHeight: 1.2,
+            color: ink,
+            textAlign: 'center',
+            padding: unit * 24,
+            textWrap: 'balance',
+          }}
+        >
+          {label ?? ''}
+        </span>
+      )}
+      <div
+        style={{
+          position: 'absolute',
+          inset: 0,
+          borderRadius: unit * 14,
+          // A hairline inside the edge, so a photograph that happens to be
+          // dark at its border still reads as a panel rather than as a hole.
+          boxShadow: `inset 0 0 0 ${Math.max(1, unit * 2)}px ${scene.accent}33`,
+          pointerEvents: 'none',
+        }}
+      />
+    </div>
+  );
+};
+
+/** The direction. Drawn, not typed — an arrow glyph is the wrong weight. */
+const Arrow: React.FC<{ ctx: LookContext; at: number; width: number }> = ({ ctx, at, width }) => {
+  const frame = useCurrentFrame();
+  const { unit, scene } = ctx;
+
+  // Reaching across, rather than fading: the arrow is the verb.
+  const reach = kf(frame, [[at, 0], [at + 9, 1]], easeOutCubic);
+  const height = width * 0.62;
+
+  return (
+    <svg width={width} height={height} viewBox="0 0 100 62" style={{ overflow: 'visible' }} aria-hidden="true">
+      <g
+        style={{
+          opacity: reach,
+          transform: `translateX(${(reach - 1) * unit * 26}px)`,
+          transformOrigin: 'center',
+        }}
+      >
+        <path
+          // A blunt, heavy arrow. A thin one reads as a diagram connector;
+          // this is the verb of the sentence and carries the same weight as
+          // the two things it joins.
+          d="M0 19 H55 V2 L100 31 L55 60 V43 H0 Z"
+          fill={scene.accent}
+          style={{ filter: `drop-shadow(0 ${unit * 6}px ${unit * 16}px ${scene.accent}55)` }}
+        />
+      </g>
+    </svg>
+  );
+};
+
 const Props: React.FC<{ ctx: LookContext; look: Look }> = ({ ctx, look }) =>
   look.id === 'neon' ? <NeonProps ctx={ctx} icons={ctx.scene.iconSvgs} /> : null;
 

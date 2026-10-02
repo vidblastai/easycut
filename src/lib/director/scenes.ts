@@ -67,7 +67,7 @@ A scene REPLACES the speaker. For as long as it is on, the viewer sees a drawn p
 
 **Work in two steps, in this order.** First read the whole transcript and list, in "considered", every passage that has one of the six shapes below — one short line each, naming the passage and the shape. Then choose the best ones, up to the budget, and write those into "scenes". Do the listing first and do it honestly: the way this task goes wrong is deciding "nothing here" before looking, and a transcript almost always has more shapes in it than the budget allows.
 
-A passage qualifies only if it has a SHAPE. There are six, and they are your six scene kinds:
+A passage qualifies only if it has a SHAPE. There are seven, and they are your seven scene kinds:
 
 - kinetic-text — one short declarative line that IS the point. A claim, a rule, a punchline. The words are the picture.
 - journey — an ordered sequence. Steps, stages, a path from one state to another, something happening over time.
@@ -75,10 +75,13 @@ A passage qualifies only if it has a SHAPE. There are six, and they are your six
 - orbit — one idea with its parts. "Everything you need in one place", a thing made of several named components.
 - stack — things building on each other, where the order is cumulative rather than chronological. Layers, foundations, "on top of that".
 - big-number — a single figure that carries the whole sentence.
+- transform — one PHYSICAL thing turning into another physical thing. A seedling becomes a tree, raw footage becomes a finished cut, a green banana ripens. Drawn as two photographs with an arrow between them, so both sides must be things a camera could point at. Never use it for an abstraction becoming another abstraction ("doubt becomes confidence") — there is nothing to photograph and the scene ends up illustrating a mood.
 
 A passage with none of these shapes does not get a scene — a scene over someone simply talking is a wasted one.
 
 **But "considered" and "scenes" must agree.** If you listed anything in "considered", then "scenes" must contain at least one of them: having found a shape and then drawn nothing is the single most common way to get this wrong, and it is always wrong. Both lists are empty only when the footage genuinely has no shape in it at all — pure narrative, pure anecdote, someone thinking out loud.
+
+The difference between compare and transform is direction. Compare sets two things against each other and leaves them side by side; transform says the first one BECAME the second. If the sentence has a "becomes", "turns into" or "from X to Y" in it, and both sides are things rather than ideas, it is a transform.
 
 Note how low the bar for kinetic-text is, deliberately: one short line that IS the point — a claim, a rule, the sentence the video exists to deliver — qualifies on its own. A list of named parts said in one breath ("the captions, the B-roll, the effects") is an orbit. A figure said with any weight at all is a big-number. These are common; treat them as the normal case, not as exceptions.
 
@@ -89,7 +92,7 @@ Rules that matter as much as the choice:
 2. **Fit the window to the sentence.** startSec and endSec must cover the passage that describes the scene and stop when it does. Never run past the end of the thought.
 3. **Never cover a hook.** The opening seconds are the speaker earning attention. Leave them alone.
 4. **Never two scenes back to back.** Leave at least four seconds of speaker between them, or the video stops being a talking-head video.
-5. **items must match the kind.** journey and stack: the steps in order. compare: exactly two. orbit: the parts, three to five. big-number: one item, the label under the figure. kinetic-text: empty.
+5. **items must match the kind.** journey and stack: the steps in order. compare: exactly two. orbit: the parts, three to five. big-number: one item, the label under the figure. kinetic-text: empty. transform: exactly two, the thing BEFORE and the thing AFTER, in that order — and each one is a plain noun phrase that would work typed into a stock photo search ("banana seedling", "banana tree"), not a clause.
 6. **iconQueries** are one concrete noun each, parallel to items — "rocket", "shield", "clock", "credit card". Leave an entry empty if nothing concrete fits; a wrong icon is worse than none. These are the fallback for when the illustrator cannot draw the scene, so name the most literal object in the sentence.
 7. **backdrop** sets the mood: gradient (default, calm), grid (technical, product), dots (light, friendly), rays (energy, a reveal), solid (when the content is busy and needs room).`;
 
@@ -348,6 +351,9 @@ export function sanitiseScenes(scenes: PlannedScene[], sourceDurationSec: number
     const items = clipped.items.filter((i) => i.trim().length);
     const usable =
       clipped.kind === 'compare' ? items.length === 2
+      // Two panels and an arrow. One side is not a transformation, and three
+      // is a journey — which is a different scene that already exists.
+      : clipped.kind === 'transform' ? items.length === 2
       : clipped.kind === 'big-number' ? /\d/.test(clipped.headline)
       : clipped.kind === 'kinetic-text' ? clipped.headline.trim().length > 0
       : items.length >= 2;

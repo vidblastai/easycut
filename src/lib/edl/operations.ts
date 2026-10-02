@@ -449,7 +449,7 @@ function applyOne(edl: Edl, op: EdlOperation): Edl {
           look: edl.scenes[0]?.look ?? 'studio',
           backdrop: 'gradient' as const,
           headline: op.value || 'Your line here',
-          items: [], iconQueries: [], iconSvgs: [], art: null,
+          items: [], iconQueries: [], iconSvgs: [], photoUrls: [], art: null,
           accent: edl.captionStyle.emphasisColor,
           reason: 'Added by hand.',
         }] };

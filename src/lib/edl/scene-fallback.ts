@@ -201,9 +201,108 @@ function figureIsWorthIt(value: number, unit: string | undefined, spokenAs: stri
  * part of this file with the most ways to be quietly wrong, and every one of
  * them reaches the screen as a full-frame scene.
  */
+export /**
+ * One thing turning into another.
+ *
+ * A sentence that says a seed becomes a tree is not a list, not a comparison
+ * and not a figure — it is a BEFORE and an AFTER with a direction, and the
+ * shape that says so is two pictures with an arrow between them. The phrasing
+ * is narrow on purpose: these verbs genuinely mean transformation, where
+ * something looser like "and then" would catch every sequential sentence in
+ * the video and turn half of them into diagrams.
+ *
+ * The two sides have to be THINGS you could photograph, because that is what
+ * the scene puts on screen. "Doubt becomes confidence" is a real sentence and
+ * a terrible pair of stock searches, so a side has to look concrete to count.
+ */
+/**
+ * What a sentence may trail off into after naming the second thing.
+ *
+ * "A seedling becomes a banana tree IN ABOUT NINE MONTHS" is the same
+ * transformation as the version that stops at "tree", and anchoring the match
+ * to the end of the sentence missed every one that said how long it took or
+ * why it happened — which is most of the way people actually say this. Worse,
+ * the trailing clause then went to the figure matcher and the sentence came
+ * out as a scene about the number nine.
+ */
+const TRAILING = '(?:\\s+(?:in|on|over|after|within|by|through|because|and|which|that|when|while|if|so|but)\\b.*)?';
+
+const BECOMES = new RegExp(
+  '^(.{3,48}?)\\s+(?:becomes?|turns? into|grows? into|turned into|became|develops? into|ends? up as)' +
+    `\\s+(.{3,48}?)${TRAILING}[.,!?]?$`,
+  'i',
+);
+
+/** "from a seedling to a tree" — the same idea, said the other way round. */
+const FROM_TO = new RegExp(`\\bfrom\\s+(.{3,40}?)\\s+to\\s+(.{3,40}?)${TRAILING}[.,!?]?$`, 'i');
+
+/**
+ * Words that mean the thing is an IDEA, not an object.
+ *
+ * The scene searches for a photograph of each side, so an abstraction gives it
+ * nothing to find and it ends up illustrating "confidence" with whatever stock
+ * decided that looks like.
+ */
+const ABSTRACT = new RegExp(
+  '\\b(' + [
+    'idea', 'ideas', 'confidence', 'doubt', 'fear', 'success', 'failure', 'growth',
+    'problem', 'problems', 'solution', 'solutions', 'chaos', 'order', 'habit', 'habits',
+    'mindset', 'nothing', 'everything', 'something', 'anything', 'reality', 'truth',
+    'business', 'strategy', 'process', 'opportunity', 'value', 'quality', 'experience',
+  ].join('|') + ')\\b',
+  'i',
+);
+
+/** A side of the pair, tidied into something worth searching for. */
+function thingNamed(raw: string): string | null {
+  const thing = raw
+    .trim()
+    .replace(/^(?:a|an|the|your|my|our|this|that|some|every|each)\s+/i, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  if (thing.split(/\s+/).length > 4 || thing.length < 3) return null;
+  if (ABSTRACT.test(thing)) return null;
+  // A pronoun names something the viewer has to remember, not something a
+  // picture can show.
+  if (/^(it|they|them|he|she|you|we|i|this|that|these|those)$/i.test(thing)) return null;
+  return thing;
+}
+
+/** The two sides of a transformation, if the sentence really is one. */
+export function transformPair(text: string): [string, string] | null {
+  const match = text.match(BECOMES) ?? text.match(FROM_TO);
+  if (!match) return null;
+
+  const before = thingNamed(match[1]);
+  const after = thingNamed(match[2]);
+  if (!before || !after) return null;
+  // "a tree becomes a tree" is not a transformation.
+  if (before.toLowerCase() === after.toLowerCase()) return null;
+  return [before, after];
+}
+
 export function shapeOf(text: string): { kind: SceneKind; headline: string; items: string[]; bonus: number } | null {
   const clean = tidy(text);
   if (clean.split(/\s+/).length < 3) return null;
+
+  /*
+   * A transformation first.
+   *
+   * Ahead of the list check because "a seedling becomes a tree" trips the
+   * list detector on the two nouns either side of the verb, and an orbit of
+   * two chips says they belong together rather than that one turned into the
+   * other — which is the only thing the sentence actually claims.
+   */
+  const pair = transformPair(clean);
+  if (pair) {
+    return {
+      kind: 'transform',
+      headline: '',
+      items: pair,
+      bonus: 45,
+    };
+  }
 
   const listed = listedThings(clean);
   if (listed) {
@@ -336,6 +435,7 @@ export function fallbackScene(
     items: best.items,
     iconQueries: best.iconQueries,
     iconSvgs: best.items.map(() => null),
+    photoUrls: best.items.map(() => null),
     art: null,
     accent,
     reason: 'Chosen from the transcript because the scene pass returned nothing placeable.',

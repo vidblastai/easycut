@@ -915,6 +915,58 @@ about to vacate.
 It runs in the asset stage, not the builder, and it has to: the builder runs
 before a track is chosen, so `music` is null and the BPM does not exist yet.
 
+## `transform` — one thing becoming another
+
+Two photographs with an arrow between them. The seventh scene kind, and the
+first one that puts a PHOTOGRAPH on screen rather than drawing an idea.
+
+**Why photographs.** Every other kind draws a concept — a path, a ring, a
+figure — and an icon is the right weight for that. This one makes a claim about
+the world: a seedling turns into a tree, raw footage turns into a cut video.
+The evidence for a claim like that is a picture of the thing, and two line icons
+either side of an arrow reads as a diagram of a process rather than the before
+and after it is. `photoUrls` sits parallel to `items` the way `iconSvgs` does,
+and holds URLs rather than inlined markup because these are raster and `<Img>`
+decodes those fine — it is only the SVG icons that cannot be loaded that way.
+
+**The order is the animation.** Both panels arriving together is a comparison.
+One, then the arrow reaching across, then the other is a SEQUENCE, and the
+sequence is what says the left thing caused the right one. The timing is the
+sentence, not decoration.
+
+**Detection is narrow on purpose.** `transformPair` takes "becomes", "turns
+into", "grows into", "from X to Y" and a few siblings — verbs that genuinely
+mean transformation. Something looser like "and then" would catch every
+sequential sentence in the video. Two further refusals matter as much:
+
+- **Both sides have to be things you could photograph.** "Doubt becomes
+  confidence" is a real sentence and a terrible pair of stock searches — the
+  library answers anyway, with a mood.
+- **A trailing clause is normal speech, not a different sentence.** "A seedling
+  becomes a banana tree IN ABOUT NINE MONTHS" is the same transformation.
+  Anchoring the match to the end missed every one that said how long it took,
+  and the leftover clause then went to the figure matcher, so the sentence came
+  out as a scene about the number nine.
+
+It is checked ahead of the list detector, which otherwise sees the two nouns
+either side of the verb and makes an orbit — and an orbit of two chips says the
+things belong together, where the sentence claims one BECAME the other.
+
+**Two layout traps, both found by rendering it.** Every size in a scene is
+written in `unit`, a thousandth of the frame HEIGHT, so a look composes
+identically in either aspect. That is exactly wrong here: this is the one scene
+limited by room ACROSS, and sizing the panels in `unit` made them 576px each in
+a frame 1080 wide. And clamping only the height turned them landscape in a
+widescreen frame, because there was width to spare. So both limits are measured
+as a width, the tighter wins, and the height follows from a fixed portrait
+ratio.
+
+The other trap is colour: the first version hardcoded near-white type on a 4%
+white plate, which is right in `neon` and invisible in `studio`. Half these
+worlds are LIGHT, and an empty panel is a normal state here — the photographs
+are searched for and a search can come back empty — so the fallback colour is
+the one that must never be wrong. It comes from the look's own style guide.
+
 ## The frame has edges you cannot use
 
 `src/lib/edl/safe-area.ts`. Two different things, worth keeping apart because

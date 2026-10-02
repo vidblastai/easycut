@@ -28,6 +28,7 @@ const CONTENT: Partial<Record<SceneKind, { headline: string; items: string[] }>>
   'kinetic-text': { headline: 'You do not need a team', items: [] },
   compare: { headline: 'Before and after', items: ['Six hours', 'Four minutes'] },
   'big-number': { headline: '95% of your ideas', items: ['never get posted'] },
+  transform: { headline: '', items: ['banana seedling', 'banana tree'] },
 };
 
 /** The most recent drawing for a look, whatever `draw-scene.ts` numbered it. */

@@ -434,6 +434,7 @@ export function placeScenes(
       art: null,
       // Fetched later, in the asset stage — this is the deterministic half.
       iconSvgs: cue.iconQueries.map(() => null),
+      photoUrls: cue.items.map(() => null),
       accent,
       reason: cue.reason,
     });

@@ -51,7 +51,7 @@ export async function resolveAssets(
   /** Inserts that asked to be made and had to fall back to stock. */
   let aiMisses = 0;
 
-  const [brollResults, graphicResults, sceneIcons, cardIcons, music] = await Promise.all([
+  const [brollResults, graphicResults, sceneIcons, scenePhotos, cardIcons, music] = await Promise.all([
     /* -------------------------------- b-roll ------------------------------- */
     Promise.all(
       edl.broll.map(async (clip, index) => {
@@ -129,6 +129,38 @@ export async function resolveAssets(
           }),
         ),
       ),
+    ),
+
+    /* --------------------------- scene photographs ------------------------- */
+    /*
+     * The two sides of a `transform` scene, as pictures.
+     *
+     * Only that kind asks for them: every other scene draws an idea, where an
+     * icon is the right weight. This one makes a claim about the world — a
+     * seedling turns into a tree — and the evidence for that is a photograph.
+     *
+     * Stills rather than clips, because both panels are on screen together and
+     * two videos playing side by side behind an arrow is three things moving
+     * at once. The still is the clip's own `previewUrl` — the searcher only
+     * talks to the video endpoints, and a poster frame of the right subject is
+     * a better picture of it than a second query to a different library would
+     * be. Coming back empty is fine: the panel names its thing in type
+     * instead, which is a quieter version of the same scene.
+     */
+    Promise.all(
+      edl.scenes.map(async (scene) => {
+        if (scene.kind !== 'transform' || !isStockConfigured()) return [];
+        return Promise.all(
+          scene.items.slice(0, 2).map(async (thing) => {
+            const found = await searchStock(thing, {
+              orientation: 'portrait',
+              minDurationSec: 0,
+              limit: 1,
+            }).catch(() => []);
+            return found[0]?.previewUrl ?? null;
+          }),
+        );
+      }),
     ),
 
     /* ------------------------------ icon cards ----------------------------- */
@@ -282,6 +314,7 @@ export async function resolveAssets(
     // Padded to the item count, so a scene with four labels and two icons
     // draws the two it has rather than reading past the end of the array.
     iconSvgs: scene.items.map((_, k) => sceneIcons[i]?.[k] ?? null),
+    photoUrls: scene.items.map((_, k) => scenePhotos[i]?.[k] ?? null),
   }));
 
   /*
