@@ -11,6 +11,8 @@ import { buildCaptions } from './captions';
 import { cuesForDensity, thinCues, transitionCues } from './sfx-cues';
 import { sfxDefaultGain, type SfxName } from '@/lib/assets/sfx';
 import { fallbackScene } from './scene-fallback';
+import { hasPlayerChrome } from './safe-area';
+import { trimToWords } from '@/lib/text';
 import {
   ASPECT_DIMENSIONS,
   hasSideRoom,
@@ -195,7 +197,7 @@ export function buildEdl(input: BuildEdlInput): Edl {
 
   /* ------------------------------- overlays ------------------------------- */
 
-  const overlays = placeOverlays(input, plan, mapper, durationSec);
+  const overlays = placeOverlays(input, plan, mapper, durationSec, dimensions);
 
   return {
     version: '1.0',
@@ -915,11 +917,22 @@ function placeOverlays(
   plan: DirectorPlan,
   mapper: TimeMapper,
   durationSec: number,
+  dimensions: { width: number; height: number },
 ): OverlayElement[] {
   const overlays: OverlayElement[] = [];
   const { overlays: enabled } = input.style;
 
-  if (enabled.progressBar) {
+  /*
+   * The burned-in progress bar is a SHORT-form device.
+   *
+   * It exists because a vertical feed has no scrubber: the viewer cannot see
+   * how much is left, so drawing it buys real retention. A long-form video is
+   * watched inside a player that already has one, in the same place, over the
+   * same pixels — so the second bar is not a retention trick there, it is a
+   * duplicate sitting under YouTube's own, and the instant the controls fade
+   * in they cover it. Six of the ten long-form styles asked for one.
+   */
+  if (enabled.progressBar && !hasPlayerChrome(dimensions.width, dimensions.height)) {
     overlays.push({
       id: 'overlay-progress',
       type: 'progress-bar',
@@ -954,7 +967,15 @@ function placeOverlays(
     overlays.push({ id: 'overlay-grain', type: 'grain', outStartSec: 0, outEndSec: durationSec, text: '', subtext: '', color: '#FFFFFF', opacity: 0.05 });
   }
 
-  for (const chapter of plan.chapters) {
+  /*
+   * Chapters are a long-form device.
+   *
+   * A section break is how a viewer navigates twenty minutes; in a forty-second
+   * short it is a title card interrupting the only thought the video has. The
+   * rule-based director only emits them for long form, but the schema the AI
+   * director answers against does not care, so the guard belongs here too.
+   */
+  for (const chapter of hasPlayerChrome(dimensions.width, dimensions.height) ? plan.chapters : []) {
     const atSec = mapper.toOutputClamped(chapter.atSec);
     if (atSec < 3 || atSec > durationSec - 6) continue;
     overlays.push({
@@ -962,7 +983,9 @@ function placeOverlays(
       type: 'chapter-card',
       outStartSec: atSec,
       outEndSec: atSec + 2.4,
-      text: chapter.title,
+      // One line, so it is capped here rather than left to the renderer to
+      // clip: the director writes these and nothing bounds their length.
+      text: trimToWords(chapter.title, 52),
       subtext: '',
       color: input.style.accent,
       opacity: 1,

@@ -915,6 +915,52 @@ about to vacate.
 It runs in the asset stage, not the builder, and it has to: the builder runs
 before a track is chosen, so `music` is null and the BPM does not exist yet.
 
+## The frame has edges you cannot use
+
+`src/lib/edl/safe-area.ts`. Two different things, worth keeping apart because
+only one of them is about the video.
+
+**Title safe** is the broadcast convention: anything that has to be READ stays
+inside the middle 80%, anything that matters visually inside the middle 90%. It
+comes from CRT overscan, which no panel does any more, and survives because
+every delivery spec still enforces it and because type hard against an edge
+looks wrong regardless. Two overlays were drawing at `left: 0.07` — inside the
+margin, which is the one place type should never be.
+
+**Player chrome** is not a convention, it is where the buttons are. A widescreen
+video is watched inside a player that draws its scrubber and controls OVER the
+bottom ~8% of the picture, on every hover. A vertical short has no equivalent
+band — the feed apps put their UI over the sides and lower corners in a shape
+that differs per app — so `hasPlayerChrome` reads the SHAPE and claims the band
+only where it is known.
+
+Two things followed from it:
+
+- **The burned-in progress bar is short-form only.** It exists because a
+  vertical feed has no scrubber, so drawing one buys real retention. In long
+  form it is a second bar directly under YouTube's own, over the same pixels,
+  covered the instant the controls fade in. Six of the ten long-form styles
+  asked for one.
+- **A row of icon cards rests on the control band, not on the frame.** Resting
+  on its own 7% margin put the bottom edge at 0.93 — inside the strip
+  guaranteed to be covered.
+
+## Chapter cards are the long-form device
+
+A section break is how somebody navigates twenty minutes, and the machinery was
+already there: `plan.chapters` → a `chapter-card` overlay, title-safe at the top
+left with an accent rule and a wipe. Three things were wrong with it.
+
+It drew in SHORTS too. The rule-based director only emits chapters for long
+form, but the schema the AI director answers against does not care, so the guard
+belongs at placement.
+
+And the card is one line by design — `whiteSpace: nowrap` is what stops a
+heading stacking into a paragraph — with nothing bounding its width, so a long
+title ran off the right of the frame. The director writes these and nothing
+capped their length. Capped with `trimToWords` at the builder, with a
+`maxWidth` and an ellipsis in the renderer as the backstop.
+
 ## Where things go depends on where the subject is
 
 A talking head is framed centrally whatever the aspect, so a widescreen picture

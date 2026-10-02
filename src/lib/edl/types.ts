@@ -3,6 +3,7 @@ import { z } from 'zod';
 // config does not carry the alias. One aliased import here fails the whole
 // composition — see the note in the motion-graphics skill.
 import { ART_ENTERS, ART_IDLES } from '../assets/illustration';
+import { floorFor } from './safe-area';
 
 /**
  * The EDL (Edit Decision List) is the single source of truth for a finished
@@ -970,7 +971,17 @@ export function iconRowPlacement(
     };
   }
 
-  const room = 1 - ICON_BAND_TOP - ICON_BOTTOM_MARGIN;
+  /*
+   * The floor is the row's own margin, or the player's controls, whichever
+   * reaches further up.
+   *
+   * A widescreen video is watched in a player that draws its scrubber and
+   * buttons over the bottom of the picture, and a card resting on its own 7%
+   * margin ended exactly on the top edge of that band — touching the one strip
+   * of the frame guaranteed to be covered. See `floorFor`.
+   */
+  const floor = floorFor(width, height, ICON_BOTTOM_MARGIN);
+  const room = floor - ICON_BAND_TOP;
 
   /*
    * Three cards have to fit ACROSS as well as under, and the width limit bites
@@ -993,7 +1004,9 @@ export function iconRowPlacement(
    * edge on its own. From the top, a smaller card is simply a smaller card in
    * the same place.
    */
-  const y = ICON_BAND_TOP + card / height / 2;
+  // Hung from the top of the band, then lifted if that would push the bottom
+  // of the card into the controls.
+  const y = Math.min(ICON_BAND_TOP + card / height / 2, floor - card / height / 2);
 
   return { x: 0.5, y, card, gap: shortEdge * 0.055 };
 }

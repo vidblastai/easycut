@@ -3,6 +3,7 @@ import { AbsoluteFill, Sequence, interpolate, useCurrentFrame, useVideoConfig } 
 import { FONT_FAMILY } from '../lib/fonts';
 import type { Edl, OverlayElement } from '../../src/lib/edl/types';
 import { lifecycleOpacity, pop, seeded } from '../lib/timing';
+import { PLAYER_CHROME_INSET, TITLE_SAFE_INSET } from '../../src/lib/edl/safe-area';
 
 /**
  * Full-frame furniture: progress bar, lower third, chapter cards, vignette and
@@ -95,8 +96,10 @@ const LowerThird: React.FC<{ overlay: OverlayElement; durationInFrames: number }
       <div
         style={{
           position: 'absolute',
-          left: width * 0.07,
-          bottom: height * 0.14,
+          // Title safe, and clear of the player's controls. 0.07 put the type
+          // inside the 10% margin every delivery spec still enforces.
+          left: width * TITLE_SAFE_INSET,
+          bottom: height * Math.max(0.14, PLAYER_CHROME_INSET + 0.04),
           transform: `translateX(${(1 - enter) * -width * 0.05}px)`,
           display: 'flex',
           alignItems: 'stretch',
@@ -148,8 +151,20 @@ const ChapterCard: React.FC<{ overlay: OverlayElement; durationInFrames: number 
       <div
         style={{
           position: 'absolute',
-          top: height * 0.1,
-          left: width * 0.07,
+          top: height * TITLE_SAFE_INSET,
+          // Title safe. 0.07 sat inside the 10% margin every delivery spec
+          // still enforces, which is the one place type should never be.
+          left: width * TITLE_SAFE_INSET,
+          /*
+           * And it cannot grow past the other margin.
+           *
+           * The card is one line by design — `nowrap` is what keeps a chapter
+           * title from stacking into a paragraph — but with nothing bounding
+           * it, a long title just ran off the right of the frame. The director
+           * writes these and nothing caps their length.
+           */
+          maxWidth: width * (1 - TITLE_SAFE_INSET * 2),
+          overflow: 'hidden',
           padding: `${unit * 14}px ${unit * 26}px`,
           background: 'rgba(13,13,16,0.86)',
           borderLeft: `${unit * 5}px solid ${overlay.color}`,
@@ -165,6 +180,8 @@ const ChapterCard: React.FC<{ overlay: OverlayElement; durationInFrames: number 
             letterSpacing: '-0.02em',
             color: '#F5F5F7',
             whiteSpace: 'nowrap',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
           }}
         >
           {overlay.text}

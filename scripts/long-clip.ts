@@ -164,6 +164,12 @@ async function main() {
       atSec: clearOf(seconds * 0.42, 3), durationSec: 3,
       type: 'stat', text: '40%', subtext: 'of the decision',
     }],
+    /*
+     * A chapter card, which the rule-based director only emits every two
+     * minutes — so a forty-second demo would never show one, and the one
+     * long-form device most worth looking at would go unlooked at.
+     */
+    chapters: [{ atSec: seconds * 0.22, title: 'Why the first number is the one that sticks' }],
   });
 
   const edl = buildEdl({
