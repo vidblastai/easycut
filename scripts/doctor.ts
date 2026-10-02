@@ -105,10 +105,20 @@ async function main() {
   console.log(`  storage  ${env.storage.driver}`);
   console.log(`  queue    ${env.queue.driver}`);
   console.log(`  renderer ${env.render.driver}`);
+  /*
+   * Named from the provider that was actually SELECTED.
+   *
+   * This line read "rule-based (no key)" for every configured Wavespeed
+   * director, because it was written when there were two providers and the
+   * else-branch meant "neither". A new one was added above it and the
+   * fallback silently absorbed it — so the one tool whose job is to answer
+   * "is this live?" told you no while the pipeline used the key.
+   */
   const provider = selectedProvider();
   const directorLine =
     provider === 'anthropic' ? `anthropic · ${env.llm.model}`
     : provider === 'gemini' ? `gemini · ${env.llm.geminiModel}${isGeminiFreeTier() ? ' (free tier)' : ''}`
+    : provider === 'wavespeed' ? `wavespeed · ${env.llm.wavespeedModel}`
     : 'rule-based (no key)';
   console.log(`  director ${directorLine}`);
 
