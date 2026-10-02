@@ -83,8 +83,9 @@ The last three are the PHOTOGRAPH kinds. They are the strongest scenes in the vi
 - photo-row — TWO or THREE things you could photograph, named in one breath. They rise out of the bottom of the frame one after the other, side by side. "You need three things: boots, water and a map."
 - photo-point — ONE thing you could photograph, and one short line about it. The line is the headline and the thing is the single item. Use it when the sentence makes a claim and names one object: "Shoot it outside — golden hour does the work."
 - photo-grid — FOUR to SIX things you could photograph, filling the frame in reading order. A set, a haul, a week of shots, everything in a bag.
+- photo-hero — ONE thing, and the picture of it IS the whole scene: it fills the frame blurred behind itself and sharp in front, with no words at all. Use it where the sentence names one thing and the point is simply to SEE it — "and this is the bike", "that's the view from the top". It is the quietest of them and the one to reach for when the voice is already doing the explaining.
 
-The three of them partition by COUNT, so pick by counting: one thing and a line is a photo-point, two or three is a photo-row, four to six is a photo-grid. Seven or more is not a scene, it is a list, and a list that long is an orbit of its best four.
+They partition by COUNT, so pick by counting: one thing alone is a photo-hero, one thing with a line about it is a photo-point, two or three is a photo-row, four to six is a photo-grid. Seven or more is not a scene, it is a list, and a list that long is an orbit of its best four.
 
 A passage with none of these shapes does not get a scene — a scene over someone simply talking is a wasted one.
 
@@ -101,7 +102,7 @@ Rules that matter as much as the choice:
 2. **Fit the window to the sentence.** startSec and endSec must cover the passage that describes the scene and stop when it does. Never run past the end of the thought.
 3. **Never cover a hook.** The opening seconds are the speaker earning attention. Leave them alone.
 4. **Never two scenes back to back.** Leave at least four seconds of speaker between them, or the video stops being a talking-head video.
-5. **items must match the kind.** journey and stack: the steps in order. compare: exactly two. orbit: the parts, three to five. big-number: one item, the label under the figure. kinetic-text: empty. photo-row: two or three. photo-point: exactly one. photo-grid: four to six. transform: exactly two, the thing BEFORE and the thing AFTER, in that order — and each one is a plain noun phrase that would work typed into a stock photo search ("banana seedling", "banana tree"), not a clause. A transform also takes NO headline: the two photographs and the arrow say it, and a line of type over them only repeats the pictures in words.
+5. **items must match the kind.** journey and stack: the steps in order. compare: exactly two. orbit: the parts, three to five. big-number: one item, the label under the figure. kinetic-text: empty. photo-row: two or three. photo-point and photo-hero: exactly one. photo-grid: four to six. transform: exactly two, the thing BEFORE and the thing AFTER, in that order — and each one is a plain noun phrase that would work typed into a stock photo search ("banana seedling", "banana tree"), not a clause. A transform also takes NO headline: the two photographs and the arrow say it, and a line of type over them only repeats the pictures in words.
 5b. **A photo kind's items are typed into a stock photo library, exactly as written.** So each one is a plain noun phrase a photographer would recognise — "paper map", "city street at night" — never a clause, never a brand, never an abstraction, and never a word that only makes sense from the sentence it came out of ("the second one"). A photo-point's single item is the object the line is ABOUT, not a restatement of the line.
 6. **iconQueries** are one concrete noun each, parallel to items — "rocket", "shield", "clock", "credit card". Leave an entry empty if nothing concrete fits; a wrong icon is worse than none. These are the fallback for when the illustrator cannot draw the scene, so name the most literal object in the sentence.
 7. **backdrop** is the SURFACE the scene is printed on, not its colour. Light or dark comes from the look, which is already chosen — \`paper\` is cream in a light look and charcoal in a dark one — so pick the material and nothing else:
@@ -389,6 +390,8 @@ export function sanitiseScenes(scenes: PlannedScene[], sourceDurationSec: number
        * and without it the scene is one picture and an empty column.
        */
       : clipped.kind === 'photo-point' ? items.length >= 1 && clipped.headline.trim().length > 0
+      // One picture is the whole scene, so one thing named is all it needs.
+      : clipped.kind === 'photo-hero' ? items.length >= 1
       : clipped.kind === 'photo-row' ? items.length >= 2 && items.length <= PHOTO_ROW_MAX
       : clipped.kind === 'photo-grid' ? items.length >= 4 && items.length <= PHOTO_GRID_MAX
       : items.length >= 2;

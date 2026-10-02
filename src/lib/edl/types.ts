@@ -1043,6 +1043,7 @@ export const SCENE_KINDS = [
   'photo-row',    // two or three photographs rising out of the floor in turn
   'photo-point',  // one photograph and one line of type beside it
   'photo-grid',   // four to six photographs filling the frame, in reading order
+  'photo-hero',   // one photograph, blurred behind itself and sharp in front
 ] as const;
 export type SceneKind = (typeof SCENE_KINDS)[number];
 
@@ -1064,6 +1065,7 @@ export function photoSlotsFor(scene: Pick<AnimatedScene, 'kind' | 'items'>): num
   switch (scene.kind) {
     case 'transform': return 2;
     case 'photo-point': return 1;
+    case 'photo-hero': return 1;
     case 'photo-row': return Math.min(Math.max(named, 2), PHOTO_ROW_MAX);
     case 'photo-grid': return Math.min(Math.max(named, 4), PHOTO_GRID_MAX);
     default: return 0;

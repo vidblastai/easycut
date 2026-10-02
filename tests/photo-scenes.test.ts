@@ -29,6 +29,7 @@ const drawing = { parts: [{ markup: '<g/>', depth: 0.5 }], viewBox: '0 0 1000 17
 describe('how many photographs a kind wants', () => {
   it('asks for one per thing named, inside the kind’s own range', () => {
     expect(photoSlotsFor({ kind: 'photo-point', items: ['golden hour'] })).toBe(1);
+    expect(photoSlotsFor({ kind: 'photo-hero', items: ['motogp rider cornering'] })).toBe(1);
     expect(photoSlotsFor({ kind: 'photo-row', items: ['a', 'b'] })).toBe(2);
     expect(photoSlotsFor({ kind: 'photo-row', items: ['a', 'b', 'c'] })).toBe(3);
     expect(photoSlotsFor({ kind: 'transform', items: ['seedling', 'tree'] })).toBe(2);
@@ -84,6 +85,12 @@ describe('the count is what makes a photo kind usable', () => {
     expect(kinds([planned({ items: ['a', 'b', 'c', 'd', 'e'] })])).toEqual(['kinetic-text']);
   });
 
+  it('keeps a photo-hero on one thing and no line at all', () => {
+    // The picture is the whole scene here, so there is nothing else to need.
+    expect(kinds([planned({ kind: 'photo-hero', items: ['motogp rider'], headline: '' })])).toEqual(['photo-hero']);
+    expect(kinds([planned({ kind: 'photo-hero', items: [], headline: 'nothing to show' })])).toEqual(['kinetic-text']);
+  });
+
   it('refuses a photo-point with no line, since the line is half the layout', () => {
     expect(kinds([planned({ kind: 'photo-point', items: ['golden hour'], headline: '' })])).toEqual(['kinetic-text']);
     expect(kinds([planned({ kind: 'photo-point', items: ['golden hour'] })])).toEqual(['photo-point']);
@@ -100,11 +107,14 @@ describe('the frame a photograph is searched in', () => {
   it('follows the video where the plate follows the video', () => {
     expect(photoOrientationFor('photo-point', 'landscape')).toBe('landscape');
     expect(photoOrientationFor('photo-point', 'portrait')).toBe('portrait');
+    // The hero card is the frame's own shape, so the search is too.
+    expect(photoOrientationFor('photo-hero', 'landscape')).toBe('landscape');
+    expect(photoOrientationFor('photo-hero', 'portrait')).toBe('portrait');
   });
 });
 
 describe('the director is told about every kind it may pick', () => {
-  it('names all ten in the brief', () => {
+  it('names every one of them in the brief', () => {
     for (const kind of SCENE_KINDS) {
       expect(SCENE_SYSTEM_PROMPT, `${kind} is pickable but undocumented`).toContain(kind);
     }

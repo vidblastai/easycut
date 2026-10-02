@@ -980,6 +980,7 @@ partition by COUNT so the director picks by counting rather than by taste:
 
 | | |
 |---|---|
+| `photo-hero` | one picture, blurred behind itself and sharp in front |
 | `photo-point` | one picture, one line of type beside it |
 | `photo-row` | two or three pictures, side by side |
 | `photo-grid` | four to six pictures, in reading order |
@@ -1031,6 +1032,33 @@ when somebody switches a scene to a photo kind by hand, after the asset stage
 has run. So the plate names its thing in type instead, and the caption that
 would have sat under the picture is not drawn: one word on screen either way
 rather than the same noun twice.
+
+**`photo-hero` is the one that breaks the no-full-frame-filter rule, and it
+is worth knowing why it is allowed to.** A single photograph has three
+possible grounds: letterboxed on a flat colour, which leaves two dead bands;
+cropped to fill, which throws away its sides, where a stock photo usually
+keeps half its subject; or the same picture blurred up to full bleed, which
+is guaranteed to agree with the card in front of it because it IS the card in
+front of it. The third is right, and it needs a blur.
+
+The house rule — no `filter` on anything full-frame — exists because an
+effect repainted every frame is what made the editor stutter. Two things buy
+this one its exemption, the same two that bought `bloom` its
+`backdrop-filter` on an insert: it is on screen for seconds rather than for
+the video, and once the radius stops changing the layer is rasterised once
+and never again. Which is why the move and the blur are on two NESTED
+elements rather than one: a transform on the same element re-runs the filter,
+a transform on its parent moves a cached surface.
+
+The one stretch where it is genuinely filtering is the first fourteen frames,
+where the picture lands sharp and goes soft as the card climbs out of it.
+That costs what a transition effect costs at a cut, and it is what makes the
+two layers read as one picture rather than as a card on a background.
+
+The scrim over the blur is the look's own ground at 0.42 — not a hardcoded
+dark one, which would drop a black frame into the middle of a light look, and
+not nothing, which leaves a bright card with no edge against a bright
+photograph.
 
 **The counts do not degrade into each other.** A `photo-row` of one is a
 single picture adrift in a layout built for three; a `photo-grid` of two is a

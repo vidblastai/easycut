@@ -41,6 +41,7 @@ const CONTENT: Record<SceneKind, { headline: string; items: string[] }> = {
   transform: { headline: 'How a banana gets here', items: ['banana seedling', 'banana tree'] },
   'photo-row': { headline: 'Three things to pack', items: ['hiking boots', 'water bottle', 'paper map'] },
   'photo-point': { headline: 'Shoot it outside', items: ['golden hour'] },
+  'photo-hero': { headline: '', items: ['motogp rider cornering'] },
   'photo-grid': {
     headline: 'A week of shots',
     items: ['coffee cup', 'city street', 'open notebook', 'desk lamp', 'camera lens', 'train window'],

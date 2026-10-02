@@ -40,6 +40,7 @@ import { Illustration } from './Illustration';
  *   photo-row     two or three photographs rising out of the floor in turn
  *   photo-point   one photograph and one line of type beside it
  *   photo-grid    four to six photographs, in reading order
+ *   photo-hero    one photograph, blurred behind itself and sharp in front
  *
  * A **look** is the world it is drawn in, chosen from the video's style:
  * `studio`, `neon`, `gallery`, `archive`. See `remotion/looks/`.
@@ -261,6 +262,20 @@ const Arrangement: React.FC<{ ctx: LookContext; look: Look }> = ({ ctx, look }) 
       return (
         <AbsoluteFill style={centred}>
           <PhotoPoint ctx={ctx} look={look} />
+          <Props ctx={ctx} look={look} />
+        </AbsoluteFill>
+      );
+
+    /*
+     * No headline, like `transform`. The picture is the whole scene, and a
+     * line of type over a photograph needs a plate behind it to stay legible
+     * — at which point it is a different layout, and that layout is
+     * `photo-point`.
+     */
+    case 'photo-hero':
+      return (
+        <AbsoluteFill>
+          <PhotoHero ctx={ctx} />
           <Props ctx={ctx} look={look} />
         </AbsoluteFill>
       );
@@ -904,6 +919,98 @@ const PhotoGrid: React.FC<{ ctx: LookContext }> = ({ ctx }) => {
         />
       ))}
     </div>
+  );
+};
+
+/**
+ * One photograph, shown twice: blurred and filling the frame, sharp in front.
+ *
+ * The oldest trick in the edit and still the best one for a single picture,
+ * because the alternatives are both worse. A photograph letterboxed on a flat
+ * colour has two dead bands; one cropped to fill the frame throws away
+ * whatever was at its sides, which for a stock photo is usually half the
+ * subject. Blurring the same picture up to full bleed gives the frame an edge
+ * to edge ground that is guaranteed to agree with the card in front of it,
+ * because it IS the card in front of it.
+ *
+ * ── The blur is a filter, which the house rule normally forbids ─────────
+ *
+ * "No `filter` on anything full-frame" exists because a full-frame effect
+ * repainted every frame is what made the editor stutter. Two things buy this
+ * one its exemption, and they are the same two that bought `bloom` its
+ * `backdrop-filter` on a B-roll insert: it is on screen for a few seconds
+ * rather than for the video, and the blurred layer never changes, so it is
+ * rasterised once. The slow push lives on a parent, so the transform moves a
+ * cached surface instead of re-running the blur — which is why these are two
+ * nested elements and not one with both properties on it.
+ *
+ * ── The scrim comes from the look ───────────────────────────────────────
+ *
+ * Without one, a bright photograph behind a bright card leaves the card with
+ * no edge; with a hardcoded dark one, every scene in a light look suddenly
+ * has a black background. So it is the look's own ground at a little under
+ * half opacity: the blurred picture still reads through it, and the frame
+ * stays the tone the rest of the video is.
+ */
+const PhotoHero: React.FC<{ ctx: LookContext }> = ({ ctx }) => {
+  const frame = useCurrentFrame();
+  const { scene, unit, width, height } = ctx;
+  const url = scene.photoUrls[0] ?? null;
+  const label = scene.items.find((item) => item.trim());
+  const guide = styleGuideFor(scene.look);
+
+  /*
+   * The card is the frame's own shape, inset.
+   *
+   * A fixed ratio would letterbox in one aspect or the other, and this is the
+   * one layout with no reason to pick a shape of its own: the picture behind
+   * it is the frame, so the picture in front reads as the same frame held
+   * closer. 0.78 across, which is where the blurred border is wide enough to
+   * be a deliberate margin rather than a misalignment.
+   */
+  const cardW = width * (width > height ? 0.78 : 0.86);
+  const cardH = cardW * (height / width);
+
+  // Never stops moving: a slow push on the ground, counter to the card's own
+  // settle, so the two planes separate. 4% over a six-second scene.
+  const push = 1.14 + kf(frame, [[0, 0], [180, 0.04]]);
+
+  /*
+   * The picture lands sharp and then recedes behind itself.
+   *
+   * Opening on the blur already finished is a background; opening sharp and
+   * letting it go soft as the card climbs out of it says the two layers are
+   * one picture, which is the whole idea. Fourteen frames, ending just as the
+   * card finishes rising.
+   *
+   * It costs those fourteen frames of real full-frame filtering — the layer
+   * cannot be cached while its radius is changing — and nothing after them,
+   * which is the same bargain a transition effect makes at a cut.
+   */
+  const settle = kf(frame, [[0, 0], [14, 1]], easeOutCubic);
+
+  return (
+    <AbsoluteFill style={{ alignItems: 'center', justifyContent: 'center' }}>
+      {url ? (
+        <AbsoluteFill style={{ overflow: 'hidden' }}>
+          {/* Outer: the move, which also scales the blurred result past the
+              frame's edges — a blur pulls a layer's own corners inward and
+              draws a soft border round them otherwise. Inner: the blur.
+              Keeping them apart is what lets the browser cache the expensive
+              half while the cheap half animates. */}
+          <AbsoluteFill style={{ transform: `scale(${push})`, willChange: 'transform' }}>
+            <AbsoluteFill style={{ filter: `blur(${unit * 26 * settle}px)` }}>
+              <Img src={url} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+            </AbsoluteFill>
+          </AbsoluteFill>
+          <AbsoluteFill style={{ background: guide.ground, opacity: 0.42 }} />
+        </AbsoluteFill>
+      ) : null}
+
+      <Rising at={4} width={cardW} height={cardH}>
+        <Plate ctx={ctx} label={label} url={url} width={cardW} height={cardH} />
+      </Rising>
+    </AbsoluteFill>
   );
 };
 
