@@ -98,7 +98,13 @@ fi
 # form is three more chances to typo them.
 bold "API keys"
 if [ -f .env ]; then
-  for key in DEEPGRAM_API_KEY ANTHROPIC_API_KEY GEMINI_API_KEY PEXELS_API_KEY \
+  # WAVESPEED_API_KEY and LLM_PROVIDER were missing from this list for a
+  # while. The deploy then came up with no director key at all and quietly
+  # fell back to the rule-based editor — a working site making visibly worse
+  # videos than the same code does locally, which is the hardest kind of
+  # deployment bug to notice.
+  for key in DEEPGRAM_API_KEY ANTHROPIC_API_KEY GEMINI_API_KEY WAVESPEED_API_KEY \
+             LLM_PROVIDER KIE_API_KEY PEXELS_API_KEY \
              RESEND_API_KEY CLERK_SECRET_KEY NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY \
              STRIPE_SECRET_KEY STRIPE_WEBHOOK_SECRET ERROR_WEBHOOK_URL SENTRY_DSN; do
     value="$(grep "^${key}=" .env 2>/dev/null | cut -d= -f2- || true)"
@@ -111,7 +117,9 @@ if [ -f .env ]; then
     fi
   done
   # The director needs telling which provider to use when both keys exist.
-  if grep -q '^GEMINI_API_KEY=.' .env 2>/dev/null && ! grep -q '^ANTHROPIC_API_KEY=.' .env 2>/dev/null; then
+  if ! grep -q '^LLM_PROVIDER=.' .env 2>/dev/null \
+     && grep -q '^GEMINI_API_KEY=.' .env 2>/dev/null \
+     && ! grep -q '^ANTHROPIC_API_KEY=.' .env 2>/dev/null; then
     railway variables --set "LLM_PROVIDER=gemini" >/dev/null 2>&1 && ok "LLM_PROVIDER=gemini"
   fi
 else
