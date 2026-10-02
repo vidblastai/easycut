@@ -194,16 +194,38 @@ describe('EDL builder', () => {
   });
 
   it('keeps punch-ins clear of B-roll and of each other', () => {
+    /*
+     * The director's cues are HINTS now, not placements — the moments come
+     * out of the transcript — so this no longer pins a count or a timestamp.
+     * It pins the two things that were always the point: a camera move inside
+     * an insert cannot be seen, and two overlapping ones are a wobble.
+     */
     const edl = build({
       broll: [{ atSec: 10, durationSec: 3, query: 'a', intent: '', kind: 'stock-video' }],
       punchIns: [
-        { atSec: 11, durationSec: 2, intensity: 'medium' },   // inside the insert
+        { atSec: 11, durationSec: 2, intensity: 'medium' },
         { atSec: 18, durationSec: 3, intensity: 'strong' },
-        { atSec: 19, durationSec: 3, intensity: 'subtle' },   // overlaps the previous
+        { atSec: 19, durationSec: 3, intensity: 'subtle' },
       ],
     });
-    expect(edl.punchIns).toHaveLength(1);
-    expect(edl.punchIns[0].outStartSec).toBe(18);
+
+    expect(edl.punchIns.length).toBeGreaterThan(0);
+    for (const punch of edl.punchIns) {
+      expect(punch.outEndSec).toBeGreaterThan(punch.outStartSec);
+      for (const insert of edl.broll) {
+        const overlaps = punch.outStartSec < insert.outEndSec && punch.outEndSec > insert.outStartSec;
+        expect(overlaps, `punch at ${punch.outStartSec} sits on the insert`).toBe(false);
+      }
+    }
+    for (let i = 1; i < edl.punchIns.length; i++) {
+      expect(edl.punchIns[i].outStartSec).toBeGreaterThanOrEqual(edl.punchIns[i - 1].outEndSec);
+    }
+  });
+
+  it('says in the document what each camera move is reacting to', () => {
+    // Before somebody deletes a zoom they should be able to see what it was
+    // for, which a timestamp does not answer.
+    for (const punch of build({}).punchIns) expect(punch.reason).not.toBe('');
   });
 });
 

@@ -12,6 +12,7 @@ import { cuesForDensity, thinCues, transitionCues } from './sfx-cues';
 import { sfxDefaultGain, type SfxName } from '@/lib/assets/sfx';
 import { fallbackScene } from './scene-fallback';
 import { hasPlayerChrome } from './safe-area';
+import { punchMoments, type Busy } from './punch-script';
 import { trimToWords } from '@/lib/text';
 import {
   ASPECT_DIMENSIONS,
@@ -166,8 +167,24 @@ export function buildEdl(input: BuildEdlInput): Edl {
 
   /* ------------------------------ punch-ins ------------------------------- */
 
+  /*
+   * Everything that takes the frame off the speaker, in one list.
+   *
+   * A punch-in during an insert is invisible and one immediately after it is
+   * jarring — and that is as true of a scene and a full-frame graphic as it
+   * is of B-roll. Checking only B-roll is what used to put a crash zoom on
+   * the two seconds between an animated scene and the insert after it.
+   */
   const punchIns = placePunchIns(
-    plan, mapper, durationSec, broll, pacing.punchInScale, input.reframe, pacing.punchMoves,
+    plan,
+    mapper,
+    transcript,
+    durationSec,
+    [...broll, ...scenes, ...graphics.filter((g) => g.type === 'title-card')],
+    pacing.punchInScale,
+    input.reframe,
+    pacing.punchMoves,
+    pacing.punchInEverySec,
   );
 
   /* ----------------------------- transitions ------------------------------ */
@@ -789,50 +806,72 @@ function positionFor(
 
 /* ------------------------------------------------------------- punch-ins */
 
+/**
+ * The camera moves, placed from the script rather than on a clock.
+ *
+ * `punchMoments` decides WHICH moments and which move; this decides where the
+ * camera is pointing and how far it goes, because this is the layer that
+ * knows where the face is and what the style's travel is.
+ *
+ * The director's own cues come in as HINTS, not as placements. It read the
+ * whole transcript and sometimes knows which line is the one, which is worth
+ * a thumb on the scale — but a model asked for timestamps returns a spread,
+ * and a spread is the metronome this was built to stop.
+ */
 function placePunchIns(
   plan: DirectorPlan,
   mapper: TimeMapper,
+  transcript: Transcript,
   durationSec: number,
-  broll: BrollClip[],
+  busy: Busy[],
   scaleRange: [number, number],
   reframe: Edl['reframe'],
   moves: PunchMove[],
+  cadenceSec: [number, number],
 ): PunchIn[] {
-  const result: PunchIn[] = [];
   // Punch in toward the face when we know where it is.
   const focus = reframe?.keyframes[0] ?? { cx: 0.5, cy: 0.42 };
 
-  for (const cue of plan.punchIns) {
-    const start = mapper.toOutputClamped(cue.atSec);
-    const end = Math.min(durationSec - 0.2, start + cue.durationSec);
-    if (end - start < 0.8) continue;
-    // Invisible during an insert, and jarring immediately after one.
-    if (broll.some((b) => start < b.outEndSec + 0.3 && end > b.outStartSec - 0.3)) continue;
-    // Back-to-back punch-ins read as a zoom wobble.
-    if (result.some((p) => start < p.outEndSec + 1 && end > p.outStartSec - 1)) continue;
+  /*
+   * Sentences in OUTPUT seconds, and only the ones that survived the cut.
+   *
+   * A sentence the silence pass removed has no time on this timeline at all,
+   * and `toOutputClamped` would pin it to the nearest surviving frame — which
+   * is how you get three punch-ins stacked on one moment.
+   */
+  const sentences = transcript.sentences
+    .map((s) => ({
+      ...s,
+      startSec: mapper.toOutput(s.startSec),
+      endSec: mapper.toOutput(s.endSec),
+    }))
+    .filter((s): s is typeof s & { startSec: number; endSec: number } =>
+      s.startSec !== null && s.endSec !== null && s.endSec > s.startSec);
 
-    const intensity = cue.intensity === 'strong' ? 1 : cue.intensity === 'subtle' ? 0 : 0.5;
-    result.push({
-      id: `punch-${result.length}`,
-      outStartSec: start,
-      outEndSec: end,
-      scale: scaleRange[0] + (scaleRange[1] - scaleRange[0]) * intensity,
-      x: focus.cx,
-      y: focus.cy,
-      /*
-       * The move comes from the STYLE, not from the intensity.
-       *
-       * Intensity already decides how far the camera goes; letting it also
-       * decide the curve meant a documentary's one emphatic line got a crash
-       * zoom, which is a different genre of video. The style names the moves
-       * it uses and the list is cycled, so consecutive punch-ins differ
-       * inside one coherent vocabulary and the same footage re-cuts the same
-       * way — exactly how `clipTransitions` is handled a few functions down.
-       */
-      move: moves[result.length % moves.length],
-    });
-  }
-  return result;
+  const moments = punchMoments({
+    sentences,
+    busy,
+    hints: plan.punchIns.map((cue) => mapper.toOutputClamped(cue.atSec)),
+    palette: moves,
+    cadenceSec,
+    durationSec,
+    // The opening is the speaker earning attention. The same number the
+    // scene director is held to, for the same reason.
+    hookSec: 2.5,
+  });
+
+  return moments.map((moment, i) => ({
+    id: `punch-${i}`,
+    outStartSec: moment.startSec,
+    outEndSec: moment.endSec,
+    // Strength is the signal's, so the hardest emphasis in the script gets
+    // the most travel the style allows and an ambient drift gets the least.
+    scale: scaleRange[0] + (scaleRange[1] - scaleRange[0]) * moment.strength,
+    x: focus.cx,
+    y: focus.cy,
+    move: moment.move,
+    reason: moment.reason,
+  }));
 }
 
 /* ----------------------------------------------------------- transitions */

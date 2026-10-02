@@ -1164,9 +1164,8 @@ faster than the ends.
 **The style names the moves, not the intensity.** Intensity already decides
 how FAR the camera goes; letting it also pick the curve meant a documentary's
 one emphatic line got a crash zoom, which is a different genre of video.
-`PacingProfile.punchMoves` is a short list, cycled per punch-in exactly as
-`clipTransitions` is, so consecutive punches differ inside one vocabulary and
-the same footage re-cuts the same way. The split is by FORMAT rather than by
+`PacingProfile.punchMoves` is the PALETTE a signal has to choose from — see
+the section above, which is what turned it from a cycled list into one. The split is by FORMAT rather than by
 style, because what decides which moves work is how long the shot is: long
 form holds on one face for minutes and leans on `push`, the only zoom you can
 use eight times in twenty minutes without it becoming a tic; a sixty-second
@@ -1197,6 +1196,96 @@ A zoom is the one thing here that CANNOT be judged from a still: a push and a
 snap at their tightest are the same frame. Give the strip six seconds a move —
 at two and a half, `push` renders as a plain ramp, because a creep's whole
 character is having more time than you are paying attention for.
+
+## Which line gets the zoom
+
+`src/lib/edl/punch-script.ts`. The seven moves above are a vocabulary; this
+is the grammar, and without it the vocabulary makes things worse rather than
+better.
+
+**A punch-in placed on a CADENCE is a metronome with a lens on it.** It lands
+mid-clause as often as not, it emphasises whatever happened to be said at that
+moment, and after four of them the viewer has learned the rhythm and stopped
+reading any of them as emphasis. It was the single clearest tell of an
+automated edit, and it was what shipped.
+
+A zoom says LOOK AT THIS, and the only thing that knows which "this" is worth
+it is the script. So the moments come out of the transcript and the style's
+cadence becomes a BUDGET rather than a schedule.
+
+**Five things worth a camera move.** Four are in the words, one is in the edit:
+
+| | | |
+|---|---|---|
+| `figure` | a number carries the sentence | the hardest attack the style has |
+| `superlative` | never, nobody, the only, the best | firm |
+| `pivot` | but, actually, here's the thing | firm |
+| `question` | tension the next sentence resolves | in, hold through the answer, out |
+| `drift` | nothing has changed on screen for a long time | the slow push |
+
+`drift` is the only one that is not about the script, and it is what justifies
+the creep: the frame has been identical for twenty seconds, and a push nobody
+notices is what buys the next twenty. It is also why an insert, a scene or a
+title card RESETS the clock — the frame did change, which is the thing drift
+measures.
+
+**This is bookkeeping, not a prompt.** Same reasoning as grouping icon cards
+into rows: it has an exact answer, it is cheap, and asking a model to redo it
+per video buys variance and latency and nothing else. The director's own
+punch-in cues are still read — it saw the whole transcript and sometimes knows
+which line is the one — but as a BONUS on a candidate, never as the placement.
+A hint on a sentence the script says nothing about still gets no zoom.
+
+**A signal asks for an ENERGY, not a move**, because the style owns which moves
+exist in this video: a documentary listing only `push` and `ramp` must never
+produce a crash zoom, however emphatic the line. `nearestMove` picks the
+closest thing the palette actually has, and ties go to the softer one —
+overshooting the attack is the more expensive mistake, since a crash zoom on a
+merely firm sentence reads as a different video where a ramp on an emphatic one
+just reads as calm.
+
+**The budget is spent one slot at a time, not best-first.** Strongest-first
+sounds right and fails in the common case: in a video where every other
+sentence carries a figure, every candidate ties, the tie-break is time, and the
+whole budget goes in the first two minutes — the failure of a cadence, reached
+from the other direction. Editors do not think "the eight best moments", they
+think "one a minute, on the best line in that minute". A slot with nothing
+worth a move in it gets no move.
+
+**Four judgements that each came out of running the sample script:**
+
+- **The turn outranks the claim.** "But here's the thing nobody tells you" is
+  a pivot with a superlative inside it — the same idiom. Scored the other way
+  round it came out as an absolute claim and asked for a harder move than a
+  sentence whose job is to change direction wants.
+- **A creep lasts about as long as the style's attention span.** Uncapped,
+  `punchy` held two eleven-second pushes across more than half a sixty-second
+  video, which is not punctuation any more, it is the video slowly zooming in.
+- **A repeat only matters for a move you NOTICE.** Two crash zooms running read
+  as a zoom effect; two slow pushes running read as nothing, which is what a
+  push is for. The first version of the variety rule promoted the second push
+  to a speed-ramp, putting an emphasis on a sentence whose only qualification
+  was that nothing had happened for a while. A swap now stays within a register
+  of the energy the line asked for.
+- **`everything` is not a superlative.** `everyone` and `everybody` are
+  whole-world claims; `everything` put a bounce on "I shoot everything in the
+  same corner", which is a sentence about a room. Bare `every` was never in
+  there — "every day", "every time" are ordinary speech.
+
+**Every punch-in carries a `reason`**, the way an sfx cue does: before somebody
+deletes a zoom they should be able to see what it was for, and "a figure · and
+ninety per cent of that growth" answers that where a timestamp does not.
+
+    npx tsx scripts/punch-plan.ts                 # two styles, the sample script
+    npx tsx scripts/punch-plan.ts --all           # every style, both formats
+    npx tsx scripts/punch-plan.ts --text=my.txt   # one sentence per line
+
+Where a punch-in GOES is a question about the WORDS, so it is answered without
+a frame — one second against four minutes for a render, which is the
+difference between checking the placement on fourteen styles and checking it on
+one. It still goes through `buildEdl`, so what it prints is what the pipeline
+would make; a reimplementation in the script would agree with the product right
+up until it quietly did not.
 
 ## The frame has edges you cannot use
 

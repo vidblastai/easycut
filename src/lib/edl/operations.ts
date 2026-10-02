@@ -518,6 +518,9 @@ function applyOne(edl: Edl, op: EdlOperation): Edl {
           x: edl.reframe?.keyframes[0]?.cx ?? 0.5,
           y: edl.reframe?.keyframes[0]?.cy ?? 0.42,
           move,
+          // A hand-placed one has no sentence behind it. Named rather than
+          // left empty, so the inspector reads the same for both.
+          reason: 'added by hand',
         }] };
       }
       return { ...edl, overlays: [...edl.overlays, {

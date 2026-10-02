@@ -1385,6 +1385,15 @@ export const PunchInSchema = z.preprocess(
     // `.catch` rather than a hard failure: a move dropped from the list in a
     // later build should cost this punch its curve, not the whole project.
     move: z.enum(PUNCH_MOVES).catch('ramp').default('ramp'),
+    /**
+     * What in the script this camera move is reacting to.
+     *
+     * Shown in the editor, for the same reason an sfx cue carries one: before
+     * somebody deletes a zoom they should be able to see what it was for, and
+     * "a figure · and that is ninety per cent of" answers that where a
+     * timestamp does not.
+     */
+    reason: z.string().default(''),
   }),
 );
 export type PunchIn = z.infer<typeof PunchInSchema>;

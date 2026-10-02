@@ -97,7 +97,7 @@ export const SAMPLE_EDL: Edl = {
     { id: 'overlay-progress', type: 'progress-bar', outStartSec: 0, outEndSec: 10, text: '', subtext: '', color: '#9B7BFF', opacity: 0.9 },
   ],
   transitions: [{ id: 'transition-0', atSec: 5, type: 'whip-pan', durationSec: 0.24 }],
-  punchIns: [{ id: 'punch-0', outStartSec: 2.6, outEndSec: 4.8, scale: 1.2, x: 0.5, y: 0.4, move: 'speed-ramp' }],
+  punchIns: [{ id: 'punch-0', outStartSec: 2.6, outEndSec: 4.8, scale: 1.2, x: 0.5, y: 0.4, move: 'speed-ramp', reason: 'a figure · ninety per cent of your ideas' }],
   reframe: {
     method: 'face-track',
     keyframes: [

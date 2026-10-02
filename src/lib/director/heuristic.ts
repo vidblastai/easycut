@@ -170,12 +170,27 @@ export function runHeuristicDirector(brief: DirectorBrief): DirectorPlan {
    * the rule-based director is what runs when nobody has configured a model
    * key, so it was the default path for half the catalogue.
    */
+  /*
+   * Hints, not placements.
+   *
+   * The builder reads the transcript and decides which sentences earn a
+   * camera move (`punch-script.ts`); this pass only nominates the sentence
+   * each cadence step lands in, so the rule-based path contributes the same
+   * kind of thing the AI director does — a thumb on the scale — rather than
+   * a second, competing placement system.
+   *
+   * The `cadence > 0` guard is load-bearing. Four styles carry
+   * `punchInEverySec: [0, 0]`, because a locked-off frame is the point of
+   * them. Read literally by this loop it was not "never", it was a step of
+   * zero: `t` stopped advancing, the condition stayed true, and the array
+   * grew until the heap died — in eight style-and-format combinations, on the
+   * path that runs when nobody has configured a model key.
+   */
   const punchIns: DirectorPlan['punchIns'] = [];
   const cadence = (pacing.punchInEverySec[0] + pacing.punchInEverySec[1]) / 2;
   for (let t = windowStartSec + cadence; cadence > 0 && t < windowEndSec - 2; t += cadence) {
     const sentence = sentenceAt(sentences, t);
     if (!sentence) continue;
-    // Never punch in during a B-roll insert — the viewer can't see the camera move.
     if (broll.some((b) => t >= b.atSec - 0.5 && t <= b.atSec + b.durationSec + 0.5)) continue;
     punchIns.push({ atSec: sentence.startSec, durationSec: Math.min(3.5, sentence.endSec - sentence.startSec), intensity: 'medium' });
   }
