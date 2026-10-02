@@ -43,7 +43,7 @@ export const CAPTION_PRESETS: CaptionPreset[] = [
     bestFor: 'both',
     style: {
       preset: 'clean-plate',
-      animation: 'karaoke',
+      animation: 'word-fill',
       fontFamily: 'Plus Jakarta Sans',
       fontWeight: 700,
       italic: false,

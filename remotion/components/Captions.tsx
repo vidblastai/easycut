@@ -3,6 +3,18 @@ import { AbsoluteFill, interpolate, useCurrentFrame, useVideoConfig } from 'remo
 import { framedPositionX, framedPositionY, framedWidthRatio, sceneHasText, type CaptionCue, type CaptionStyle, type CaptionWord, type Edl } from '../../src/lib/edl/types';
 import { ensureCaptionFont } from '../lib/fonts';
 import { pop } from '../lib/timing';
+import { easeOutCubic, kf } from '../lib/motion';
+
+/**
+ * How dim a word is before it is spoken, and how long it takes to warm.
+ *
+ * Both measured off a reference edit at 15fps: an unspoken word sits at a
+ * little under half, and a word takes two to three frames to come up. Below
+ * about 0.3 the future of the line stops being readable, which loses the
+ * whole point — the viewer is meant to see where the sentence is going.
+ */
+const DIM = 0.42;
+const FILL_FRAMES = 3;
 import {
   blockStyle,
   fitScale,
@@ -387,11 +399,48 @@ const Word: React.FC<{
   let boxed = false;
 
   switch (style.animation) {
-    case 'karaoke':
-      // Whole line visible; the active word lights up.
-      opacity = hasArrived ? 1 : 0.45;
+    case 'karaoke': {
+      /*
+       * Whole line visible; the active word lights up — and it RAMPS there.
+       *
+       * This used to be a bare ternary, stepping a word from 0.45 to 1 on one
+       * frame. At 30fps a jump that size is a flicker: the eye catches the
+       * change rather than the word, which is the opposite of what a karaoke
+       * fill is for. Three frames is the figure measured off a reference edit,
+       * and it is the same ramp `word-fill` uses — the two differ in the
+       * scale pulse below, not in how the tone moves.
+       */
+      const warmed = frozen
+        ? 1
+        : kf(frame, [[word.startSec * fps, 0], [word.startSec * fps + FILL_FRAMES, 1]], easeOutCubic);
+      opacity = 0.45 + 0.55 * warmed;
       scale = isActive ? 1.04 : 1;
       break;
+    }
+
+    /*
+     * The same idea, measured off a reference edit frame by frame, and
+     * different from `karaoke` in the two places that decide whether type
+     * reads as considered or as a template.
+     *
+     * `karaoke` steps a word from 0.45 to 1 on a single frame, and at 30fps a
+     * step that size is a flicker — the eye catches the change rather than
+     * the word. The reference ramps each one across about three frames, which
+     * is slow enough to read as the line WARMING and fast enough to stay on
+     * the syllable.
+     *
+     * And nothing scales. `karaoke` pulses the active word 4% larger, which
+     * on a line of eight words is eight pulses a sentence; the reference
+     * holds the line perfectly still and changes only the tone. Stillness is
+     * what lets the picture behind it be the thing that moves.
+     */
+    case 'word-fill': {
+      const warmed = frozen
+        ? 1
+        : kf(frame, [[word.startSec * fps, 0], [word.startSec * fps + FILL_FRAMES, 1]], easeOutCubic);
+      opacity = DIM + (1 - DIM) * warmed;
+      break;
+    }
 
     case 'word-box':
       // Whole line visible; the active word gets a plate under it. The plate is

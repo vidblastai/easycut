@@ -1642,6 +1642,39 @@ captions where the reference puts it beside the subject at head height, and
 the "no type on a card, ever" rule only holds for the ordinary nouns the
 first reference was full of.
 
+## How that reference edit MOVES
+
+The first pass at it pulled frames a second apart, which answers what is on
+screen and nothing about what it does. At 15fps through the same moments,
+two mechanics turn out to carry the whole video, and both are cheap:
+
+**Type warms, it does not switch on.** The entire line is on screen from the
+start; words already spoken are full strength and the rest sit at about 0.42,
+and each one RAMPS across two or three frames as it is said. Nothing moves and
+nothing scales — the positions are final from the first frame, so the eye
+settles on the picture instead of tracking type. Every piece of type in the
+video uses it: captions, the chip labels, the checklist lines.
+
+This renderer had the idea and not the execution. `karaoke` was
+`opacity = hasArrived ? 1 : 0.45` — a step of that size on one frame at 30fps
+is a flicker, and the eye catches the change rather than the word. It ramps
+now, and `word-fill` is the measured version: the same ramp with no scale
+pulse at all, where `karaoke` keeps its 4% bump on the active word.
+
+**A label opens from a rule.** The chip entrance is not a fade, a rise or a
+pop: a 2px horizontal line draws at the target width, grows into a pill over
+about three frames, and the text then fills into it word by word. From line to
+readable is around 0.7s. It is the house signature and it costs one height
+interpolation.
+
+What the stills could not have told you, and the reason `caption-clip.ts` now
+exists: a caption is the layer on screen for the whole video, and the only
+tool pointed at it rendered stills. A wrong curve in a still is a correct
+looking line of type.
+
+    npx tsx scripts/caption-clip.ts word-fill --wide
+    npx tsx scripts/caption-clip.ts --all
+
 ## Verifying
 
 Render stills, do not reason about it. Every failure this layer has had was

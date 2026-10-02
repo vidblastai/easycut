@@ -195,6 +195,7 @@ export type CaptionCue = z.infer<typeof CaptionCueSchema>;
 
 export const CAPTION_ANIMATIONS = [
   'karaoke',     // whole line visible, active word highlighted
+  'word-fill',   // whole line visible, each word warming from dim as it is said
   'word-pop',    // words appear one at a time with a spring
   'line-fade',   // whole line fades in
   'typewriter',  // words appear with no animation at all

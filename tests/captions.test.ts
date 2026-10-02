@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { buildCaptions } from '@/lib/edl/captions';
-import { CaptionStyleSchema } from '@/lib/edl/types';
+import { CAPTION_ANIMATIONS, CaptionStyleSchema } from '@/lib/edl/types';
+import { CAPTION_PRESETS } from '@/lib/captions/presets';
 import { layoutSegments, TimeMapper } from '@/lib/timeline/time-mapper';
 import type { TranscriptWord } from '@/lib/transcribe/types';
 
@@ -289,5 +290,17 @@ describe('which word gets the highlight', () => {
       outputDurationSec: 30,
     });
     expect(lit(cues)).toEqual(['to', 'commit']);
+  });
+});
+
+describe('type that warms rather than switching on', () => {
+  it('offers the fill as its own animation, beside the karaoke it came from', () => {
+    expect(CAPTION_ANIMATIONS).toContain('word-fill');
+    expect(CAPTION_ANIMATIONS).toContain('karaoke');
+  });
+
+  it('is reachable from a preset, not only from the enum', () => {
+    // An animation nothing points at is an animation nobody sees.
+    expect(CAPTION_PRESETS.some((p) => p.style.animation === 'word-fill')).toBe(true);
   });
 });
