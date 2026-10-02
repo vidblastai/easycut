@@ -6,7 +6,7 @@ import { clsx } from 'clsx';
 import type { PlayerRef } from '@remotion/player';
 import { applyOperations, describeOperation, type ClipTrack, type EdlOperation } from '@/lib/edl/operations';
 import { reorderIndexFor, resolveDrag, snapPointsFor, type DragKind } from '@/lib/timeline/drag';
-import { CLIP_TRANSITIONS, SCENE_KINDS, TRANSITION_TYPES, hasSideRoom, iconRowPlacement, type BrollOverlay, type ClipTransition, type Edl, type IconCue } from '@/lib/edl/types';
+import { CLIP_TRANSITIONS, PUNCH_MOVES, SCENE_KINDS, TRANSITION_TYPES, hasSideRoom, iconRowPlacement, type BrollOverlay, type ClipTransition, type Edl, type IconCue } from '@/lib/edl/types';
 import { TRANSITION_COPY, TRANSITION_GLYPH } from '@/lib/edl/transition-copy';
 import { OVERLAY_COPY } from '@/lib/edl/overlay-copy';
 import { OverlayGrid, OverlaySwatch } from '@/components/broll/OverlaySwatch';
@@ -2793,7 +2793,27 @@ function Inspector({
             {formatTc(clip.outStartSec)}&ndash;{formatTc(clip.outEndSec)}
           </span>
         </h4>
-        <p className="mt-2 text-xs text-muted">How far in the camera pushes for this line.</p>
+        <p className="mt-2 text-xs text-muted">How the camera moves in on this line.</p>
+        <div className="mt-2 flex flex-wrap gap-1.5">
+          {PUNCH_MOVES.map((move) => (
+            <button
+              key={move}
+              type="button"
+              onClick={() => onChange({ op: 'clip.update', track: 'punchIns', id: clip.id, patch: { move } })}
+              title={PUNCH_MOVE_HINT[move]}
+              className={clsx(
+                'rounded border px-2 py-0.5 text-[11px] font-semibold',
+                clip.move === move ? 'border-violet text-violet' : 'border-line text-muted hover:text-chalk',
+              )}
+            >
+              {move}
+            </button>
+          ))}
+        </div>
+        <p className="mt-1.5 text-[11px] text-faint">{PUNCH_MOVE_HINT[clip.move]}</p>
+
+        <h5 className="mt-3 text-[11px] font-bold uppercase tracking-wider text-muted/70">Amount</h5>
+        <p className="mt-1 text-xs text-muted">How far in it goes.</p>
         <div className="mt-2 flex flex-wrap gap-1.5">
           {[1.08, 1.15, 1.25, 1.4].map((scale) => (
             <button
@@ -2970,8 +2990,23 @@ function AddMenu({ atSec, onAdd }: { atSec: number; onAdd: (op: EdlOperation) =>
               </button>
             ))}
           </div>
-          <MenuItem onClick={() => add({ op: 'clip.add', track: 'punchIns', atSec, durationSec: 2, value: '', id: freshId('punchIns') })}>
-            Punch-in
+          <MenuItem onClick={() => add({ op: 'clip.add', track: 'punchIns', atSec, durationSec: 2, value: 'speed-ramp', id: freshId('punchIns') })}>
+            Quick zoom
+            <span className="block text-[10px] font-normal text-muted">2s &mdash; slow, fast, slow</span>
+          </MenuItem>
+          {/* A second entry rather than a setting on the first, because these
+              are two different things to want. A quick zoom is punctuation on
+              a line; a slow push is the shot getting tighter over a whole
+              paragraph, and it needs the length to disappear into. */}
+          <MenuItem
+            onClick={() =>
+              // `value` is the move — one operation for one gesture, rather
+              // than an add followed by a patch that has to know the id.
+              add({ op: 'clip.add', track: 'punchIns', atSec, durationSec: 8, value: 'push', id: freshId('punchIns') })
+            }
+          >
+            Slow push
+            <span className="block text-[10px] font-normal text-muted">8s &mdash; so slow you do not see it start</span>
           </MenuItem>
           <MenuItem onClick={() => add({ op: 'clip.add', track: 'scenes', atSec, durationSec: 3.5, value: 'Your line here', id: freshId('scenes') })}>
             Animated scene
@@ -3143,3 +3178,14 @@ function nearestIndex(starts: number[], target: number): number {
  * free at all.
  */
 export const TimelineEditor = React.memo(TimelineEditorImpl);
+
+/** What each camera move is for, in the words somebody choosing one would use. */
+const PUNCH_MOVE_HINT: Record<(typeof PUNCH_MOVES)[number], string> = {
+  push: 'A creep so slow you do not see it start. Give it room — eight seconds or more.',
+  ramp: 'In, hold, out. The plain punch-in.',
+  'speed-ramp': 'Slow, then fast, then slow again. The modern push.',
+  snap: 'A crash zoom — four frames. Lands like a hit.',
+  bounce: 'Overshoots the mark and settles back into it.',
+  handheld: 'A push with an operator\u2019s drift on it.',
+  pull: 'Starts tight and opens out. A reveal, not an emphasis.',
+};

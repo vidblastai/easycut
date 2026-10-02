@@ -1055,10 +1055,12 @@ where the picture lands sharp and goes soft as the card climbs out of it.
 That costs what a transition effect costs at a cut, and it is what makes the
 two layers read as one picture rather than as a card on a background.
 
-The scrim over the blur is the look's own ground at 0.42 — not a hardcoded
-dark one, which would drop a black frame into the middle of a light look, and
-not nothing, which leaves a bright card with no edge against a bright
-photograph.
+There is no scrim over the blur. The first version washed it with the look's
+ground at 0.42 to give the card an edge, which is exactly the wrong fix: it
+turns the back layer into a pale field with a photograph printed on it, so it
+reads as a card on a BACKGROUND rather than as a picture on itself. The card's
+edge comes from its shadow, the way it does in every edit that uses this — so
+the shadow is what gets bigger, not the ground that gets lighter.
 
 **The counts do not degrade into each other.** A `photo-row` of one is a
 single picture adrift in a layout built for three; a `photo-grid` of two is a
@@ -1108,6 +1110,93 @@ every scene is a video of textures. `auto` hands the frame back to the look's
 own ground, which is what most scenes want; the schema also `.catch`es its way
 back to `auto`, because a model inventing a backdrop should cost a texture, not
 a render.
+
+## Seven ways to zoom in on somebody talking
+
+A single-take talking head is one locked-off shot, and the punch-in is the
+second camera that is not there — a zoom standing in for a cut to a tighter
+lens. One curve for that is not enough: the move IS the punctuation, so a
+video where every emphasis arrives the same way reads as one effect applied
+eight times.
+
+| | |
+|---|---|
+| `push` | a creep so slow you do not see it start. The long-form move |
+| `ramp` | in, hold, out. The plain punch-in |
+| `speed-ramp` | slow, then fast, then slow again. The modern push |
+| `snap` | a crash zoom — four frames, and it lands like a hit |
+| `bounce` | overshoots the mark and settles back into it |
+| `handheld` | a push with an operator's drift on it |
+| `pull` | starts tight and opens out. A reveal, not an emphasis |
+
+**What distinguishes them is where the TIME goes**, far more than how far the
+camera travels — which is why they are all written as windows into the one
+`ramp(from, to)` the renderers already hand in. The export and the editor
+preview need no idea the vocabulary grew, and cannot drift apart as it does.
+
+**Every move ends back at 1, and that is not a style choice.** A punch-in is a
+window on a continuous shot, so a scale that is not 1 at `outEndSec` pops back
+to the un-punched framing on the very next frame, in the middle of a sentence.
+Even `push`, whose whole character is that it never settles, releases over its
+last stretch — which is what an operator does anyway when the line lands.
+
+**Two bugs that a still could never have shown, both found by a test that
+measured the curve:**
+
+- **`push` was eased out**, like everything else in this renderer. An ease-out
+  puts two thirds of the travel in the first third of the time, which is a
+  punch-in that then coasts — the exact opposite of a creep. It is the one
+  place here where a LINEAR ramp is right: a constant rate is what makes the
+  move impossible to notice.
+- **`bounce` had its overshoot clipped off exactly.** Every other move takes
+  `min(enter, exit)`, which is right when both curves run 0→1. This one goes
+  ABOVE 1 — that is the move — so a `min` against an `exit` sitting at 1
+  through the hold produced a slightly fast ramp and nothing in the code
+  looked wrong. It multiplies instead.
+
+**`easeInOutQuint` is the only in-out curve in `motion.ts`**, and the house
+rule against them still holds for everything that ARRIVES. A camera is the
+physical exception: a zoom that starts at full speed is a cut and one that
+stops dead is a jolt, where a real operator winds a lens up and lets it down.
+Quintic rather than cubic because the point is a middle that is conspicuously
+faster than the ends.
+
+**The style names the moves, not the intensity.** Intensity already decides
+how FAR the camera goes; letting it also pick the curve meant a documentary's
+one emphatic line got a crash zoom, which is a different genre of video.
+`PacingProfile.punchMoves` is a short list, cycled per punch-in exactly as
+`clipTransitions` is, so consecutive punches differ inside one vocabulary and
+the same footage re-cuts the same way. The split is by FORMAT rather than by
+style, because what decides which moves work is how long the shot is: long
+form holds on one face for minutes and leans on `push`, the only zoom you can
+use eight times in twenty minutes without it becoming a tic; a sixty-second
+vertical has no room for a ten-second creep, so there it is `speed-ramp` and
+`snap`, which land. A move written twice in a list is weighted twice, because
+cycling picks them in order.
+
+**`easing` was the field name**, back when there were two curves and both were
+easings. `push` and `handheld` are not easings of anything, so it is `move`
+now — and `PunchInSchema` preprocesses the old key across, because dropping it
+would silently flatten every punch-in in a saved project to the default.
+
+**The editor offers two of them by name**, not a move picker on one generic
+item: a quick zoom is punctuation on a line and a slow push is the shot
+getting tighter over a paragraph, and the second one needs eight seconds to
+disappear into. The move rides in on `clip.add`'s `value` — the field that
+already carries a B-roll query and a sound's name — rather than as an add
+followed by a patch, which would be two operations for one gesture and the
+second would have to know the id the first invented.
+
+And `move` has to be on the `clip.update` whitelist, or the picker looks like
+it worked and the camera keeps doing the old thing.
+
+    npx tsx scripts/zoom-clip.ts --wide        # all seven, labelled
+    npx tsx scripts/zoom-clip.ts push,snap     # just these
+
+A zoom is the one thing here that CANNOT be judged from a still: a push and a
+snap at their tightest are the same frame. Give the strip six seconds a move —
+at two and a half, `push` renders as a plain ramp, because a creep's whole
+character is having more time than you are paying attention for.
 
 ## The frame has edges you cannot use
 

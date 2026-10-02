@@ -3,6 +3,8 @@ import { TimeMapper, layoutSegments } from '@/lib/timeline/time-mapper';
 import {
   CAPTION_ANIMATIONS,
   CaptionWordStyleSchema,
+  PUNCH_MOVES,
+  type PunchMove,
   GRAPHIC_TYPES,
   TRANSITION_TYPES,
   SCENE_LOOKS,
@@ -493,11 +495,29 @@ function applyOne(edl: Edl, op: EdlOperation): Edl {
         }] };
       }
       if (op.track === 'punchIns') {
+        /*
+         * `value` carries the move, the way it carries a B-roll query and a
+         * sound effect's name on the other tracks.
+         *
+         * The alternative was adding the clip and then patching it, which is
+         * two operations for one gesture — and the second one has to know the
+         * id the first invented, which is exactly the bug the `id` field a
+         * hundred lines up exists to prevent.
+         *
+         * The default is `speed-ramp` rather than `push` because this is the
+         * hand-added one: a slow push is the ambient move the builder already
+         * scatters through the video, and nobody opens a menu to ask for
+         * ambient. The menu offers both.
+         */
+        const move = (PUNCH_MOVES as readonly string[]).includes(op.value)
+          ? (op.value as PunchMove)
+          : 'speed-ramp';
         return { ...edl, punchIns: [...edl.punchIns, {
-          id, outStartSec: start, outEndSec: end, scale: 1.15,
+          id, outStartSec: start, outEndSec: end,
+          scale: move === 'push' || move === 'handheld' ? 1.1 : 1.18,
           x: edl.reframe?.keyframes[0]?.cx ?? 0.5,
           y: edl.reframe?.keyframes[0]?.cy ?? 0.42,
-          easing: 'snap' as const,
+          move,
         }] };
       }
       return { ...edl, overlays: [...edl.overlays, {
@@ -530,6 +550,8 @@ function applyOne(edl: Edl, op: EdlOperation): Edl {
         // with it — see `placeIconRow` in the editor, because setting the side
         // without the coordinates leaves a column at a floor row's height.
         'side',
+        // Which way the camera moves in on a punch-in.
+        'move',
       ]);
       const patch = Object.fromEntries(Object.entries(op.patch).filter(([k]) => allowed.has(k)));
 

@@ -1,5 +1,21 @@
-import { BROLL_OVERLAYS, CLIP_TRANSITIONS, SCENE_LOOKS, type Aspect, type BrollOverlay, type CaptionStyle, type ClipTransition, type Layout, type SceneLook, type TransitionType } from '@/lib/edl/types';
+import { BROLL_OVERLAYS, CLIP_TRANSITIONS, SCENE_LOOKS, type Aspect, type BrollOverlay, type CaptionStyle, type ClipTransition, type Layout, type PunchMove, type SceneLook, type TransitionType } from '@/lib/edl/types';
 import { findCaptionPreset } from '@/lib/captions/presets';
+
+/*
+ * Two vocabularies, split by FORMAT rather than by style.
+ *
+ * Because the thing that decides which moves work is how long the shot is.
+ * Long form holds on one face for minutes, so the move that carries it is
+ * `push` — a creep slow enough that nobody sees it start, which is the only
+ * kind of zoom you can use eight times in twenty minutes without it becoming
+ * a tic. A sixty-second vertical has no room for a ten-second creep: there
+ * the zoom is punctuation, so it is `speed-ramp` and `snap`, which land.
+ *
+ * `push` appears twice in the long list on purpose. Cycling picks them in
+ * order, so weighting is literally how many times a move is written down.
+ */
+const PUNCH_LONG: PunchMove[] = ['push', 'ramp', 'push', 'speed-ramp'];
+const PUNCH_SHORT: PunchMove[] = ['speed-ramp', 'snap', 'push', 'bounce'];
 
 /**
  * A style preset is the entire creative brief expressed as data. The pipeline
@@ -28,6 +44,15 @@ export interface PacingProfile {
   /** Seconds between punch-ins. The "second camera" cadence. */
   punchInEverySec: [min: number, max: number];
   punchInScale: [min: number, max: number];
+  /**
+   * The camera moves this profile uses, cycled per punch-in.
+   *
+   * A vocabulary rather than one curve, and a short one: the point is that
+   * consecutive punches differ while the video still sounds like one editor.
+   * The order is kept and cycled, exactly as `clipTransitions` is, so the
+   * same footage re-cuts the same way.
+   */
+  punchMoves: PunchMove[];
   /** Seconds of finished video per B-roll insert. */
   brollEverySec: number;
   brollDurationSec: [min: number, max: number];
@@ -133,6 +158,7 @@ const RAW_PRESETS: Record<StyleId, Omit<StylePreset, 'captionStyle'>> = {
     short: {
       punchInEverySec: [5, 9],
       punchInScale: [1.08, 1.16],
+      punchMoves: PUNCH_SHORT,
       brollEverySec: 12,
       brollDurationSec: [1.6, 2.8],
       graphicEverySec: 14,
@@ -143,6 +169,7 @@ const RAW_PRESETS: Record<StyleId, Omit<StylePreset, 'captionStyle'>> = {
     long: {
       punchInEverySec: [18, 30],
       punchInScale: [1.06, 1.12],
+      punchMoves: PUNCH_LONG,
       brollEverySec: 45,
       brollDurationSec: [3, 5.5],
       graphicEverySec: 55,
@@ -175,6 +202,7 @@ const RAW_PRESETS: Record<StyleId, Omit<StylePreset, 'captionStyle'>> = {
     short: {
       punchInEverySec: [3, 6],
       punchInScale: [1.12, 1.28],
+      punchMoves: PUNCH_SHORT,
       brollEverySec: 7,
       brollDurationSec: [1.2, 2.2],
       graphicEverySec: 9,
@@ -185,6 +213,7 @@ const RAW_PRESETS: Record<StyleId, Omit<StylePreset, 'captionStyle'>> = {
     long: {
       punchInEverySec: [10, 18],
       punchInScale: [1.1, 1.2],
+      punchMoves: PUNCH_LONG,
       brollEverySec: 28,
       brollDurationSec: [2.5, 4.5],
       graphicEverySec: 32,
@@ -231,6 +260,7 @@ const RAW_PRESETS: Record<StyleId, Omit<StylePreset, 'captionStyle'>> = {
     short: {
       punchInEverySec: [14, 22],
       punchInScale: [1.04, 1.09],
+      punchMoves: PUNCH_SHORT,
       brollEverySec: 6,
       brollDurationSec: [3, 6],
       graphicEverySec: 20,
@@ -241,6 +271,7 @@ const RAW_PRESETS: Record<StyleId, Omit<StylePreset, 'captionStyle'>> = {
     long: {
       punchInEverySec: [25, 40],
       punchInScale: [1.04, 1.08],
+      punchMoves: PUNCH_LONG,
       brollEverySec: 14,
       brollDurationSec: [5, 10],
       graphicEverySec: 45,
@@ -290,6 +321,7 @@ const RAW_PRESETS: Record<StyleId, Omit<StylePreset, 'captionStyle'>> = {
     short: {
       punchInEverySec: [0, 0],
       punchInScale: [1, 1],
+      punchMoves: PUNCH_SHORT,
       brollEverySec: 4,
       brollDurationSec: [4, 8],
       graphicEverySec: 18,
@@ -300,6 +332,7 @@ const RAW_PRESETS: Record<StyleId, Omit<StylePreset, 'captionStyle'>> = {
     long: {
       punchInEverySec: [0, 0],
       punchInScale: [1, 1],
+      punchMoves: PUNCH_LONG,
       brollEverySec: 8,
       brollDurationSec: [6, 12],
       graphicEverySec: 40,
@@ -347,6 +380,7 @@ const RAW_PRESETS: Record<StyleId, Omit<StylePreset, 'captionStyle'>> = {
     short: {
       punchInEverySec: [0, 0],
       punchInScale: [1, 1],
+      punchMoves: PUNCH_SHORT,
       brollEverySec: 7,
       brollDurationSec: [2.5, 5],
       graphicEverySec: 12,
@@ -357,6 +391,7 @@ const RAW_PRESETS: Record<StyleId, Omit<StylePreset, 'captionStyle'>> = {
     long: {
       punchInEverySec: [0, 0],
       punchInScale: [1, 1],
+      punchMoves: PUNCH_LONG,
       brollEverySec: 12,
       brollDurationSec: [4, 8],
       graphicEverySec: 30,
@@ -402,6 +437,7 @@ const RAW_PRESETS: Record<StyleId, Omit<StylePreset, 'captionStyle'>> = {
     short: {
       punchInEverySec: [9, 14],
       punchInScale: [1.05, 1.1],
+      punchMoves: PUNCH_SHORT,
       brollEverySec: 8,
       brollDurationSec: [2, 4],
       // The whole style: a card roughly every six seconds.
@@ -413,6 +449,7 @@ const RAW_PRESETS: Record<StyleId, Omit<StylePreset, 'captionStyle'>> = {
     long: {
       punchInEverySec: [18, 28],
       punchInScale: [1.04, 1.08],
+      punchMoves: PUNCH_LONG,
       brollEverySec: 12,
       brollDurationSec: [3, 6],
       graphicEverySec: 20,
@@ -459,6 +496,7 @@ const RAW_PRESETS: Record<StyleId, Omit<StylePreset, 'captionStyle'>> = {
     short: {
       punchInEverySec: [0, 0],
       punchInScale: [1, 1],
+      punchMoves: PUNCH_SHORT,
       brollEverySec: 5,
       brollDurationSec: [5, 10],
       graphicEverySec: 14,
@@ -469,6 +507,7 @@ const RAW_PRESETS: Record<StyleId, Omit<StylePreset, 'captionStyle'>> = {
     long: {
       punchInEverySec: [0, 0],
       punchInScale: [1, 1],
+      punchMoves: PUNCH_LONG,
       // Long holds. A tutorial where the picture changes every few seconds is
       // one nobody can follow, and the viewer is reading the screen.
       brollEverySec: 11,
@@ -518,6 +557,7 @@ const RAW_PRESETS: Record<StyleId, Omit<StylePreset, 'captionStyle'>> = {
     short: {
       punchInEverySec: [0, 0],
       punchInScale: [1, 1],
+      punchMoves: PUNCH_SHORT,
       brollEverySec: 10,
       brollDurationSec: [4, 8],
       graphicEverySec: 30,
@@ -528,6 +568,7 @@ const RAW_PRESETS: Record<StyleId, Omit<StylePreset, 'captionStyle'>> = {
     long: {
       punchInEverySec: [0, 0],
       punchInScale: [1, 1],
+      punchMoves: PUNCH_LONG,
       brollEverySec: 16,
       brollDurationSec: [6, 14],
       // A chapter card at each turn in the argument — what makes a long video
@@ -568,6 +609,7 @@ const RAW_PRESETS: Record<StyleId, Omit<StylePreset, 'captionStyle'>> = {
     short: {
       punchInEverySec: [5, 9],
       punchInScale: [1.06, 1.14],
+      punchMoves: PUNCH_SHORT,
       /*
        * The bottom slot is on screen the whole time, so B-roll is not an
        * occasional insert here — it is the other half of the video. The
@@ -589,6 +631,7 @@ const RAW_PRESETS: Record<StyleId, Omit<StylePreset, 'captionStyle'>> = {
     long: {
       punchInEverySec: [12, 20],
       punchInScale: [1.05, 1.12],
+      punchMoves: PUNCH_LONG,
       brollEverySec: 12,
       brollDurationSec: [8, 16],
       graphicEverySec: 40,
@@ -625,6 +668,7 @@ const RAW_PRESETS: Record<StyleId, Omit<StylePreset, 'captionStyle'>> = {
     short: {
       punchInEverySec: [7, 12],
       punchInScale: [1.05, 1.12],
+      punchMoves: PUNCH_SHORT,
       brollEverySec: 9,
       brollDurationSec: [2.2, 4],
       graphicEverySec: 30,
@@ -635,6 +679,7 @@ const RAW_PRESETS: Record<StyleId, Omit<StylePreset, 'captionStyle'>> = {
     long: {
       punchInEverySec: [22, 40],
       punchInScale: [1.04, 1.1],
+      punchMoves: PUNCH_LONG,
       brollEverySec: 30,
       brollDurationSec: [4, 7],
       graphicEverySec: 90,
@@ -667,6 +712,7 @@ const RAW_PRESETS: Record<StyleId, Omit<StylePreset, 'captionStyle'>> = {
     short: {
       punchInEverySec: [5, 9],
       punchInScale: [1.08, 1.18],
+      punchMoves: PUNCH_SHORT,
       brollEverySec: 14,
       brollDurationSec: [1.5, 2.5],
       graphicEverySec: 5,
@@ -677,6 +723,7 @@ const RAW_PRESETS: Record<StyleId, Omit<StylePreset, 'captionStyle'>> = {
     long: {
       punchInEverySec: [16, 26],
       punchInScale: [1.06, 1.14],
+      punchMoves: PUNCH_LONG,
       brollEverySec: 50,
       brollDurationSec: [3, 5],
       graphicEverySec: 18,
@@ -709,6 +756,7 @@ const RAW_PRESETS: Record<StyleId, Omit<StylePreset, 'captionStyle'>> = {
     short: {
       punchInEverySec: [6, 11],
       punchInScale: [1.1, 1.2],
+      punchMoves: PUNCH_SHORT,
       brollEverySec: 11,
       brollDurationSec: [1.8, 3],
       graphicEverySec: 16,
@@ -719,6 +767,7 @@ const RAW_PRESETS: Record<StyleId, Omit<StylePreset, 'captionStyle'>> = {
     long: {
       punchInEverySec: [14, 24],
       punchInScale: [1.08, 1.16],
+      punchMoves: PUNCH_LONG,
       brollEverySec: 60,
       brollDurationSec: [3, 5],
       graphicEverySec: 70,
@@ -753,6 +802,7 @@ const RAW_PRESETS: Record<StyleId, Omit<StylePreset, 'captionStyle'>> = {
     short: {
       punchInEverySec: [8, 14],
       punchInScale: [1.05, 1.1],
+      punchMoves: PUNCH_SHORT,
       brollEverySec: 5,
       brollDurationSec: [3, 6],
       graphicEverySec: 20,
@@ -763,6 +813,7 @@ const RAW_PRESETS: Record<StyleId, Omit<StylePreset, 'captionStyle'>> = {
     long: {
       punchInEverySec: [20, 34],
       punchInScale: [1.04, 1.1],
+      punchMoves: PUNCH_LONG,
       brollEverySec: 9,
       brollDurationSec: [5, 11],
       graphicEverySec: 36,
@@ -794,6 +845,7 @@ const RAW_PRESETS: Record<StyleId, Omit<StylePreset, 'captionStyle'>> = {
     short: {
       punchInEverySec: [4, 8],
       punchInScale: [1.1, 1.2],
+      punchMoves: PUNCH_SHORT,
       brollEverySec: 9,
       brollDurationSec: [1.4, 2.6],
       graphicEverySec: 13,
@@ -804,6 +856,7 @@ const RAW_PRESETS: Record<StyleId, Omit<StylePreset, 'captionStyle'>> = {
     long: {
       punchInEverySec: [12, 22],
       punchInScale: [1.08, 1.16],
+      punchMoves: PUNCH_LONG,
       brollEverySec: 25,
       brollDurationSec: [2.5, 5],
       graphicEverySec: 45,

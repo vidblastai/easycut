@@ -27,6 +27,7 @@ import {
   type IconCue,
   type OverlayElement,
   type PunchIn,
+  type PunchMove,
   type Segment,
   type SfxCue,
   type TransitionCue,
@@ -165,7 +166,9 @@ export function buildEdl(input: BuildEdlInput): Edl {
 
   /* ------------------------------ punch-ins ------------------------------- */
 
-  const punchIns = placePunchIns(plan, mapper, durationSec, broll, pacing.punchInScale, input.reframe);
+  const punchIns = placePunchIns(
+    plan, mapper, durationSec, broll, pacing.punchInScale, input.reframe, pacing.punchMoves,
+  );
 
   /* ----------------------------- transitions ------------------------------ */
 
@@ -793,6 +796,7 @@ function placePunchIns(
   broll: BrollClip[],
   scaleRange: [number, number],
   reframe: Edl['reframe'],
+  moves: PunchMove[],
 ): PunchIn[] {
   const result: PunchIn[] = [];
   // Punch in toward the face when we know where it is.
@@ -815,7 +819,17 @@ function placePunchIns(
       scale: scaleRange[0] + (scaleRange[1] - scaleRange[0]) * intensity,
       x: focus.cx,
       y: focus.cy,
-      easing: cue.intensity === 'strong' ? 'snap' : 'ramp',
+      /*
+       * The move comes from the STYLE, not from the intensity.
+       *
+       * Intensity already decides how far the camera goes; letting it also
+       * decide the curve meant a documentary's one emphatic line got a crash
+       * zoom, which is a different genre of video. The style names the moves
+       * it uses and the list is cycled, so consecutive punch-ins differ
+       * inside one coherent vocabulary and the same footage re-cuts the same
+       * way — exactly how `clipTransitions` is handled a few functions down.
+       */
+      move: moves[result.length % moves.length],
     });
   }
   return result;

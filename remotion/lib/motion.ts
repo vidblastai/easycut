@@ -37,6 +37,19 @@ export const easeOutExpo: Ease = (t) => (t >= 1 ? 1 : 1 - Math.pow(2, -10 * t));
 export const easeOutQuint: Ease = (t) => 1 - Math.pow(1 - t, 5);
 
 /** For a card growing into place — decelerates without the expo's hard stop. */
+/**
+ * Slow, then fast, then slow — the only in-out curve in this file.
+ *
+ * Everything that ARRIVES eases out hard: in-out on an entrance reads as a
+ * corporate template, and the house rule says so. A camera is the exception
+ * and the reason is physical. A zoom that starts at full speed is a cut, and
+ * one that stops dead is a jolt; a real operator winds a lens up and lets it
+ * down. Quintic rather than cubic because the point is for the middle to be
+ * conspicuously faster than the ends, which is the modern push.
+ */
+export const easeInOutQuint: Ease = (t) =>
+  t < 0.5 ? 16 * t * t * t * t * t : 1 - Math.pow(-2 * t + 2, 5) / 2;
+
 export const easeOutCubic: Ease = (t) => 1 - Math.pow(1 - t, 3);
 
 /** Overshoots once and settles. Use sparingly; on text it reads as cheap. */

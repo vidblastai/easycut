@@ -1333,18 +1333,60 @@ export type TransitionCue = z.infer<typeof TransitionCueSchema>;
 
 /* -------------------------------------------------------------- camera fx */
 
+/**
+ * The ways a camera can move in on somebody talking.
+ *
+ * A single-take talking head is one locked-off shot, and what makes it
+ * watchable is a second camera that is not there — a zoom standing in for a
+ * cut to a tighter lens. One curve for that is not enough: the move IS the
+ * punctuation, and a video where every emphasis arrives the same way reads as
+ * one effect applied eight times.
+ *
+ * These are the moves editors actually name, and the distinction between them
+ * is where the TIME goes rather than how far the camera travels:
+ *
+ *   push        a creep so slow you do not see it start. The long-form move:
+ *               tension accumulates over ten seconds and is never remarked on
+ *   ramp        in, hold, out — the plain punch-in, eased at both ends
+ *   speed-ramp  slow, then fast, then slow again. The modern YouTube push:
+ *               the fast middle is the emphasis and the slow ends hide the cut
+ *   snap        a crash zoom. Three frames in, and it lands like a hit
+ *   bounce      overshoots the mark and settles back into it
+ *   handheld    a push with an operator's drift on it, for footage that was
+ *               shot locked off and should not have been
+ *   pull        starts tight and opens out — a reveal rather than an emphasis
+ */
+export const PUNCH_MOVES = ['push', 'ramp', 'speed-ramp', 'snap', 'bounce', 'handheld', 'pull'] as const;
+export type PunchMove = (typeof PUNCH_MOVES)[number];
+
 /** A punch-in: the "second camera" that makes a single-take talking head watchable. */
-export const PunchInSchema = z.object({
-  id: z.string(),
-  outStartSec: z.number().nonnegative(),
-  outEndSec: z.number().nonnegative(),
-  /** Target zoom, e.g. 1.18 = 18 % tighter. */
-  scale: z.number().default(1.15),
-  /** Normalised focal point — usually the face centre from the reframe track. */
-  x: z.number().default(0.5),
-  y: z.number().default(0.42),
-  easing: z.enum(['snap', 'ramp']).default('snap'),
-});
+export const PunchInSchema = z.preprocess(
+  (raw) => {
+    /*
+     * `easing` was the field, back when there were two curves and both were
+     * easings. It is a MOVE now — `push` and `handheld` are not easings of
+     * anything — so documents written before this carry the old key, and
+     * dropping them would silently flatten every punch-in in a saved project
+     * to the default.
+     */
+    if (!raw || typeof raw !== 'object') return raw;
+    const o = raw as Record<string, unknown>;
+    return 'move' in o || !('easing' in o) ? o : { ...o, move: o.easing };
+  },
+  z.object({
+    id: z.string(),
+    outStartSec: z.number().nonnegative(),
+    outEndSec: z.number().nonnegative(),
+    /** Target zoom, e.g. 1.18 = 18 % tighter. */
+    scale: z.number().default(1.15),
+    /** Normalised focal point — usually the face centre from the reframe track. */
+    x: z.number().default(0.5),
+    y: z.number().default(0.42),
+    // `.catch` rather than a hard failure: a move dropped from the list in a
+    // later build should cost this punch its curve, not the whole project.
+    move: z.enum(PUNCH_MOVES).catch('ramp').default('ramp'),
+  }),
+);
 export type PunchIn = z.infer<typeof PunchInSchema>;
 
 /** Crop path for turning landscape footage into vertical without beheading anyone. */

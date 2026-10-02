@@ -659,7 +659,9 @@ const Plate: React.FC<{
   url: string | null;
   width: number;
   height: number;
-}> = ({ ctx, label, url, width, height }) => {
+  /** How far off the ground it reads. Above 1 where nothing else separates it. */
+  lift?: number;
+}> = ({ ctx, label, url, width, height, lift = 1 }) => {
   const { unit, scene } = ctx;
   const guide = styleGuideFor(scene.look);
   const ink = guide.palette[0]?.hex ?? '#0D0D10';
@@ -675,7 +677,7 @@ const Plate: React.FC<{
         overflow: 'hidden',
         position: 'relative',
         background: plate,
-        boxShadow: `0 ${unit * 16}px ${unit * 40}px rgba(0,0,0,0.42)`,
+        boxShadow: `0 ${unit * 16 * lift}px ${unit * 40 * lift}px rgba(0,0,0,${0.42 * Math.min(lift, 1.3)})`,
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
@@ -944,20 +946,20 @@ const PhotoGrid: React.FC<{ ctx: LookContext }> = ({ ctx }) => {
  * cached surface instead of re-running the blur — which is why these are two
  * nested elements and not one with both properties on it.
  *
- * ── The scrim comes from the look ───────────────────────────────────────
+ * ── No scrim: it is one picture on itself ───────────────────────────────
  *
- * Without one, a bright photograph behind a bright card leaves the card with
- * no edge; with a hardcoded dark one, every scene in a light look suddenly
- * has a black background. So it is the look's own ground at a little under
- * half opacity: the blurred picture still reads through it, and the frame
- * stays the tone the rest of the video is.
+ * The first version washed the blur with the look's ground at 0.42 to give
+ * the card an edge, and that is exactly the wrong fix: it turns the back
+ * layer into a pale field with a photograph printed on it, which is a card on
+ * a BACKGROUND rather than a picture on itself. The card's edge comes from
+ * its shadow, the way it does in every edit that uses this — so the shadow is
+ * the thing that gets bigger here, not the ground that gets lighter.
  */
 const PhotoHero: React.FC<{ ctx: LookContext }> = ({ ctx }) => {
   const frame = useCurrentFrame();
   const { scene, unit, width, height } = ctx;
   const url = scene.photoUrls[0] ?? null;
   const label = scene.items.find((item) => item.trim());
-  const guide = styleGuideFor(scene.look);
 
   /*
    * The card is the frame's own shape, inset.
@@ -1003,12 +1005,11 @@ const PhotoHero: React.FC<{ ctx: LookContext }> = ({ ctx }) => {
               <Img src={url} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
             </AbsoluteFill>
           </AbsoluteFill>
-          <AbsoluteFill style={{ background: guide.ground, opacity: 0.42 }} />
         </AbsoluteFill>
       ) : null}
 
       <Rising at={4} width={cardW} height={cardH}>
-        <Plate ctx={ctx} label={label} url={url} width={cardW} height={cardH} />
+        <Plate ctx={ctx} label={label} url={url} width={cardW} height={cardH} lift={url ? 2.2 : 1} />
       </Rising>
     </AbsoluteFill>
   );
