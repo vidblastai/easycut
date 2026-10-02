@@ -1,6 +1,7 @@
 import React from 'react';
 import { AbsoluteFill, Sequence, useCurrentFrame, useVideoConfig } from 'remotion';
 import { iconRowPlacement, type CaptionStyle, type Edl, type IconCue } from '../../src/lib/edl/types';
+import { riseProgress } from '../lib/motion';
 
 /**
  * The icon that rises on the word.
@@ -181,18 +182,6 @@ const Row: React.FC<{ cue: IconCue; startFrame: number; captions: CaptionStyle }
   );
 };
 
-/**
- * How far along the rise is, eased.
- *
- * Quadratic-out: `1 - (1 - t)²`. Fitted to the reference frame by frame — a
- * cubic decelerates too hard and arrives looking like it was dragged, a linear
- * ramp looks like a slide transition.
- */
-export function riseProgress(frame: number, riseFrames: number): number {
-  const t = Math.min(1, Math.max(0, frame / riseFrames));
-  return 1 - (1 - t) * (1 - t);
-}
-
 /** White tile or near-black one, with the shadow that belongs to each. */
 function tile(tone: 'light' | 'dark', card: number): React.CSSProperties {
   return tone === 'dark'
@@ -225,3 +214,7 @@ export function iconMarkup(markup: string): string {
       return `<svg${kept} width="100%" height="100%" preserveAspectRatio="xMidYMid meet" style="display:block">`;
     });
 }
+
+// Lives in `lib/motion` with the other entrances; re-exported because this
+// is where it was measured and where readers look for it.
+export { riseProgress };

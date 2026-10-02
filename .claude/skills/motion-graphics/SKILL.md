@@ -973,6 +973,71 @@ worlds are LIGHT, and an empty panel is a normal state here — the photographs
 are searched for and a search can come back empty — so the fallback colour is
 the one that must never be wrong. It comes from the look's own style guide.
 
+## The photo kinds, and the floor they rise from
+
+Three kinds beyond `transform` that put PHOTOGRAPHS on the frame, and they
+partition by COUNT so the director picks by counting rather than by taste:
+
+| | |
+|---|---|
+| `photo-point` | one picture, one line of type beside it |
+| `photo-row` | two or three pictures, side by side |
+| `photo-grid` | four to six pictures, in reading order |
+
+`photoSlotsFor(scene)` is the single place that says which kinds want pictures
+and how many, and every caller takes it from there — the asset stage searches
+for exactly that many, `sceneIsDrawn` refuses a drawing for anything above
+zero. The alternative is the same list of kinds written out in three files,
+which is how `transform` was wired and how the drawn-scene bug got in.
+
+**Why a photograph and not an icon.** The other kinds explain a SHAPE — a
+path, a ring, a figure — and a drawing is the right weight for a shape. These
+point at things in the world, and the evidence for a thing in the world is a
+picture of it. Which is also the limit: both the prompt and this file say the
+test out loud, because the failure is silent. *Could you point a camera at
+each thing named?* A hiking boot, yes. "Confidence", no — and a stock library
+answers anyway, with a model looking thoughtful, so nothing errors and the
+video just gets worse.
+
+**The entrance is the icon card's, which means a floor and not a fade.** Each
+plate has a clip box reaching below where it lands, sits under it at full
+size, and climbs out: 19 frames, quadratic out, no scale and no opacity. The
+same three reflexes to refuse as the cards — a pop makes a photograph into a
+sticker, an overshoot is a thing landing rather than rising, and fade plus
+slide is a web animation. `riseProgress` moved to `remotion/lib/motion.ts` so
+both can use the one measured curve.
+
+The stagger is **seven** frames, not the four the looks use for chips. A chip
+is one item in a set and the set is the point; each of these is a thing you
+are meant to look at before the next one lands.
+
+**A gap written in `unit` is not a gap.** `unit` is a thousandth of the frame
+HEIGHT, so `unit * 34` between three plates is 65px against a 280px plate in a
+vertical frame and 37px against a 573px one in widescreen — a quarter of a
+plate in one shape and a fifteenth in the other. Solve for the PLATE first and
+take the gap as a fraction of it. Same family as the `transform` trap: these
+are the layouts limited by room across, and `unit` is the wrong ruler for
+every one of them.
+
+**Search in the shape the plate will crop to.** `photoOrientationFor` asks the
+library for portrait where the plate is portrait and square where the cell is
+square, because `cover` throws away the sides of a landscape photograph in a
+portrait plate — and for a stock photo that is usually where the subject is.
+It costs nothing and it is the difference between a tree and a trunk.
+
+**An empty plate is a normal state, not a failure.** The search can miss, and
+the editor shows the scene before anything has been fetched at all — including
+when somebody switches a scene to a photo kind by hand, after the asset stage
+has run. So the plate names its thing in type instead, and the caption that
+would have sat under the picture is not drawn: one word on screen either way
+rather than the same noun twice.
+
+**The counts do not degrade into each other.** A `photo-row` of one is a
+single picture adrift in a layout built for three; a `photo-grid` of two is a
+grid with four holes in it. `sanitiseScenes` falls a wrong count back to
+`kinetic-text`, the shape that always works, rather than to the neighbouring
+photo kind.
+
 ## The surface a scene is printed on
 
 `remotion/looks/surface.tsx`. `scene.backdrop` was a dead field for a long

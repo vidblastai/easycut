@@ -39,6 +39,12 @@ const CONTENT: Record<SceneKind, { headline: string; items: string[] }> = {
   stack: { headline: 'clients', items: ['Noah Martinez', 'Sofia Rossi', 'Rami Khalil', 'Lucas Dupont'] },
   'big-number': { headline: '95% of your ideas', items: ['never get posted'] },
   transform: { headline: 'How a banana gets here', items: ['banana seedling', 'banana tree'] },
+  'photo-row': { headline: 'Three things to pack', items: ['hiking boots', 'water bottle', 'paper map'] },
+  'photo-point': { headline: 'Shoot it outside', items: ['golden hour'] },
+  'photo-grid': {
+    headline: 'A week of shots',
+    items: ['coffee cup', 'city street', 'open notebook', 'desk lamp', 'camera lens', 'train window'],
+  },
 };
 
 /** A drawing from `scripts/draw-scene.ts`, when one has been made for this look. */
@@ -57,6 +63,19 @@ const wide = process.argv.includes('--wide');
 const backdrop = (process.argv.find((a) => a.startsWith('--backdrop='))?.split('=')[1] ?? null) as
   | SceneBackdrop
   | null;
+
+/**
+ * `--photos` fills a photo scene's plates with a real photograph.
+ *
+ * Without it they fall back to naming their thing in type, which is a real
+ * state the renderer has to handle and a useless one to judge the LAYOUT
+ * from: an empty plate has no crop, no contrast against the surface and no
+ * edge of its own. The stock search needs a key this machine does not have,
+ * so it is the local plate, served over the same loopback as the footage.
+ */
+const withPhotos = process.argv.includes('--photos');
+const PHOTO_FILE = 'out/plates/real.png';
+let PHOTO = '';
 
 function edlFor(look: SceneLook, kind: SceneKind) {
   const content = CONTENT[kind];
@@ -80,7 +99,7 @@ function edlFor(look: SceneLook, kind: SceneKind) {
         items: content.items,
         iconQueries: content.items.map(() => ''),
         iconSvgs: content.items.map(() => null),
-        photoUrls: content.items.map(() => null),
+        photoUrls: content.items.map(() => (withPhotos ? PHOTO : null)),
         art: ART[look] ?? null,
         accent: '#9B7BFF',
         reason: 'sheet',
@@ -126,6 +145,10 @@ async function main() {
   const assets = await startAssetServer(process.cwd());
   SOURCE = assets.urlFor(resolve(SOURCE_FILE)) ?? '';
   if (!SOURCE) throw new Error(`Cannot serve ${SOURCE_FILE}`);
+  if (withPhotos) {
+    PHOTO = assets.urlFor(resolve(PHOTO_FILE)) ?? '';
+    if (!PHOTO) throw new Error(`Cannot serve ${PHOTO_FILE}`);
+  }
 
   const { bundle } = await import('@remotion/bundler');
   const { renderStill, selectComposition } = await import('@remotion/renderer');

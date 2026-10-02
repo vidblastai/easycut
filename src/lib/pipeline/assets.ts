@@ -8,7 +8,7 @@ import { searchStock, isStockConfigured, type StockClip } from '@/lib/assets/bro
 import { isAiBrollConfigured, makeBrollAsset, type AiClip, type BrollSource } from '@/lib/assets/ai-broll';
 import { sfxDefaultGain, sfxUrl, type SfxName } from '@/lib/assets/sfx';
 import type { CostLedger } from '@/lib/pricing/cost';
-import { type Edl } from '@/lib/edl/types';
+import { photoSlotsFor, type Edl, type SceneKind } from '@/lib/edl/types';
 import { relayoutIconRows } from '@/lib/edl/icon-rows';
 import { alignToBeat } from '@/lib/edl/beat-sync';
 
@@ -133,27 +133,36 @@ export async function resolveAssets(
 
     /* --------------------------- scene photographs ------------------------- */
     /*
-     * The two sides of a `transform` scene, as pictures.
+     * The pictures a photo scene is made of.
      *
-     * Only that kind asks for them: every other scene draws an idea, where an
-     * icon is the right weight. This one makes a claim about the world — a
-     * seedling turns into a tree — and the evidence for that is a photograph.
+     * Only those kinds ask for them, and `photoSlotsFor` is the one place that
+     * says which and how many. Every other scene draws an IDEA, where an icon
+     * is the right weight; these point at things in the world, and the
+     * evidence for a thing in the world is a picture of it.
      *
-     * Stills rather than clips, because both panels are on screen together and
-     * two videos playing side by side behind an arrow is three things moving
-     * at once. The still is the clip's own `previewUrl` — the searcher only
-     * talks to the video endpoints, and a poster frame of the right subject is
-     * a better picture of it than a second query to a different library would
-     * be. Coming back empty is fine: the panel names its thing in type
-     * instead, which is a quieter version of the same scene.
+     * Stills rather than clips. Three or six of these are on screen together,
+     * and that many videos playing at once is a wall of motion with no subject
+     * — and even two, either side of an arrow, is three things moving. The
+     * still is the clip's own `previewUrl`: the searcher only talks to the
+     * video endpoints, and a poster frame of the right subject is a better
+     * picture of it than a second query to a different library would be.
+     *
+     * Coming back empty is fine and is the normal state in the editor before
+     * the fetch lands: the plate names its thing in type instead, which is a
+     * quieter version of the same scene rather than a broken one.
      */
     Promise.all(
       edl.scenes.map(async (scene) => {
-        if (scene.kind !== 'transform' || !isStockConfigured()) return [];
+        const slots = photoSlotsFor(scene);
+        if (!slots || !isStockConfigured()) return [];
         return Promise.all(
-          scene.items.slice(0, 2).map(async (thing) => {
+          Array.from({ length: slots }, (_, i) => scene.items[i] ?? '').map(async (thing) => {
+            if (!thing.trim()) return null;
             const found = await searchStock(thing, {
-              orientation: 'portrait',
+              // The shape the plate will crop to, so `cover` throws away as
+              // little of the subject as it can. A row of portrait plates and
+              // a grid of square ones want different frames of the same thing.
+              orientation: photoOrientationFor(scene.kind, orientation),
               minDurationSec: 0,
               limit: 1,
             }).catch(() => []);
@@ -332,4 +341,31 @@ export async function resolveAssets(
   const aligned = alignToBeat(withAssets);
 
   return { edl: aligned, degraded };
+}
+
+/**
+ * The frame to search in, per photo kind.
+ *
+ * The plate crops with `cover`, so a landscape photograph in a portrait plate
+ * loses both its sides and a portrait one in a square cell loses its top and
+ * bottom — which, for a stock photo, is usually where the subject is. Asking
+ * the library for roughly the shape the plate will be is free and it is the
+ * difference between a picture of a tree and a picture of a trunk.
+ *
+ * The grid and the single picture follow the VIDEO's shape; a row of portrait
+ * plates is portrait in either.
+ */
+export function photoOrientationFor(
+  kind: SceneKind,
+  video: 'portrait' | 'landscape' | 'square',
+): 'portrait' | 'landscape' | 'square' {
+  switch (kind) {
+    case 'transform':
+    case 'photo-row':
+      return 'portrait';
+    case 'photo-grid':
+      return 'square';
+    default:
+      return video;
+  }
 }

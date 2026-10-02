@@ -1,8 +1,9 @@
 import React from 'react';
 import { AbsoluteFill, Img, Sequence, useCurrentFrame, useVideoConfig } from 'remotion';
-import { sceneIsDrawn, type AnimatedScene, type Edl } from '../../src/lib/edl/types';
+import { PHOTO_GRID_MAX, PHOTO_ROW_MAX, sceneIsDrawn, type AnimatedScene, type Edl } from '../../src/lib/edl/types';
 import { FONT_FAMILY } from '../lib/fonts';
-import { easeOutCubic, kf, riseIn, stagger, transformOf } from '../lib/motion';
+import { easeOutCubic, kf, riseIn, riseProgress, stagger, transformOf } from '../lib/motion';
+import { seeded } from '../lib/timing';
 import { ClipFrameFilter, ClipTransitionEffect, clipFilter, clipFrameStyle, clipNeedsFilter, clipPhase, clipTransitionSec, fitTransitions } from '../lib/clip-transition';
 import { lookFor } from '../looks';
 import { LOOK_META } from '../../src/lib/scenes/looks';
@@ -35,6 +36,10 @@ import { Illustration } from './Illustration';
  *   orbit         one idea in the centre, its parts arriving around it
  *   stack         layers settling onto each other
  *   big-number    one figure, filling the frame
+ *   transform     this thing became that one: two photographs and an arrow
+ *   photo-row     two or three photographs rising out of the floor in turn
+ *   photo-point   one photograph and one line of type beside it
+ *   photo-grid    four to six photographs, in reading order
  *
  * A **look** is the world it is drawn in, chosen from the video's style:
  * `studio`, `neon`, `gallery`, `archive`. See `remotion/looks/`.
@@ -241,6 +246,34 @@ const Arrangement: React.FC<{ ctx: LookContext; look: Look }> = ({ ctx, look }) 
         </AbsoluteFill>
       );
 
+    case 'photo-row':
+      return (
+        <AbsoluteFill style={{ ...centred, flexDirection: 'column' }}>
+          {scene.headline ? <look.Title ctx={ctx} text={scene.headline} at={0} /> : null}
+          <PhotoRow ctx={ctx} />
+          <Props ctx={ctx} look={look} />
+        </AbsoluteFill>
+      );
+
+    // No separate title: the headline IS one half of this layout, so it is
+    // laid out beside the picture rather than stacked above the pair.
+    case 'photo-point':
+      return (
+        <AbsoluteFill style={centred}>
+          <PhotoPoint ctx={ctx} look={look} />
+          <Props ctx={ctx} look={look} />
+        </AbsoluteFill>
+      );
+
+    case 'photo-grid':
+      return (
+        <AbsoluteFill style={{ ...centred, flexDirection: 'column' }}>
+          {scene.headline ? <look.Title ctx={ctx} text={scene.headline} at={0} /> : null}
+          <PhotoGrid ctx={ctx} />
+          <Props ctx={ctx} look={look} />
+        </AbsoluteFill>
+      );
+
     case 'compare':
       return (
         <AbsoluteFill style={{ ...centred, flexDirection: 'column' }}>
@@ -416,7 +449,15 @@ const Transform: React.FC<{ ctx: LookContext }> = ({ ctx }) => {
   );
 };
 
-/** One side of the pair. */
+/**
+ * One side of the pair.
+ *
+ * The rectangle itself is the shared `Plate`; this only supplies the
+ * entrance, which is a short lift rather than the floor the other photo
+ * scenes climb out of — two panels and an arrow is a SENTENCE with a verb in
+ * the middle, and a pair of plates leaping up out of the ground either side
+ * of it fights the reading order the arrow is there to set.
+ */
 const Panel: React.FC<{
   ctx: LookContext;
   label: string | undefined;
@@ -426,19 +467,6 @@ const Panel: React.FC<{
   height: number;
 }> = ({ ctx, label, url, at, width, height }) => {
   const frame = useCurrentFrame();
-  const { unit, scene } = ctx;
-  /*
-   * The look's own palette, because half of these worlds are LIGHT.
-   *
-   * The first version hardcoded near-white type on a 4%-white plate, which is
-   * the right pair in `neon` and invisible in `studio` — white text on a white
-   * panel on a white ground. An empty panel is the normal state here, so the
-   * one colour that must never be wrong is the one it falls back to.
-   */
-  const guide = styleGuideFor(scene.look);
-  const ink = guide.palette[0]?.hex ?? '#0D0D10';
-  const plate = guide.palette[3]?.hex ?? '#E8E8EE';
-
   /*
    * It arrives at full size, moving — not scaled up from nothing.
    *
@@ -446,55 +474,11 @@ const Panel: React.FC<{
    * photograph into a sticker, where a thing that is already its own size and
    * is still settling reads as an object that was placed there.
    */
-  const entry = riseIn(frame, at, unit * 30, 10);
+  const entry = riseIn(frame, at, ctx.unit * 30, 10);
 
   return (
-    <div
-      style={{
-        width,
-        height,
-        borderRadius: unit * 14,
-        overflow: 'hidden',
-        position: 'relative',
-        background: plate,
-        boxShadow: `0 ${unit * 18}px ${unit * 44}px rgba(0,0,0,0.45)`,
-        opacity: entry.opacity,
-        transform: transformOf(entry),
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-      }}
-    >
-      {url ? (
-        <Img src={url} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-      ) : (
-        // No picture is a normal state. The thing still gets named.
-        <span
-          style={{
-            fontFamily: FONT_FAMILY,
-            fontSize: unit * 30,
-            fontWeight: 700,
-            lineHeight: 1.2,
-            color: ink,
-            textAlign: 'center',
-            padding: unit * 24,
-            textWrap: 'balance',
-          }}
-        >
-          {label ?? ''}
-        </span>
-      )}
-      <div
-        style={{
-          position: 'absolute',
-          inset: 0,
-          borderRadius: unit * 14,
-          // A hairline inside the edge, so a photograph that happens to be
-          // dark at its border still reads as a panel rather than as a hole.
-          boxShadow: `inset 0 0 0 ${Math.max(1, unit * 2)}px ${scene.accent}33`,
-          pointerEvents: 'none',
-        }}
-      />
+    <div style={{ opacity: entry.opacity, transform: transformOf(entry) }}>
+      <Plate ctx={ctx} label={label} url={url} width={width} height={height} />
     </div>
   );
 };
@@ -527,6 +511,399 @@ const Arrow: React.FC<{ ctx: LookContext; at: number; width: number }> = ({ ctx,
         />
       </g>
     </svg>
+  );
+};
+
+/* ------------------------------ photo scenes ----------------------------- */
+
+/**
+ * Three kinds that put PHOTOGRAPHS on the frame, and the floor they rise from.
+ *
+ * ── Why this file draws them, when it draws nothing else ────────────────
+ *
+ * The rule above is that a kind arranges slots and a look fills them, and it
+ * is what keeps four looks times ten kinds affordable. A photograph has no
+ * slot: there is nothing for a look to style about a rectangle with a picture
+ * in it, and giving each look its own `Photo` would be four copies of the same
+ * component differing only in a border radius. So the plate is drawn here,
+ * once, and it takes its colours from the look's style guide — which is the
+ * same answer `transform` already arrived at, for the same reason.
+ *
+ * The HEADLINE still goes through `look.Title`. That is type, and type is
+ * exactly what a look has an opinion about.
+ *
+ * ── The entrance is the icon card's, not a fade ─────────────────────────
+ *
+ * "Images coming up from under the screen" is a floor, not an animation
+ * curve: each plate gets its own clip box reaching below where it lands, sits
+ * underneath it at full size, and climbs out. No fade, no scale — a plate
+ * that scales is a sticker, and fade-plus-slide is a web animation. The
+ * numbers (19 frames, quadratic out) are the ones measured off the reference
+ * clip for the icon cards; it is the same move at a different size.
+ *
+ * They arrive ONE AT A TIME, seven frames apart. That is slower than the
+ * four-frame stagger the looks use for chips, deliberately: a chip is one
+ * item in a set and the set is the point, where each of these is a thing you
+ * are meant to look at before the next one lands.
+ */
+
+/** Room around a plate for its shadow, so the clip box does not slice it. */
+const PLATE_PAD = 0.1;
+
+/** Measured on the reference clip, for the icon cards. Same move. */
+const RISE_FRAMES = 19;
+
+/** Long enough that you watch them land one by one rather than as a wave. */
+const RISE_STAGGER = 7;
+
+/**
+ * One plate, climbing out of its own floor.
+ *
+ * The clip box is bigger than the plate on every side — `PLATE_PAD` of the
+ * plate's height all round for the shadow, and one whole plate-height plus
+ * that padding below, which is the floor. Travel is the distance that puts
+ * the plate's TOP on the clip's bottom edge, so at frame zero it is not
+ * dimmed or small, it is behind something.
+ */
+const Rising: React.FC<{
+  at: number;
+  width: number;
+  height: number;
+  children: React.ReactNode;
+}> = ({ at, width, height, children }) => {
+  const frame = useCurrentFrame();
+  const pad = height * PLATE_PAD;
+  const travel = height + pad;
+  const climbed = riseProgress(frame - at, RISE_FRAMES);
+
+  return (
+    <div style={{ width, height, position: 'relative' }}>
+      <div
+        style={{
+          position: 'absolute',
+          left: -pad,
+          top: -pad,
+          width: width + pad * 2,
+          height: height + pad * 2,
+          overflow: 'hidden',
+          pointerEvents: 'none',
+        }}
+      >
+        <div
+          style={{
+            position: 'absolute',
+            left: pad,
+            top: pad,
+            width,
+            height,
+            transform: `translate3d(0, ${travel * (1 - climbed)}px, 0)`,
+          }}
+        >
+          {children}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+/**
+ * A picture and the word for it.
+ *
+ * The caption sits UNDER the plate when there is a picture, and INSIDE it
+ * when there is not — which is one word on screen either way rather than the
+ * same noun twice. An empty plate is a normal state here and not a failure:
+ * the photographs are searched for, a search can come back empty, and the
+ * editor shows the scene before anything has been fetched at all.
+ */
+const PhotoPlate: React.FC<{
+  ctx: LookContext;
+  label: string | undefined;
+  url: string | null;
+  at: number;
+  width: number;
+  height: number;
+  caption?: boolean;
+}> = ({ ctx, label, url, at, width, height, caption = true }) => {
+  const { unit } = ctx;
+  const showCaption = caption && Boolean(url && label);
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: unit * 14 }}>
+      <Rising at={at} width={width} height={height}>
+        <Plate ctx={ctx} label={url ? undefined : label} url={url} width={width} height={height} />
+      </Rising>
+      {showCaption ? <PlateCaption ctx={ctx} text={label!} at={at + RISE_FRAMES - 4} width={width} /> : null}
+    </div>
+  );
+};
+
+/** The rectangle itself: a picture, or the thing's name where there is none. */
+const Plate: React.FC<{
+  ctx: LookContext;
+  label: string | undefined;
+  url: string | null;
+  width: number;
+  height: number;
+}> = ({ ctx, label, url, width, height }) => {
+  const { unit, scene } = ctx;
+  const guide = styleGuideFor(scene.look);
+  const ink = guide.palette[0]?.hex ?? '#0D0D10';
+  const plate = guide.palette[3]?.hex ?? '#E8E8EE';
+  const radius = Math.min(unit * 16, height * 0.07);
+
+  return (
+    <div
+      style={{
+        width,
+        height,
+        borderRadius: radius,
+        overflow: 'hidden',
+        position: 'relative',
+        background: plate,
+        boxShadow: `0 ${unit * 16}px ${unit * 40}px rgba(0,0,0,0.42)`,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+      }}
+    >
+      {url ? (
+        <Img src={url} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+      ) : (
+        <span
+          style={{
+            fontFamily: FONT_FAMILY,
+            fontSize: Math.min(unit * 30, width * 0.14),
+            fontWeight: 700,
+            lineHeight: 1.2,
+            color: ink,
+            textAlign: 'center',
+            padding: unit * 20,
+            textWrap: 'balance',
+          }}
+        >
+          {label ?? ''}
+        </span>
+      )}
+      <div
+        style={{
+          position: 'absolute',
+          inset: 0,
+          borderRadius: radius,
+          // A hairline inside the edge, so a photograph that happens to be
+          // dark at its border still reads as a panel rather than as a hole.
+          boxShadow: `inset 0 0 0 ${Math.max(1, unit * 2)}px ${scene.accent}33`,
+          pointerEvents: 'none',
+        }}
+      />
+    </div>
+  );
+};
+
+/** The word under a picture. Arrives as the plate settles, not with it. */
+const PlateCaption: React.FC<{ ctx: LookContext; text: string; at: number; width: number }> = ({
+  ctx, text, at, width,
+}) => {
+  const frame = useCurrentFrame();
+  const { unit, scene } = ctx;
+  const guide = styleGuideFor(scene.look);
+  const entry = riseIn(frame, at, unit * 12, 8);
+
+  return (
+    <span
+      style={{
+        fontFamily: FONT_FAMILY,
+        fontSize: Math.min(unit * 26, width * 0.15),
+        fontWeight: 600,
+        letterSpacing: '-0.01em',
+        color: guide.palette[0]?.hex ?? '#0D0D10',
+        maxWidth: width,
+        textAlign: 'center',
+        textWrap: 'balance',
+        opacity: entry.opacity,
+        transform: transformOf(entry),
+      }}
+    >
+      {text}
+    </span>
+  );
+};
+
+/**
+ * Two or three pictures across the frame, rising one after the other.
+ *
+ * Sized from the WIDTH, like `transform` and for the same reason: `unit` is a
+ * thousandth of the frame HEIGHT, and this is a layout limited by room
+ * ACROSS. The ratio is fixed and the SIZE gives way, so the plates stay the
+ * same shape in a tall frame and a wide one — clamping the height alone is
+ * what turned the transform panels landscape in widescreen.
+ */
+const PhotoRow: React.FC<{ ctx: LookContext }> = ({ ctx }) => {
+  const { scene, unit, width, height } = ctx;
+  const items = scene.items.filter((item) => item.trim()).slice(0, PHOTO_ROW_MAX);
+  const count = Math.max(2, items.length);
+
+  const PORTRAIT = 1.3;
+  /*
+   * The gap is a fraction of the PLATE, not of `unit`.
+   *
+   * `unit` is a thousandth of the frame HEIGHT, so a gap written in it is 65px
+   * between three 280px plates in a vertical frame and 37px between three
+   * 573px plates in a widescreen one — a quarter of a plate in one shape and a
+   * fifteenth in the other. Solving for the plate first is what makes the row
+   * read the same in both.
+   */
+  const GAP_OF_PLATE = 0.07;
+  // A tall frame is the one with nothing to spare across, so it keeps less
+  // margin: three portrait plates in 1080 are small enough already.
+  const row = width * (width > height ? 0.9 : 0.96);
+  const byWidth = row / (count + GAP_OF_PLATE * (count - 1));
+  // Headroom for the headline when there is one, and for the captions always.
+  const byHeight = (height * (scene.headline.trim() ? 0.52 : 0.62)) / PORTRAIT;
+  const plateW = Math.min(byWidth, byHeight);
+  const plateH = plateW * PORTRAIT;
+
+  return (
+    <div style={{ display: 'flex', alignItems: 'flex-start', gap: plateW * GAP_OF_PLATE }}>
+      {Array.from({ length: count }, (_, i) => (
+        <PhotoPlate
+          key={i}
+          ctx={ctx}
+          label={items[i]}
+          url={scene.photoUrls[i] ?? null}
+          at={4 + i * RISE_STAGGER}
+          width={plateW}
+          height={plateH}
+        />
+      ))}
+    </div>
+  );
+};
+
+/**
+ * One picture and one line of type.
+ *
+ * Side by side where the frame is wide, stacked where it is tall — and that
+ * reads off the FRAME rather than off the format, because the question is how
+ * much room there is across, not which platform this is for. A 40%-wide text
+ * column in a vertical frame sets three words to a line, which is not a
+ * sentence any more.
+ *
+ * Which side the picture takes alternates per scene, seeded off the scene's
+ * id so it is the same on every render. Two of these in one video with the
+ * picture on the same side both times reads as a template; mirrored, it reads
+ * as an edit.
+ */
+const PhotoPoint: React.FC<{ ctx: LookContext; look: Look }> = ({ ctx, look }) => {
+  const { scene, unit, width, height } = ctx;
+  const wide = width > height;
+  const url = scene.photoUrls[0] ?? null;
+  const label = scene.items.find((item) => item.trim());
+  const pictureFirst = seeded(scene.id, 0) < 0.5;
+
+  const picture = wide
+    ? { w: width * 0.42, h: width * 0.42 * 1.16 }
+    : { w: width * 0.88, h: width * 0.88 * 0.74 };
+  const plateH = Math.min(picture.h, height * (wide ? 0.74 : 0.46));
+  const plateW = plateH * (picture.w / picture.h);
+
+  /*
+   * A column, not a block that shrinks to its longest word.
+   *
+   * Sized rather than auto, because the pair is centred as a unit: left to
+   * its content, a three-word headline collapses to a third of the room it
+   * was given and the whole composition slides toward the picture, which
+   * then reads as a picture with a note stuck to it.
+   */
+  const words = (
+    <div
+      style={{
+        width: wide ? width * 0.34 : width * 0.86,
+        textAlign: wide ? 'left' : 'center',
+        flexShrink: 0,
+      }}
+    >
+      <look.Title ctx={ctx} text={scene.headline} at={0} />
+    </div>
+  );
+  const plate = (
+    <PhotoPlate
+      ctx={ctx}
+      label={label}
+      url={url}
+      at={8}
+      width={plateW}
+      height={plateH}
+      // The headline already says it. A word under the picture as well would
+      // be the scene saying the same thing twice in two type sizes.
+      caption={false}
+    />
+  );
+
+  return (
+    <div
+      style={{
+        display: 'flex',
+        flexDirection: wide ? 'row' : 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: unit * (wide ? 54 : 38),
+      }}
+    >
+      {wide && pictureFirst ? plate : words}
+      {wide && pictureFirst ? words : plate}
+    </div>
+  );
+};
+
+/**
+ * Four to six pictures, filling the frame in reading order.
+ *
+ * Square cells, because a grid is the one layout where the cell shape has to
+ * work in both aspects at once — portrait cells in a wide frame leave two
+ * bands of ground above and below, landscape ones in a tall frame leave them
+ * at the sides. The columns are what change with the frame instead.
+ */
+const PhotoGrid: React.FC<{ ctx: LookContext }> = ({ ctx }) => {
+  const { scene, unit, width, height } = ctx;
+  const items = scene.items.filter((item) => item.trim()).slice(0, PHOTO_GRID_MAX);
+  const count = Math.max(4, items.length);
+  const columns = width > height ? 3 : 2;
+  const rows = Math.ceil(count / columns);
+
+  // Proportional to the cell, for the reason `PhotoRow` spells out.
+  const GAP_OF_CELL = 0.07;
+  const byWidth = (width * 0.92) / (columns + GAP_OF_CELL * (columns - 1));
+  const byHeight =
+    (height * (scene.headline.trim() ? 0.58 : 0.7)) / (rows + GAP_OF_CELL * (rows - 1));
+  const cell = Math.min(byWidth, byHeight);
+  const gap = cell * GAP_OF_CELL;
+
+  return (
+    <div
+      style={{
+        display: 'grid',
+        gridTemplateColumns: `repeat(${columns}, ${cell}px)`,
+        gap,
+        justifyContent: 'center',
+      }}
+    >
+      {Array.from({ length: count }, (_, i) => (
+        <PhotoPlate
+          key={i}
+          ctx={ctx}
+          label={items[i]}
+          url={scene.photoUrls[i] ?? null}
+          // Reading order, and a shorter stagger than the row: six plates
+          // seven frames apart would still be arriving three seconds in.
+          at={4 + i * 5}
+          width={cell}
+          height={cell}
+          // The cell is square and small; a word under each of six of them is
+          // a paragraph laid out as a grid.
+          caption={false}
+        />
+      ))}
+    </div>
   );
 };
 

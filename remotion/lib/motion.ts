@@ -252,3 +252,15 @@ export function revealed(frame: number, at: number, every: number, count: number
   if (frame < at) return 0;
   return Math.min(count, Math.floor((frame - at) / every) + 1);
 }
+
+/**
+ * How far along the rise is, eased.
+ *
+ * Quadratic-out: `1 - (1 - t)²`. Fitted to the reference frame by frame — a
+ * cubic decelerates too hard and arrives looking like it was dragged, a linear
+ * ramp looks like a slide transition.
+ */
+export function riseProgress(frame: number, riseFrames: number): number {
+  const t = Math.min(1, Math.max(0, frame / riseFrames));
+  return 1 - (1 - t) * (1 - t);
+}

@@ -1040,8 +1040,47 @@ export const SCENE_KINDS = [
   'stack',        // layers settling on top of each other
   'big-number',   // one figure, filling the frame
   'transform',    // this thing becoming that one: two photographs and an arrow
+  'photo-row',    // two or three photographs rising out of the floor in turn
+  'photo-point',  // one photograph and one line of type beside it
+  'photo-grid',   // four to six photographs filling the frame, in reading order
 ] as const;
 export type SceneKind = (typeof SCENE_KINDS)[number];
+
+/**
+ * How many photographs a kind wants, and therefore whether it is a photo scene.
+ *
+ * One function rather than a list of kinds in three files, because the count
+ * is the thing every caller actually needs: the asset stage searches for
+ * exactly this many, and everything else only cares whether it is zero.
+ *
+ * Why photographs at all, when every other kind draws an idea: those kinds
+ * explain a SHAPE — a path, a ring, a figure — and a drawing is the right
+ * weight for a shape. These four point at things in the world, and the
+ * evidence for a thing in the world is a picture of it. An icon of a banana
+ * tree is a diagram of the idea of one.
+ */
+export function photoSlotsFor(scene: Pick<AnimatedScene, 'kind' | 'items'>): number {
+  const named = scene.items.filter((item) => item.trim()).length;
+  switch (scene.kind) {
+    case 'transform': return 2;
+    case 'photo-point': return 1;
+    case 'photo-row': return Math.min(Math.max(named, 2), PHOTO_ROW_MAX);
+    case 'photo-grid': return Math.min(Math.max(named, 4), PHOTO_GRID_MAX);
+    default: return 0;
+  }
+}
+
+/**
+ * Where a row stops and a grid starts.
+ *
+ * Three across is the most that can stay a ROW: at four the pictures are
+ * narrower than they are apart from each other and the eye starts reading
+ * them as a strip of thumbnails. Past that they want two lines, which is the
+ * grid — so the two kinds partition the count rather than overlapping, and
+ * the director picks by counting rather than by taste.
+ */
+export const PHOTO_ROW_MAX = 3;
+export const PHOTO_GRID_MAX = 6;
 
 /** What is behind it. All of these move; none of them cost a repaint. */
 /**
@@ -1240,16 +1279,16 @@ export function sceneHasText(scene: AnimatedScene): boolean {
  */
 export function sceneIsDrawn(scene: AnimatedScene): boolean {
   /*
-   * A `transform` is never drawn, whatever art it was handed.
+   * A photo scene is never drawn, whatever art it was handed.
    *
    * The drawn path short-circuits the kind entirely — it replaces the whole
    * scene with the illustration — and the illustrator authors from the
-   * headline and items without ever knowing this one's content is two
-   * PHOTOGRAPHS. So a drawing arriving for a transform does not decorate it,
-   * it silently throws the before and after away and puts an unrelated diagram
-   * in their place.
+   * headline and items without ever knowing this one's content is
+   * PHOTOGRAPHS. So a drawing arriving for one does not decorate it: it
+   * silently throws the pictures away and puts an unrelated diagram in their
+   * place.
    */
-  if (scene.kind === 'transform') return false;
+  if (photoSlotsFor(scene) > 0) return false;
   return Boolean(scene.art && scene.art.parts.length);
 }
 
