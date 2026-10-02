@@ -286,7 +286,17 @@ function placeBroll(
    */
   alwaysOn: boolean,
   /** The treatment every insert in this style wears. */
-  overlay: Edl['broll'][number]['overlay'],
+  /*
+   * One treatment, or a vocabulary to cycle.
+   *
+   * A style used to name a single overlay and every insert in the video wore
+   * it, which is the same all-or-nothing shape the B-roll source had: a video
+   * where all eleven inserts are grained reads as a filter applied to the
+   * whole edit rather than as a treatment chosen per shot. A list cycles the
+   * way `clipTransitions` does, so consecutive inserts differ inside one
+   * coherent set and the same footage re-cuts the same way.
+   */
+  overlay: Edl['broll'][number]['overlay'] | Array<Edl['broll'][number]['overlay']>,
   /** The video's accent, for the treatments that recolour the picture. */
   accent: string,
   /** The style's vocabulary of enter/exit moves, cycled per insert. */
@@ -342,7 +352,7 @@ function placeBroll(
       opacity: 1,
       intent: cue.intent,
       query: cue.query,
-      overlay,
+      overlay: Array.isArray(overlay) ? overlay[clips.length % overlay.length] : overlay,
       accent,
     });
   }
@@ -627,6 +637,16 @@ function placeIcons(
           offsetSec: Math.max(0, card.atSec - outStartSec),
           word: card.word,
           query: card.query,
+          /*
+           * Labelled only where the picture cannot say it on its own.
+           *
+           * A glyph beside the word that was just spoken needs no caption —
+           * that is the scene saying the same thing twice in two sizes, and
+           * it is why the rule was no type at all. A PROPER NOUN is the other
+           * case: nobody reads "Gemini" off a four-pointed star, and a brand
+           * icon without its name is a logo quiz.
+           */
+          label: isProperNoun(card.word) ? card.word : '',
           markup: null,
           iconId: '',
         })),
@@ -872,6 +892,23 @@ function placePunchIns(
     move: moment.move,
     reason: moment.reason,
   }));
+}
+
+/**
+ * A word that names something rather than describing it.
+ *
+ * Capitalised mid-sentence is the whole test. It is the one signal a
+ * transcript actually carries — ASR capitalises brands and product names and
+ * leaves ordinary nouns alone — and it is right far more often than a list of
+ * known brands would be, which would be out of date the week after it shipped.
+ */
+export function isProperNoun(word: string): boolean {
+  const trimmed = word.trim();
+  if (trimmed.length < 2 || trimmed.length > 18) return false;
+  if (!/^[A-Z]/.test(trimmed)) return false;
+  // All caps is usually the transcript shouting, or an acronym the icon
+  // library had no hope of matching anyway.
+  return trimmed !== trimmed.toUpperCase();
 }
 
 /* ----------------------------------------------------------- transitions */

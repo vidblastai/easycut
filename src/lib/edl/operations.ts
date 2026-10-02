@@ -491,7 +491,7 @@ function applyOne(edl: Edl, op: EdlOperation): Edl {
           y: spot.y,
           side,
           tone: edl.icons[0]?.tone ?? 'light',
-          cards: [{ offsetSec: 0, word: op.value, query: op.value, markup: null, iconId: '' }],
+          cards: [{ offsetSec: 0, word: op.value, query: op.value, label: '', markup: null, iconId: '' }],
         }] };
       }
       if (op.track === 'punchIns') {

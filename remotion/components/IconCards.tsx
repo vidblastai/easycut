@@ -2,6 +2,7 @@ import React from 'react';
 import { AbsoluteFill, Sequence, useCurrentFrame, useVideoConfig } from 'remotion';
 import { iconRowPlacement, type CaptionStyle, type Edl, type IconCue } from '../../src/lib/edl/types';
 import { riseProgress } from '../lib/motion';
+import { FONT_FAMILY } from '../lib/fonts';
 
 /**
  * The icon that rises on the word.
@@ -163,17 +164,48 @@ const Row: React.FC<{ cue: IconCue; startFrame: number; captions: CaptionStyle }
                 transform: `translate3d(0, ${offset}px, 0)`,
                 display: 'flex',
                 alignItems: 'center',
+                // A labelled card lifts its picture to make room; an unlabelled
+                // one stays dead centre, which is the measured reference.
                 justifyContent: 'center',
+                paddingBottom: item.label ? card * 0.2 : 0,
+                boxSizing: 'border-box',
                 ...tile(cue.tone, card),
               }}
             >
               <div
-                style={{ width: card * ICON_OF_CARD, height: card * ICON_OF_CARD }}
+                style={{
+                  width: card * (item.label ? ICON_OF_CARD * 0.74 : ICON_OF_CARD),
+                  height: card * (item.label ? ICON_OF_CARD * 0.74 : ICON_OF_CARD),
+                }}
                 // Sanitised upstream in `src/lib/assets/icons.ts`, and its ids
                 // are namespaced per card so two icons in one row cannot end up
                 // sharing a gradient.
                 dangerouslySetInnerHTML={{ __html: iconMarkup(item.markup!) }}
               />
+              {/* Inside the tile, under the picture, and the picture gives up
+                  the room for it — a label hung below the tile would make the
+                  row two different heights depending on which cards have one,
+                  and the row is laid out for its final size from frame one. */}
+              {item.label ? (
+                <div
+                  style={{
+                    position: 'absolute',
+                    left: card * 0.08,
+                    right: card * 0.08,
+                    bottom: card * 0.09,
+                    fontFamily: FONT_FAMILY,
+                    fontSize: card * 0.115,
+                    fontWeight: 700,
+                    lineHeight: 1.15,
+                    letterSpacing: '-0.01em',
+                    textAlign: 'center',
+                    textWrap: 'balance',
+                    color: cue.tone === 'dark' ? 'rgba(255,255,255,0.92)' : '#17171C',
+                  }}
+                >
+                  {item.label}
+                </div>
+              ) : null}
             </div>
           </div>
         );

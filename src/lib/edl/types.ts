@@ -621,6 +621,22 @@ export const IconCardSchema = z.object({
   offsetSec: z.number().nonnegative().default(0),
   /** The word that earned it — shown in the editor, and used to re-roll. */
   word: z.string().default(''),
+  /**
+   * A short line of type under the icon. Empty is the normal case.
+   *
+   * The rule used to be no type on a card, ever, and it came from a reference
+   * clip where the icons punctuated nouns the voice had just said — where a
+   * label is the scene saying the same word twice, in two sizes.
+   *
+   * A second reference makes the other case: a brand mark ("Claude",
+   * "Gemini") that nobody can name from the glyph alone, and a figure
+   * attached to a thing ("117 emails a day") where the number IS the point
+   * and the envelope is only what it is about. Both of those need the words.
+   *
+   * So it is per card and it defaults to nothing: a label is for when the
+   * picture cannot say it, not for when it already has.
+   */
+  label: z.string().default(''),
   /** What the icon library was asked for. */
   query: z.string().default(''),
   /**

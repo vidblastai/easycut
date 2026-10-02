@@ -448,8 +448,8 @@ describe('icon cards on the timeline', () => {
           side: 'below' as const,
           tone: 'light' as const,
           cards: [
-            { offsetSec: 0, word: 'bananas', query: 'banana', markup: '<svg><path d="M0 0"/></svg>', iconId: 'noto:banana' },
-            { offsetSec: 1, word: 'apples', query: 'red apple', markup: '<svg><path d="M0 0"/></svg>', iconId: 'noto:red-apple' },
+            { offsetSec: 0, word: 'bananas', query: 'banana', label: '', markup: '<svg><path d="M0 0"/></svg>', iconId: 'noto:banana' },
+            { offsetSec: 1, word: 'apples', query: 'red apple', label: '', markup: '<svg><path d="M0 0"/></svg>', iconId: 'noto:red-apple' },
           ],
         },
       ],

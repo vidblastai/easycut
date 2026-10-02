@@ -35,8 +35,16 @@ describe('how many inserts a video gets', () => {
   it('reads the count off the style, not off a constant', () => {
     const clean = brollShapeFor(pacingFor(STYLE_LIST.find((s) => s.id === 'clean')!, 'long'), 600);
     const commentary = brollShapeFor(pacingFor(STYLE_LIST.find((s) => s.id === 'commentary')!, 'long'), 600);
-    // Same length, same format — the style alone is a 5x spread in what this bills.
-    expect(commentary.inserts).toBeGreaterThan(clean.inserts * 4);
+    /*
+     * Same length, same format — the style alone is most of what this bills.
+     *
+     * It used to be a five-fold spread and is now closer to three, because
+     * the sparse end was lifted to a floor: at one insert every forty-five
+     * seconds a long-form edit is a talking head with four cutaways in it,
+     * which is not a style, it is an unedited video. The spread is the point;
+     * the exact multiple is not.
+     */
+    expect(commentary.inserts).toBeGreaterThan(clean.inserts * 2.5);
   });
 
   it('scales with the length of the video', () => {

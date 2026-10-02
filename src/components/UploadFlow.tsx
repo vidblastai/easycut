@@ -43,7 +43,8 @@ interface StyleOption {
   layout: Layout;
   formats: ('short' | 'long')[];
   /** The treatment this style gives its inserts — see BROLL_OVERLAYS. */
-  brollOverlay: BrollOverlay;
+  /** One treatment, or the short list a style cycles through its inserts. */
+  brollOverlay: BrollOverlay | BrollOverlay[];
   /** Whether the preview should draw a title card — see `leadsWithCards`. */
   chapterCards?: { short: boolean; long: boolean };
   /** How often this style cuts away, per format. Prices the B-roll source. */
@@ -200,7 +201,10 @@ export function UploadFlow({
   const chosen = choices.some((s) => s.id === styleId) ? styleId : (choices[0]?.id ?? styleId);
   // What the chosen style would put on its inserts, so the overlay picker can
   // say what "let the style choose" means rather than leaving it abstract.
-  const styleOverlay = choices.find((s) => s.id === chosen)?.brollOverlay ?? 'none';
+  // A style may name several and cycle them, in which case the picker shows
+  // the first — what "let the style choose" opens on.
+  const declared = choices.find((s) => s.id === chosen)?.brollOverlay ?? 'none';
+  const styleOverlay: BrollOverlay = Array.isArray(declared) ? (declared[0] ?? 'none') : declared;
 
   /*
    * What the inserts will cost, for THIS file and THIS style.

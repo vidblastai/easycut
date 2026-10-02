@@ -80,7 +80,10 @@ describe('AI B-roll', () => {
   });
 
   it('only accepts a source it knows', () => {
-    expect(BROLL_SOURCES).toEqual(['stock', 'ai-image', 'ai-video']);
+    expect(BROLL_SOURCES).toEqual(['mixed', 'stock', 'ai-image', 'ai-video']);
+    // Mixed leads because it is the default: the source belongs to the cue,
+    // not to the video. The other three are the overrides.
+    expect(BROLL_SOURCES[0]).toBe('mixed');
     expect(isBrollSource('ai-image')).toBe(true);
     expect(isBrollSource('ai-everything')).toBe(false);
     expect(isBrollSource(undefined)).toBe(false);

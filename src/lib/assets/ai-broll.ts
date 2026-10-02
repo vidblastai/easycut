@@ -51,9 +51,15 @@ import type { StockClip } from './broll';
  * which drift depends on the clip so the same edit cuts the same way twice.
  */
 
-export type BrollSource = 'stock' | 'ai-image' | 'ai-video';
+/**
+ * `mixed` is first because it is the default: see `broll-mix.ts` for why one
+ * source for a whole video is the wrong shape. The other three stay as
+ * overrides — a consistent look, a missing key and a budget are all real
+ * reasons to force one.
+ */
+export type BrollSource = 'mixed' | 'stock' | 'ai-image' | 'ai-video';
 
-export const BROLL_SOURCES: readonly BrollSource[] = ['stock', 'ai-image', 'ai-video'];
+export const BROLL_SOURCES: readonly BrollSource[] = ['mixed', 'stock', 'ai-image', 'ai-video'];
 
 export function isBrollSource(value: unknown): value is BrollSource {
   return typeof value === 'string' && (BROLL_SOURCES as readonly string[]).includes(value);
@@ -84,6 +90,9 @@ export interface AiClip extends StockClip {
 
 export function isAiBrollConfigured(source: BrollSource): boolean {
   if (source === 'stock') return true;
+  // Mixed never needs a key: with none it is every insert searched, which is
+  // what `stock` is. Anything it can reach on top of that is a bonus.
+  if (source === 'mixed') return true;
   // Both generated sources have a second provider behind them, and for the
   // same reason: this product already asks for a WaveSpeed key, and a
   // deployment that has one should not be told it needs a different account
@@ -93,8 +102,23 @@ export function isAiBrollConfigured(source: BrollSource): boolean {
 }
 
 /** What the picker quotes and the ledger expects, before anything is made. */
+/**
+ * What share of a mixed edit gets made rather than found.
+ *
+ * An assumption, because the wizard quotes before anything has been cut and
+ * the real answer depends on cues that do not exist yet. Measured at about a
+ * third across the sample transcripts; the ledger charges what was actually
+ * spent, so this only has to be close enough not to surprise anybody.
+ */
+export const MIXED_MADE_SHARE = 0.35;
+
 export function estimateAiBrollUsd(source: BrollSource, inserts: number, secondsEach: number): number {
   if (source === 'stock') return 0;
+  if (source === 'mixed') {
+    return isImageGenConfigured() || isKieConfigured()
+      ? estimateAiBrollUsd('ai-image', Math.round(inserts * MIXED_MADE_SHARE), secondsEach)
+      : 0;
+  }
   if (source === 'ai-image') {
     return isKieConfigured() ? inserts * KIE_IMAGE_COST_USD : estimateImageCostUsd(inserts);
   }
@@ -106,6 +130,7 @@ export function estimateAiBrollUsd(source: BrollSource, inserts: number, seconds
 /** How long somebody waits for all of them, given they run at once. */
 export function estimateAiBrollSeconds(source: BrollSource, inserts = 1): number {
   if (source === 'stock') return 0;
+  if (source === 'mixed') return estimateAiBrollSeconds('ai-image', Math.round(inserts * MIXED_MADE_SHARE));
   const one =
     source === 'ai-image'
       // Measured: Z-Image Turbo about nine seconds, the WaveSpeed image
@@ -397,6 +422,16 @@ export function brollSourceRates(): BrollSourceRate[] {
   const model = isKieConfigured() ? kieVideoModel(env.kie.videoModel) : null;
 
   return [
+    {
+      source: 'mixed',
+      label: 'Mixed',
+      body: 'Each cue goes where it will look best: the library for anything a camera has filmed, a made picture for the rest.',
+      available: true,
+      usdPerInsert: (isKieConfigured() || isImageGenConfigured())
+        ? estimateAiBrollUsd('ai-image', 1, 1) * MIXED_MADE_SHARE
+        : 0,
+      usdPerSecond: 0, durations: [1], oneSec: 0,
+    },
     {
       source: 'stock',
       label: 'Stock footage',

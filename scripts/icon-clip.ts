@@ -1,6 +1,7 @@
 import { mkdir } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 import '../src/lib/config/load-env';
+import { isProperNoun } from '../src/lib/edl/builder';
 import { resolveCardIcons } from '../src/lib/assets/icon-cards';
 import { EdlSchema, iconRowPlacement } from '../src/lib/edl/types';
 import { env } from '../src/lib/config/env';
@@ -29,9 +30,14 @@ const SOURCE_FILE = 'out/fixture.mp4';
  * layout the pipeline will not produce.
  */
 const LINE = 'The best three fruits are bananas and apples and grapes'.split(' ');
+/*
+ * Two of these are ordinary nouns and one is a name, which is the point: the
+ * row has to read with a mix of labelled and bare cards, because that is what
+ * a real sentence produces.
+ */
 const CARDS = [
   { word: 'bananas', query: 'banana', atSec: 1.6 },
-  { word: 'apples', query: 'red apple', atSec: 2.6 },
+  { word: 'Gemini', query: 'sparkles', atSec: 2.6 },
   { word: 'grapes', query: 'grapes', atSec: 3.6 },
 ];
 
@@ -97,6 +103,8 @@ async function main() {
             offsetSec: card.atSec - CARDS[0].atSec,
             word: card.word,
             query: card.query,
+            // A proper noun earns a label, exactly as the builder decides it.
+            label: isProperNoun(card.word) ? card.word : '',
             markup: icons[k]!.markup,
             iconId: icons[k]!.id,
           })),

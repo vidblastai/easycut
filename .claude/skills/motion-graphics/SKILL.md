@@ -403,7 +403,8 @@ that drifts.
 
 A scene replaces the frame. An **icon card** does not: it is one illustrated
 object on a plain tile that slides up on the word that earns it, holds dead
-still, and fades. No type on it, ever. It is punctuation for a noun, and the
+still, and fades. Type on it only where the picture cannot say it — see
+`label` below. It is punctuation for a noun, and the
 whole effect is timing — a card three frames late reads as lag.
 
 Measured off the user's reference clip at 1080x1920, 30fps. These numbers are
@@ -1587,6 +1588,59 @@ other half of the video for four minutes.
 
     npx tsx scripts/broll-overlay.ts out/plates/real.png        # all six
     npx tsx scripts/broll-overlay.ts out/plates/real.png dust   # just one
+
+## What a reference edit actually does, counted
+
+165 frames pulled a second apart out of a 2m45s branded explainer the user
+supplied, read as ten contact sheets. Numbers first, because the impressions
+were wrong in both directions:
+
+| | |
+|---|---|
+| cuts | 43 — **15.7 a minute**, median shot 2.3s |
+| shots under 2s | 19 of 42 |
+| not the plain speaker | **~37% of the runtime** |
+| full-frame made scenes | 4 in 165 seconds |
+
+**The frame is almost never bare.** Four full-screen motion-graphic scenes in
+nearly three minutes — far fewer than this renderer makes — and yet the
+speaker is rarely alone on screen either, because the work is done by
+overlays that sit ON the footage in the empty third beside them:
+
+- **Labelled icon chips** — a rounded tile with a glyph and the NAME under it:
+  "Claude", "Gemini", "ChatGPT", "Email agent". They arrive one at a time,
+  left then right, at head height.
+- **A dashed connector between two of them** — "Email agent" ---- "Calendar
+  agent" — or an arc over the speaker's head joining two labelled pills,
+  "Chatbot" ⌒ "Agent". That is a compare laid over the live frame instead of
+  replacing it.
+- **A checklist that builds beside the speaker**: a pill header ("Coordination
+  agent") and then ticked lines arriving one per breath — reads your inbox,
+  checks the calendar, plans your day. It accumulates over eight seconds and
+  then clears. This is the single most characteristic device in the video and
+  this renderer has nothing like it.
+- **A stat annotation over B-roll**: a small line-art glyph with a two-line
+  figure under it — an envelope and "117 emails a day", a bell and "every 2
+  minutes" — placed in the dead part of the shot.
+- **A section chip top-left that PERSISTS** for the whole chapter, not a card
+  that wipes through and leaves.
+
+**Captions dim the future rather than popping the present.** The whole line is
+on screen; words already spoken are white and the rest are grey, filling left
+to right. Every overlay above uses the same fill, so a checklist line types
+itself in time with the voice.
+
+**B-roll is mixed in KIND, not just in subject**: the same speaker shot in
+other locations, stock-looking office footage, product screen recordings, and
+document pages. The screen recordings and documents get their own treatment —
+inset with rounded corners on a brand gradient, then pushed in to full bleed —
+rather than being cut in flat like footage.
+
+What this file's own rules got right: the icon card's rise, the hold, the
+no-fade entrance. What it got wrong: the card is punctuation UNDER the
+captions where the reference puts it beside the subject at head height, and
+the "no type on a card, ever" rule only holds for the ordinary nouns the
+first reference was full of.
 
 ## Verifying
 

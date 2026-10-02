@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { CAPTION_BAND, framedPositionY, iconRowPlacement } from '../src/lib/edl/types';
 import { CAPTION_PRESETS } from '../src/lib/captions/presets';
 import { iconMarkup, riseProgress } from '../remotion/components/IconCards';
+import { isProperNoun } from '@/lib/edl/builder';
 import { snapToWord } from '../src/lib/edl/builder';
 import type { Transcript } from '../src/lib/transcribe/types';
 
@@ -218,5 +219,31 @@ describe('inlining the icon', () => {
   it('keeps a non-square icon in proportion', () => {
     const out = iconMarkup('<svg viewBox="0 0 64 128"><path d="M0 0"/></svg>');
     expect(out).toContain('preserveAspectRatio="xMidYMid meet"');
+  });
+});
+
+describe('when a card carries a word', () => {
+  it('names a brand, because nobody reads "Gemini" off a four-pointed star', () => {
+    expect(isProperNoun('Gemini')).toBe(true);
+    expect(isProperNoun('Claude')).toBe(true);
+  });
+
+  it('leaves an ordinary noun bare', () => {
+    // The voice just said it. A label is the scene saying the same word
+    // twice in two sizes, which is why the rule was no type at all.
+    expect(isProperNoun('bananas')).toBe(false);
+    expect(isProperNoun('money')).toBe(false);
+  });
+
+  it('skips a shout and an acronym', () => {
+    // All caps is the transcript shouting, or an acronym the icon library
+    // had no hope of matching anyway.
+    expect(isProperNoun('NEVER')).toBe(false);
+    expect(isProperNoun('API')).toBe(false);
+  });
+
+  it('skips a sentence-opening capital it cannot tell from a name', () => {
+    expect(isProperNoun('')).toBe(false);
+    expect(isProperNoun('a')).toBe(false);
   });
 });

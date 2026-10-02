@@ -6,6 +6,7 @@ import { generateImage, isImageGenConfigured } from '@/lib/assets/images';
 import { selectMusic } from '@/lib/assets/music';
 import { searchStock, isStockConfigured, type StockClip } from '@/lib/assets/broll';
 import { isAiBrollConfigured, makeBrollAsset, type AiClip, type BrollSource } from '@/lib/assets/ai-broll';
+import { sourceForQuery } from '@/lib/assets/broll-mix';
 import { sfxDefaultGain, sfxUrl, type SfxName } from '@/lib/assets/sfx';
 import type { CostLedger } from '@/lib/pricing/cost';
 import { photoSlotsFor, type Edl, type SceneKind } from '@/lib/edl/types';
@@ -47,7 +48,21 @@ export async function resolveAssets(
   const imageBudget = options.mode === 'short' ? 1 : 2;
   let imagesGenerated = 0;
 
-  const brollSource: BrollSource = options.brollSource ?? 'stock';
+  const brollSource: BrollSource = options.brollSource ?? 'mixed';
+
+  /*
+   * The source is decided per INSERT, not per video.
+   *
+   * `sourceForQuery` answers "could a camera have been pointed at this?" from
+   * the cue's own words — see `broll-mix.ts`. Anything but `mixed` returns
+   * the chosen source unchanged, so somebody who forced one still gets it.
+   */
+  const sourceFor = (query: string) =>
+    sourceForQuery(query, {
+      chosen: brollSource,
+      available: (candidate) =>
+        candidate === 'stock' ? isStockConfigured() : isAiBrollConfigured(candidate),
+    });
   /** Inserts that asked to be made and had to fall back to stock. */
   let aiMisses = 0;
 
@@ -68,8 +83,9 @@ export async function resolveAssets(
          * its own — spending money and two minutes is a decision somebody
          * makes, not one a search miss makes for them.
          */
-        if (brollSource !== 'stock' && isAiBrollConfigured(brollSource)) {
-          const made = await makeBrollAsset(brollSource, clip.query, {
+        const source = sourceFor(clip.query);
+        if (source !== 'stock' && source !== 'mixed') {
+          const made = await makeBrollAsset(source, clip.query, {
             orientation,
             durationSec: insertLength,
             index,

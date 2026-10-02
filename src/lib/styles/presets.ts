@@ -125,7 +125,14 @@ export interface StylePreset {
    * neither is a property of the clip that happened to be found. Overridable
    * per clip in the editor.
    */
-  brollOverlay: BrollOverlay;
+  /**
+   * The treatment an insert wears — one, or a short list to cycle.
+   *
+   * A list because a video whose every insert is grained reads as a filter on
+   * the whole edit rather than as a choice per shot. The order is kept and
+   * cycled, exactly as `clipTransitions` is.
+   */
+  brollOverlay: BrollOverlay | BrollOverlay[];
   musicMood: string;
   musicGainDb: number;
   /** Silence handling aggressiveness for raw footage. */
@@ -170,7 +177,7 @@ const RAW_PRESETS: Record<StyleId, Omit<StylePreset, 'captionStyle'>> = {
       punchInEverySec: [18, 30],
       punchInScale: [1.06, 1.12],
       punchMoves: PUNCH_LONG,
-      brollEverySec: 45,
+      brollEverySec: 23,
       brollDurationSec: [3, 5.5],
       graphicEverySec: 55,
       graphicDurationSec: 3.5,
@@ -214,7 +221,7 @@ const RAW_PRESETS: Record<StyleId, Omit<StylePreset, 'captionStyle'>> = {
       punchInEverySec: [10, 18],
       punchInScale: [1.1, 1.2],
       punchMoves: PUNCH_LONG,
-      brollEverySec: 28,
+      brollEverySec: 19,
       brollDurationSec: [2.5, 4.5],
       graphicEverySec: 32,
       graphicDurationSec: 3,
@@ -724,7 +731,7 @@ const RAW_PRESETS: Record<StyleId, Omit<StylePreset, 'captionStyle'>> = {
       punchInEverySec: [16, 26],
       punchInScale: [1.06, 1.14],
       punchMoves: PUNCH_LONG,
-      brollEverySec: 50,
+      brollEverySec: 22,
       brollDurationSec: [3, 5],
       graphicEverySec: 18,
       graphicDurationSec: 4,
@@ -768,7 +775,7 @@ const RAW_PRESETS: Record<StyleId, Omit<StylePreset, 'captionStyle'>> = {
       punchInEverySec: [14, 24],
       punchInScale: [1.08, 1.16],
       punchMoves: PUNCH_LONG,
-      brollEverySec: 60,
+      brollEverySec: 22,
       brollDurationSec: [3, 5],
       graphicEverySec: 70,
       graphicDurationSec: 4,
@@ -857,7 +864,7 @@ const RAW_PRESETS: Record<StyleId, Omit<StylePreset, 'captionStyle'>> = {
       punchInEverySec: [12, 22],
       punchInScale: [1.08, 1.16],
       punchMoves: PUNCH_LONG,
-      brollEverySec: 25,
+      brollEverySec: 20,
       brollDurationSec: [2.5, 5],
       graphicEverySec: 45,
       graphicDurationSec: 3,
