@@ -39,3 +39,4 @@ content/music/generated.json
 
 # Screenshots dropped in the working directory by the browser harnesses.
 /*.png
+out/photos/

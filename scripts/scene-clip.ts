@@ -29,7 +29,25 @@ const CONTENT: Partial<Record<SceneKind, { headline: string; items: string[] }>>
   compare: { headline: 'Before and after', items: ['Six hours', 'Four minutes'] },
   'big-number': { headline: '95% of your ideas', items: ['never get posted'] },
   transform: { headline: '', items: ['banana seedling', 'banana tree'] },
+  'photo-hero': { headline: '', items: ['motogp rider cornering'] },
+  'photo-row': { headline: 'Three things to pack', items: ['hiking boots', 'water bottle', 'paper map'] },
+  'photo-point': { headline: 'Shoot it outside', items: ['golden hour'] },
+  'photo-grid': {
+    headline: 'A week of shots',
+    items: ['coffee cup', 'city street', 'open notebook', 'desk lamp', 'camera lens', 'train window'],
+  },
 };
+
+/**
+ * `--photos path` puts a real photograph on a photo scene's plates.
+ *
+ * The stock search needs a key, and an empty plate is the wrong thing to
+ * judge a photo scene from: no crop, no contrast against the ground, and for
+ * `photo-hero` no background at all, since the background IS the photograph.
+ */
+const PHOTO_FLAG = process.argv.find((a) => a.startsWith('--photos'));
+const PHOTO_FILE = PHOTO_FLAG?.split('=')[1] ?? 'out/photos/hero.webp';
+const WIDE = process.argv.includes('--wide');
 
 /** The most recent drawing for a look, whatever `draw-scene.ts` numbered it. */
 async function findDrawing(look: SceneLook): Promise<string | null> {
@@ -56,12 +74,23 @@ async function main() {
   const source = assets.urlFor(resolve(SOURCE_FILE)) ?? '';
   if (!source) throw new Error(`Cannot serve ${SOURCE_FILE}`);
 
+  const photo = PHOTO_FLAG ? (assets.urlFor(resolve(PHOTO_FILE)) ?? '') : '';
+  if (PHOTO_FLAG && !photo) throw new Error(`Cannot serve ${PHOTO_FILE}`);
+
   const content = CONTENT[kind] ?? CONTENT['kinetic-text']!;
   const inputProps = {
     edl: EdlSchema.parse({
       ...SAMPLE_EDL,
       projectId: `clip-${look}-${kind}`,
       source: { ...SAMPLE_EDL.source, url: source },
+      // The composition's length comes from here, not from `deliverable` — a
+      // clip that ran the sample's full ten seconds spent half of them on
+      // footage after the scene had already ended.
+      format: {
+        ...SAMPLE_EDL.format,
+        durationSec: seconds,
+        ...(WIDE ? { aspect: '16:9' as const, width: 1920, height: 1080 } : {}),
+      },
       segments: [
         { ...SAMPLE_EDL.segments[0], sourceStartSec: 0, sourceEndSec: seconds, outStartSec: 0, outEndSec: seconds },
       ],
@@ -77,6 +106,7 @@ async function main() {
           items: content.items,
           iconQueries: content.items.map(() => ''),
           iconSvgs: content.items.map(() => null),
+          photoUrls: content.items.map(() => (photo ? photo : null)),
           art,
           accent: '#9B7BFF',
           reason: 'clip',
@@ -130,7 +160,7 @@ async function main() {
     chromiumOptions: { ignoreCertificateErrors: env.render.ignoreCertificateErrors },
   });
 
-  const output = join(OUT, `${look}-${kind}.mp4`);
+  const output = join(OUT, `${look}-${kind}${WIDE ? '-wide' : ''}.mp4`);
   await renderMedia({
     composition,
     serveUrl,
