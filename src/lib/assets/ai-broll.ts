@@ -10,6 +10,7 @@ import {
 } from './kie';
 import { generateBrollClip, isGeneratedBrollConfigured } from './generated-broll';
 import { brollPrompt } from './broll-prompt';
+import { estimateImageCostUsd, generateImage, isImageGenConfigured } from './images';
 import type { StockClip } from './broll';
 
 /**
@@ -84,14 +85,20 @@ export interface AiClip extends StockClip {
 
 export function isAiBrollConfigured(source: BrollSource): boolean {
   if (source === 'stock') return true;
-  if (source === 'ai-image') return isKieConfigured();
+  // Both generated sources have a second provider behind them, and for the
+  // same reason: this product already asks for a WaveSpeed key, and a
+  // deployment that has one should not be told it needs a different account
+  // to use a feature its key can already serve.
+  if (source === 'ai-image') return isKieConfigured() || isImageGenConfigured();
   return isKieConfigured() || isGeneratedBrollConfigured();
 }
 
 /** What the picker quotes and the ledger expects, before anything is made. */
 export function estimateAiBrollUsd(source: BrollSource, inserts: number, secondsEach: number): number {
   if (source === 'stock') return 0;
-  if (source === 'ai-image') return inserts * KIE_IMAGE_COST_USD;
+  if (source === 'ai-image') {
+    return isKieConfigured() ? inserts * KIE_IMAGE_COST_USD : estimateImageCostUsd(inserts);
+  }
   if (!isKieConfigured()) return inserts * 0.04; // the WaveSpeed fallback's own rate
   const model = kieVideoModel(env.kie.videoModel);
   return inserts * snapTo(secondsEach, model.durations) * model.usdPerSec;
@@ -100,7 +107,12 @@ export function estimateAiBrollUsd(source: BrollSource, inserts: number, seconds
 /** How long somebody waits for all of them, given they run at once. */
 export function estimateAiBrollSeconds(source: BrollSource, inserts = 1): number {
   if (source === 'stock') return 0;
-  const one = source === 'ai-image' ? 12 : isKieConfigured() ? kieVideoModel(env.kie.videoModel).typicalSec : 110;
+  const one =
+    source === 'ai-image'
+      // Measured: GPT Image 2 at 1K takes about twelve seconds, the WaveSpeed
+      // image model about eight.
+      ? (isKieConfigured() ? 12 : 8)
+      : isKieConfigured() ? kieVideoModel(env.kie.videoModel).typicalSec : 110;
 
   /*
    * Inserts are made concurrently — `Promise.all` over the whole B-roll track —
@@ -170,6 +182,41 @@ async function makeStill(
 ): Promise<AiClip | null> {
   const aspect =
     options.orientation === 'portrait' ? '9:16' : options.orientation === 'square' ? '1:1' : '16:9';
+
+  /*
+   * The image generator this product already has, when there is no Kie key.
+   *
+   * It is the same arrangement `ai-video` has had all along — Kie first, the
+   * WaveSpeed account second — and the reason is the same: a deployment whose
+   * key can already make the picture should not be shown a locked tile asking
+   * it to open an account somewhere else.
+   *
+   * `styled: false` matters. That helper's default suffix describes an
+   * editorial illustration on a near-black ground, which is right for the
+   * graphics it normally draws and wrong for every B-roll insert, which has
+   * to pass as footage. `brollPrompt` already writes the photographic one.
+   */
+  if (!isKieConfigured()) {
+    const made = await generateImage(brollPrompt(subject, 'still'), aspect, { styled: false });
+    if (!made) return null;
+    const [width, height] =
+      aspect === '9:16' ? [1024, 1792] : aspect === '1:1' ? [1024, 1024] : [1792, 1024];
+    return {
+      id: `ai-still-${slug(subject)}`,
+      provider: 'generated',
+      url: made.url,
+      previewUrl: made.url,
+      width,
+      height,
+      durationSec: options.durationSec,
+      kind: 'stock-photo',
+      attribution: 'Generated',
+      score: 0.8,
+      costUsd: made.costUsd,
+      prompt: subject,
+      kenBurns: moveForStill(options.index),
+    };
+  }
 
   try {
     const { urls } = await runKieJob({
@@ -362,11 +409,14 @@ export function brollSourceRates(): BrollSourceRate[] {
     {
       source: 'ai-image',
       label: 'AI pictures',
-      body: 'A still made for each cue, pushed and panned across the frame so it moves like footage.',
-      available: isKieConfigured(),
-      missing: 'Needs a Kie API key (KIE_API_KEY) for GPT Image 2.',
+      body: `A still made for each cue by ${isKieConfigured() ? 'GPT Image 2' : 'an image model'}, pushed and panned across the frame so it moves like footage.`,
+      available: isKieConfigured() || isImageGenConfigured(),
+      missing: 'Needs a Kie API key (KIE_API_KEY) or a WaveSpeed key.',
       // A picture is priced per picture; its length on screen costs nothing.
-      usdPerInsert: KIE_IMAGE_COST_USD, usdPerSecond: 0, durations: [1], oneSec: 12,
+      usdPerInsert: isKieConfigured() ? KIE_IMAGE_COST_USD : estimateImageCostUsd(1),
+      usdPerSecond: 0,
+      durations: [1],
+      oneSec: isKieConfigured() ? 12 : 8,
     },
     {
       source: 'ai-video',

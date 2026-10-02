@@ -42,9 +42,25 @@ export function estimateImageCostUsd(count: number): number {
   return count * WAVESPEED_COST_USD;
 }
 
-export async function generateImage(prompt: string, aspect: '9:16' | '16:9' | '1:1'): Promise<GeneratedImage | null> {
-  // The director writes a subject; we own the look, so the style suffix is ours.
-  const styled = `${prompt}. Clean modern editorial illustration, bold simple shapes, high contrast, deep near-black background, single violet accent, centred subject, generous negative space, no text, no watermark.`;
+export async function generateImage(
+  prompt: string,
+  aspect: '9:16' | '16:9' | '1:1',
+  options: {
+    /**
+     * Whether to append this product's own look to the prompt.
+     *
+     * On by default, because the usual caller is a GRAPHIC: the director
+     * writes a subject and we own how it is drawn. A B-roll still is the
+     * other case — it has to look like footage, not like an editorial
+     * illustration on a near-black ground — and it arrives with a complete
+     * photographic prompt of its own, which this suffix would fight.
+     */
+    styled?: boolean;
+  } = {},
+): Promise<GeneratedImage | null> {
+  const styled = options.styled === false
+    ? prompt
+    : `${prompt}. Clean modern editorial illustration, bold simple shapes, high contrast, deep near-black background, single violet accent, centred subject, generous negative space, no text, no watermark.`;
 
   const preferReplicate = env.imagegen.provider === 'replicate' || (env.imagegen.provider === 'auto' && env.imagegen.replicateToken);
 

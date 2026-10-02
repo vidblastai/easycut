@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import {
   BROLL_SOURCES,
   isBrollSource,
@@ -221,5 +221,71 @@ describe('B-roll overlays', () => {
      */
     const split = getStyle('split');
     expect(layoutPlan(split.layout).alwaysOn).toBe(true);
+  });
+});
+
+/**
+ * Load the module fresh with a particular set of keys.
+ *
+ * `env` is read once at import time and frozen, which is right for the
+ * product and means a configuration branch cannot be tested by assignment.
+ * Resetting the registry and importing again is what actually exercises the
+ * wiring rather than a stand-in for it.
+ */
+async function withKeys(keys: Record<string, string>) {
+  const before = { ...process.env };
+  for (const [k, v] of Object.entries(keys)) {
+    if (v) process.env[k] = v;
+    else delete process.env[k];
+  }
+  vi.resetModules();
+  try {
+    return await import('@/lib/assets/ai-broll');
+  } finally {
+    process.env = before;
+  }
+}
+
+const NO_IMAGE_KEYS = {
+  KIE_API_KEY: '',
+  WAVESPEED_API_KEY: '',
+  REPLICATE_API_TOKEN: '',
+  FAL_KEY: '',
+};
+
+describe('AI pictures without a Kie key', () => {
+  it('unlocks on the image generator this product already has', async () => {
+    // The tile was locked behind KIE_API_KEY while the same deployment's
+    // WaveSpeed key could already make the picture — a feature shown as
+    // unavailable to somebody who was paying for it.
+    const m = await withKeys({ ...NO_IMAGE_KEYS, FAL_KEY: 'fal-x' });
+    expect(m.isAiBrollConfigured('ai-image')).toBe(true);
+    const rate = m.brollSourceRates().find((r) => r.source === 'ai-image')!;
+    expect(rate.available).toBe(true);
+    expect(rate.usdPerInsert).toBeGreaterThan(0);
+  });
+
+  it('still says what is missing when neither provider is there', async () => {
+    const m = await withKeys(NO_IMAGE_KEYS);
+    const rate = m.brollSourceRates().find((r) => r.source === 'ai-image')!;
+    expect(rate.available).toBe(false);
+    expect(rate.missing).toMatch(/WaveSpeed/i);
+  });
+
+  it('quotes the provider it will actually use', async () => {
+    const kie = await withKeys({ ...NO_IMAGE_KEYS, KIE_API_KEY: 'kie-x' });
+    const fallback = await withKeys({ ...NO_IMAGE_KEYS, FAL_KEY: 'fal-x' });
+    const a = kie.estimateAiBrollUsd('ai-image', 4, 3);
+    const b = fallback.estimateAiBrollUsd('ai-image', 4, 3);
+    expect(a).toBeGreaterThan(0);
+    expect(b).toBeGreaterThan(0);
+    expect(b).not.toBe(a);
+  });
+
+  it('waits less for the fallback than for the one it replaces', async () => {
+    const kie = await withKeys({ ...NO_IMAGE_KEYS, KIE_API_KEY: 'kie-x' });
+    const fallback = await withKeys({ ...NO_IMAGE_KEYS, FAL_KEY: 'fal-x' });
+    expect(fallback.estimateAiBrollSeconds('ai-image', 1))
+      .toBeLessThan(kie.estimateAiBrollSeconds('ai-image', 1));
   });
 });
