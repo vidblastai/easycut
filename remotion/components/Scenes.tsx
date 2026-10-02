@@ -224,10 +224,18 @@ const Arrangement: React.FC<{ ctx: LookContext; look: Look }> = ({ ctx, look }) 
         </AbsoluteFill>
       );
 
+    /*
+     * No title. The two photographs and the arrow ARE the sentence.
+     *
+     * Every other kind here takes a headline because its picture is a diagram
+     * that needs saying what it is of. This one is already a claim — that
+     * thing turned into this thing — and a line of type over it only repeats
+     * the pictures in words. It also costs the panels the room they most
+     * need: the photographs are the evidence, so they get the height.
+     */
     case 'transform':
       return (
         <AbsoluteFill style={{ ...centred, flexDirection: 'column' }}>
-          {scene.headline ? <look.Title ctx={ctx} text={scene.headline} at={0} /> : null}
           <Transform ctx={ctx} />
           <Props ctx={ctx} look={look} />
         </AbsoluteFill>
@@ -394,7 +402,8 @@ const Transform: React.FC<{ ctx: LookContext }> = ({ ctx }) => {
    */
   const PORTRAIT = 1.34;
   const byWidth = (row - arrowW - gap * 2) / 2;
-  const byHeight = (height * 0.56) / PORTRAIT;
+  // 0.72 rather than 0.56 because nothing is set above the row any more.
+  const byHeight = (height * 0.72) / PORTRAIT;
   const panelW = Math.min(byWidth, byHeight);
   const panelH = panelW * PORTRAIT;
 

@@ -952,6 +952,12 @@ It is checked ahead of the list detector, which otherwise sees the two nouns
 either side of the verb and makes an orbit — and an orbit of two chips says the
 things belong together, where the sentence claims one BECAME the other.
 
+**No headline.** Every other kind takes one because its picture is a diagram
+and a diagram needs saying what it is of. This one is already a claim — that
+thing turned into this thing — so a line of type over it repeats the pictures
+in words, and it costs the photographs the height they are the evidence in.
+The renderer simply never draws one, and the director is told not to write one.
+
 **Two layout traps, both found by rendering it.** Every size in a scene is
 written in `unit`, a thousandth of the frame HEIGHT, so a look composes
 identically in either aspect. That is exactly wrong here: this is the one scene
