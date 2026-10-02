@@ -967,6 +967,49 @@ worlds are LIGHT, and an empty panel is a normal state here — the photographs
 are searched for and a search can come back empty — so the fallback colour is
 the one that must never be wrong. It comes from the look's own style guide.
 
+## The surface a scene is printed on
+
+`remotion/looks/surface.tsx`. `scene.backdrop` was a dead field for a long
+time — the director picked one on every scene and not a single look read it,
+so every scene in a look sat on that look's one ground. The surfaces are what
+it now means.
+
+**Texture here, tone from the look.** Every colour in `Surface` comes out of
+`styleGuideFor(scene.look)`; none is written down. That is the whole design.
+A backdrop that chose its own tone could put a dark surface inside a light
+look, and then that look's ink — which is dark, because its ground is light —
+lands on near-black and every title in the scene disappears. So the backdrop
+picks the MATERIAL and the look picks the tone: `paper` is cream in `studio`
+and charcoal in `neon`, and both of those are reachable, by choosing the look.
+`surfaceTone(look)` is that decision on its own, so it can be checked against
+every look without a renderer.
+
+**Ink reads differently on each side.** The eye is reading a contrast ratio,
+not an opacity, so one alpha tuned on white turns to mud on black and one
+tuned on black is invisible on white. Hence two figures for the tooth and two
+for the ruling rather than one each, and light marks on a dark ground rather
+than the same dark marks turned up.
+
+**It replaces the look's ground, it does not sit on it.** A background drawn
+over a background is two backgrounds — the same mistake the drawn scenes
+already document, and it reads as a panel floating on someone else's
+wallpaper.
+
+**None of it is an image.** Paper is normally a photograph of paper. Here it is
+stacked CSS gradients, because a full-frame bitmap is a decode on every frame
+of every scene while a video plays underneath. The tooth is two dot lattices at
+different sizes and offsets: one lattice alone is a halftone, which is a
+printing effect rather than a stock, and two that never line up give fibre the
+eye cannot lock onto. The ruling makes every fifth line heavier the way squared
+paper is printed — an even mesh with no hierarchy reads as a diagram overlay
+instead of the page under one.
+
+**`auto` is the default, and the default is not a surface.** A named surface on
+every scene is a video of textures. `auto` hands the frame back to the look's
+own ground, which is what most scenes want; the schema also `.catch`es its way
+back to `auto`, because a model inventing a backdrop should cost a texture, not
+a render.
+
 ## The frame has edges you cannot use
 
 `src/lib/edl/safe-area.ts`. Two different things, worth keeping apart because

@@ -1044,7 +1044,31 @@ export const SCENE_KINDS = [
 export type SceneKind = (typeof SCENE_KINDS)[number];
 
 /** What is behind it. All of these move; none of them cost a repaint. */
-export const SCENE_BACKDROPS = ['gradient', 'grid', 'dots', 'rays', 'solid'] as const;
+/**
+ * What a scene sits ON.
+ *
+ * Texture only — the TONE comes from the look, which is the thing that already
+ * decides whether this video's animated inserts are light or dark. That split
+ * is what keeps the two from fighting: a dark surface chosen inside a light
+ * look would put the look's ink straight onto its own colour, and every title
+ * in the scene would vanish. So `paper` is cream in `studio` and charcoal in
+ * `neon`, and both are reachable by choosing the look.
+ *
+ * `auto` means the look draws its own signature ground — neon's glow field,
+ * archive's gold vignette — which is the default and is usually right. The
+ * others replace it outright, because a background drawn over a background is
+ * two backgrounds.
+ */
+export const SCENE_BACKDROPS = [
+  'auto',       // the look's own ground
+  'paper',      // stock with a visible tooth, no ruling
+  'paper-grid', // the same stock, ruled into squares
+  'grid',       // a clean technical grid, no paper texture
+  'dots',       // a dot lattice
+  'gradient',   // a soft wash from the accent
+  'rays',       // light thrown from one corner
+  'solid',      // flat, for when the content is busy
+] as const;
 export type SceneBackdrop = (typeof SCENE_BACKDROPS)[number];
 
 /**
@@ -1086,7 +1110,7 @@ export const AnimatedSceneSchema = z.object({
    */
   enter: z.enum(CLIP_TRANSITIONS).nullable().default(null),
   exit: z.enum(CLIP_TRANSITIONS).nullable().default(null),
-  backdrop: z.enum(SCENE_BACKDROPS).default('gradient'),
+  backdrop: z.enum(SCENE_BACKDROPS).catch('auto').default('auto'),
   /** The phrase being said, in the speaker's own words. Two to six words. */
   headline: z.string().default(''),
   /** Meaning depends on the kind: waypoints, the two sides, the layers. */
@@ -1215,6 +1239,17 @@ export function sceneHasText(scene: AnimatedScene): boolean {
  * was supposed to replace.
  */
 export function sceneIsDrawn(scene: AnimatedScene): boolean {
+  /*
+   * A `transform` is never drawn, whatever art it was handed.
+   *
+   * The drawn path short-circuits the kind entirely — it replaces the whole
+   * scene with the illustration — and the illustrator authors from the
+   * headline and items without ever knowing this one's content is two
+   * PHOTOGRAPHS. So a drawing arriving for a transform does not decorate it,
+   * it silently throws the before and after away and puts an unrelated diagram
+   * in their place.
+   */
+  if (scene.kind === 'transform') return false;
   return Boolean(scene.art && scene.art.parts.length);
 }
 

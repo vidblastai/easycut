@@ -1,7 +1,7 @@
 import { mkdir } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 import '../src/lib/config/load-env';
-import { EdlSchema, SCENE_KINDS, SCENE_LOOKS, type SceneKind, type SceneLook } from '../src/lib/edl/types';
+import { EdlSchema, SCENE_KINDS, SCENE_LOOKS, type SceneBackdrop, type SceneKind, type SceneLook } from '../src/lib/edl/types';
 import { env } from '../src/lib/config/env';
 import { readFile, readdir } from 'node:fs/promises';
 import { parseIllustration, type Illustration } from '../src/lib/assets/illustration';
@@ -53,6 +53,11 @@ const ART: Record<string, Illustration | null> = {};
  */
 const wide = process.argv.includes('--wide');
 
+/** `--backdrop=paper-grid` renders the scenes on that surface. */
+const backdrop = (process.argv.find((a) => a.startsWith('--backdrop='))?.split('=')[1] ?? null) as
+  | SceneBackdrop
+  | null;
+
 function edlFor(look: SceneLook, kind: SceneKind) {
   const content = CONTENT[kind];
   return EdlSchema.parse({
@@ -70,7 +75,7 @@ function edlFor(look: SceneLook, kind: SceneKind) {
         outEndSec: 5,
         kind,
         look,
-        backdrop: 'gradient',
+        backdrop: backdrop ?? 'auto',
         headline: content.headline,
         items: content.items,
         iconQueries: content.items.map(() => ''),
@@ -148,7 +153,7 @@ async function main() {
           composition,
           serveUrl,
           inputProps,
-          output: join(OUT, `${look}-${kind}${wide ? '-wide' : ''}.png`),
+          output: join(OUT, `${look}-${kind}${backdrop ? `-${backdrop}` : ''}${wide ? '-wide' : ''}.png`),
           frame,
           browserExecutable: env.render.browserExecutable,
           chromiumOptions: { gl: env.render.gl, ignoreCertificateErrors: env.render.ignoreCertificateErrors },

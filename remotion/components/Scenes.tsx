@@ -9,6 +9,7 @@ import { LOOK_META } from '../../src/lib/scenes/looks';
 import { styleGuideFor } from '../../src/lib/scenes/style-guides';
 import type { Arrange, Look, LookContext } from '../looks/contract';
 import { NeonProps } from '../looks/neon';
+import { Surface } from '../looks/surface';
 import { Illustration } from './Illustration';
 
 /**
@@ -141,6 +142,10 @@ const SceneView: React.FC<{ scene: AnimatedScene; durationInFrames: number }> = 
       */}
       {sceneIsDrawn(scene) ? (
         <AbsoluteFill style={{ background: styleGuideFor(scene.look).ground }} />
+      ) : scene.backdrop !== 'auto' ? (
+        // A surface was asked for, so it replaces the look's signature ground
+        // rather than sitting over it — see `Surface`.
+        <Surface ctx={ctx} />
       ) : (
         <look.Ground ctx={ctx} />
       )}

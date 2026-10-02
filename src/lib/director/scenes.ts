@@ -50,7 +50,7 @@ export const PlannedSceneSchema = z.object({
   startSec: z.number().nonnegative(),
   endSec: z.number().nonnegative(),
   kind: z.enum(SCENE_KINDS),
-  backdrop: z.enum(SCENE_BACKDROPS).default('gradient'),
+  backdrop: z.enum(SCENE_BACKDROPS).default('auto'),
   headline: z.string().default(''),
   items: z.array(z.string()).default([]),
   iconQueries: z.array(z.string()).default([]),
@@ -94,7 +94,18 @@ Rules that matter as much as the choice:
 4. **Never two scenes back to back.** Leave at least four seconds of speaker between them, or the video stops being a talking-head video.
 5. **items must match the kind.** journey and stack: the steps in order. compare: exactly two. orbit: the parts, three to five. big-number: one item, the label under the figure. kinetic-text: empty. transform: exactly two, the thing BEFORE and the thing AFTER, in that order — and each one is a plain noun phrase that would work typed into a stock photo search ("banana seedling", "banana tree"), not a clause.
 6. **iconQueries** are one concrete noun each, parallel to items — "rocket", "shield", "clock", "credit card". Leave an entry empty if nothing concrete fits; a wrong icon is worse than none. These are the fallback for when the illustrator cannot draw the scene, so name the most literal object in the sentence.
-7. **backdrop** sets the mood: gradient (default, calm), grid (technical, product), dots (light, friendly), rays (energy, a reveal), solid (when the content is busy and needs room).`;
+7. **backdrop** is the SURFACE the scene is printed on, not its colour. Light or dark comes from the look, which is already chosen — \`paper\` is cream in a light look and charcoal in a dark one — so pick the material and nothing else:
+   - auto (default) — the look's own ground. Right whenever nothing below is clearly better.
+   - paper — stock with a visible tooth. Something hand-made, considered, explained slowly.
+   - paper-grid — the same stock ruled into squares. A worked example: a plan, a measurement, a recipe, maths.
+   - grid — a clean technical grid with no paper under it. Engineering, product, data.
+   - dots — light and friendly.
+   - rays — energy, a reveal, a launch.
+   - gradient — calm.
+   - solid — when the content is busy and needs the room.`;
+
+/** The director's own brief, exported so a test can hold it to the schema. */
+export const SCENE_SYSTEM_PROMPT = SYSTEM;
 
 function briefFor(transcript: Transcript, plan: DirectorPlan, sourceSec: number, budget: number): string {
   // Sentences, not words: the model is choosing a PASSAGE, and giving it a
