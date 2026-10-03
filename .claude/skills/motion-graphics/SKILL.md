@@ -1675,6 +1675,50 @@ looking line of type.
     npx tsx scripts/caption-clip.ts word-fill --wide
     npx tsx scripts/caption-clip.ts --all
 
+## A label opens out of a rule
+
+`remotion/components/Pill.tsx`. The second of the two mechanics measured off
+the reference edit, and the one its labels all share: a 2px horizontal line
+draws at the width the label will be, grows into a pill over about three
+frames, and the text then fills into it word by word. Line to readable is
+roughly 0.7 seconds.
+
+**It is the HEIGHT that animates and nothing else**, because a rule is a pill
+two pixels tall. That keeps the element at its final width from frame one, so
+no text reflows, no layout pass runs, and the entrance is one interpolation on
+a box that was already composited — the same reasoning that makes the progress
+bar scale rather than grow its width.
+
+The alternative everybody reaches for first is a width wipe, and it is what
+the chapter card did: `clipPath: inset(0 N% 0 0)`, the lower-third reveal
+every editor has used since 2009. It costs exactly as little as the height
+open and reads as a template.
+
+**The type warms in, matching the captions.** It has to be the same mechanic
+or the video has two opinions about how words arrive. Nothing inside a pill
+ever moves sideways.
+
+**The accent became a hairline.** The card wore a 5px bar down its left edge;
+on a pill that reads as a slice taken out of it. The shape is the shape and
+the colour is a tint.
+
+### What is still a card, not a chip
+
+The reference keeps its section label on screen for the WHOLE chapter and
+takes it away during full-frame inserts. Ours still announces for 2.4s and
+leaves. Persisting it is not a one-line change, and the reason is the layer
+order: `Overlays` draws above `Scenes`, so a card that simply ran longer
+would sit on top of every animated scene in its section — which the
+reference never does. Doing it properly means the builder emitting the chip
+across the stretches where the speaker actually owns the frame, without
+re-running the entrance each time.
+
+    npx tsx scripts/overlay-clip.ts chapter-card --wide
+    npx tsx scripts/overlay-clip.ts --all
+
+Same gap as the captions had: in a still, a wipe and a pill that opens from a
+rule are the same rectangle with the same words in it.
+
 ## Verifying
 
 Render stills, do not reason about it. Every failure this layer has had was

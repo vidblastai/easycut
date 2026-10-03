@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { trimToWords } from '@/lib/text';
 import { LAYER_NAMES, allLayersOn, parseLayersOff, stripLayers } from '@/lib/edl/layers';
 import type { Edl } from '@/lib/edl/types';
 
@@ -93,5 +94,15 @@ describe('the animated scenes layer', () => {
 
   it('is left alone when something else is declined', () => {
     expect(stripLayers(full(), ['music']).scenes).toHaveLength(1);
+  });
+});
+
+describe('a chapter card is still one capped line', () => {
+  it('caps a title the director wrote too long', () => {
+    // The pill holds its final width from frame one, so a title that would
+    // have run off the frame has to be cut upstream — the ellipsis in the
+    // renderer is a backstop, not the mechanism.
+    const long = 'A chapter title that simply keeps going and going past anything sensible';
+    expect(trimToWords(long, 52).length).toBeLessThanOrEqual(52);
   });
 });

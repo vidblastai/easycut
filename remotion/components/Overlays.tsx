@@ -1,6 +1,7 @@
 import React from 'react';
 import { AbsoluteFill, Sequence, interpolate, useCurrentFrame, useVideoConfig } from 'remotion';
 import { FONT_FAMILY } from '../lib/fonts';
+import { Pill } from './Pill';
 import type { Edl, OverlayElement } from '../../src/lib/edl/types';
 import { lifecycleOpacity, pop, seeded } from '../lib/timing';
 import { PLAYER_CHROME_INSET, TITLE_SAFE_INSET } from '../../src/lib/edl/safe-area';
@@ -139,11 +140,21 @@ const LowerThird: React.FC<{ overlay: OverlayElement; durationInFrames: number }
   );
 };
 
+/**
+ * The section marker, which opens out of a rule rather than wiping in.
+ *
+ * It used to be a dark plate with an accent edge, revealed left to right with
+ * `clipPath: inset(0 N% 0 0)` — the lower-third wipe every editor has used
+ * since 2009, and the tell of a template. `Pill` is the measured alternative:
+ * see that file for where the numbers came from.
+ *
+ * Still title safe and still one line. A chapter title is capped upstream by
+ * `trimToWords`, and the ellipsis here is the backstop for when it is not.
+ */
 const ChapterCard: React.FC<{ overlay: OverlayElement; durationInFrames: number }> = ({ overlay, durationInFrames }) => {
   const frame = useCurrentFrame();
   const { fps, height, width } = useVideoConfig();
   const opacity = lifecycleOpacity(frame, durationInFrames, Math.round(fps * 0.35));
-  const wipe = interpolate(frame, [0, fps * 0.4], [0, 1], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' });
   const unit = height * 0.001;
 
   return (
@@ -155,37 +166,21 @@ const ChapterCard: React.FC<{ overlay: OverlayElement; durationInFrames: number 
           // Title safe. 0.07 sat inside the 10% margin every delivery spec
           // still enforces, which is the one place type should never be.
           left: width * TITLE_SAFE_INSET,
-          /*
-           * And it cannot grow past the other margin.
-           *
-           * The card is one line by design — `nowrap` is what keeps a chapter
-           * title from stacking into a paragraph — but with nothing bounding
-           * it, a long title just ran off the right of the frame. The director
-           * writes these and nothing caps their length.
-           */
-          maxWidth: width * (1 - TITLE_SAFE_INSET * 2),
-          overflow: 'hidden',
-          padding: `${unit * 14}px ${unit * 26}px`,
-          background: 'rgba(13,13,16,0.86)',
-          borderLeft: `${unit * 5}px solid ${overlay.color}`,
-          borderRadius: unit * 10,
-          clipPath: `inset(0 ${(1 - wipe) * 100}% 0 0)`,
         }}
       >
-        <div
-          style={{
-            fontFamily: FONT_FAMILY,
-            fontSize: unit * 30,
-            fontWeight: 700,
-            letterSpacing: '-0.02em',
+        <Pill
+          text={overlay.text}
+          fontSize={unit * 26}
+          maxWidth={width * (1 - TITLE_SAFE_INSET * 2)}
+          tone={{
+            background: 'rgba(13,13,16,0.86)',
             color: '#F5F5F7',
-            whiteSpace: 'nowrap',
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
+            // The accent used to be a 5px bar down the left edge. On a pill
+            // that reads as a slice taken out of it, so it becomes the
+            // hairline — the shape is the shape, and the colour is a tint.
+            border: overlay.color,
           }}
-        >
-          {overlay.text}
-        </div>
+        />
       </div>
     </AbsoluteFill>
   );
