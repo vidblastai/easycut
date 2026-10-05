@@ -486,6 +486,7 @@ async function stageTimeline(ctx: PipelineContext): Promise<void> {
     icons: [],
     scenes: [],
     overlays: [],
+    annotations: [],
     transitions: [],
     punchIns: [],
     reframe: null,

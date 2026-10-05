@@ -1719,6 +1719,62 @@ re-running the entrance each time.
 Same gap as the captions had: in a still, a wipe and a pill that opens from a
 rule are the same rectangle with the same words in it.
 
+## The layer that keeps the speaker
+
+`src/lib/edl/annotations.ts` and `remotion/components/Annotations.tsx`.
+
+Every other device here takes the frame away: a scene replaces it, an insert
+covers it, an icon card punctuates under the captions. Counted off the
+reference edit, that instinct is wrong by a wide margin — four full-screen
+scenes in 165 seconds, and the rest of the work done by small things standing
+in the empty third at head height while the speaker carries on talking.
+
+**The content is identical to a scene's; what differs is whether the viewer
+loses the face.** Somebody naming three things in one breath used to get an
+`orbit`: frame gone, three chips around a centre, frame back. The list is a
+thing he is SAYING, and watching him say it is the video. So it gets written
+down beside him instead, ticked line by ticked line.
+
+**It runs last and takes only what is left.** A sentence the director chose
+for a full-frame scene keeps it — that pass read the whole transcript and had
+a reason. This fills in the many more lists it passed over, which previously
+got nothing at all.
+
+**The lines accumulate.** By the fourth, all four are up and the viewer can
+read the whole list; that is the entire point, and a version showing one line
+at a time would be a caption with a tick on it. Every line is in its final
+position from frame one, so the third does not shove the first two upward when
+it lands — the same layout rule the icon rows follow.
+
+**Each line arrives on the word that names it**, looked up in the transcript
+rather than spread evenly across the sentence. A list is said unevenly, and
+lines arriving on a metronome while the voice does not is the thing that reads
+as automated — the same fault, in miniature, that the punch-ins had.
+
+**It needs the whole sentence clear, not just the start.** The block builds
+across the sentence and then holds, so an insert landing halfway through
+covers a list the viewer watched begin — worse than one that was never there.
+
+**A front stem belongs to the first line, not the title.** `listedThings`
+peels "it reads your" off "it reads your inbox, checks the calendar…", which
+is right for an orbit, where the chips are nouns and the stem frames them. On
+a checklist it leaves a first line reading "inbox" among verb phrases and puts
+a fragment in the pill. A TRAILING clause is a different thing and does belong
+up there, so the test is where the headline sat in the sentence it came from.
+
+**The tick is drawn, not typed.** A ✓ character is another typeface's idea of
+a tick at a size it was never designed for, sitting on the text baseline
+rather than the line's optical centre. It also draws itself on over four
+frames — the one thing in the block allowed to move, because a tick that is
+already complete reads as a bullet.
+
+**No plate behind the lines.** A text shadow is the only thing holding them
+off the footage: a plate would make the block a card, and a card beside the
+speaker is a scene that forgot to take the frame.
+
+    npx tsx scripts/annotation-clip.ts --wide
+    npx tsx scripts/annotation-clip.ts --wide --left
+
 ## Verifying
 
 Render stills, do not reason about it. Every failure this layer has had was

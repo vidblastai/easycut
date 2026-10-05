@@ -70,7 +70,7 @@ function tidy(text: string): string {
  * promoted. Getting this wrong is what made an orbit whose title was the word
  * "Captions".
  */
-function listedThings(text: string): { headline: string; items: string[] } | null {
+export function listedThings(text: string): { headline: string; items: string[] } | null {
   const body = text.replace(/[.!?]+$/, '');
   if (!body.includes(',')) return null;
 

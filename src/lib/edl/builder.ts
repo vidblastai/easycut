@@ -13,9 +13,11 @@ import { sfxDefaultGain, type SfxName } from '@/lib/assets/sfx';
 import { fallbackScene } from './scene-fallback';
 import { hasPlayerChrome } from './safe-area';
 import { punchMoments, type Busy } from './punch-script';
+import { outputWords, placeAnnotations } from './annotations';
 import { trimToWords } from '@/lib/text';
 import {
   ASPECT_DIMENSIONS,
+  hasAnnotationRoom,
   hasSideRoom,
   iconRowPlacement,
   ICON_ROW_BELOW_COUNT,
@@ -165,6 +167,28 @@ export function buildEdl(input: BuildEdlInput): Edl {
     }
   }
 
+  /* ----------------------------- annotations ------------------------------ */
+
+  /*
+   * Last of the visual layers, because it takes only what is left.
+   *
+   * A sentence the scene pass chose keeps its full-frame treatment: that pass
+   * read the whole transcript and had a reason. This fills in the lists it
+   * passed over — which previously got nothing, and which in a reference edit
+   * are most of what is on screen.
+   */
+  const annotations = placeAnnotations({
+    sentences: transcript.sentences
+      .map((s) => ({ ...s, startSec: mapper.toOutput(s.startSec), endSec: mapper.toOutput(s.endSec) }))
+      .filter((s): s is typeof s & { startSec: number; endSec: number } =>
+        s.startSec !== null && s.endSec !== null && s.endSec > s.startSec),
+    words: outputWords(transcript.words, (sec) => mapper.toOutput(sec)),
+    busy: [...broll, ...scenes, ...graphics.filter((g) => g.type === 'title-card')],
+    durationSec,
+    hookSec: 2.5,
+    hasRoom: hasAnnotationRoom(dimensions.width, dimensions.height),
+  });
+
   /* ------------------------------ punch-ins ------------------------------- */
 
   /*
@@ -241,6 +265,7 @@ export function buildEdl(input: BuildEdlInput): Edl {
     icons,
     scenes,
     overlays,
+    annotations,
     transitions,
     punchIns,
     reframe: input.reframe,

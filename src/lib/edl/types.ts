@@ -1311,6 +1311,88 @@ export function sceneIsDrawn(scene: AnimatedScene): boolean {
   return Boolean(scene.art && scene.art.parts.length);
 }
 
+/* ------------------------------------------------------------- annotations */
+
+/**
+ * The layer that keeps the speaker.
+ *
+ * ── The thing this product kept getting wrong ───────────────────────────
+ *
+ * An animated scene REPLACES the frame, and this renderer reached for one
+ * every time a sentence had a shape in it. Counted off a reference edit, that
+ * is backwards: four full-screen scenes in 165 seconds, and the rest of the
+ * work done by things standing in the empty third BESIDE the speaker while he
+ * carries on talking. A list of three things he is describing does not need
+ * the frame taken away from him — it needs the three things written down next
+ * to his head as he says them.
+ *
+ * So an annotation is a scene's content at an overlay's weight. It is on the
+ * live picture, it is anchored out of the subject's way, and the voice and
+ * the face keep going underneath.
+ *
+ * ── Why a track of its own ──────────────────────────────────────────────
+ *
+ * `overlays` is frame furniture — a progress bar, a chapter card, a watermark
+ * — placed by the style and the same on every video. These come out of the
+ * TRANSCRIPT, which makes them the icons' and scenes' kind of thing: they
+ * need the same keep-clear-of-inserts placement, the same per-item timing
+ * against the words, and the same editability on the timeline.
+ */
+export const ANNOTATION_KINDS = [
+  'checklist', // a titled pill, then ticked lines arriving one per breath
+  'stat',      // one figure with its label, pinned next to what it is about
+] as const;
+export type AnnotationKind = (typeof ANNOTATION_KINDS)[number];
+
+export const AnnotationItemSchema = z.object({
+  /**
+   * Seconds after the annotation starts, not an absolute time.
+   *
+   * Relative for the reason every other cue's items are: dragging the clip on
+   * the timeline has to keep its internal spacing, and with absolute times
+   * the second line would arrive before the first.
+   */
+  offsetSec: z.number().nonnegative().default(0),
+  text: z.string().default(''),
+});
+export type AnnotationItem = z.infer<typeof AnnotationItemSchema>;
+
+export const AnnotationSchema = z.object({
+  id: z.string(),
+  outStartSec: z.number().nonnegative(),
+  outEndSec: z.number().nonnegative(),
+  kind: z.enum(ANNOTATION_KINDS).catch('checklist').default('checklist'),
+  /**
+   * Which margin it stands in.
+   *
+   * Not a position: `x`/`y` are the position, and they are computed from the
+   * side by the builder. Carried separately for the same reason an icon row
+   * carries its own — somebody can move it, and a rule recomputed at paint
+   * time would put it straight back.
+   */
+  side: z.enum(['left', 'right']).default('right'),
+  x: z.number().default(0.74),
+  y: z.number().default(0.3),
+  /** The pill at the top. Empty means the lines stand alone. */
+  title: z.string().default(''),
+  items: z.array(AnnotationItemSchema).default([]),
+  /** Why this moment, in one line. Shown in the editor. */
+  reason: z.string().default(''),
+});
+export type Annotation = z.infer<typeof AnnotationSchema>;
+
+/**
+ * Whether the frame has a margin to stand one in.
+ *
+ * The same question the icon rows ask, and the same answer: a talking head is
+ * framed centrally whatever the aspect, so a widescreen picture has two empty
+ * columns beside them and a vertical one has none. An annotation in a 9:16
+ * frame would sit on the speaker's face.
+ */
+export function hasAnnotationRoom(width: number, height: number): boolean {
+  return hasSideRoom(width, height);
+}
+
 /* ---------------------------------------------------------------- overlays */
 
 export const OVERLAY_TYPES = ['lower-third', 'progress-bar', 'chapter-card', 'end-card', 'watermark', 'vignette', 'grain'] as const;
@@ -1539,6 +1621,7 @@ export const EdlSchema = z.object({
   icons: z.array(IconCueSchema).default([]),
   scenes: z.array(AnimatedSceneSchema).default([]),
   overlays: z.array(OverlayElementSchema).default([]),
+  annotations: z.array(AnnotationSchema).default([]),
   transitions: z.array(TransitionCueSchema).default([]),
   punchIns: z.array(PunchInSchema).default([]),
   reframe: ReframeTrackSchema.nullable().default(null),

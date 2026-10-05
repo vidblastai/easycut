@@ -7,6 +7,7 @@ import type { Edl } from '../src/lib/edl/types';
 import { BrollLayer } from './components/BrollLayer';
 import { Captions } from './components/Captions';
 import { Graphics } from './components/Graphics';
+import { Annotations } from './components/Annotations';
 import { IconCards } from './components/IconCards';
 import { Overlays } from './components/Overlays';
 import { Scenes } from './components/Scenes';
@@ -112,6 +113,10 @@ export const EasyCutVideo: React.FC<EasyCutVideoProps> = ({ edl, previewAudio = 
           where it lands, so for a few frames it passes through the caption
           band — and the words have to stay on top of it, not the other way
           round. */}
+      {/* Above the picture and below the captions: an annotation stands on
+          the live frame beside the speaker, so it has to clear the words the
+          same way the icon cards do. */}
+      <Annotations edl={edl} />
       <IconCards edl={edl} />
       <Captions edl={edl} positionY={plan.captionY} lowDetail={lowDetail} />
       <Transitions edl={edl} cheap={lowDetail} />
