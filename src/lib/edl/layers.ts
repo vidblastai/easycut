@@ -14,6 +14,7 @@ export const LAYER_NAMES = [
   'graphics',
   'icons',
   'scenes',
+  'annotations',
   'sfx',
   'punchIns',
   'transitions',
@@ -57,6 +58,16 @@ export function stripLayers(edl: Edl, off: readonly LayerName[]): Edl {
     graphics: gone.has('graphics') ? [] : edl.graphics,
     icons: gone.has('icons') ? [] : edl.icons,
     scenes: gone.has('scenes') ? [] : edl.scenes,
+    /*
+     * Its own switch rather than riding along with `scenes`.
+     *
+     * They are the same content at different weights — a list of three things
+     * drawn full-frame, or written down beside the speaker — and somebody who
+     * wants one is making a real choice about the other. Tying them together
+     * would mean declining full-screen inserts also silently removed the
+     * quietest layer in the video.
+     */
+    annotations: gone.has('annotations') ? [] : edl.annotations,
     sfx: gone.has('sfx') ? [] : edl.sfx,
     punchIns: gone.has('punchIns') ? [] : edl.punchIns,
     transitions: gone.has('transitions') ? [] : edl.transitions,

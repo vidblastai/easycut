@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { trimToWords } from '@/lib/text';
 import { LAYER_NAMES, allLayersOn, parseLayersOff, stripLayers } from '@/lib/edl/layers';
-import type { Edl } from '@/lib/edl/types';
+import { EdlSchema, type Edl } from '@/lib/edl/types';
+import { CLIP_TRACKS, applyOperations } from '@/lib/edl/operations';
+import { SAMPLE_EDL } from '../remotion/sample-edl';
 
 /** A document with something on every switchable track. */
 const full = () =>
@@ -104,5 +106,58 @@ describe('a chapter card is still one capped line', () => {
     // renderer is a backstop, not the mechanism.
     const long = 'A chapter title that simply keeps going and going past anything sensible';
     expect(trimToWords(long, 52).length).toBeLessThanOrEqual(52);
+  });
+});
+
+describe('the notes beside the speaker are a layer like any other', () => {
+  const edl = EdlSchema.parse({
+    ...SAMPLE_EDL,
+    annotations: [
+      {
+        id: 'note-0', outStartSec: 2, outEndSec: 7, kind: 'checklist', side: 'right',
+        x: 0.62, y: 0.24, title: 'What it does',
+        items: [{ offsetSec: 0, text: 'Reads your inbox' }],
+        reason: 'a list of 1',
+      },
+    ],
+  }) as Edl;
+
+  it('can be declined on its own, without taking the scenes with it', () => {
+    // The same content at two weights: somebody who does not want the frame
+    // taken away may still want the quietest layer in the video.
+    expect(stripLayers(edl, ['annotations']).annotations).toHaveLength(0);
+    expect(stripLayers(edl, ['annotations']).scenes).toEqual(edl.scenes);
+    expect(stripLayers(edl, ['scenes']).annotations).toHaveLength(1);
+  });
+
+  it('survives a layer refusal that is not about it', () => {
+    expect(stripLayers(edl, ['music', 'sfx']).annotations).toHaveLength(1);
+  });
+
+  it('can be moved, trimmed and deleted from the timeline', () => {
+    expect(CLIP_TRACKS).toContain('annotations');
+    // Inside the sample's ten seconds: a move past the end is clamped, which
+    // is correct and would make this assert the clamp rather than the move.
+    const moved = applyOperations(edl, [
+      { op: 'clip.move', track: 'annotations', id: 'note-0', outStartSec: 4 },
+    ]).edl;
+    expect(moved.annotations[0].outStartSec).toBeCloseTo(4, 1);
+    // The span travels with it: the lines keep their spacing because their
+    // offsets are relative to the clip.
+    expect(moved.annotations[0].outEndSec - moved.annotations[0].outStartSec).toBeCloseTo(5, 1);
+
+    const gone = applyOperations(edl, [{ op: 'clip.delete', track: 'annotations', id: 'note-0' }]).edl;
+    expect(gone.annotations).toHaveLength(0);
+  });
+
+  it('adds a note rather than an overlay when one is asked for', () => {
+    // The generic tail of `clip.add` makes a lower third, so a track without
+    // its own branch quietly gets one on the wrong list.
+    const added = applyOperations(edl, [
+      { op: 'clip.add', track: 'annotations', atSec: 0.2, durationSec: 1.5, value: 'Three things', id: 'note-1' },
+    ]).edl;
+    expect(added.annotations).toHaveLength(2);
+    expect(added.annotations[1].title).toBe('Three things');
+    expect(added.overlays.length).toBe(edl.overlays.length);
   });
 });

@@ -79,6 +79,7 @@ const LAYERS = [
   { key: 'scenes', label: 'Animated scenes', body: 'Where you explain something with a shape — steps, a before and after, a figure — the picture becomes a full-screen animation of it.' },
   { key: 'sfx', label: 'Sound effects', body: 'Whooshes on the cuts, pops on the graphics.' },
   { key: 'punchIns', label: 'Punch-ins', body: 'A second camera that pushes in on your point.' },
+  { key: 'annotations', label: 'Notes beside you', body: 'Lists you say out loud, ticked off next to your head while you keep talking.' },
   { key: 'music', label: 'Music', body: 'A bed that ducks under your voice and lifts between lines.' },
 ] as const;
 

@@ -1766,6 +1766,7 @@ function TweakPanel({
     { key: 'scenes', label: 'Animated scenes', on: edl.scenes.length > 0 },
     { key: 'sfx', label: 'Sound effects', on: edl.sfx.length > 0 },
     { key: 'punchIns', label: 'Punch-ins', on: edl.punchIns.length > 0 },
+    { key: 'annotations', label: 'Notes beside you', on: edl.annotations.length > 0 },
     { key: 'transitions', label: 'Transitions', on: edl.transitions.length > 0 },
     { key: 'music', label: 'Music', on: Boolean(edl.music) },
   ];

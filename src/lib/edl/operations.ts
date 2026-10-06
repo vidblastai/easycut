@@ -50,7 +50,7 @@ import {
  * two fields. A track that named its own times would have to reimplement all
  * three and would drift from them.
  */
-export const CLIP_TRACKS = ['broll', 'graphics', 'icons', 'overlays', 'punchIns', 'scenes', 'sfx', 'transitions'] as const;
+export const CLIP_TRACKS = ['annotations', 'broll', 'graphics', 'icons', 'overlays', 'punchIns', 'scenes', 'sfx', 'transitions'] as const;
 export type ClipTrack = (typeof CLIP_TRACKS)[number];
 
 export const EdlOperationSchema = z.discriminatedUnion('op', [
@@ -494,6 +494,29 @@ function applyOne(edl: Edl, op: EdlOperation): Edl {
           cards: [{ offsetSec: 0, word: op.value, query: op.value, label: '', markup: null, iconId: '' }],
         }] };
       }
+      if (op.track === 'annotations') {
+        /*
+         * An empty note, placed where the playhead is.
+         *
+         * Empty rather than seeded with a line, because the lines are the
+         * content and there is nothing to guess: `value` carries the pill's
+         * title if the caller had one, and the inspector fills the rest.
+         *
+         * Without this branch the fall-through below would have quietly
+         * added an OVERLAY to the annotations track — the generic tail is a
+         * lower third, and a track that reaches it gets one.
+         */
+        return { ...edl, annotations: [...edl.annotations, {
+          id, outStartSec: start, outEndSec: end,
+          kind: 'checklist' as const,
+          side: 'right' as const,
+          x: 0.62,
+          y: 0.24,
+          title: op.value,
+          items: [],
+          reason: 'added by hand',
+        }] };
+      }
       if (op.track === 'punchIns') {
         /*
          * `value` carries the move, the way it carries a B-roll query and a
@@ -555,6 +578,8 @@ function applyOne(edl: Edl, op: EdlOperation): Edl {
         'side',
         // Which way the camera moves in on a punch-in.
         'move',
+        // And the pill at the top of an annotation.
+        'title',
       ]);
       const patch = Object.fromEntries(Object.entries(op.patch).filter(([k]) => allowed.has(k)));
 
@@ -1245,6 +1270,7 @@ export function describeOperation(op: EdlOperation): string {
 
 function trackNoun(track: ClipTrack): string {
   switch (track) {
+    case 'annotations': return 'a note beside the speaker';
     case 'broll': return 'a B-roll insert';
     case 'graphics': return 'a graphic';
     case 'icons': return 'an icon card';
