@@ -1,4 +1,5 @@
 import { env } from '@/lib/config/env';
+import { languageBrief } from './prompt';
 import { GRAPHIC_ANIMATIONS, MOVING_GRAPHICS } from '@/lib/edl/types';
 import type { Transcript } from '@/lib/transcribe/types';
 import { DirectorGraphicSchema, type DirectorGraphic, type DirectorPlan } from './schema';
@@ -47,7 +48,7 @@ function briefFor(transcript: Transcript, plan: DirectorPlan, durationSec: numbe
     .map((g) => `${g.atSec.toFixed(1)}s ${g.type}`)
     .join(', ') || 'none';
 
-  return `Video length: ${durationSec.toFixed(1)}s.
+  return `Video length: ${durationSec.toFixed(1)}s.${languageBrief(transcript.language)}
 Graphics the edit already has (do not put one on top of these): ${taken}
 
 Types you may use:

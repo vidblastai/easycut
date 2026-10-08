@@ -1,4 +1,5 @@
-import { FILLER_LEXICON, normalizeWord } from '@/lib/transcribe/types';
+import { packFor } from '@/lib/lang';
+import { normalizeWord } from '@/lib/transcribe/types';
 import type { Transcript, TranscriptSentence, TranscriptWord } from '@/lib/transcribe/types';
 import { restatementEvidence } from './paraphrase';
 import type { Interval } from './silence';
@@ -63,11 +64,19 @@ export const CLEANUP_PRESETS: Record<'raw' | 'roughcut', CleanupOptions> = {
 };
 
 export function findCleanupTargets(transcript: Transcript, options: CleanupOptions): CleanupFinding[] {
+  /*
+   * The language comes off the transcript, not from a setting. The ASR heard
+   * the audio and we did not, and a German video edited with English filler
+   * words and English function words is edited by a detector that cannot
+   * read it — it would leave every "ähm" in and score every pair of
+   * sentences on the wrong words.
+   */
+  const language = transcript.language;
   const findings: CleanupFinding[] = [];
-  if (options.removeFillers) findings.push(...findFillers(transcript.words));
+  if (options.removeFillers) findings.push(...findFillers(transcript.words, language));
   if (options.removeStammers) findings.push(...findStammers(transcript.words));
   if (options.removeFalseStarts) findings.push(...findFalseStarts(transcript.sentences));
-  if (options.removeRetakes) findings.push(...findRetakes(transcript.sentences));
+  if (options.removeRetakes) findings.push(...findRetakes(transcript.sentences, language));
   return findings.sort((a, b) => a.startSec - b.startSec);
 }
 
@@ -85,13 +94,14 @@ export function applicableFindings(findings: CleanupFinding[], options: CleanupO
  * produces an audible click; "um" sitting in its own little pocket of silence
  * is pure noise.
  */
-function findFillers(words: TranscriptWord[]): CleanupFinding[] {
+function findFillers(words: TranscriptWord[], language: string): CleanupFinding[] {
   const out: CleanupFinding[] = [];
+  const { fillers } = packFor(language);
 
   for (let i = 0; i < words.length; i++) {
     const w = words[i];
     const normalized = normalizeWord(w.text);
-    const isFiller = w.isFiller || FILLER_LEXICON.has(normalized);
+    const isFiller = w.isFiller || fillers.has(normalized);
     if (!isFiller) continue;
 
     const gapBefore = i > 0 ? w.startSec - words[i - 1].endSec : Infinity;
@@ -205,8 +215,16 @@ function findFalseStarts(sentences: TranscriptSentence[]): CleanupFinding[] {
       continue;
     }
 
-    // …or the fragment is very short and trails off without finishing.
-    const trailsOff = curWords.length <= 4 && !/[.!?]$/.test(cur.text.trim());
+    /*
+     * …or the fragment is very short and trails off without finishing.
+     *
+     * Not when WE made the fragment, though: a long sentence broken at a
+     * clause ends without a terminator by construction, and reading that as
+     * an abandoned run-up would cut "In Berlin," off the front of a
+     * perfectly good sentence.
+     */
+    const trailsOff =
+      !cur.split && curWords.length <= 4 && !/[.!?]$/.test(cur.text.trim());
     if (trailsOff && next.startSec - cur.endSec < 1.2) {
       out.push({
         kind: 'false-start',
@@ -235,7 +253,11 @@ function findFalseStarts(sentences: TranscriptSentence[]): CleanupFinding[] {
  * `needsReader` and are not cut by anybody here — `applyRestatementReview`
  * folds in a second opinion, and without one they stay flagged and intact.
  */
-function findRetakes(sentences: TranscriptSentence[], lookahead = 4): CleanupFinding[] {
+function findRetakes(
+  sentences: TranscriptSentence[],
+  language: string,
+  lookahead = 4,
+): CleanupFinding[] {
   const out: CleanupFinding[] = [];
   const consumed = new Set<number>();
 
@@ -268,7 +290,7 @@ function findRetakes(sentences: TranscriptSentence[], lookahead = 4): CleanupFin
        * vetoes the opposite mistake, where a list of near-identical steps
        * looks like one line repeated.
        */
-      const evidence = restatementEvidence(a.text, b.text, gapSec);
+      const evidence = restatementEvidence(a.text, b.text, gapSec, language);
       if (evidence.verdict === 'different') continue;
       const similarity = evidence.score;
 

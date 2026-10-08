@@ -116,7 +116,9 @@ You make three choices. Everything else is inferred.
 
 - **Completely raw** — dead air, `um`s, false starts and the takes you redid all
   come out. Retake detection keeps the *last* attempt, because people retry
-  until they get it right.
+  until they get it right — and it reads MEANING, not matching words, so "so
+  the point is you have to start" and "what I'm saying is you just need to
+  begin" are caught as one line said twice.
 - **Already trimmed** — we treat your cut as intentional and only add layers.
 
 **2 · Short or long?** Not a resolution switch — a different edit grammar.
@@ -133,6 +135,25 @@ You make three choices. Everything else is inferred.
 **3 · Which look?** Clean, Punchy, Documentary, Explainer, Podcast or Vlog —
 each a different pacing profile, transition palette and sound design density.
 Switch after the edit and re-render for free.
+
+### English, German, French and Spanish
+
+Not a translation layer — the editor reads those four. The language is
+detected from the audio and nobody is asked; everything that reasons about
+what was *said* then reads that language's own tables: the fillers ("ähm",
+"euh", and the real words that do the same job — "also", "ben", "bueno"), the
+way a speaker announces a reworded line ("was ich eigentlich sagen will ist",
+"lo que quiero decir es"), the inflections that make two forms of a word one
+word, the enumeration that must not be mistaken for a repetition, and the
+idioms that earn a camera move.
+
+On-screen text — chapter titles, badges, the social caption — comes out in the
+speaker's language. Stock searches and image prompts stay in English, because
+that is what the libraries and the models are indexed in. The app's own
+interface is English.
+
+Verified on recorded speech in all four, not on invented transcripts:
+`npm run langs <audio>` prints what the editor heard and what it decided.
 
 ### Captions are their own decision
 

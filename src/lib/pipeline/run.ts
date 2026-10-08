@@ -21,6 +21,7 @@ import {
 } from '@/lib/media/ffmpeg';
 import { CostLedger, planDegradation } from '@/lib/pricing/cost';
 import { computeReframeTrack, retimeTrack } from '@/lib/reframe';
+import { detectLanguage, packFor } from '@/lib/lang';
 import { storage } from '@/lib/storage';
 import { formatForShape } from '@/lib/styles/detect';
 import { FORMAT_PRESETS, styleFor } from '@/lib/styles/presets';
@@ -214,6 +215,10 @@ async function stageTranscribe(ctx: PipelineContext): Promise<void> {
 
   const result = await transcribeAudio(ctx.asrAudioPath, ctx.media.durationSec, {
     diarize: false, // talking head: one speaker, and diarisation costs latency
+    // Absent, every provider is asked to detect the language rather than
+    // assume English. Naming the wrong model is the one failure that cannot
+    // be recovered from downstream.
+    languageHint: ctx.request.language ?? undefined,
   });
 
   ctx.transcript = result.transcript;
@@ -221,6 +226,37 @@ async function stageTranscribe(ctx: PipelineContext): Promise<void> {
 
   if (result.transcript.degraded || !result.transcript.words.length) {
     ctx.degraded.push(`captions (${whyNoTranscript(result.attempts)})`);
+    return;
+  }
+
+  /*
+   * Read the transcript back and check it is the language it says it is.
+   *
+   * Every detector downstream — fillers, retakes, the camera-move script —
+   * reads a table chosen by this one string, so a wrong label is a silently
+   * worse edit rather than an error. Counting function words in the text
+   * costs nothing and catches the two ways it goes wrong: a provider that
+   * returned no language at all and defaulted to English, and a hint from
+   * the upload that the speaker did not honour.
+   */
+  const read = detectLanguage(result.transcript.text);
+  const claimed = packFor(result.transcript.language);
+  if (read.confidence > 0.5 && read.code !== claimed.code) {
+    const heard = packFor(read.code);
+    ctx.transcript = { ...result.transcript, language: heard.code };
+    ctx.log.push({
+      stage: 'transcribe',
+      status: 'ok',
+      ms: 0,
+      message: `${result.transcript.provider} labelled this ${claimed.name}, but the words are ${heard.name} — edited as ${heard.name}`,
+    });
+  } else if (claimed.code !== 'en') {
+    ctx.log.push({
+      stage: 'transcribe',
+      status: 'ok',
+      ms: 0,
+      message: `${claimed.name} (${claimed.endonym}) — fillers, retakes and camera moves read with the ${claimed.name} rules`,
+    });
   }
 }
 

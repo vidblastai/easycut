@@ -171,9 +171,30 @@ export function buildCaptions(options: BuildCaptionsOptions): CaptionCue[] {
 
     const endsClause = /[,.!?;:]$/.test(word.text);
     const atWordLimit = bucket.length >= style.maxWordsPerCue;
+    /*
+     * And a limit on the LENGTH of the card, not only the word count.
+     *
+     * A cue of five words is a box about so wide — in English. German says
+     * "Geschwindigkeitsbegrenzung" where English says "speed limit", and
+     * five of those is twice the width the style was drawn for: the caption
+     * overflows the safe area or wraps onto a third line across the
+     * speaker's mouth. The same thing happens in English to a sentence full
+     * of long words, which is why this is a general rule and not a German
+     * one — `maxWordsPerCue` stays the headline number and this stops the
+     * worst case.
+     *
+     * Seven characters per word is the English average with its space. A
+     * language that runs longer simply breaks a word or two earlier and the
+     * box stays the size it was designed as.
+     */
+    const atCharLimit = bucketChars(bucket) >= style.maxWordsPerCue * CHARS_PER_WORD;
     // Break on a clause boundary as soon as the card has some substance, so
     // punctuation wins over the raw word count.
-    if (atWordLimit || (endsClause && bucket.length >= Math.max(2, style.maxWordsPerCue - 2))) {
+    if (
+      atWordLimit ||
+      atCharLimit ||
+      (endsClause && bucket.length >= Math.max(2, style.maxWordsPerCue - 2))
+    ) {
       flush();
     }
   }
@@ -181,6 +202,15 @@ export function buildCaptions(options: BuildCaptionsOptions): CaptionCue[] {
 
   // 3. Repair: no orphan single-word cards, and enforce a readable minimum.
   return repair(cues, options.outputDurationSec, style);
+}
+
+/** The English average word length, with the space after it. */
+const CHARS_PER_WORD = 7;
+
+function bucketChars(bucket: Array<{ text: string }>): number {
+  let total = 0;
+  for (const word of bucket) total += word.text.length + 1;
+  return total;
 }
 
 /**

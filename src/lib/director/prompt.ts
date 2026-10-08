@@ -1,3 +1,4 @@
+import { packFor } from '@/lib/lang';
 import type { Transcript } from '@/lib/transcribe/types';
 import type { FormatMode, StylePreset } from '@/lib/styles/presets';
 import { pacingFor } from '@/lib/styles/presets';
@@ -17,6 +18,35 @@ export interface DirectorBrief {
   targetDurationSec: number;
   /** Optional steer typed by the user ("keep it serious", "focus on the pricing bit"). */
   userNote?: string;
+}
+
+/**
+ * What language to write in, and — the part that is easy to get wrong — what
+ * NOT to write in it.
+ *
+ * Two different kinds of string come back from the director. One kind goes on
+ * screen: a chapter title, a badge, a checklist. Those have to be in the
+ * speaker's language or the video is bilingual for no reason. The other kind
+ * is a lookup key: a stock-library search, an icon name, a prompt to an image
+ * model. Those have to stay in English, because a search for "Wasserkocher"
+ * returns nothing from Pexels and an image model asked in French gives you
+ * its idea of French. Getting this backwards produces either English cards on
+ * a German video or no B-roll at all.
+ *
+ * English footage gets no block at all — it is the default and saying so
+ * costs tokens for nothing.
+ */
+export function languageBrief(language: string | undefined): string {
+  const pack = packFor(language);
+  if (pack.code === 'en') return '';
+
+  return `
+LANGUAGE: the speaker is talking ${pack.name} (${pack.endonym}). Write every word that ends up ON SCREEN in ${pack.name}, in the register the speaker is using: graphics "text" and "subtext", "items", chapter titles, the title card, the lower third, and the deliverable's title, social caption and hashtags.
+
+Four fields are NOT on screen and must stay in ENGLISH, because they are queries against English-language libraries and models, not words a viewer reads: "query" on B-roll inserts, "query" and "iconQuery" on icons and graphics, "imagePrompt", and "musicMood". A ${pack.name} search term returns an empty stock library and a video with no inserts.
+
+"intent", "note" and "reasoning" are notes to the team, so English is fine there. "word" on an icon card is copied from the transcript and is therefore already in ${pack.name}.
+`;
 }
 
 /**
@@ -117,7 +147,7 @@ The viewer chose to be here. Let ideas breathe. Mark chapter boundaries at genui
   return `${formatBrief}
 
 ${inputBrief}
-
+${languageBrief(transcript.language)}
 STYLE: ${style.name} — ${style.tagline}
 ${style.directorNotes}
 

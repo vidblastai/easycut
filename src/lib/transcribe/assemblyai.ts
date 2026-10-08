@@ -1,6 +1,7 @@
 import { readFile } from 'node:fs/promises';
 import { env } from '@/lib/config/env';
-import { deriveSentences, FILLER_LEXICON, normalizeWord } from './types';
+import { packFor } from '@/lib/lang';
+import { deriveSentences, normalizeWord } from './types';
 import type { Transcript, TranscribeOptions, TranscriptionProvider, TranscriptWord } from './types';
 
 /**
@@ -49,7 +50,9 @@ export class AssemblyAiProvider implements TranscriptionProvider {
         format_text: true,
         disfluencies: true,
         speaker_labels: options.diarize ?? false,
-        language_code: options.languageHint,
+        language_code: options.languageHint ? packFor(options.languageHint).asrCode : undefined,
+        // Nobody named a language: let it listen rather than assume English.
+        language_detection: options.languageHint ? undefined : true,
       }),
     });
     if (!created.ok) throw new Error(`AssemblyAI create ${created.status}`);
@@ -63,23 +66,25 @@ export class AssemblyAiProvider implements TranscriptionProvider {
       if (job.status === 'error') throw new Error(`AssemblyAI: ${job.error}`);
       if (job.status !== 'completed') continue;
 
+      const language = job.language_code ?? options.languageHint ?? 'en';
+      const fillers = packFor(language).fillers;
       const words: TranscriptWord[] = (job.words ?? []).map((w: any) => ({
         text: w.text,
         startSec: w.start / 1000,
         endSec: w.end / 1000,
         confidence: w.confidence ?? 1,
         speaker: typeof w.speaker === 'string' ? w.speaker.charCodeAt(0) - 65 : 0,
-        isFiller: FILLER_LEXICON.has(normalizeWord(w.text)),
+        isFiller: fillers.has(normalizeWord(w.text)),
         endsSentence: /[.!?]$/.test(w.text),
       }));
 
       return {
         provider: this.name,
-        language: job.language_code ?? 'en',
+        language,
         durationSec: (job.audio_duration ?? 0) || (words.at(-1)?.endSec ?? 0),
         text: job.text ?? '',
         words,
-        sentences: deriveSentences(words),
+        sentences: deriveSentences(words, language),
       };
     }
     throw new Error('AssemblyAI transcription timed out');

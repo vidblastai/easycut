@@ -44,6 +44,62 @@ person never said, which is the single worst failure this product could ship.
 
 **Degrades to:** a silence-only edit with no captions.
 
+### Which language
+
+Nobody is asked. Every provider is told to detect it — `detect_language=true`
+on Deepgram, Whisper's own detection on Groq, `language_detection` on
+AssemblyAI — and the answer comes back on the transcript, where every later
+stage reads it. `PipelineRequest.language` overrides it for the case where the
+detector is wrong (a bilingual speaker, thirty seconds of English intro).
+
+Measured against the live API on recorded German, French and Spanish clips:
+
+| | result |
+| --- | --- |
+| `detect_language=true` | the right language, and the same transcript as naming it outright |
+| `language=de\|fr\|es` | the same, when the language is known |
+| `language=multi` | noticeably worse: "einfach anfangen musst" came back as "ifmium en find must" |
+| `filler_words=true` | **English only.** The fillers are stripped in the other three whatever this is set to |
+| `smart_format=true` | writes "40 pour 100" for "quarante pour cent", and "40 por 100" for "por ciento" |
+
+The last two shape the design. Fillers being English-only would matter more if
+the other languages said "um" — they say **"also", "halt", "ben", "bueno"**,
+real words every ASR transcribes without being asked, which `lib/lang`
+recognises as fillers instead. And the smart-formatter's unit bug is repaired
+in one place (`lib/lang/repair.ts`), narrowly: only a figure followed by
+"pour 100" / "por 100", because "cent euros" is a real amount.
+
+The transcript is then read back and checked against its own label by counting
+function words. A provider that returned no language and defaulted to English
+is otherwise invisible — the edit does not fail, it just comes out worse — and
+the job log says which language the edit was made in whenever it is not
+English.
+
+### Sentences
+
+A sentence is the unit the whole editor reasons in: retakes are compared
+sentence to sentence, the camera-move script scores sentences, the scene
+director picks a passage of them. All of which assumed a sentence is about one
+thing — true while the footage was English, because the ASR ends an English
+sentence with a full stop. The same three sentences recorded in Spanish came
+back as **one 25-word "sentence" joined by commas**, holding four claims and a
+retake of one of them: the retake is invisible, because nothing compares a
+sentence to itself, and the camera move lands nine seconds before the figure
+that earned it.
+
+So `deriveSentences` breaks a sentence at its strongest internal clause
+boundary when it runs past 16 words or 5.5s, or past 12 words and 4.5s with a
+comma in it — a comma counts whether or not a pause came with it, measured on
+Spanish commas carrying gaps of 0.00s and 0.16s. The pieces are marked
+`split: true`, because a fragment that ends without a terminator reads as an
+abandoned run-up and a clause split must not manufacture those.
+
+One long sentence survives intact: **the list.** "It reads your inbox, checks
+the calendar, plans your day, and gives you the time back" is four clauses and
+one claim, and it is the exact sentence the checklist layer reads to put four
+items on screen. Three short comma-separated parts, or a coordinator before the
+last one, and it stays whole.
+
 ## 3. Silence
 
 Two signals, deliberately combined:
@@ -118,6 +174,53 @@ organised"), it is never cut unread, in either direction.
 
 `npm run retakes` runs the whole judgement over a suite of pairs with the
 answer an editor would give, and prints where it disagrees.
+
+### In German, French and Spanish
+
+None of the words above are in the detector. They are in `lib/lang`, one pack
+per language, holding the tables the four passes read: fillers, function words,
+restatement frames, sequencing openers, numbers, subordinators, negations, the
+near-synonyms a speaker swaps between takes, and a stemmer. `packFor()` resolves
+any spelling of a tag ("de", "de-DE", "german") and falls back to English for a
+language with no pack — a worse edit beats no edit.
+
+Each pack earns its keep differently:
+
+- **German** inflects with the umlaut (fahren → fährt) and builds its
+  participle with a prefix (wachsen → gewachsen), so the stemmer folds umlauts
+  and strips `ge-`. Without that, "wir sind um vierzig Prozent gewachsen" and
+  "wir wachsen um vierzig Prozent" are two different claims.
+- **French** joins words with an apostrophe. "qu'il" has to be split into two
+  tokens or it matches nothing anywhere else, so French is the one pack where
+  `elision` is true.
+- **Spanish** changes the stem as it conjugates — "tienes" is "tener",
+  "empieza" is "empezar" — and no suffix rule gets from one to the other, so
+  its irregulars table is the longest of the four.
+
+Verified end to end on recorded speech rather than invented transcripts:
+`npm run langs <audio>` transcribes a clip with the real provider chain and
+prints what the three meaning-dependent passes found. On the German clip it
+cuts the reworded retake ("Also der Punkt ist, dass du einfach anfangen musst"
+→ "Was ich eigentlich sagen will ist, du musst einfach mal beginnen" — 87% of
+the same words once the pack folds them), catches the "Dann dann" stammer,
+leaves the "Dann… Danach…" enumeration alone, and puts one camera move on the
+sentence with the figure in it.
+
+Two more things the packs carry, because they are idiom rather than grammar:
+the **camera-move signals** (a sentence that turns, an absolute claim — "Aber
+dann…", "der einzige Weg" — which an English regex finds nothing of in German
+footage, leaving the camera still for ten minutes), and **negation**, which is
+checked on its own because "you are not competing on features" and "you are
+competing on features" share every word but one.
+
+### What stays in English
+
+The director writes on-screen text in the speaker's language — chapter titles,
+badges, checklists, the social caption — and keeps four fields in English,
+because they are lookup keys rather than words a viewer reads: B-roll `query`,
+`iconQuery`, `imagePrompt` and `musicMood`. A stock search for "Wasserkocher"
+returns an empty library, and an image model asked in French gives you its idea
+of France. The app's own interface is English.
 
 In `roughcut` mode, false-start and retake detection are **off entirely** and the
 confidence floor rises to 0.85. The user already made those decisions;

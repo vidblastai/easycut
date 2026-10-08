@@ -2,7 +2,8 @@ import { createReadStream } from 'node:fs';
 import { stat } from 'node:fs/promises';
 import { basename } from 'node:path';
 import { env } from '@/lib/config/env';
-import { deriveSentences, FILLER_LEXICON, normalizeWord } from './types';
+import { packFor } from '@/lib/lang';
+import { deriveSentences, normalizeWord } from './types';
 import type { Transcript, TranscribeOptions, TranscriptionProvider, TranscriptWord } from './types';
 
 /**
@@ -59,23 +60,31 @@ export class GroqWhisperProvider implements TranscriptionProvider {
     }
 
     const json = (await response.json()) as any;
+    /*
+     * Whisper detects the language itself and names it in full ("german"),
+     * which `packFor` resolves the same as "de". It also normalises away
+     * fillers far more aggressively than Deepgram, so the filler pass has
+     * less to work with here whatever the language.
+     */
+    const language = json.language ?? options.languageHint ?? 'en';
+    const fillers = packFor(language).fillers;
     const words: TranscriptWord[] = (json.words ?? []).map((w: any) => ({
       text: w.word,
       startSec: w.start,
       endSec: w.end,
       confidence: 1,
       speaker: 0,
-      isFiller: FILLER_LEXICON.has(normalizeWord(w.word)),
+      isFiller: fillers.has(normalizeWord(w.word)),
       endsSentence: /[.!?]$/.test(w.word),
     }));
 
     return {
       provider: this.name,
-      language: json.language ?? options.languageHint ?? 'en',
+      language,
       durationSec: json.duration ?? (words.at(-1)?.endSec ?? 0),
       text: json.text ?? '',
       words,
-      sentences: deriveSentences(words),
+      sentences: deriveSentences(words, language),
     };
   }
 }

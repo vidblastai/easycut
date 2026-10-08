@@ -28,7 +28,8 @@
     "dev:web": "next dev",
     "bench:incremental": "tsx scripts/bench-incremental.ts",
     "caption-thumbs": "tsx scripts/caption-thumbs.ts",
-    "retakes": "tsx scripts/retake-check.ts"
+    "retakes": "tsx scripts/retake-check.ts",
+    "langs": "tsx scripts/lang-check.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.125.0",

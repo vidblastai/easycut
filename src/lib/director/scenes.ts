@@ -1,4 +1,5 @@
 import { env } from '@/lib/config/env';
+import { languageBrief } from './prompt';
 import { PHOTO_GRID_MAX, PHOTO_ROW_MAX, SCENE_BACKDROPS, SCENE_KINDS } from '@/lib/edl/types';
 import type { Transcript } from '@/lib/transcribe/types';
 import { z } from 'zod';
@@ -127,7 +128,7 @@ function briefFor(transcript: Transcript, plan: DirectorPlan, sourceSec: number,
 
   const covered = plan.broll.map((b) => `${b.atSec.toFixed(1)}s`).join(', ') || 'none';
 
-  return `Transcript covers ${sourceSec.toFixed(1)}s of footage. At most ${budget} scene${budget === 1 ? '' : 's'}.
+  return `Transcript covers ${sourceSec.toFixed(1)}s of footage. At most ${budget} scene${budget === 1 ? '' : 's'}.${languageBrief(transcript.language)}
 Moments already covered by B-roll (do not put a scene on these): ${covered}
 
 If you listed more candidates than the budget allows, fill the budget — returning one scene when you are allowed two, having found three, is leaving the video worse than it could be. Spread them out; they cannot sit next to each other.

@@ -63,7 +63,7 @@ export class FixtureTranscriptionProvider implements TranscriptionProvider {
       durationSec: words.length ? words[words.length - 1].endSec : 0,
       text: words.map((w) => w.text).join(' '),
       words,
-      sentences: deriveSentences(words),
+      sentences: deriveSentences(words, raw.language),
       degraded: false,
     };
   }

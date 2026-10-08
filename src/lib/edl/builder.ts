@@ -895,6 +895,7 @@ function placePunchIns(
 
   const moments = punchMoments({
     sentences,
+    language: transcript.language,
     busy,
     hints: plan.punchIns.map((cue) => mapper.toOutputClamped(cue.atSec)),
     palette: moves,

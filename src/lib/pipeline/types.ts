@@ -82,6 +82,16 @@ export interface PipelineRequest {
   /** The treatment every insert wears. Null takes the edit style's. */
   brollOverlay?: string | null;
   inputMode: 'raw' | 'roughcut';
+  /**
+   * The language the speaker is speaking, as a tag ("de", "fr-CA").
+   *
+   * Absent means detect it, which is what the upload does by default and is
+   * as accurate as naming it — measured on German, French and Spanish
+   * against Deepgram's own detector. It is here for the case where the
+   * detector is wrong: a bilingual speaker, a heavy accent, thirty seconds
+   * of English intro on a French video.
+   */
+  language?: string | null;
   userNote?: string;
   /**
    * Layers the person declined at upload.

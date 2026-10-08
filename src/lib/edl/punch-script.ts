@@ -1,3 +1,4 @@
+import { packFor, type LanguagePack } from '@/lib/lang';
 import type { TranscriptSentence } from '@/lib/transcribe/types';
 import { PUNCH_MOVES, type PunchMove } from './types';
 
@@ -88,8 +89,6 @@ const ENERGY: Record<PunchMove, number> = {
  * reversal — and only the reversal is worth a camera move. The longer phrases
  * are allowed anywhere: nobody says "here's the thing" in passing.
  */
-const PIVOT_OPENS = /^(?:and\s+|so\s+|but\s+|now\s+)?(?:but|however|except|instead|actually|still|yet)\b/i;
-const PIVOT_ANYWHERE = /\b(?:here'?s the (?:thing|problem|catch)|the (?:truth|problem|point|catch|reality) is|that'?s (?:why|exactly why)|which is why|turns out|the mistake)\b/i;
 
 /*
  * An absolute claim.
@@ -100,16 +99,7 @@ const PIVOT_ANYWHERE = /\b(?:here'?s the (?:thing|problem|catch)|the (?:truth|pr
  * the sample script put a bounce on "I shoot everything in the same corner",
  * which is a sentence about a room.
  */
-const SUPERLATIVE = /\b(?:never|always|nobody|no one|everyone|everybody|literally|the only|the best|the worst|the biggest|the fastest|the hardest|the single|most important)\b/i;
 
-/*
- * A figure the sentence is built on.
- *
- * Digits, or the scale words that make a spoken number large. A bare spoken
- * "one" or "two" is not a figure — it is a count, and usually a pronoun —
- * which is the same line the big-number scene draws, for the same reason.
- */
-const FIGURE = /(?:\d[\d.,]*\s*(?:%|x\b|k\b|m\b)?|\bper ?cent\b|\b(?:twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety|hundred|thousand|million|billion|dozen)\b)/i;
 
 /** A window on the timeline that already has something in it. */
 export interface Busy {
@@ -131,6 +121,13 @@ export interface PunchMoment {
 export interface PunchScriptOptions {
   /** Sentences already mapped into OUTPUT seconds. */
   sentences: TranscriptSentence[];
+  /**
+   * What the speaker is speaking. Three of the four signals are idioms
+   * rather than grammar, so a German video read with the English patterns
+   * finds only its digits and its question marks — the camera stops moving
+   * for the right reasons and starts drifting for want of anything else.
+   */
+  language?: string;
   /** B-roll, scenes, graphics — anything that takes the frame off the speaker. */
   busy: Busy[];
   /** Output seconds the director asked for a punch, as hints. */
@@ -153,6 +150,7 @@ export interface PunchScriptOptions {
  */
 export function punchMoments(options: PunchScriptOptions): PunchMoment[] {
   const { sentences, busy, hints, palette, cadenceSec, durationSec, hookSec } = options;
+  const pack = packFor(options.language);
   const moves = palette.filter((m) => PUNCH_MOVES.includes(m));
   const cadence = (cadenceSec[0] + cadenceSec[1]) / 2;
 
@@ -187,7 +185,7 @@ export function punchMoments(options: PunchScriptOptions): PunchMoment[] {
     }
     if (s.endSec - s.startSec < 1.2) continue;
 
-    const signal = signalFor(s.text, s.startSec - lastEventEnd, cadence);
+    const signal = signalFor(s.text, s.startSec - lastEventEnd, cadence, pack);
     if (!signal) continue;
 
     const { weight, energy } = SIGNALS[signal];
@@ -278,8 +276,13 @@ export function punchMoments(options: PunchScriptOptions): PunchMoment[] {
 }
 
 /** The strongest signal a sentence carries, if any. */
-function signalFor(text: string, sinceEvent: number, cadence: number): PunchSignal | null {
-  if (FIGURE.test(text)) return 'figure';
+function signalFor(
+  text: string,
+  sinceEvent: number,
+  cadence: number,
+  pack: LanguagePack,
+): PunchSignal | null {
+  if (pack.punch.figure.test(text)) return 'figure';
   /*
    * The turn outranks the claim, and most turns contain one.
    *
@@ -288,8 +291,8 @@ function signalFor(text: string, sinceEvent: number, cadence: number): PunchSign
    * out as an absolute claim, which asks for a harder move than a sentence
    * whose job is to change direction wants.
    */
-  if (PIVOT_OPENS.test(text.trim()) || PIVOT_ANYWHERE.test(text)) return 'pivot';
-  if (SUPERLATIVE.test(text)) return 'superlative';
+  if (pack.punch.pivotOpens.test(text.trim()) || pack.punch.pivotAnywhere.test(text)) return 'pivot';
+  if (pack.punch.superlative.test(text)) return 'superlative';
   if (text.trim().endsWith('?')) return 'question';
   // Twice the cadence with an unchanged frame is the point at which a locked
   // shot starts to read as a still. Below that, nothing in the script asked

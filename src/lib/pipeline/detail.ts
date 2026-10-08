@@ -1,3 +1,4 @@
+import { packFor } from '@/lib/lang';
 import type { PipelineContext, Stage } from './types';
 
 /**
@@ -35,7 +36,12 @@ export function stageDetail(stage: Stage, c: PipelineContext): string {
       const t = c.transcript;
       if (!t) return '';
       if (t.degraded) return 'no provider — edited without a transcript';
-      return `${t.words.length} words · ${t.provider}`;
+      // The language earns a place on this line only when it is not the
+      // default: it decides how every later stage reads the words, so when
+      // the answer is surprising this is where somebody will look.
+      const pack = packFor(t.language);
+      const tongue = pack.code === 'en' ? '' : ` · ${pack.endonym}`;
+      return `${t.words.length} words · ${t.provider}${tongue}`;
     }
 
     case 'silence': {
