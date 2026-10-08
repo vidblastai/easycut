@@ -266,6 +266,7 @@ export function buildEdl(input: BuildEdlInput): Edl {
     scenes,
     overlays,
     annotations,
+    panel: [],
     transitions,
     punchIns,
     reframe: input.reframe,

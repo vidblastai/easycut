@@ -61,6 +61,16 @@ export interface LayoutPlan {
    * style card needs to know because it draws the same thing.
    */
   stack: 'beside' | 'over';
+  /**
+   * The strip the explainer panel owns, above the speaker.
+   *
+   * Null everywhere else, and that is the point: this is not B-roll in a
+   * region. B-roll is footage that arrives and leaves, and the pipeline has
+   * to keep the slot full or the half goes black. The panel is DRAWN, it is
+   * never empty, and what it draws changes every couple of seconds while the
+   * speaker below it keeps talking.
+   */
+  panel: Region | null;
   /** A circular speaker box, for the webcam-bubble layouts. */
   speakerShape: 'rect' | 'circle';
   /**
@@ -224,6 +234,7 @@ const PLANS: Record<Layout, LayoutPlan> = {
     broll: null,
     alwaysOn: false,
     stack: 'beside',
+    panel: null,
     speakerShape: 'rect',
     frameRadius: 0,
     headline: false,
@@ -249,6 +260,7 @@ const PLANS: Record<Layout, LayoutPlan> = {
     broll: null,
     alwaysOn: false,
     stack: 'over',
+    panel: null,
     speakerShape: 'rect',
     frameRadius: 0,
     headline: false,
@@ -274,6 +286,7 @@ const PLANS: Record<Layout, LayoutPlan> = {
     broll: null,
     alwaysOn: true,
     stack: 'over',
+    panel: null,
     speakerShape: 'circle',
     frameRadius: 0,
     headline: false,
@@ -296,6 +309,7 @@ const PLANS: Record<Layout, LayoutPlan> = {
     broll: null,
     alwaysOn: true,
     stack: 'over',
+    panel: null,
     speakerShape: 'rect',
     frameRadius: 0,
     headline: false,
@@ -320,6 +334,7 @@ const PLANS: Record<Layout, LayoutPlan> = {
     broll: cinemaBox(1920, 1080),
     alwaysOn: false,
     stack: 'beside',
+    panel: null,
     speakerShape: 'rect',
     frameRadius: 0,
     headline: false,
@@ -345,6 +360,7 @@ const PLANS: Record<Layout, LayoutPlan> = {
     broll: headlineFrame(),
     alwaysOn: false,
     stack: 'beside',
+    panel: null,
     speakerShape: 'rect',
     frameRadius: 3.2,
     headline: true,
@@ -359,6 +375,7 @@ const PLANS: Record<Layout, LayoutPlan> = {
     broll: { x: 0, y: 0.54, w: 1, h: 0.46 },
     alwaysOn: true,
     stack: 'beside',
+    panel: null,
     speakerShape: 'rect',
     frameRadius: 0,
     headline: false,
@@ -366,12 +383,39 @@ const PLANS: Record<Layout, LayoutPlan> = {
     // it into the picture below. `positionY` is the TOP of the caption.
     captionY: 0.485,
   },
+  /*
+   * The explainer split, measured off two reference edits.
+   *
+   * The seam is at 0.4248 of the height in both — 435px of 1024 — with a made
+   * picture above and the speaker below, and it never moves for the whole
+   * video except for one full-frame stretch early on. The captions sit just
+   * under the seam, one word at a time, which is why the band here is so much
+   * higher than any other layout's: on this shape the top of the speaker's
+   * half is the one place type can go that covers neither the panel nor the
+   * face.
+   */
+  explainer: {
+    speaker: { x: 0, y: 0.425, w: 1, h: 0.575 },
+    speakerWithBroll: null,
+    // An insert replaces the SPEAKER, not the panel — the panel is the thing
+    // explaining, and covering it with stock footage would be covering the
+    // explanation with an illustration of it.
+    broll: { x: 0, y: 0.425, w: 1, h: 0.575 },
+    alwaysOn: false,
+    panel: { x: 0, y: 0, w: 1, h: 0.425 },
+    stack: 'beside',
+    speakerShape: 'rect',
+    frameRadius: 0,
+    headline: false,
+    captionY: 0.447,
+  },
   side: {
     speaker: { x: 0, y: 0, w: 0.5, h: 1 },
     speakerWithBroll: null,
     broll: { x: 0.5, y: 0, w: 0.5, h: 1 },
     alwaysOn: true,
     stack: 'beside',
+    panel: null,
     speakerShape: 'rect',
     frameRadius: 0,
     headline: false,

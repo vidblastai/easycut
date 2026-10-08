@@ -44,7 +44,7 @@ export const ASPECT_DIMENSIONS: Record<Aspect, { width: number; height: number }
  * advertises a split screen and renders a full frame is a lie, and the only way
  * to make that impossible is to have one source of truth.
  */
-export const LAYOUTS = ['full', 'split', 'side', 'reaction', 'bubble', 'headline', 'screencast', 'cinema'] as const;
+export const LAYOUTS = ['full', 'split', 'side', 'reaction', 'bubble', 'headline', 'screencast', 'cinema', 'explainer'] as const;
 export type Layout = (typeof LAYOUTS)[number];
 
 export const FormatSchema = z.object({
@@ -1596,6 +1596,79 @@ export type Deliverable = z.infer<typeof DeliverableSchema>;
 
 /* ------------------------------------------------------------------- root */
 
+/**
+ * What the panel can draw.
+ *
+ * Counted off two reference edits frame by frame — the vocabulary is not a
+ * guess, it is the list of things that actually appeared in 87 seconds of
+ * finished video. Every one of them is a mock of a REAL interface or a real
+ * measurement, which is the whole trick of the format: the viewer believes
+ * the claim because they are looking at the thing it is about.
+ */
+export const PANEL_KINDS = [
+  /** A hub icon with app icons around it, connectors drawing in, ticks landing. */
+  'icon-hub',
+  /** A figure running up, a label under it, and a grid of cells filling behind. */
+  'counter',
+  /** A card of two or three stat columns, each counting from zero. */
+  'stat-card',
+  /** Ranked rows with bars and multiplier chips; the winner fills with accent. */
+  'rank-list',
+  /** A compose window that writes itself a line at a time. */
+  'chat-card',
+  /** A list that grows — comments, files, takes — with a count above it. */
+  'list-panel',
+  /** One generated picture, held still, in the house's 3D clay style. */
+  'hero-image',
+  /** Two things and a switch between them that flips on. */
+  'toggle-pair',
+] as const;
+export type PanelKind = (typeof PANEL_KINDS)[number];
+
+/**
+ * One scene in the panel above the speaker.
+ *
+ * It is NOT a scene in the `AnimatedScene` sense: a scene takes the frame away
+ * and this never does. The speaker keeps talking underneath for the whole
+ * video, and the panel changes above them every two seconds or so, which is
+ * what makes the format watchable at 40 seconds without a single cut away
+ * from the face.
+ */
+export const PanelSceneSchema = z.object({
+  id: z.string(),
+  outStartSec: z.number().nonnegative(),
+  outEndSec: z.number().nonnegative(),
+  kind: z.enum(PANEL_KINDS).catch('list-panel').default('list-panel'),
+  /**
+   * The two-part label over the panel: ["DIE ZAHLEN", "AUS DEINEN REELS"].
+   *
+   * Both halves are needed. One alone reads as a title; the pair reads as a
+   * caption on an exhibit, which is the voice the whole format is in.
+   */
+  eyebrow: z.tuple([z.string(), z.string()]).default(['', '']),
+  /** A dark pill under the body, arriving a beat after it. '' = none. */
+  chip: z.string().default(''),
+  /** Rows, labels, lines — what the kind lists. */
+  items: z.array(z.string()).default([]),
+  /** The figure beside each item, where the kind has one. */
+  values: z.array(z.string()).default([]),
+  /** The big number for `counter`, and the one `stat-card` ends on. */
+  figure: z.string().default(''),
+  label: z.string().default(''),
+  /** Iconify ids, resolved to markup by the asset stage. */
+  icons: z.array(z.string()).default([]),
+  iconSvgs: z.array(z.string()).default([]),
+  /** A generated picture, for `hero-image`. */
+  imageUrl: z.string().default(''),
+  /** What to draw, if nothing has been drawn yet. */
+  imagePrompt: z.string().default(''),
+  /** Which row wins, for `rank-list`. -1 = none. */
+  winner: z.number().int().default(-1),
+  /** Why this moment, in one line. Shown in the editor. */
+  reason: z.string().default(''),
+});
+export type PanelScene = z.infer<typeof PanelSceneSchema>;
+
 export const EdlSchema = z.object({
   version: z.literal('1.0'),
   projectId: z.string(),
@@ -1622,6 +1695,8 @@ export const EdlSchema = z.object({
   scenes: z.array(AnimatedSceneSchema).default([]),
   overlays: z.array(OverlayElementSchema).default([]),
   annotations: z.array(AnnotationSchema).default([]),
+  /** The explainer layout's top half. Empty everywhere else. */
+  panel: z.array(PanelSceneSchema).default([]),
   transitions: z.array(TransitionCueSchema).default([]),
   punchIns: z.array(PunchInSchema).default([]),
   reframe: ReframeTrackSchema.nullable().default(null),

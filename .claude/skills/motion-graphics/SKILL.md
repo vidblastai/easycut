@@ -1801,3 +1801,98 @@ once a run that rendered nothing at all and left yesterday's PNGs in place.
 The specific trap: `src/` modules imported by the Remotion bundle must use
 RELATIVE imports — Remotion's webpack config does not carry the `@/` alias,
 and one `@/` import in a shared file fails the whole composition silently.
+
+## The explainer panel
+
+Two reference edits the user supplied — German AI-news TikToks, 43s and 44s,
+576×1024, **2620 frames read one at a time**. Both are the same machine, and
+it is a machine this renderer had no part for.
+
+| | |
+|---|---|
+| seam | **0.4248 of the height** in both, 435px of 1024, and it never moves |
+| above it | a made picture: mock interfaces, counters, icon graphs |
+| below it | the speaker, who never leaves |
+| full-frame | **one stretch only**, 2.5–5.6s and 2.7–7.8s — 7% and 12% of the runtime |
+| panel scenes | 20 and 25 — **one every 1.3 to 2.5 seconds** |
+| speaker jump cuts | 6 in each |
+| captions | **one word**, swapping every 0.35–0.43s |
+
+**The format works because the viewer is looking at the product.** Every
+exhibit is a mock of a real interface or a real measurement — an insights
+card counting to 19.718, a file list, a comment thread, a take strip whose
+duration counts DOWN as the AI trims it. A drawn icon of a chart says
+"statistics"; a card that counts up while the voice says the number says the
+thing happened. That is the entire difference between this and every other
+device in this file.
+
+**Every scene carries a two-part eyebrow** in small letterspaced caps —
+"DIE ZAHLEN · AUS DEINEN REELS", "DER SCHNITT · UND DER UPLOAD" — and most
+carry a dark chip underneath that arrives *after* the body has assembled, so
+it reads as a verdict on what you just watched. Scenes change on a
+**blur-and-fade**, never a cut: the panel is a surface the viewer is reading,
+and a surface that cuts reads as a different video rather than the next
+exhibit.
+
+### What is drawn
+
+`remotion/components/Panel.tsx`, eight kinds, chosen because they are what
+actually appeared in 87 seconds of finished video: `icon-hub` (a hub, real
+brand icons, a connector drawn to each in turn, a green tick landing),
+`counter` (a figure running up with a grid of cells filling behind it),
+`stat-card`, `rank-list` (rows with bars, one filling with the accent and
+winning, late), `chat-card` (a compose window writing itself), `list-panel`,
+`toggle-pair`, `hero-image`.
+
+The hero is the only one that is not an interface: a **3D clay render on a
+pale ground**, generated, filling the strip. The references use it for the
+things with no UI — a brain, an MRI scanner, a crowd of 700 figures growing
+as a counter rises.
+
+### Two bugs worth keeping written down
+
+**A CSS percentage on `font-size` is a percentage of the parent's font size,
+not of the box.** Written as percentages the whole panel rendered at about a
+tenth scale — every number in the file wrong in the same invisible way, and
+the render perfectly successful. Sizes are pixels off `u`, a hundredth of the
+panel's height.
+
+**A flex item with `width: 100%` shrinks to its content.** The cards were in
+a centred row, so a card with two words in it rendered a third of the panel
+wide. A column with `align-items: stretch` is what makes `100%` mean 100%.
+
+### What the model writes, and what it must not
+
+`src/lib/director/panel.ts`. This is the one genuinely creative pass in the
+product — no rule gets from "er holt sich alle Zahlen von den Reels" to a
+dashboard card with the eyebrow "DIE ZAHLEN · AUS DEINEN REELS" — so unlike
+the punch-ins and the icon rows it is a model and not bookkeeping.
+
+Four things it needed:
+
+- **The figures handed to it, not asked for.** Told in the system prompt that
+  a spoken number is the format's loudest moment, it wrote 23 scenes over a
+  transcript containing "1500 weitere Apps" and not one counter. Finding
+  numbers is bookkeeping with an exact answer, so `figuresIn` does it and the
+  brief lists the moments that are already spoken for. One line, and the
+  counter landed on the right word.
+- **Tolerance for the shape it actually returns.** `strict: true` on a
+  json_schema is honoured by the Gemini models through WaveSpeed and ignored
+  by Opus: asked for `startSec`/`eyebrowA`/`eyebrowB` it returned `start`,
+  `end` and a two-item `eyebrow` — a better shape than the one requested, and
+  it parsed to nothing. Same call, next run, the JSON came back in a ```json
+  fence. Both are read now.
+- **Demotion, not failure.** A hub with one icon still renders: one tile in an
+  empty panel with no lines going anywhere. `sanitisePanel` demotes a hub
+  without icons, a toggle without two sides and a hero without a prompt.
+- **No invented numbers.** The references show their own analytics, so their
+  figures are true. A product that generates "19.718 views" over somebody
+  else's claim has put a fabricated statistic on screen in their voice. Every
+  number on the panel comes from the transcript; a passage with no number gets
+  an interface without one.
+
+    npx tsx scripts/explainer-demo.ts <speaker.mp4> <transcript.json> [out.mp4]
+
+It writes the panel, draws the heroes, fetches the brand icons, cuts the
+speech into one-word captions and renders — through the real EDL schema and
+the real composition, so what comes out is what the pipeline would make.

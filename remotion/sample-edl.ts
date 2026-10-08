@@ -94,6 +94,7 @@ export const SAMPLE_EDL: Edl = {
     },
   ],
   annotations: [],
+  panel: [],
   overlays: [
     { id: 'overlay-progress', type: 'progress-bar', outStartSec: 0, outEndSec: 10, text: '', subtext: '', color: '#9B7BFF', opacity: 0.9 },
   ],

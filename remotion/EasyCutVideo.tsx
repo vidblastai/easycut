@@ -10,6 +10,7 @@ import { Graphics } from './components/Graphics';
 import { Annotations } from './components/Annotations';
 import { IconCards } from './components/IconCards';
 import { Overlays } from './components/Overlays';
+import { Panel } from './components/Panel';
 import { Scenes } from './components/Scenes';
 import { Transitions } from './components/Transitions';
 import { Headline } from './components/Headline';
@@ -106,6 +107,11 @@ export const EasyCutVideo: React.FC<EasyCutVideoProps> = ({ edl, previewAudio = 
           animation from the six overlay graphics below. Still under the
           captions: the words stay on screen over a scene, which is most of why
           a faceless edit is watchable with the sound off. */}
+      {/* The explainer panel owns a fixed strip at the top and never gives it
+          back — so it sits ABOVE the footage (which is sized to the layout's
+          speaker region and would otherwise show through at the seam) and
+          BELOW the scenes, which still take the whole frame when one plays. */}
+      <Panel edl={edl} />
       <Scenes edl={edl} />
       {plan.headline ? <Headline edl={edl} /> : null}
       <Graphics edl={edl} />
