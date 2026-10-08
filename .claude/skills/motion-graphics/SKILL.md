@@ -1894,5 +1894,43 @@ Four things it needed:
     npx tsx scripts/explainer-demo.ts <speaker.mp4> <transcript.json> [out.mp4]
 
 It writes the panel, draws the heroes, fetches the brand icons, cuts the
-speech into one-word captions and renders — through the real EDL schema and
-the real composition, so what comes out is what the pipeline would make.
+speech into one-word captions and renders — through the real EDL schema, the
+real `dressPanel` and the real composition, so what comes out is what the
+pipeline would make. It had its own icon fetching for a while, which meant
+the thing being demonstrated and the thing that ships were two
+implementations of one idea, and the demo is the only place anybody looks.
+
+### Does it transfer
+
+The question worth asking about anything built from two reference videos.
+Run against the SECOND reference — a different German script, about Meta's
+brain model rather than social scheduling — it wrote 19 scenes across 7
+kinds, eyebrows tracking the new subject ("DAS MODELL · OPEN SOURCE", "DIE
+DATEN · AUS GEHIRNSCANS"). Run against an English transcript about startup
+pricing: 38 scenes, 5 kinds, "THE PRICE TAG · ON THE SHELF", "CHURN · BEFORE
+AND AFTER".
+
+Three rules came out of those two runs, all of them deterministic and all of
+them things the model got wrong in a way that still rendered:
+
+- **Never the same exhibit twice running.** Seventeen of the English run's
+  thirty-eight scenes were `list-panel`, which is a slideshow of one card
+  rather than a panel. Neither reference repeats a kind back to back in 45
+  scenes. `sanitisePanel` rotates to the next kind the scene's own data can
+  actually render, so the swap can never produce an exhibit with nothing in
+  it.
+- **A counter needs a QUANTITY, not a number.** "Tribe v2" came back as a
+  counter with the figure 2 — the format's loudest device, a giant 2 running
+  up from zero, spent on a version number. Ten or more, or any figure with a
+  unit on it; the references count to 1500, to 700, to 19.718.
+- **Not every icon on a panel is a brand.** The model asks for "instagram"
+  and it also asks for "podcast", "headphones", "bell". Four of seven lookups
+  failed on one video, and a hub whose icons did not resolve draws its
+  connectors to nothing. `brandMarkup` tries the logo sets first and falls
+  back to the general resolver the icon cards use.
+
+The style that carries all of it is **`breakdown`** — "The thing you are
+explaining, built above your head" — short form only, with the `one-word`
+caption preset and almost no B-roll, graphics or punch-ins, because the panel
+is doing the visual work and a zoom underneath it competes with the exhibit
+rather than emphasising the line.

@@ -356,7 +356,16 @@ function renderable(data: {
 }): Array<PanelScene['kind']> {
   const out: Array<PanelScene['kind']> = [];
   if (data.figure && data.items.length && data.values.length) out.push('stat-card');
-  if (data.figure) out.push('counter');
+  /*
+   * A counter needs a QUANTITY, not a number.
+   *
+   * "Tribe v2" came back as a counter with the figure 2, which renders as a
+   * giant "2" running up from zero under the label TRIBE V2 — the format's
+   * loudest device spent on a version number. A counter earns its scene at
+   * ten or more, or at any figure carrying a unit: the references count to
+   * 1500, to 700, to 19.718.
+   */
+  if (countable(data.figure)) out.push('counter');
   if (data.icons.length >= 2) out.push('icon-hub');
   if (data.imagePrompt) out.push('hero-image');
   if (data.items.length >= 2 && data.values.length >= 2) out.push('rank-list');
@@ -364,6 +373,14 @@ function renderable(data: {
   if (data.items.length >= 2) out.push('rank-list');
   if (data.items.length) out.push('chat-card', 'list-panel');
   return [...new Set(out)];
+}
+
+/** Whether a written figure is a quantity worth counting up to. */
+function countable(figure: string): boolean {
+  if (!figure) return false;
+  if (/[%x]|\b(k|m|mio|mrd|bn)\b/i.test(figure)) return true;
+  const value = Number(figure.replace(/[^\d.,-]/g, '').replace(/\.(?=\d{3}\b)/g, '').replace(',', '.'));
+  return Number.isFinite(value) && Math.abs(value) >= 10;
 }
 
 function words(text: string | undefined, max: number): string {

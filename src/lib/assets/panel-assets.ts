@@ -1,4 +1,4 @@
-import { fetchIconMarkup } from './icons';
+import { fetchIconMarkup, resolveIcon } from './icons';
 import { generateImage, isImageGenConfigured } from './images';
 import type { PanelScene } from '@/lib/edl/types';
 
@@ -107,7 +107,20 @@ async function brandMarkup(name: string, scope: string): Promise<string | null> 
     );
     if (markup && markup.includes('<svg')) return namespaceIds(markup, scope);
   }
-  return null;
+
+  /*
+   * Not every icon on a panel is a brand.
+   *
+   * The model asks for "instagram" and it also asks for "podcast",
+   * "headphones", "bell" — ordinary objects, which none of the brand sets
+   * carry. Four of seven lookups failed on one video that way, and a hub
+   * whose icons did not resolve draws its connectors to nothing. The general
+   * resolver the icon cards use answers all of them.
+   */
+  const generic = await resolveIcon(bare.replace(/-/g, ' ')).catch(() => null);
+  if (!generic) return null;
+  const markup = await fetchIconMarkup(generic.url).catch(() => null);
+  return markup?.includes('<svg') ? namespaceIds(markup, scope) : null;
 }
 
 function namespaceIds(markup: string, scope: string): string {
