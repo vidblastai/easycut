@@ -1,6 +1,6 @@
 import { clsx } from 'clsx';
 import type { Layout } from '@/lib/edl/types';
-import { layoutPlan, regionStyle } from '@/lib/styles/layouts';
+import { layoutPlan, regionStyle, type Region } from '@/lib/styles/layouts';
 
 /**
  * What a style will look like, drawn.
@@ -99,7 +99,20 @@ export function StylePreview({
           card lifted off the picture — which is what an insert that covers
           the frame looks like when you have to show both states at once. */}
       {over ? pictures : speaker}
-      {over ? speaker : plan.broll ? pictures : <FloatingInsert accent={accent} />}
+      {/* The explainer layout's other half is DRAWN, not filmed — so the card
+          has to show a panel of exhibits rather than a second picture. Its
+          `broll` region is the speaker's own, because an insert here replaces
+          the speaker and leaves the panel alone, and drawing that region as
+          footage would paint a stock gradient over the face. */}
+      {plan.panel ? (
+        <PanelBand region={plan.panel} accent={accent} />
+      ) : over ? (
+        speaker
+      ) : plan.broll ? (
+        pictures
+      ) : (
+        <FloatingInsert accent={accent} />
+      )}
 
       <div
         className="absolute left-0 right-0 flex flex-col items-center gap-[3px] px-[8%]"
@@ -178,6 +191,34 @@ function Figure() {
 }
 
 /** Lights in the dark: the shorthand for "footage of something else". */
+/**
+ * A miniature of the explainer panel: a pale card, a label above it and a
+ * couple of rows inside. Not a picture of one exhibit — the point of the
+ * style is that there are twenty of them, so the card shows the SHAPE.
+ */
+function PanelBand({ region, accent }: { region: Region; accent: string }) {
+  return (
+    <div
+      className="absolute overflow-hidden"
+      style={{ ...regionStyle(region), background: '#F1F1F3' }}
+    >
+      <div className="absolute left-1/2 top-[14%] h-[3px] w-[46%] -translate-x-1/2 rounded-full bg-[#C9C9D2]" />
+      <div
+        className="absolute left-[12%] right-[12%] top-[30%] bottom-[22%] rounded-[6px] border bg-white"
+        style={{ borderColor: '#E4E4E9', boxShadow: '0 2px 8px rgba(16,16,24,0.07)' }}
+      >
+        <div className="absolute left-[8%] top-[16%] flex items-center gap-[5px]">
+          <span className="h-[7px] w-[7px] rounded-full" style={{ background: accent }} />
+          <span className="h-[4px] w-[42px] rounded-full bg-[#D6D6DE]" />
+        </div>
+        <div className="absolute left-[8%] right-[8%] top-[46%] h-[4px] rounded-full bg-[#E6E6EC]" />
+        <div className="absolute left-[8%] right-[34%] top-[68%] h-[4px] rounded-full bg-[#E6E6EC]" />
+      </div>
+      <div className="absolute bottom-[6%] left-1/2 h-[8px] w-[34%] -translate-x-1/2 rounded-full bg-[#15151A]" />
+    </div>
+  );
+}
+
 function Pictures({ accent }: { accent: string }) {
   return (
     <div

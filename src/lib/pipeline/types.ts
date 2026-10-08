@@ -1,4 +1,5 @@
 import type { PlannedScene } from '@/lib/director/scenes';
+import type { PanelScene } from '@/lib/edl/types';
 import type { DirectorPlan } from '@/lib/director/schema';
 import type { LayerName } from '@/lib/edl/layers';
 import type { Edl } from '@/lib/edl/types';
@@ -145,6 +146,8 @@ export interface PipelineContext {
   plan?: DirectorPlan;
   /** Chosen by the scene pass, placed onto the timeline by the EDL builder. */
   scenes?: PlannedScene[];
+  /** The explainer layout's top half. Empty for every other layout. */
+  panel?: PanelScene[];
   edl?: Edl;
 
   /** Layers skipped because a provider was missing or failed. */

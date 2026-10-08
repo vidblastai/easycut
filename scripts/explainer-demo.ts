@@ -4,7 +4,7 @@ import '../src/lib/config/load-env';
 import { env } from '../src/lib/config/env';
 import { EdlSchema, type PanelScene } from '../src/lib/edl/types';
 import { writePanel } from '../src/lib/director/panel';
-import { generateImage } from '../src/lib/assets/images';
+import { dressPanel } from '../src/lib/assets/panel-assets';
 import { startAssetServer } from '../src/lib/render/asset-server';
 import { SAMPLE_EDL } from '../remotion/sample-edl';
 import type { Transcript } from '../src/lib/transcribe/types';
@@ -55,50 +55,23 @@ async function main() {
     );
   }
 
-  /* ------------------------------------------------------------- the icons */
-
-  const wanted = new Set(scenes.flatMap((s) => s.icons));
-  const svgs = new Map<string, string>();
-  await Promise.all(
-    [...wanted].map(async (name) => {
-      const markup = await iconify(name);
-      if (markup) svgs.set(name, markup);
-    }),
-  );
-  console.log(`icons: ${svgs.size}/${wanted.size} resolved`);
-  const withPanel = scenes.map((s) => ({
-    ...s,
-    iconSvgs: s.icons.map((n) => svgs.get(n) ?? '').filter(Boolean),
-  }));
-
-  /* ------------------------------------------------------------ the images */
+  /* ------------------------------------------------- the icons and pictures */
 
   /*
-   * The reference's hero shots are all one look: a 3D clay render on a pale
-   * ground with a soft studio shadow — a brain, a crowd of figures, an MRI
-   * machine. It is the one thing in the panel that is not a mock interface,
-   * and it is what carries a passage about a physical thing.
+   * The same call the pipeline makes, deliberately.
+   *
+   * An earlier version of this script fetched its own icons and drew its own
+   * heroes, which meant the thing being demonstrated and the thing that ships
+   * were two implementations of one idea — and the demo is the only place
+   * anybody looks.
    */
-  const LOOK =
-    'soft 3D clay render, matte plastic materials, centred single subject, ' +
-    'pale neutral grey studio background #F1F1F3, soft overhead studio light, ' +
-    'gentle contact shadow, muted palette with one warm terracotta accent, ' +
-    'no text, no letters, no logos, no watermark, product-render look';
-
-  const heroes = withPanel.filter((s) => s.kind === 'hero-image' && s.imagePrompt && !s.imageUrl);
-  if (heroes.length && !process.env.NO_IMAGES) {
-    process.stdout.write(`drawing ${heroes.length} hero image${heroes.length === 1 ? '' : 's'}… `);
-    await Promise.all(
-      heroes.map(async (scene) => {
-        const image = await generateImage(`${scene.imagePrompt}. ${LOOK}`, '1:1', { styled: false });
-        if (!image) return;
-        const file = join(OUT, `hero-${scene.id}.png`);
-        await writeFile(file, Buffer.from(await (await fetch(image.url)).arrayBuffer()));
-        scene.imageUrl = file;
-      }),
-    );
-    console.log(`${heroes.filter((s) => s.imageUrl).length} drawn`);
-  }
+  process.stdout.write('fetching icons and drawing heroes… ');
+  const dressed = await dressPanel(scenes);
+  const withPanel = dressed.scenes;
+  console.log(
+    `${withPanel.filter((s) => s.imageUrl).length} heroes · $${dressed.costUsd.toFixed(4)}` +
+      (dressed.missing.length ? ` · no icon for ${[...new Set(dressed.missing)].join(', ')}` : ''),
+  );
 
   /* ---------------------------------------------------------- the captions */
 
@@ -161,10 +134,7 @@ async function main() {
         gradient: null,
         glow: null,
       },
-      panel: withPanel.map((s) => ({
-        ...s,
-        imageUrl: s.imageUrl ? (assets.urlFor(resolve(s.imageUrl)) ?? '') : '',
-      })),
+      panel: withPanel,
       broll: [], scenes: [], graphics: [], icons: [], overlays: [], annotations: [],
       punchIns: [], sfx: [], transitions: [], music: null, reframe: null,
       deliverable: { ...SAMPLE_EDL.deliverable, durationSec },

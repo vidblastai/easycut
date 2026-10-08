@@ -14,6 +14,7 @@ import { fallbackScene } from './scene-fallback';
 import { hasPlayerChrome } from './safe-area';
 import { punchMoments, type Busy } from './punch-script';
 import { outputWords, placeAnnotations } from './annotations';
+import { placePanel } from './panel';
 import { trimToWords } from '@/lib/text';
 import {
   ASPECT_DIMENSIONS,
@@ -37,6 +38,7 @@ import {
   type TransitionType,
   type AnimatedScene,
   type SceneLook,
+  type PanelScene,
 } from './types';
 
 /**
@@ -63,6 +65,14 @@ export interface BuildEdlInput {
   plan: DirectorPlan;
   /** Passages the scene pass chose, in SOURCE time. Empty is normal. */
   scenes?: PlannedScene[];
+  /**
+   * The explainer panel, already written and already in OUTPUT seconds.
+   *
+   * Unlike every other layer here it is not placed by the builder: the panel
+   * is a continuous strip with no gaps, so there is nothing to place it
+   * AROUND. It arrives covering the whole runtime and is passed through.
+   */
+  panel?: PanelScene[];
   segments: Segment[];
   source: Edl['source'];
   reframe: Edl['reframe'];
@@ -266,7 +276,9 @@ export function buildEdl(input: BuildEdlInput): Edl {
     scenes,
     overlays,
     annotations,
-    panel: [],
+    // Written against the transcript, so it arrives in SOURCE seconds and
+    // has to be moved onto the cut timeline before it means anything.
+    panel: placePanel(input.panel ?? [], mapper, durationSec),
     transitions,
     punchIns,
     reframe: input.reframe,

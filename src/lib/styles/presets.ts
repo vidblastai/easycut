@@ -25,6 +25,7 @@ const PUNCH_SHORT: PunchMove[] = ['speed-ramp', 'snap', 'push', 'bounce'];
  */
 
 export type StyleId =
+  | 'breakdown'
   | 'clean'
   | 'punchy'
   | 'reaction'
@@ -146,6 +147,77 @@ export interface StylePreset {
 }
 
 const RAW_PRESETS: Record<StyleId, Omit<StylePreset, 'captionStyle'>> = {
+  /*
+   * The split-screen explainer, measured off two reference edits the user
+   * supplied — 2620 frames, read one at a time. See the explainer-panel
+   * section of .claude/skills/motion-graphics/SKILL.md for the numbers.
+   *
+   * What makes it a different style rather than a variation on `split`: the
+   * top half is not FOOTAGE. It is a run of drawn exhibits — mock interfaces,
+   * counters, icon graphs — written from the transcript, one every two
+   * seconds. A split screen needs stock clips to fill its other half; this
+   * one needs nothing but the words.
+   */
+  breakdown: {
+    id: 'breakdown',
+    sceneLook: 'studio',
+    name: 'Breakdown',
+    tagline: 'The thing you are explaining, built above your head.',
+    bestFor: 'Explaining a tool, a product or a process — anything where showing the interface is the proof.',
+    accent: '#C96442',
+    layout: 'explainer',
+    formats: ['short'],
+    captionPreset: 'one-word',
+    transitions: ['cut', 'zoom-punch'],
+    clipTransitions: ['zoom', 'fade'],
+    brollOverlay: 'none',
+    musicMood: 'minimal tech underscore',
+    musicGainDb: -22,
+    silencePreset: 'aggressive',
+    short: {
+      /*
+       * Almost no camera moves and almost no inserts.
+       *
+       * Counted: six jump cuts in 43 seconds and no punch-ins at all. The
+       * panel is doing every bit of the visual work, and a zoom underneath it
+       * competes with the exhibit above rather than emphasising the line.
+       */
+      punchInEverySec: [14, 22],
+      punchInScale: [1.04, 1.08],
+      /*
+       * Two moves, both small. The panel is doing the visual work, so a
+       * crash zoom underneath it competes with the exhibit rather than
+       * emphasising the line — but one curve for every punch-in in a video
+       * reads as an effect applied on a timer, which is the fault the whole
+       * move vocabulary exists to fix.
+       */
+      punchMoves: ['push', 'ramp', 'speed-ramp'],
+      brollEverySec: 0,
+      brollDurationSec: [2, 3],
+      graphicEverySec: 0,
+      graphicDurationSec: 2,
+      transitionDensity: 0.1,
+      sfxDensity: 0.25,
+    },
+    long: {
+      punchInEverySec: [20, 34],
+      punchInScale: [1.04, 1.08],
+      punchMoves: ['push', 'push', 'ramp'],
+      brollEverySec: 0,
+      brollDurationSec: [2, 3],
+      graphicEverySec: 0,
+      graphicDurationSec: 2,
+      transitionDensity: 0.1,
+      sfxDensity: 0.2,
+    },
+    overlays: { progressBar: true, lowerThird: false, grain: false, vignette: false },
+    directorNotes:
+      'The top 42% of the frame is a panel of drawn exhibits written separately from this plan — ' +
+      'you do not place them and you must not compete with them. So: no B-roll inserts, no ' +
+      'graphics, no icon cards, and punch-ins only on a line that genuinely turns. What you are ' +
+      'for here is the cut — the hook, the tangents that go nowhere, the weak sign-off — and the ' +
+      'emphasis words. Everything else on screen is the panel and the speaker.',
+  },
   clean: {
     id: 'clean',
     sceneLook: 'studio',

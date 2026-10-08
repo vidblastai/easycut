@@ -5,6 +5,8 @@ import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { env } from '@/lib/config/env';
 import { direct, planWindows } from '@/lib/director';
+import { dressPanel } from '@/lib/assets/panel-assets';
+import { isPanelPassConfigured, writePanel } from '@/lib/director/panel';
 import { reviewRestatements } from '@/lib/director/retakes';
 import { designScenes, isScenePassConfigured, type PlannedScene } from '@/lib/director/scenes';
 import { buildEdl } from '@/lib/edl/builder';
@@ -23,6 +25,7 @@ import { CostLedger, planDegradation } from '@/lib/pricing/cost';
 import { computeReframeTrack, retimeTrack } from '@/lib/reframe';
 import { detectLanguage, packFor } from '@/lib/lang';
 import { storage } from '@/lib/storage';
+import { layoutPlan } from '@/lib/styles/layouts';
 import { formatForShape } from '@/lib/styles/detect';
 import { FORMAT_PRESETS, styleFor } from '@/lib/styles/presets';
 import {
@@ -621,6 +624,7 @@ async function stageAssets(ctx: PipelineContext): Promise<void> {
     transcript: ctx.transcript,
     plan: ctx.plan,
     scenes: ctx.scenes ?? [],
+    panel: ctx.panel ?? [],
     segments: ctx.edl.segments,
     source: ctx.edl.source,
     reframe: ctx.edl.reframe,
@@ -675,6 +679,40 @@ async function stageAssets(ctx: PipelineContext): Promise<void> {
   ctx.degraded.push(...resolved.degraded);
 
   await drawScenes(ctx);
+  await dressThePanel(ctx);
+}
+
+/**
+ * The panel's brand marks and its generated pictures.
+ *
+ * After `resolveAssets` rather than inside it, for the same reason the scene
+ * drawings are: this is the first point at which the panel is final — mapped
+ * onto the cut timeline, and past `stripLayers`. Fetching a logo for an
+ * exhibit that is then dropped is a round trip and a bill for nothing.
+ *
+ * Nothing in here can fail the stage. A hub whose logos did not resolve draws
+ * its connectors to blank tiles, and a hero with no picture falls back to its
+ * label — both worse than the real thing and both a video.
+ */
+async function dressThePanel(ctx: PipelineContext): Promise<void> {
+  if (!ctx.edl?.panel.length) return;
+
+  const dressed = await dressPanel(ctx.edl.panel).catch(() => null);
+  if (!dressed) {
+    ctx.degraded.push('the panel\'s icons and pictures');
+    return;
+  }
+
+  ctx.edl = { ...ctx.edl, panel: dressed.scenes };
+  if (dressed.costUsd > 0) ctx.ledger.add('image-generation', dressed.costUsd, 'panel heroes');
+  if (dressed.missing.length) {
+    ctx.log.push({
+      stage: 'assets',
+      status: 'ok',
+      ms: 0,
+      message: `Panel: no icon for ${[...new Set(dressed.missing)].join(', ')}`,
+    });
+  }
 }
 
 /**

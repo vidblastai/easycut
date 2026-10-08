@@ -85,12 +85,32 @@ describe('the kinds that cannot render what they were given', () => {
       [{ start: 0, end: 2, kind: 'toggle-pair', items: ['Nur eins'] }] as never,
       4,
     );
-    expect(scene.kind).toBe('list-panel');
+    // Which kind it lands on is the renderable list's business; what matters
+    // is that it is not one that would draw half a switch.
+    expect(scene.kind).not.toBe('toggle-pair');
+    expect(scene.items).toEqual(['Nur eins']);
   });
 
   it('demotes a hero with nothing to draw', () => {
     const [scene] = sanitisePanel([{ start: 0, end: 2, kind: 'hero-image', items: ['a'] }] as never, 4);
-    expect(scene.kind).toBe('list-panel');
+    expect(scene.kind).not.toBe('hero-image');
+  });
+
+  it('never draws the same exhibit twice running', () => {
+    // Neither reference repeats a kind back to back in 45 scenes, and a model
+    // left to itself returned seventeen `list-panel` out of thirty-eight.
+    const scenes = sanitisePanel(
+      Array.from({ length: 6 }, (_, i) => ({
+        start: i * 2,
+        end: i * 2 + 2,
+        kind: 'list-panel',
+        items: ['Eins', 'Zwei'],
+      })) as never,
+      12,
+    );
+    for (let i = 1; i < scenes.length; i++) {
+      expect(scenes[i].kind, `scene ${i}`).not.toBe(scenes[i - 1].kind);
+    }
   });
 
   it('keeps a hub that has its icons', () => {

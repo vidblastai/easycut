@@ -277,9 +277,25 @@ export function sanitisePanel(raw: RawScene[], durationSec: number): PanelScene[
     let kind = PANEL_KINDS.includes(s.kind as never) ? (s.kind as PanelScene['kind']) : 'list-panel';
     const icons = list(s.icons).slice(0, 4).map((t) => t.toLowerCase());
     const items = list(s.items).slice(0, 4).map((t) => words(t, 4)).filter(Boolean);
-    if (kind === 'icon-hub' && icons.length < 2) kind = items.length === 2 ? 'toggle-pair' : 'list-panel';
-    if (kind === 'toggle-pair' && items.length < 2) kind = 'list-panel';
-    if (kind === 'hero-image' && !(s.imagePrompt ?? '').trim()) kind = 'list-panel';
+    const values = list(s.values).slice(0, 4).map((t) => t.slice(0, 10));
+    const figure = String(s.figure ?? '').trim().slice(0, 14);
+    const imagePrompt = (s.imagePrompt ?? '').trim();
+    const can = renderable({ icons, items, values, figure, imagePrompt });
+
+    if (!can.includes(kind)) kind = can[0] ?? 'list-panel';
+
+    /*
+     * Never the same exhibit twice running.
+     *
+     * Counted off the references: neither repeats a kind back to back in 45
+     * scenes. Left to itself the model does — seventeen of thirty-eight
+     * scenes came back as `list-panel` on an English transcript, which is a
+     * slideshow of one card rather than a panel. Rotating to the next kind
+     * the scene's own data can actually render is deterministic, costs
+     * nothing, and cannot produce an exhibit with nothing in it.
+     */
+    const previous = out[out.length - 1]?.kind;
+    if (kind === previous) kind = can.find((k) => k !== previous) ?? kind;
 
     out.push(
       PanelSceneSchema.parse({
@@ -290,13 +306,13 @@ export function sanitisePanel(raw: RawScene[], durationSec: number): PanelScene[
         eyebrow: eyebrowOf(s),
         chip: words(s.chip, 5).toUpperCase(),
         label: words(s.label, 4),
-        figure: String(s.figure ?? '').trim().slice(0, 14),
+        figure,
         items,
-        values: list(s.values).slice(0, 4).map((t) => t.slice(0, 10)),
+        values,
         icons,
         iconSvgs: [],
         imageUrl: '',
-        imagePrompt: (s.imagePrompt ?? '').slice(0, 300),
+        imagePrompt: imagePrompt.slice(0, 300),
         winner: typeof s.winner === 'number' && s.winner >= 0 ? s.winner : -1,
         reason: (s.reason ?? '').slice(0, 120),
       }),
@@ -322,6 +338,32 @@ function unfence(text: string): string {
   const start = body.indexOf('{');
   const end = body.lastIndexOf('}');
   return start >= 0 && end > start ? body.slice(start, end + 1) : body;
+}
+
+/**
+ * Which exhibits this scene's own data could actually draw, best first.
+ *
+ * Not a preference list: a `counter` with no figure is a blank panel and a
+ * `toggle-pair` with one item is half a switch. Everything that reaches the
+ * renderer has something to render.
+ */
+function renderable(data: {
+  icons: string[];
+  items: string[];
+  values: string[];
+  figure: string;
+  imagePrompt: string;
+}): Array<PanelScene['kind']> {
+  const out: Array<PanelScene['kind']> = [];
+  if (data.figure && data.items.length && data.values.length) out.push('stat-card');
+  if (data.figure) out.push('counter');
+  if (data.icons.length >= 2) out.push('icon-hub');
+  if (data.imagePrompt) out.push('hero-image');
+  if (data.items.length >= 2 && data.values.length >= 2) out.push('rank-list');
+  if (data.items.length === 2) out.push('toggle-pair');
+  if (data.items.length >= 2) out.push('rank-list');
+  if (data.items.length) out.push('chat-card', 'list-panel');
+  return [...new Set(out)];
 }
 
 function words(text: string | undefined, max: number): string {

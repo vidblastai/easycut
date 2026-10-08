@@ -74,6 +74,56 @@ export const CAPTION_PRESETS: CaptionPreset[] = [
     },
   },
   {
+    id: 'one-word',
+    name: 'One word',
+    blurb: 'A single word at a time, in heavy outlined caps. The split-screen look.',
+    family: 'punchy',
+    bestFor: 'short',
+    style: {
+      preset: 'one-word',
+      /*
+       * No entrance at all, and that is measured rather than lazy.
+       *
+       * The reference edits swap the word on the frame it is said — 0.35 to
+       * 0.43 seconds apart, which is two or three times a second. Anything
+       * that animates in at that rate reads as a flicker, and the eye ends up
+       * tracking the movement instead of reading the word.
+       */
+      animation: 'typewriter',
+      fontFamily: 'Plus Jakarta Sans',
+      fontWeight: 800,
+      italic: false,
+      fontSizeRatio: 0.062,
+      letterSpacing: -0.02,
+      lineHeight: 1.1,
+      uppercase: true,
+      // One. The whole look is that there is never a second word to read.
+      maxWordsPerCue: 1,
+      maxLines: 1,
+      align: 'center',
+      positionY: 0.47,
+      placement: null,
+      widthRatio: 0.9,
+      color: '#FFFFFF',
+      emphasisColor: '#C96442',
+      activeColor: null,
+      gradient: null,
+      // Heavy, and black rather than a soft dark: the word sits half on a
+      // face and half on whatever is behind it, and anything less than this
+      // loses an edge somewhere in the frame.
+      stroke: { width: 9, color: '#000000' },
+      shadow: { offsetX: 0, offsetY: 3, blur: 18, color: 'rgba(0,0,0,0.55)' },
+      glow: null,
+      background: null,
+      wordBox: null,
+      emphasisStyle: null,
+      emphasisOwnLine: false,
+      emphasisMinChars: 5,
+      splitLines: false,
+      lineTwoStyle: null,
+    },
+  },
+  {
     id: 'subtitle',
     name: 'Subtitle',
     blurb: 'Small, bottom, out of the way. When the picture is the point.',
