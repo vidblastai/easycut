@@ -5,6 +5,7 @@ import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { env } from '@/lib/config/env';
 import { direct, planWindows } from '@/lib/director';
+import { reviewRestatements } from '@/lib/director/retakes';
 import { designScenes, isScenePassConfigured, type PlannedScene } from '@/lib/director/scenes';
 import { buildEdl } from '@/lib/edl/builder';
 import { stripLayers } from '@/lib/edl/layers';
@@ -25,9 +26,12 @@ import { formatForShape } from '@/lib/styles/detect';
 import { FORMAT_PRESETS, styleFor } from '@/lib/styles/presets';
 import {
   applicableFindings,
+  applyRestatementReview,
   CLEANUP_PRESETS,
   findCleanupTargets,
+  pendingRestatements,
   summarizeCleanup,
+  type RestatementRuling,
 } from '@/lib/timeline/cleanup';
 import {
   detectRemovableSilence,
@@ -282,14 +286,45 @@ async function stageCleanup(ctx: PipelineContext): Promise<void> {
 
   const options = CLEANUP_PRESETS[ctx.request.inputMode];
   ctx.cleanupFindings = findCleanupTargets(ctx.transcript, options);
+
+  /*
+   * Some pairs of takes cannot be told apart by their words — "we grew forty
+   * percent" against "we grew fifty percent" is a speaker correcting himself
+   * or two real figures, and nothing in the vocabulary says which. Those, and
+   * only those, get read before anything is cut.
+   *
+   * It costs a fraction of a cent and it is allowed to fail: a `maybe` that
+   * nobody reads stays below the confidence floor, so the sentence survives
+   * and shows up in the review panel instead.
+   */
+  const pending = pendingRestatements(ctx.cleanupFindings);
+  if (pending.length) {
+    const read = await reviewRestatements(pending);
+    if (read.costUsd > 0) ctx.ledger.add('director', read.costUsd, `retakes:${read.model}`);
+
+    const rulings = new Map<string, RestatementRuling>();
+    for (const [id, answer] of read.answers) {
+      rulings.set(id, { verdict: answer.verdict, keep: answer.keep, why: answer.why });
+    }
+    ctx.cleanupFindings = applyRestatementReview(ctx.cleanupFindings, rulings);
+
+    if (read.error) {
+      ctx.degraded.push(`reworded-retake check (${read.error})`);
+    }
+  }
+
   ctx.cleanupRemovals = applicableFindings(ctx.cleanupFindings, options);
 
   const summary = summarizeCleanup(ctx.cleanupFindings, options);
+  const unread = ctx.cleanupFindings.filter((f) => f.review?.needsReader).length;
   ctx.log.push({
     stage: 'cleanup',
     status: 'ok',
     ms: 0,
-    message: `Removed ${summary.totalSeconds}s: ${summary.fillers.count} fillers, ${summary.stammers.count} stammers, ${summary.falseStarts.count} false starts, ${summary.retakes.count} retakes`,
+    message:
+      `Removed ${summary.totalSeconds}s: ${summary.fillers.count} fillers, ${summary.stammers.count} stammers, ` +
+      `${summary.falseStarts.count} false starts, ${summary.retakes.count} retakes` +
+      (unread ? ` — ${unread} possible reword${unread === 1 ? '' : 's'} left in for review` : ''),
   });
 }
 

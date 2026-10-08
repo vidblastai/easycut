@@ -49,7 +49,12 @@ export function stageDetail(stage: Stage, c: PipelineContext): string {
       if (!found.length) return 'nothing to tidy';
       const by = new Map<string, number>();
       for (const f of found) by.set(f.kind, (by.get(f.kind) ?? 0) + 1);
-      return [...by].map(([kind, n]) => `${n} ${plural(n, kind.replace(/[-_]/g, ' '))}`).join(' · ');
+      const parts = [...by].map(([kind, n]) => `${n} ${plural(n, kind.replace(/[-_]/g, ' '))}`);
+      // A pair nobody could settle is still in the video. Counting it with
+      // the cuts would say the edit did something it did not.
+      const unread = found.filter((f) => f.review?.needsReader).length;
+      if (unread) parts.push(`${unread} left to review`);
+      return parts.join(' · ');
     }
 
     case 'direct': {

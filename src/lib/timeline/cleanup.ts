@@ -1,5 +1,6 @@
 import { FILLER_LEXICON, normalizeWord } from '@/lib/transcribe/types';
 import type { Transcript, TranscriptSentence, TranscriptWord } from '@/lib/transcribe/types';
+import { restatementEvidence } from './paraphrase';
 import type { Interval } from './silence';
 
 export interface CleanupFinding extends Interval {
@@ -7,6 +8,30 @@ export interface CleanupFinding extends Interval {
   text: string;
   /** 0..1 — the pipeline only auto-applies findings above the preset's floor. */
   confidence: number;
+  /** Set on a retake whose two takes could not be told apart by their words. */
+  review?: RetakeReview;
+}
+
+/**
+ * Everything a second opinion needs about one pair of takes.
+ *
+ * It travels on the finding rather than in a side table because the reader's
+ * answer can move the cut to the OTHER sentence — so both spans have to
+ * survive the trip.
+ */
+export interface RetakeReview {
+  earlier: string;
+  later: string;
+  earlierSpan: Interval;
+  laterSpan: Interval;
+  gapSec: number;
+  /** Which of the two this finding currently proposes to cut. */
+  cutting: 'earlier' | 'later';
+  /** The deterministic score, before anybody read it. */
+  score: number;
+  reasons: string[];
+  /** True while the words alone cannot settle it. */
+  needsReader: boolean;
 }
 
 export interface CleanupOptions {
@@ -157,9 +182,19 @@ function findFalseStarts(sentences: TranscriptSentence[]): CleanupFinding[] {
 
     const shared = commonPrefixLength(curWords, nextWords);
     const prefixRatio = shared / curWords.length;
+    const finished = /[.!?]["')\]]?$/.test(cur.text.trim());
 
-    // Either the next sentence restarts with the same words…
-    if (shared >= 2 && prefixRatio >= 0.5) {
+    /*
+     * Either the next sentence restarts with the same words…
+     *
+     * …but a run-up is by definition ABANDONED, and a half-match between two
+     * finished sentences is not one. "We grew forty percent." followed by
+     * "We grew fifty percent." shares a two-word opening and is two facts;
+     * cutting the first on a prefix match loses one of them. So a finished
+     * sentence only counts as a run-up when the whole of it is repeated —
+     * which is what a real restart does.
+     */
+    if (shared >= 2 && prefixRatio >= 0.5 && (shared === curWords.length || !finished)) {
       out.push({
         kind: 'false-start',
         startSec: cur.startSec,
@@ -190,10 +225,15 @@ function findFalseStarts(sentences: TranscriptSentence[]): CleanupFinding[] {
 /**
  * Someone flubs a line, sighs, and says it again. Sometimes four times.
  *
- * We compare each sentence against the next few and, when two are near
- * duplicates, drop the earlier one — people retry until they get it right, so
- * the LAST attempt is the keeper. The exception is a final attempt that is
+ * We compare each sentence against the next few and, when two say the same
+ * thing, drop the earlier one — people retry until they get it right, so the
+ * LAST attempt is the keeper. The exception is a final attempt that is
  * clearly truncated, where the earlier complete take wins.
+ *
+ * "The same thing" is the hard part and it is not a word count: see
+ * `./paraphrase`. Pairs that land in its middle band come back marked
+ * `needsReader` and are not cut by anybody here — `applyRestatementReview`
+ * folds in a second opinion, and without one they stay flagged and intact.
  */
 function findRetakes(sentences: TranscriptSentence[], lookahead = 4): CleanupFinding[] {
   const out: CleanupFinding[] = [];
@@ -211,24 +251,26 @@ function findRetakes(sentences: TranscriptSentence[], lookahead = 4): CleanupFin
       const bWords = tokenize(b.text);
       if (bWords.length < 3) continue;
 
-      /*
-       * Two measures, because a retake takes two shapes.
-       *
-       * A RESTATEMENT says roughly the same words again, and the two sets
-       * match both ways — jaccard reads that well. A TIGHTENING says it in
-       * fewer words, and the second is a subset of the first, which jaccard
-       * scores as a poor match however complete the subset is.
-       *
-       * Containment is discounted because a subset is weaker evidence: a
-       * perfect one reaches 0.85 and clears the bar, where a partial one
-       * does not. Without this the tightening case — the commonest retake
-       * there is — was never detected at all.
-       */
-      const similarity = Math.max(jaccard(aWords, bWords), containment(aWords, bWords) * 0.85);
-      if (similarity < 0.72) continue;
-
       // Retakes happen close together — minutes apart it's a callback, not a flub.
-      if (b.startSec - a.endSec > 25) continue;
+      const gapSec = b.startSec - a.endSec;
+      if (gapSec > 25) continue;
+
+      /*
+       * Comparing the two as bags of words is not enough, and the reason is
+       * worth stating here rather than only in `paraphrase`: the retake a
+       * creator actually produces is the line said AGAIN BETTER, in almost
+       * entirely different words. "So the point is you have to start" and
+       * "what I'm saying is you just need to begin" share two words. The old
+       * lexical gate read them as unrelated and left both in the cut.
+       *
+       * `restatementEvidence` strips the announcement off the front, folds
+       * the vocabulary, and weighs the words that carry the claim — and it
+       * vetoes the opposite mistake, where a list of near-identical steps
+       * looks like one line repeated.
+       */
+      const evidence = restatementEvidence(a.text, b.text, gapSec);
+      if (evidence.verdict === 'different') continue;
+      const similarity = evidence.score;
 
       /*
        * The later take wins, unless the speaker abandoned it.
@@ -251,18 +293,149 @@ function findRetakes(sentences: TranscriptSentence[], lookahead = 4): CleanupFin
       const loser = laterIsTruncated ? b : a;
       const loserIndex = laterIsTruncated ? j : i;
 
+      /*
+       * Cutting the take that carries the condition is the one asymmetry
+       * here. "It takes ten minutes" against "it takes ten minutes if your
+       * footage is organised" is a safe cut in one direction and an edit
+       * that changes what the video promises in the other — so when the
+       * loser is the qualified one, nobody cuts it without a second look.
+       */
+      const cutsTheCondition =
+        evidence.carriesCondition === (laterIsTruncated ? 'later' : 'earlier');
+      const needsReader = evidence.verdict === 'maybe' || cutsTheCondition;
       out.push({
         kind: 'retake',
         startSec: loser.startSec,
         endSec: loser.endSec,
         text: loser.text,
-        confidence: Math.min(0.94, 0.55 + similarity * 0.45),
+        /*
+         * A `maybe` is deliberately pinned under every preset's floor. It
+         * shows up in the review panel as something to look at and is not
+         * cut, which is the right default when nobody has read it: a
+         * repetition left in is a blemish, a sentence wrongly cut is a hole.
+         */
+        confidence: needsReader
+          ? Math.min(0.58, 0.45 + similarity * 0.15)
+          : Math.min(0.94, 0.55 + similarity * 0.45),
+        review: {
+          earlier: a.text,
+          later: b.text,
+          earlierSpan: { startSec: a.startSec, endSec: a.endSec },
+          laterSpan: { startSec: b.startSec, endSec: b.endSec },
+          gapSec,
+          cutting: laterIsTruncated ? 'later' : 'earlier',
+          score: evidence.score,
+          reasons: evidence.reasons,
+          needsReader,
+        },
       });
-      consumed.add(loserIndex);
-      if (!laterIsTruncated) break; // `a` is gone; stop comparing against it
+      // An unsettled pair keeps both sentences in play: nothing has been cut
+      // yet, so neither take is spoken for.
+      if (!needsReader) consumed.add(loserIndex);
+      if (!laterIsTruncated && !needsReader) break; // `a` is gone; stop comparing against it
     }
   }
   return out;
+}
+
+/* ------------------------------------------------------- the second opinion */
+
+export interface RestatementRuling {
+  verdict: 'restated' | 'different' | 'unsure';
+  /** Which take to keep. Only read when the verdict is `restated`. */
+  keep: 'earlier' | 'later';
+  why?: string;
+}
+
+/**
+ * A name for one pair of takes, stable across a re-run.
+ *
+ * Built from the two start times rather than a counter, so the same footage
+ * produces the same ids however many pairs were found before this one —
+ * which is what lets a verdict be cached and an edit be reproducible.
+ */
+export function retakeKey(review: RetakeReview): string {
+  return `${review.earlierSpan.startSec.toFixed(2)}>${review.laterSpan.startSec.toFixed(2)}`;
+}
+
+/** The pairs that need a reader, in the shape the reader is asked in. */
+export function pendingRestatements(findings: CleanupFinding[]) {
+  return findings
+    .filter((f) => f.kind === 'retake' && f.review?.needsReader)
+    .map((f) => ({
+      id: retakeKey(f.review!),
+      earlier: f.review!.earlier,
+      later: f.review!.later,
+      gapSec: f.review!.gapSec,
+      reasons: f.review!.reasons,
+    }));
+}
+
+/**
+ * Fold a reader's verdicts back into the findings.
+ *
+ * Three outcomes, and the asymmetry between them is the point:
+ *
+ *  - `different` DELETES the finding. The pair was two real sentences that
+ *    happened to rhyme, and the cut would have cost the viewer information.
+ *  - `restated` lifts the confidence over every preset's floor, and moves the
+ *    cut to the other take if the reader says the later one is the worse of
+ *    the two.
+ *  - `unsure`, or no answer at all, changes nothing: the finding stays below
+ *    the floor, visible in the review panel and still in the video.
+ *
+ * Pure, so the same verdicts always produce the same edit.
+ */
+export function applyRestatementReview(
+  findings: CleanupFinding[],
+  rulings: Map<string, RestatementRuling>,
+): CleanupFinding[] {
+  const out: CleanupFinding[] = [];
+
+  for (const finding of findings) {
+    const review = finding.review;
+    if (finding.kind !== 'retake' || !review?.needsReader) {
+      out.push(finding);
+      continue;
+    }
+
+    const ruling = rulings.get(retakeKey(review));
+    if (!ruling || ruling.verdict === 'unsure') {
+      out.push({ ...finding, review: { ...review, reasons: notedWith(review, ruling) } });
+      continue;
+    }
+    if (ruling.verdict === 'different') continue;
+
+    const cutting = ruling.keep === 'earlier' ? 'later' : 'earlier';
+    const span = cutting === 'later' ? review.laterSpan : review.earlierSpan;
+    out.push({
+      ...finding,
+      startSec: span.startSec,
+      endSec: span.endSec,
+      text: cutting === 'later' ? review.later : review.earlier,
+      // A read pair is settled: over the raw preset's floor, under the
+      // roughcut preset's, because roughcut footage is already edited.
+      confidence: 0.88,
+      review: { ...review, cutting, needsReader: false, reasons: notedWith(review, ruling) },
+    });
+  }
+
+  // Two pairs can nominate the same sentence — a line said three times puts
+  // the middle take in both. Cutting it twice is harmless but reporting it
+  // twice is not.
+  const seen = new Set<string>();
+  return out.filter((f) => {
+    const key = `${f.kind}:${f.startSec.toFixed(3)}:${f.endSec.toFixed(3)}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
+function notedWith(review: RetakeReview, ruling?: RestatementRuling): string[] {
+  if (!ruling) return [...review.reasons, 'nobody read it — left in'];
+  const why = ruling.why?.trim();
+  return [...review.reasons, why ? `read as ${ruling.verdict}: ${why}` : `read as ${ruling.verdict}`];
 }
 
 /* ------------------------------------------------------------------ helpers */
@@ -278,35 +451,6 @@ function commonPrefixLength(a: string[], b: string[]): number {
   let n = 0;
   while (n < a.length && n < b.length && a[n] === b[n]) n++;
   return n;
-}
-
-/** Bag-of-words similarity — robust to the small rewordings between takes. */
-function jaccard(a: string[], b: string[]): number {
-  const setA = new Set(a);
-  const setB = new Set(b);
-  let intersection = 0;
-  for (const item of setA) if (setB.has(item)) intersection++;
-  const union = setA.size + setB.size - intersection;
-  return union === 0 ? 0 : intersection / union;
-}
-
-/**
- * How much of the SHORTER attempt is inside the longer one.
- *
- * Jaccard on its own misses the commonest retake there is: the second go at
- * a line is usually tighter, and a subset scores badly against a superset.
- * "We grew about forty percent last year, I think" restated as "We grew
- * forty percent" shares four words out of nine — 0.44, under any sensible
- * threshold — while every word of the retake is in the original.
- */
-function containment(a: string[], b: string[]): number {
-  const setA = new Set(a);
-  const setB = new Set(b);
-  const [small, large] = setA.size <= setB.size ? [setA, setB] : [setB, setA];
-  if (!small.size) return 0;
-  let inside = 0;
-  for (const item of small) if (large.has(item)) inside++;
-  return inside / small.size;
 }
 
 /** Human-readable summary for the "here's what we removed" panel. */

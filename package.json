@@ -2,7 +2,7 @@
   "name": "easycut",
   "version": "0.1.0",
   "private": true,
-  "description": "EasyCut AI \u2014 upload your footage, get a finished video.",
+  "description": "EasyCut AI — upload your footage, get a finished video.",
   "scripts": {
     "dev": "tsx scripts/dev-all.ts",
     "build": "prisma generate && next build",
@@ -27,7 +27,8 @@
     "prestart:db": "tsx scripts/prestart.ts",
     "dev:web": "next dev",
     "bench:incremental": "tsx scripts/bench-incremental.ts",
-    "caption-thumbs": "tsx scripts/caption-thumbs.ts"
+    "caption-thumbs": "tsx scripts/caption-thumbs.ts",
+    "retakes": "tsx scripts/retake-check.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.125.0",

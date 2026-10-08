@@ -70,8 +70,54 @@ floor are applied; the rest are reported to the UI.
 | --- | --- | --- |
 | **Fillers** | An `um` is cut only when it's isolated between pauses | One wedged tight inside a sentence is part of the rhythm; removing it makes an audible click |
 | **Stammers** | `the the the point` → keep the last | Only when the repeats are tight. "very, very good" is deliberate emphasis and comes with a comma-sized pause |
-| **False starts** | A short fragment whose opening words the next sentence repeats | Requires the restart to follow within ~2 s — a longer pause means a new thought, not a retry |
-| **Retakes** | Near-duplicate sentences within 25 s → **keep the last** | People retry until they get it right. Unless the last attempt is truncated, in which case the earlier complete one wins |
+| **False starts** | A short fragment whose opening words the next sentence repeats | Requires the restart to follow within ~2 s — a longer pause means a new thought, not a retry. A *finished* sentence only counts as a run-up when the whole of it is repeated, or "we grew forty percent / we grew fifty percent" loses a fact |
+| **Retakes** | Sentences within 25 s that say the same thing → **keep the last** | People retry until they get it right. Unless the last attempt is truncated, in which case the earlier complete one wins |
+
+### What "says the same thing" means
+
+The retake a creator actually produces is the line said **again, better** —
+reworded, not repeated:
+
+> "So the point is you have to start."
+> "What I'm saying is you just need to begin."
+
+Those two share two words. A bag-of-words comparison calls them unrelated and
+leaves both in the cut. `src/lib/timeline/paraphrase.ts` does four passes
+instead, cheapest first:
+
+1. **Strip the frame.** "What I'm saying is", "in other words", "the point is"
+   — a restatement is announced out loud, and the announcement is not part of
+   the claim. Stripping it also leaves the strongest positive signal there is.
+2. **Fold the vocabulary.** "have to" / "need to" / "gotta" are one modal;
+   "begin" and "start" are one verb; "gives up" and "gave up" are one phrase.
+3. **Weight content over function.** "forty" is evidence. "the" is not.
+4. **Veto the lookalikes.** A sequencing opener ("then", "next", "second") or
+   two conflicting figures means the speaker moved on, however alike the two
+   sentences read. This is what keeps a tutorial's steps — "then you add the
+   music" / "then you add the captions" — out of the cut.
+
+Everything there is pure and deterministic: the same footage scores the same
+way every run, with or without a network.
+
+### The pairs the words cannot settle
+
+"We grew forty percent" against "we grew fifty percent" is either a speaker
+correcting himself or two real figures, and nothing in the vocabulary says
+which. Those pairs — and only those — go to one batched LLM call
+(`src/lib/director/retakes.ts`, `temperature: 0`, verdicts cached per pair) that
+answers *restated / different / unsure* and says which take to keep.
+
+A `different` verdict **deletes** the finding. `restated` lifts it over the
+floor. `unsure`, no key, no credit, no network — nothing changes: the finding
+stays below the floor, so the sentence survives and is listed as "left to
+review". A repetition left in is a blemish; a sentence wrongly cut is a hole.
+
+One asymmetry is handled before anybody is asked: when the take being cut
+carries a condition the survivor does not ("…if your footage is already
+organised"), it is never cut unread, in either direction.
+
+`npm run retakes` runs the whole judgement over a suite of pairs with the
+answer an editor would give, and prints where it disagrees.
 
 In `roughcut` mode, false-start and retake detection are **off entirely** and the
 confidence floor rises to 0.85. The user already made those decisions;
