@@ -211,14 +211,43 @@ function findRetakes(sentences: TranscriptSentence[], lookahead = 4): CleanupFin
       const bWords = tokenize(b.text);
       if (bWords.length < 3) continue;
 
-      const similarity = jaccard(aWords, bWords);
+      /*
+       * Two measures, because a retake takes two shapes.
+       *
+       * A RESTATEMENT says roughly the same words again, and the two sets
+       * match both ways — jaccard reads that well. A TIGHTENING says it in
+       * fewer words, and the second is a subset of the first, which jaccard
+       * scores as a poor match however complete the subset is.
+       *
+       * Containment is discounted because a subset is weaker evidence: a
+       * perfect one reaches 0.85 and clears the bar, where a partial one
+       * does not. Without this the tightening case — the commonest retake
+       * there is — was never detected at all.
+       */
+      const similarity = Math.max(jaccard(aWords, bWords), containment(aWords, bWords) * 0.85);
       if (similarity < 0.72) continue;
 
       // Retakes happen close together — minutes apart it's a callback, not a flub.
       if (b.startSec - a.endSec > 25) continue;
 
-      // If the later attempt is much shorter, the speaker gave up on it.
-      const laterIsTruncated = bWords.length < aWords.length * 0.6;
+      /*
+       * The later take wins, unless the speaker abandoned it.
+       *
+       * People retry until they get it right, so the last attempt is the one
+       * they meant — that is the editorial convention and it is what the
+       * brief asks for. The exception is a retry they gave up on halfway,
+       * which has to be recognised or the edit keeps the fragment and throws
+       * away the good take.
+       *
+       * Length alone cannot tell those apart. "We grew about forty percent
+       * last year, I think" restated as "We grew forty percent." is four
+       * words against nine and is the BETTER take — tighter, and finished.
+       * So brevity only counts as abandonment when the sentence also has no
+       * terminator: `deriveSentences` splits on punctuation or on a long
+       * gap, so a take ending in a full stop is one the speaker finished.
+       */
+      const finished = /[.!?]["')\]]?$/.test(b.text.trim());
+      const laterIsTruncated = bWords.length < aWords.length * 0.6 && !finished;
       const loser = laterIsTruncated ? b : a;
       const loserIndex = laterIsTruncated ? j : i;
 
@@ -259,6 +288,25 @@ function jaccard(a: string[], b: string[]): number {
   for (const item of setA) if (setB.has(item)) intersection++;
   const union = setA.size + setB.size - intersection;
   return union === 0 ? 0 : intersection / union;
+}
+
+/**
+ * How much of the SHORTER attempt is inside the longer one.
+ *
+ * Jaccard on its own misses the commonest retake there is: the second go at
+ * a line is usually tighter, and a subset scores badly against a superset.
+ * "We grew about forty percent last year, I think" restated as "We grew
+ * forty percent" shares four words out of nine — 0.44, under any sensible
+ * threshold — while every word of the retake is in the original.
+ */
+function containment(a: string[], b: string[]): number {
+  const setA = new Set(a);
+  const setB = new Set(b);
+  const [small, large] = setA.size <= setB.size ? [setA, setB] : [setB, setA];
+  if (!small.size) return 0;
+  let inside = 0;
+  for (const item of small) if (large.has(item)) inside++;
+  return inside / small.size;
 }
 
 /** Human-readable summary for the "here's what we removed" panel. */

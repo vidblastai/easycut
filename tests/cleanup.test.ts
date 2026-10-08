@@ -127,3 +127,35 @@ describe('false starts and retakes', () => {
     expect(findings.some((f) => f.kind === 'retake')).toBe(false);
   });
 });
+
+describe('which take survives', () => {
+  it('keeps a shorter restatement when the speaker finished it', () => {
+    // Four words against nine, and the second is the better take: tighter,
+    // and it ends. Length alone would have thrown it away and kept the
+    // rambling first attempt.
+    const transcript = transcriptOf(
+      words([
+        ['We', 0, 0.2], ['grew', 0.2, 0.5], ['about', 0.5, 0.8], ['forty', 0.8, 1.1],
+        ['percent', 1.1, 1.5], ['last', 1.5, 1.8], ['year', 1.8, 2.1], ['I', 2.1, 2.3], ['think.', 2.3, 2.7],
+        ['We', 3.4, 3.6], ['grew', 3.6, 4.0], ['forty', 4.0, 4.4], ['percent.', 4.4, 4.9],
+      ]),
+    );
+    const retake = findCleanupTargets(transcript, CLEANUP_PRESETS.raw).find((f) => f.kind === 'retake');
+    expect(retake).toBeDefined();
+    expect(retake!.startSec).toBe(0);
+  });
+
+  it('still keeps the first take when the retry was abandoned', () => {
+    // No terminator on the second: the speaker trailed off, and the fragment
+    // is not the take anybody wants.
+    const transcript = transcriptOf(
+      words([
+        ['We', 0, 0.2], ['grew', 0.2, 0.5], ['about', 0.5, 0.8], ['forty', 0.8, 1.1],
+        ['percent', 1.1, 1.5], ['last', 1.5, 1.8], ['year.', 1.8, 2.2],
+        ['We', 3.4, 3.6], ['grew', 3.6, 4.0], ['forty', 4.0, 4.4],
+      ]),
+    );
+    const retake = findCleanupTargets(transcript, CLEANUP_PRESETS.raw).find((f) => f.kind === 'retake');
+    if (retake) expect(retake.startSec).toBeCloseTo(3.4, 1);
+  });
+});
