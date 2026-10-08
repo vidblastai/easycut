@@ -1,5 +1,4 @@
 import { NextResponse } from 'next/server';
-import { z } from 'zod';
 import { db, parseJson } from '@/lib/db';
 import { env } from '@/lib/config/env';
 import { assetKey, storage } from '@/lib/storage';
@@ -7,39 +6,11 @@ import { FORMAT_PRESETS, getStyle, sanitiseTransitions } from '@/lib/styles/pres
 import { findCaptionPreset } from '@/lib/captions/presets';
 import { currentUserId, ensureUser, isAuthEnabled } from '@/lib/auth';
 import { LAYER_NAMES, type LayerName } from '@/lib/edl/layers';
-import { BROLL_OVERLAYS, CLIP_TRANSITIONS, SCENE_LOOKS } from '@/lib/edl/types';
+import { SCENE_LOOKS } from '@/lib/edl/types';
+import { CreateProjectSchema } from './schema';
 
 export const runtime = 'nodejs';
 
-const CreateProjectSchema = z.object({
-  title: z.string().max(200).optional(),
-  mode: z.enum(['short', 'long']),
-  styleId: z.string().default('clean'),
-  /** The caption look, when the picker set a default. Omitted takes the style's. */
-  captionPreset: z.string().optional(),
-  sceneLook: z.string().optional(),
-  /** Transitions the person picked, in cycling order. Omitted takes the style's. */
-  clipTransitions: z.array(z.string()).max(CLIP_TRANSITIONS.length).optional(),
-  /** Found, or made. Omitted means found — see src/lib/assets/ai-broll.ts. */
-  brollSource: z.enum(['stock', 'ai-image', 'ai-video']).optional(),
-  /** The treatment every insert wears. Omitted takes the edit style's. */
-  brollOverlay: z.enum(BROLL_OVERLAYS).optional(),
-  inputMode: z.enum(['raw', 'roughcut']).default('raw'),
-  /**
-   * Layers the person declined, before anything is made.
-   *
-   * Sent as the switches that are OFF. These have always been changeable on a
-   * finished video — turn one off and it re-renders from cached analysis for
-   * nothing — which is fine and is not the same as being asked. Somebody who
-   * knows they never want music should not have to watch a video get scored and
-   * then unscore it.
-   */
-  layers: z.record(z.string(), z.boolean()).optional(),
-  userNote: z.string().max(500).optional(),
-  filename: z.string().min(1).max(300),
-  contentType: z.string().default('video/mp4'),
-  sizeBytes: z.number().int().nonnegative().default(0),
-});
 
 /**
  * Creates a project and hands back somewhere to put the file.
@@ -52,7 +23,27 @@ export async function POST(request: Request) {
   const body = await request.json().catch(() => null);
   const parsed = CreateProjectSchema.safeParse(body);
   if (!parsed.success) {
-    return NextResponse.json({ error: 'Invalid request', details: parsed.error.flatten() }, { status: 400 });
+    /*
+     * Say which field, in the error the person actually sees.
+     *
+     * "Invalid request" with the detail buried in a `details` object the UI
+     * never renders is the worst kind of error message: the customer cannot
+     * act on it and cannot report it usefully either — "it said invalid
+     * request" is the whole of what they can tell you. The field name costs
+     * nothing and turns a dead end into a bug report.
+     */
+    const fields = parsed.error.flatten().fieldErrors;
+    const said = Object.entries(fields)
+      .map(([field, errors]) => `${field} (${(errors ?? []).join(', ')})`)
+      .slice(0, 3)
+      .join(', ');
+    return NextResponse.json(
+      {
+        error: said ? `That upload is missing or malformed: ${said}` : 'Invalid request',
+        details: parsed.error.flatten(),
+      },
+      { status: 400 },
+    );
   }
   const input = parsed.data;
 
