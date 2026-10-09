@@ -67,11 +67,8 @@ export function detectRemovableSilence(
 
   if (acousticSilence.length) {
     for (const quiet of acousticSilence) {
-      // The two signals disagree about this stretch: ffmpeg heard nothing,
-      // the ASR heard the middle of a word. Nothing gets cut on a
-      // disagreement — a dropped word is a far worse edit than a kept pause.
-      if (holdsAWord(quiet, words)) continue;
-      candidates.push(quiet);
+      const piece = clipToSpeech(quiet, words);
+      if (piece) candidates.push(piece);
     }
   } else {
     /*
@@ -120,22 +117,83 @@ export function detectRemovableSilence(
   return mergeIntervals(confirmed);
 }
 
+/** Seconds of speech a word is credited with before its letters are counted. */
+const WORD_ONSET_SEC = 0.1;
+/** And per letter after that — about 0.22s a syllable at three letters each. */
+const WORD_SEC_PER_LETTER = 0.085;
+/** Nothing is credited more than this, however long the word is written. */
+const WORD_MAX_SEC = 1.2;
+
 /**
- * Whether a silent stretch contains the centre of a spoken word.
+ * The longest this word could plausibly have taken to say.
  *
- * The midpoint rather than any overlap, and that is the same test
- * `wordsOutsideRemovals` uses to decide which words survive a cut — they have
- * to agree, or this pass can propose a removal that silently deletes a word
- * from the captions. Overlap alone would veto almost everything: the ASR runs
- * its boundaries into the silence on both sides of every pause, which is the
- * whole reason this function is needed.
+ * It exists to answer one question: when ffmpeg and the ASR disagree about
+ * where a word ends, which one is lying? Both are, in opposite directions,
+ * and the asymmetry is physical. A plosive or a fricative at the START of a
+ * word carries almost no energy, so a -50dB gate runs straight past it and
+ * reports silence over the first 90ms of "Cloud" — cutting there leaves
+ * "loud". But a one-syllable function word credited with 640ms is not a word
+ * at all, it is a word with a pause welded onto it, and that pause is
+ * genuinely cuttable.
+ *
+ * So the rule is: a word may give up only the time it cannot plausibly have
+ * been speaking for. Measured against six words clipped on a real upload
+ * ("Cloud", "Because", "Now", "So", "rest.", "more.") and the three pauses
+ * that have to survive the same rule, 0.1s plus 0.085s a letter separates
+ * every one of them.
  */
-function holdsAWord(quiet: Interval, words: TranscriptWord[]): boolean {
+function plausibleSec(text: string): number {
+  const letters = text.replace(/[^\p{L}\p{N}]/gu, '').length || 1;
+  return Math.min(WORD_MAX_SEC, WORD_ONSET_SEC + letters * WORD_SEC_PER_LETTER);
+}
+
+/**
+ * A silent stretch, pulled back off the words on either side of it.
+ *
+ * Returns null where the two signals genuinely disagree — ffmpeg heard
+ * nothing across a stretch the ASR filled with a whole word — because a
+ * dropped word is a far worse edit than a kept pause. Everything else comes
+ * back clipped to what the words can spare, which is usually the gap between
+ * them and occasionally a little more.
+ */
+function clipToSpeech(quiet: Interval, words: TranscriptWord[]): Interval | null {
+  let start = quiet.startSec;
+  let end = quiet.endSec;
+
   for (const word of words) {
-    const mid = (word.startSec + word.endSec) / 2;
-    if (mid > quiet.startSec && mid < quiet.endSec) return true;
+    // Classified against the ORIGINAL stretch, so one word's clip cannot
+    // change how the next word is read.
+    if (word.endSec <= quiet.startSec || word.startSec >= quiet.endSec) continue;
+
+    const spare = Math.max(0, word.endSec - word.startSec - plausibleSec(word.text));
+    const holdsStart = word.startSec <= quiet.startSec;
+    const holdsEnd = word.endSec >= quiet.endSec;
+
+    if (holdsStart && holdsEnd) {
+      // Wholly inside one word: the pause the ASR welded onto it. Cuttable
+      // only as far as the word can spare, and all or nothing — trimming it
+      // would move the cut into the syllable.
+      if (quiet.endSec - quiet.startSec > spare) return null;
+    } else if (holdsStart) {
+      start = Math.max(start, word.endSec - spare);
+    } else if (holdsEnd) {
+      /*
+       * A word's ONSET is never touched, however much the word can spare.
+       *
+       * The two ends are not equivalent. Clipping a tail removes sound that
+       * has already decayed and is inaudible in the cut; clipping an onset
+       * removes the attack, and "Cloud" becomes "loud". Nothing is lost by
+       * the asymmetry either: every pause worth having is on the far side of
+       * a word, because that is where a speaker pauses.
+       */
+      end = Math.min(end, word.startSec);
+    } else {
+      // The word is inside the silence from end to end. Disagreement.
+      return null;
+    }
   }
-  return false;
+
+  return end - start > 0.01 ? { startSec: start, endSec: end } : null;
 }
 
 /** Proportion of the timeline that is dead air — drives the raw/roughcut hint. */
@@ -197,7 +255,13 @@ export function subtractIntervals(base: Interval[], remove: Interval[]): Interva
   return result.filter((i) => i.endSec - i.startSec > 0.01);
 }
 
-function intersectionLength(a: Interval, others: Interval[]): number {
+/**
+ * How much of `a` the `others` cover.
+ *
+ * Overlaps among `others` are counted twice, so pass a merged set when the
+ * answer is a fraction of `a` rather than a total.
+ */
+export function intersectionLength(a: Interval, others: readonly Interval[]): number {
   let total = 0;
   for (const b of others) {
     const lo = Math.max(a.startSec, b.startSec);

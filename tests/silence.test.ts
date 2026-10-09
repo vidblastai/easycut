@@ -116,8 +116,36 @@ describe('the pauses the transcript cannot see', () => {
     // 0.16s, under the 0.22s floor, and the pause is 0.57s.
     const words = [word('but', 3.2, 3.36), word('not...', 3.36, 3.92), word('Because', 4.08, 4.48)];
     const [removal] = cut(words, [{ startSec: 3.65, endSec: 4.21 }], 5);
-    expect(removal.startSec).toBeCloseTo(3.7, 2);
-    expect(removal.endSec).toBeCloseTo(4.16, 2);
+    // Into "not…"'s tail only as far as a three-letter word can spare, and
+    // not one frame into "Because"'s onset.
+    expect(removal.startSec).toBeCloseTo(3.765, 2);
+    expect(removal.endSec).toBeCloseTo(4.03, 2);
+    expect(removal.endSec).toBeLessThanOrEqual(4.08);
+  });
+
+  it('never takes a word\u2019s onset, however much the word can spare', () => {
+    // "So" is credited 0.8s for two letters, so it has time to spare — but
+    // the spare is at the far end. Clipping an onset turns "So" into "o";
+    // clipping a tail removes sound that has already decayed.
+    const words = [word('really...', 23.16, 23.8), word('So', 24.29, 25.09), word('yes.', 25.09, 25.5)];
+    const [removal] = cut(words, [{ startSec: 23.86, endSec: 24.46 }], 26);
+    expect(removal.endSec).toBeLessThanOrEqual(24.29);
+  });
+
+  it('takes a pause out of a word the ASR over-credited', () => {
+    // 0.64s for "and" is a word with a pause welded onto it. The pause is
+    // cuttable; the 0.36s the word could plausibly have taken is not.
+    const words = [word('it', 33.51, 33.75), word('and', 33.75, 34.39), word('it', 34.47, 34.63)];
+    const [removal] = cut(words, [{ startSec: 34.15, endSec: 34.4 }], 36);
+    expect(removal).toBeDefined();
+    expect(removal.startSec).toBeGreaterThanOrEqual(34.15);
+  });
+
+  it('leaves a pause alone when the word it sits in could have taken that long', () => {
+    // Same shape, but 0.4s of silence inside a five-letter word: either the
+    // detector is wrong or the word is, and nothing is cut on a guess.
+    const words = [word('it', 1.0, 1.2), word('speak', 1.2, 1.75), word('it', 1.8, 2.0)];
+    expect(cut(words, [{ startSec: 1.3, endSec: 1.7 }], 2.2)).toEqual([]);
   });
 
   it('cuts a pause that sits inside a single word', () => {

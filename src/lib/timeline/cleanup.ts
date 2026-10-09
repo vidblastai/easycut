@@ -2,13 +2,29 @@ import { packFor } from '@/lib/lang';
 import { normalizeWord } from '@/lib/transcribe/types';
 import type { Transcript, TranscriptSentence, TranscriptWord } from '@/lib/transcribe/types';
 import { restatementEvidence } from './paraphrase';
-import type { Interval } from './silence';
+import { intersectionLength, mergeIntervals, type Interval } from './silence';
 
 export interface CleanupFinding extends Interval {
   kind: 'filler' | 'stammer' | 'false-start' | 'retake';
   text: string;
   /** 0..1 — the pipeline only auto-applies findings above the preset's floor. */
   confidence: number;
+  /**
+   * The span this cut exists to preserve, where there is one.
+   *
+   * Every pass that drops one of two takes is making a trade: this goes so
+   * that THAT survives. Two passes can reach the same pair of takes and
+   * trade in opposite directions — the false-start pass cutting the earlier
+   * attempt to keep the later one, the restatement reviewer cutting the
+   * later to keep the earlier — and when both removals are applied the line
+   * is gone from the video altogether. Measured on a real upload: the whole
+   * call to action, both takes of it, deleted by two passes that each
+   * thought they were keeping one.
+   *
+   * Naming the keeper is what makes that detectable. See
+   * `applicableFindings`.
+   */
+  keeps?: Interval;
   /** Set on a retake whose two takes could not be told apart by their words. */
   review?: RetakeReview;
 }
@@ -134,9 +150,44 @@ function dropContained(findings: CleanupFinding[]): CleanupFinding[] {
 }
 
 export function applicableFindings(findings: CleanupFinding[], options: CleanupOptions): Interval[] {
-  return findings
-    .filter((f) => f.confidence >= options.confidenceFloor)
-    .map((f) => ({ startSec: f.startSec, endSec: f.endSec }));
+  const above = findings.filter((f) => f.confidence >= options.confidenceFloor);
+  return keepOneOfEachPair(above).map((f) => ({ startSec: f.startSec, endSec: f.endSec }));
+}
+
+/** How much of a take has to be gone before it no longer counts as kept. */
+const KEEPER_LOST_AT = 0.5;
+
+/**
+ * No cut may remove the take another cut was keeping.
+ *
+ * Both passes that drop a take name the one they are keeping, so a
+ * contradiction is visible: this finding's keeper is inside that finding's
+ * removal. The more confident finding wins and the other is dropped, which
+ * leaves exactly one take of the pair in the video — the only outcome that
+ * is right whichever pass was right about which take.
+ *
+ * Strongest first, and checked against the union of what has already been
+ * accepted: two small removals can between them account for a keeper that
+ * neither covers on its own.
+ */
+function keepOneOfEachPair(applied: CleanupFinding[]): CleanupFinding[] {
+  const order = [...applied].sort((a, b) => b.confidence - a.confidence);
+  const kept: CleanupFinding[] = [];
+
+  for (const finding of order) {
+    if (finding.keeps) {
+      const span = finding.keeps.endSec - finding.keeps.startSec;
+      // Merged, because two accepted removals may overlap each other and a
+      // double-counted second would read as more of the keeper than exists.
+      const removed = mergeIntervals(
+        kept.map((f) => ({ startSec: f.startSec, endSec: f.endSec })),
+      );
+      const gone = span > 0 ? intersectionLength(finding.keeps, removed) / span : 0;
+      if (gone >= KEEPER_LOST_AT) continue;
+    }
+    kept.push(finding);
+  }
+  return kept.sort((a, b) => a.startSec - b.startSec);
 }
 
 /* ------------------------------------------------------------------ fillers */
@@ -360,6 +411,7 @@ function findFalseStarts(sentences: TranscriptSentence[]): CleanupFinding[] {
         endSec: next.startSec,
         text: cur.text,
         confidence: Math.min(0.95, 0.6 + prefixRatio * 0.35),
+        keeps: { startSec: next.startSec, endSec: next.endSec },
       });
       continue;
     }
@@ -380,6 +432,7 @@ function findFalseStarts(sentences: TranscriptSentence[]): CleanupFinding[] {
         endSec: next.startSec,
         text: cur.text,
         confidence: 0.66,
+        keeps: { startSec: next.startSec, endSec: next.endSec },
       });
     }
   }
@@ -476,6 +529,8 @@ function findTrailingOff(
       endSec: sentence.endSec,
       text: span.slice(cutFrom).map((w) => w.text).join(' '),
       confidence: 0.78,
+      // The front of the same sentence is the reason for the cut.
+      keeps: { startSec: sentence.startSec, endSec: span[cutFrom].startSec },
     });
   }
   return out;
@@ -582,6 +637,9 @@ function findRetakes(
         confidence: needsReader
           ? Math.min(0.58, 0.45 + similarity * 0.15)
           : Math.min(0.94, 0.55 + similarity * 0.45),
+        keeps: laterIsTruncated
+          ? { startSec: a.startSec, endSec: a.endSec }
+          : { startSec: b.startSec, endSec: b.endSec },
         review: {
           earlier: a.text,
           later: b.text,
@@ -681,6 +739,11 @@ export function applyRestatementReview(
       // A read pair is settled: over the raw preset's floor, under the
       // roughcut preset's, because roughcut footage is already edited.
       confidence: 0.88,
+      // Flipped with the ruling, not inherited. The finding was built keeping
+      // one take and the reader just chose the other, so a stale `keeps`
+      // would name the span this cut now REMOVES — and the guard in
+      // `applicableFindings` reads it to decide whether a line still exists.
+      keeps: cutting === 'later' ? review.earlierSpan : review.laterSpan,
       review: { ...review, cutting, needsReader: false, reasons: notedWith(review, ruling) },
     });
   }

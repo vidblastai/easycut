@@ -366,3 +366,83 @@ describe('a trail-off that is a hook, not a mistake', () => {
     expect(last?.confidence ?? 0).toBeLessThan(preset.confidenceFloor);
   });
 });
+
+/**
+ * The failure that was worse than the one being fixed.
+ *
+ * Teaching the false-start pass to see a restart made two passes reach the
+ * same pair of takes. The false-start pass cut the earlier attempt to keep
+ * the later one; the restatement reader, asked about the same pair, said keep
+ * the EARLIER — the first take had the right domain in it — and so cut the
+ * later. Both removals applied and the line vanished from the video. On the
+ * reported upload that line was the whole call to action.
+ */
+describe('two passes that disagree about which take to keep', () => {
+  const preset = CLEANUP_PRESETS.raw;
+
+  const pair = () => [
+    {
+      kind: 'false-start' as const,
+      startSec: 28,
+      endSec: 30.4,
+      text: 'You only have to go to easycut.com.',
+      confidence: 0.9,
+      keeps: { startSec: 30.4, endSec: 36.2 },
+    },
+    {
+      kind: 'retake' as const,
+      startSec: 30.4,
+      endSec: 36.2,
+      text: 'You only have to go to easycut.i, put in your footage.',
+      confidence: 0.88,
+      keeps: { startSec: 28, endSec: 30.4 },
+    },
+  ];
+
+  it('leaves exactly one take in the video', () => {
+    const cuts = applicableFindings(pair(), preset);
+    expect(cuts).toHaveLength(1);
+    // The more confident pass decides; the other stands down.
+    expect(cuts[0]).toEqual({ startSec: 28, endSec: 30.4 });
+  });
+
+  it('decides the other way when the reader is the more confident one', () => {
+    const [falseStart, retake] = pair();
+    const cuts = applicableFindings(
+      [{ ...falseStart, confidence: 0.7 }, { ...retake, confidence: 0.94 }],
+      preset,
+    );
+    expect(cuts).toEqual([{ startSec: 30.4, endSec: 36.2 }]);
+  });
+
+  it('still applies both when they are not about the same pair', () => {
+    const [falseStart, retake] = pair();
+    const cuts = applicableFindings(
+      [falseStart, { ...retake, startSec: 50, endSec: 54, keeps: { startSec: 54, endSec: 58 } }],
+      preset,
+    );
+    expect(cuts).toHaveLength(2);
+  });
+
+  it('counts two small removals together against one keeper', () => {
+    const cuts = applicableFindings(
+      [
+        { kind: 'filler', startSec: 10, endSec: 11, text: 'a', confidence: 0.95 },
+        { kind: 'filler', startSec: 11, endSec: 12, text: 'b', confidence: 0.94 },
+        {
+          kind: 'retake',
+          startSec: 20,
+          endSec: 22,
+          text: 'c',
+          confidence: 0.8,
+          keeps: { startSec: 10, endSec: 12 },
+        },
+      ],
+      preset,
+    );
+    // Neither filler covers half the keeper; between them they cover all of
+    // it, so the retake that was trading for it stands down.
+    expect(cuts).toHaveLength(2);
+    expect(cuts.some((c) => c.startSec === 20)).toBe(false);
+  });
+});
