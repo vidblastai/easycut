@@ -58,12 +58,28 @@ const HEIGHT = 756;
 /**
  * Exhibits per call.
  *
- * Small enough that a batch cannot run out of output tokens — the failure
- * there is silent and total, because a drawing missing its closing tag is
- * refused whole — and large enough that a twenty-exhibit video is five calls
- * rather than twenty. They run together, so the wall time is one call.
+ * Three rather than four, and the reason is reliability rather than tokens:
+ * a batch of four ran about 24k output tokens and two of five batches came
+ * back `fetch failed` — a connection dropped partway through a long
+ * generation, which costs every exhibit in that batch. Eight of twenty
+ * exhibits fell back to a template on one run that way. Shorter generations
+ * are less exposed, and they still run together, so the wall time is one
+ * call either way.
  */
-const PER_CALL = 4;
+const PER_CALL = 3;
+
+/**
+ * How long one batch may take before it is abandoned.
+ *
+ * Node's `fetch` has no timeout of its own, so a stalled connection hangs
+ * until the socket gives up on its own schedule — which on the failures
+ * measured here was four minutes of nothing followed by `fetch failed`, with
+ * no attempt left to make.
+ */
+const BATCH_TIMEOUT_MS = 240_000;
+
+/** A dropped connection is worth one more go; a refusal is not. */
+const ATTEMPTS = 2;
 
 /** Past this the panel costs more than the rest of the edit put together. */
 const MAX_DRAWN = 24;
@@ -156,7 +172,7 @@ export async function drawPanel(scenes: readonly PanelScene[], accent: string): 
   const batches: PanelScene[][] = [];
   for (let i = 0; i < wanted.length; i += PER_CALL) batches.push(wanted.slice(i, i + PER_CALL));
 
-  const results = await Promise.all(batches.map((batch) => drawBatch(batch, accent)));
+  const results = await Promise.all(batches.map((batch) => drawBatchRetrying(batch, accent)));
 
   for (const result of results) {
     costUsd += result.costUsd;
@@ -167,10 +183,31 @@ export async function drawPanel(scenes: readonly PanelScene[], accent: string): 
   return { drawn, costUsd, errors };
 }
 
-async function drawBatch(
+/**
+ * One batch, with a second attempt when the first one never arrived.
+ *
+ * Only for a transport failure. A model that answered and was refused, or
+ * answered with something unparseable, will do the same thing again — and a
+ * batch of three is three exhibits, so a pointless retry is a minute of wall
+ * time and a dollar of tokens for the same result.
+ */
+async function drawBatchRetrying(
   batch: readonly PanelScene[],
   accent: string,
 ): Promise<{ drawn: Map<string, Illustration>; costUsd: number; error?: string }> {
+  let last: Awaited<ReturnType<typeof drawBatch>> | null = null;
+
+  for (let attempt = 1; attempt <= ATTEMPTS; attempt++) {
+    last = await drawBatch(batch, accent);
+    if (last.drawn.size || !last.transient) return last;
+  }
+  return last!;
+}
+
+async function drawBatch(
+  batch: readonly PanelScene[],
+  accent: string,
+): Promise<{ drawn: Map<string, Illustration>; costUsd: number; error?: string; transient?: boolean }> {
   const drawn = new Map<string, Illustration>();
   const model = env.llm.motionModel;
 
@@ -191,11 +228,12 @@ async function drawBatch(
         // batch that hits the ceiling arrives with its last drawing unclosed
         // and that one is refused; the others still parse, which is why the
         // exhibits are separated by a marker rather than wrapped in JSON.
-        max_tokens: 24000,
+        max_tokens: 20000,
         // Drawing, not judgement. A cautious drawing is a boring one, and
         // boring is the thing this pass exists to fix.
         temperature: 0.85,
       }),
+      signal: AbortSignal.timeout(BATCH_TIMEOUT_MS),
     });
 
     if (!response.ok) {
@@ -223,7 +261,15 @@ async function drawBatch(
 
     return { drawn, costUsd };
   } catch (error) {
-    return { drawn, costUsd: 0, error: error instanceof Error ? error.message : String(error) };
+    const message = error instanceof Error ? error.message : String(error);
+    // A connection that dropped or timed out is worth another go. A refusal,
+    // a bad key or a model that does not exist will say the same thing twice.
+    const transient =
+      error instanceof Error &&
+      (error.name === 'TimeoutError' ||
+        error.name === 'AbortError' ||
+        /fetch failed|ECONNRESET|ETIMEDOUT|socket hang up|network/i.test(message));
+    return { drawn, costUsd: 0, error: message, transient };
   }
 }
 
