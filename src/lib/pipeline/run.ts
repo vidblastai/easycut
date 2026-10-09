@@ -7,6 +7,7 @@ import { env } from '@/lib/config/env';
 import { direct, planWindows } from '@/lib/director';
 import { dressPanel } from '@/lib/assets/panel-assets';
 import { isPanelPassConfigured, writePanel } from '@/lib/director/panel';
+import { drawPanel, isPanelArtConfigured } from '@/lib/director/panel-art';
 import { reviewRestatements } from '@/lib/director/retakes';
 import { designScenes, isScenePassConfigured, type PlannedScene } from '@/lib/director/scenes';
 import { buildEdl } from '@/lib/edl/builder';
@@ -729,6 +730,8 @@ async function stageAssets(ctx: PipelineContext): Promise<void> {
 async function dressThePanel(ctx: PipelineContext): Promise<void> {
   if (!ctx.edl?.panel.length) return;
 
+  await drawTheExhibits(ctx);
+
   const dressed = await dressPanel(ctx.edl.panel).catch(() => null);
   if (!dressed) {
     ctx.degraded.push('the panel\'s icons and pictures');
@@ -744,6 +747,74 @@ async function dressThePanel(ctx: PipelineContext): Promise<void> {
       ms: 0,
       message: `Panel: no icon for ${[...new Set(dressed.missing)].join(', ')}`,
     });
+  }
+}
+
+/**
+ * The model draws each exhibit, rather than choosing one of eight.
+ *
+ * The eight kinds in `Panel.tsx` are a template library, and a template
+ * library produces the same video twice: twenty exhibits are the same eight
+ * animations with different words in them, and the next upload is the same
+ * eight again. This pass is what makes an exhibit specific to the sentence it
+ * sits over.
+ *
+ * Here rather than in `stageDirect` for the same reason the scene drawings
+ * are: this is the first point at which the panel is FINAL — mapped onto the
+ * cut timeline, past the placement that drops an exhibit whose speech was cut
+ * and past the rotation that changes a repeated kind. Drawing in the writing
+ * pass would mean paying for pictures that are then thrown away.
+ *
+ * Non-fatal, and the fallback is the whole previous version of the feature:
+ * an exhibit with no drawing renders as the kind it was already assigned.
+ */
+async function drawTheExhibits(ctx: PipelineContext): Promise<void> {
+  if (!ctx.edl?.panel.length) return;
+
+  if (!isPanelArtConfigured()) {
+    ctx.degraded.push('the panel\'s drawings (no MOTION_MODEL configured)');
+    return;
+  }
+
+  const accent = ctx.style.accent || '#C96442';
+  const pass = await drawPanel(ctx.edl.panel, accent).catch(() => null);
+  if (!pass) {
+    ctx.degraded.push('the panel\'s drawings');
+    return;
+  }
+
+  if (pass.costUsd > 0) ctx.ledger.add('director', pass.costUsd, 'panel drawings');
+
+  if (pass.drawn.size) {
+    ctx.edl = {
+      ...ctx.edl,
+      panel: ctx.edl.panel.map((scene) => {
+        const art = pass.drawn.get(scene.id);
+        return art ? { ...scene, art } : scene;
+      }),
+    };
+  }
+
+  /*
+   * Say what happened either way.
+   *
+   * A pass that quietly draws nothing is indistinguishable from one that is
+   * broken, and the person who just waited for an edit cannot tell which. The
+   * count is also the one number worth reading here: eighteen of twenty drawn
+   * is a panel that looks made, four of twenty is a panel that looks picked.
+   */
+  const total = ctx.edl.panel.length;
+  ctx.log.push({
+    stage: 'assets',
+    status: 'ok',
+    ms: 0,
+    message: `Panel: drew ${pass.drawn.size} of ${total} exhibits`,
+  });
+  if (pass.drawn.size < total) {
+    ctx.degraded.push(
+      `${total - pass.drawn.size} panel exhibit${total - pass.drawn.size === 1 ? '' : 's'} fell back to a stock layout` +
+        (pass.errors.length ? ` (${[...new Set(pass.errors)].join('; ')})` : ''),
+    );
   }
 }
 

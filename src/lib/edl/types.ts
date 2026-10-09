@@ -1130,6 +1130,66 @@ export const SCENE_BACKDROPS = [
 export type SceneBackdrop = (typeof SCENE_BACKDROPS)[number];
 
 /**
+ * The drawing, in the pieces it should arrive in.
+ *
+ * Authored by the motion model (see `director/illustrate.ts`) and split into
+ * top-level groups at build time, so the renderer can bring one part in
+ * every few frames instead of fading a flat picture up. Null is a normal
+ * state, not an error: the scene falls back to its icons, which is worse but
+ * works, and nothing about the drawing pass is allowed to cost a scene its
+ * existence.
+ */
+export const ArtSchema = z
+  .object({
+    viewBox: z.string(),
+    /** The drawing's gradients; every `url(#…)` in the parts points here. */
+    defs: z.string().default(''),
+    /** How many beats the camera travels through. At least one. */
+    stages: z.number().int().min(1).default(1),
+    /** What physically happens in each beat, for the animation prompt. */
+    motion: z.array(z.string()).default([]),
+    /*
+     * A part is an object, but a bare string is still accepted and widened.
+     *
+     * The first version of this field stored plain markup, and projects
+     * rendered under it are sitting in the database. A union here means
+     * those still parse — without it the whole EDL fails validation and an
+     * old project becomes unopenable, which is a much worse outcome than an
+     * old drawing animating a little more plainly than a new one.
+     */
+    parts: z.array(
+      z.union([
+        z.string().transform((markup) => ({
+          markup,
+          stage: 0,
+          depth: 0.5,
+          enter: 'pop' as const,
+          idle: 'bob' as const,
+          hasPivot: false,
+          pivot: { x: 500, y: 500 },
+        })),
+        z.object({
+          markup: z.string(),
+          /** Which beat this piece belongs to; the camera travels between them. */
+          stage: z.number().int().min(0).default(0),
+          depth: z.number().min(0).max(1).default(0.5),
+          enter: z.enum(ART_ENTERS).default('pop'),
+          idle: z.enum(ART_IDLES).default('bob'),
+          /** Whether the pivot was stated by the model or measured for it. */
+          hasPivot: z.boolean().default(false),
+          /** Where the piece turns and scales about, in viewBox units. */
+          pivot: z
+            .object({ x: z.number(), y: z.number() })
+            .default({ x: 500, y: 500 }),
+        }),
+      ]),
+    ),
+  })
+  .nullable()
+  .default(null);
+export type Art = z.infer<typeof ArtSchema>;
+
+/**
  * The world a scene is drawn in.
  *
  * A look is a separate axis from a kind, and keeping them apart is the whole
@@ -1196,64 +1256,7 @@ export const AnimatedSceneSchema = z.object({
    * still says what the sentence said.
    */
   photoUrls: z.array(z.string().nullable()).default([]),
-  /**
-   * The drawing, in the pieces it should arrive in.
-   *
-   * Authored by the motion model (see `director/illustrate.ts`) and split into
-   * top-level groups at build time, so the renderer can bring one part in
-   * every few frames instead of fading a flat picture up. Null is a normal
-   * state, not an error: the scene falls back to its icons, which is worse but
-   * works, and nothing about the drawing pass is allowed to cost a scene its
-   * existence.
-   */
-  art: z
-    .object({
-      viewBox: z.string(),
-      /** The drawing's gradients; every `url(#…)` in the parts points here. */
-      defs: z.string().default(''),
-      /** How many beats the camera travels through. At least one. */
-      stages: z.number().int().min(1).default(1),
-      /** What physically happens in each beat, for the animation prompt. */
-      motion: z.array(z.string()).default([]),
-      /*
-       * A part is an object, but a bare string is still accepted and widened.
-       *
-       * The first version of this field stored plain markup, and projects
-       * rendered under it are sitting in the database. A union here means
-       * those still parse — without it the whole EDL fails validation and an
-       * old project becomes unopenable, which is a much worse outcome than an
-       * old drawing animating a little more plainly than a new one.
-       */
-      parts: z.array(
-        z.union([
-          z.string().transform((markup) => ({
-            markup,
-            stage: 0,
-            depth: 0.5,
-            enter: 'pop' as const,
-            idle: 'bob' as const,
-            hasPivot: false,
-            pivot: { x: 500, y: 500 },
-          })),
-          z.object({
-            markup: z.string(),
-            /** Which beat this piece belongs to; the camera travels between them. */
-            stage: z.number().int().min(0).default(0),
-            depth: z.number().min(0).max(1).default(0.5),
-            enter: z.enum(ART_ENTERS).default('pop'),
-            idle: z.enum(ART_IDLES).default('bob'),
-            /** Whether the pivot was stated by the model or measured for it. */
-            hasPivot: z.boolean().default(false),
-            /** Where the piece turns and scales about, in viewBox units. */
-            pivot: z
-              .object({ x: z.number(), y: z.number() })
-              .default({ x: 500, y: 500 }),
-          }),
-        ]),
-      ),
-    })
-    .nullable()
-    .default(null),
+  art: ArtSchema,
   accent: z.string().default('#9B7BFF'),
   /** Kept so the editor can show why this moment was chosen. */
   reason: z.string().default(''),
@@ -1664,10 +1667,30 @@ export const PanelSceneSchema = z.object({
   imagePrompt: z.string().default(''),
   /** Which row wins, for `rank-list`. -1 = none. */
   winner: z.number().int().default(-1),
+  /**
+   * The exhibit, drawn.
+   *
+   * The eight kinds below this file are a template library: the writing pass
+   * picks one, so twenty exhibits in a video are the same eight animations
+   * with different words in them, and the next video is the same eight again.
+   * When `art` is set the renderer draws THIS instead — a picture the model
+   * made for this sentence, in pieces that arrive one at a time.
+   *
+   * Null is a normal state and not an error. It means the drawing pass was
+   * not configured, or did not answer, or answered with something too sparse
+   * to use, and the exhibit then renders as its `kind`. That fallback has to
+   * stay good: it is what ships when the model is down.
+   */
+  art: ArtSchema,
   /** Why this moment, in one line. Shown in the editor. */
   reason: z.string().default(''),
 });
 export type PanelScene = z.infer<typeof PanelSceneSchema>;
+
+/** Whether this exhibit is a drawing rather than one of the eight kinds. */
+export function panelIsDrawn(scene: PanelScene): boolean {
+  return Boolean(scene.art && scene.art.parts.length);
+}
 
 export const EdlSchema = z.object({
   version: z.literal('1.0'),

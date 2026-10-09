@@ -1,7 +1,8 @@
 import React from 'react';
 import { AbsoluteFill, Sequence, useCurrentFrame, useVideoConfig } from 'remotion';
 import { layoutPlanFor } from '../../src/lib/styles/layouts';
-import type { Edl, PanelScene } from '../../src/lib/edl/types';
+import { Illustration, type Art } from './Illustration';
+import { panelIsDrawn, type Edl, type PanelScene } from '../../src/lib/edl/types';
 import { easeOutExpo, easeOutQuint, kf, stagger } from '../lib/motion';
 
 /**
@@ -81,6 +82,7 @@ export const Panel: React.FC<{ edl: Edl }> = ({ edl }) => {
   /** A hundredth of the panel's height, in pixels. Every size is a multiple. */
   const u = (canvasHeight * region.h) / 100;
   const pw = canvasWidth * region.w;
+  const ph = canvasHeight * region.h;
 
   return (
     <AbsoluteFill>
@@ -100,7 +102,7 @@ export const Panel: React.FC<{ edl: Edl }> = ({ edl }) => {
           const frames = Math.max(1, Math.round((scene.outEndSec - scene.outStartSec) * fps));
           return (
             <Sequence key={scene.id} from={from} durationInFrames={frames} layout="none">
-              <Stage scene={scene} frames={frames} accent={accent} u={u} pw={pw} />
+              <Stage scene={scene} frames={frames} accent={accent} u={u} pw={pw} ph={ph} />
             </Sequence>
           );
         })}
@@ -123,13 +125,14 @@ export const Panel: React.FC<{ edl: Edl }> = ({ edl }) => {
  * is a surface the viewer is reading, and a surface that cuts reads as a
  * different video rather than as the next exhibit.
  */
-const Stage: React.FC<{ scene: PanelScene; frames: number; accent: string; u: number; pw: number }> = ({
-  scene,
-  frames,
-  accent,
-  u,
-  pw,
-}) => {
+const Stage: React.FC<{
+  scene: PanelScene;
+  frames: number;
+  accent: string;
+  u: number;
+  pw: number;
+  ph: number;
+}> = ({ scene, frames, accent, u, pw, ph }) => {
   const frame = useCurrentFrame();
   const enter = kf(frame, [[0, 0], [FADE, 1]], easeOutQuint);
   const leave = kf(frame, [[frames - FADE, 1], [frames, 0]], easeOutQuint);
@@ -153,6 +156,26 @@ const Stage: React.FC<{ scene: PanelScene; frames: number; accent: string; u: nu
       {scene.kind === 'hero-image' && scene.imageUrl ? (
         <HeroFill scene={scene} frame={frame} frames={frames} />
       ) : null}
+      {/*
+        A drawing is the exhibit, so it takes the whole strip rather than
+        sitting in the body box — the eyebrow and the chip then ride ON it,
+        which is what the reference edits do with their generated frames. It
+        goes UNDER the eyebrow for that reason.
+
+        Behind the eyebrow rather than in the box below it because a drawing
+        inset in a box is a picture of an exhibit; the exhibit is supposed to
+        BE the panel.
+      */}
+      {panelIsDrawn(scene) ? (
+        <Illustration
+          art={scene.art as Art}
+          at={0}
+          width={pw}
+          height={ph}
+          durationInFrames={frames}
+          seed={scene.id}
+        />
+      ) : null}
       <Eyebrow parts={scene.eyebrow} frame={frame} u={u} onImage={overImage} />
       <div
         style={{
@@ -175,7 +198,7 @@ const Stage: React.FC<{ scene: PanelScene; frames: number; accent: string; u: nu
           justifyContent: 'center',
         }}
       >
-        {scene.kind === 'hero-image' && scene.imageUrl ? null : (
+        {panelIsDrawn(scene) || (scene.kind === 'hero-image' && scene.imageUrl) ? null : (
           <Body scene={scene} frame={frame} frames={frames} accent={accent} u={u} pw={pw} />
         )}
       </div>
