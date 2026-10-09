@@ -1,3 +1,4 @@
+import { renderableKinds } from './panel-kinds';
 import type { PanelScene } from './types';
 
 /** The part of an output segment's identity this module reads. */
@@ -107,6 +108,27 @@ export function placePanel(
   if (out.length > 1 && out[0].outEndSec - out[0].outStartSec < minSec) {
     out[1].outStartSec = 0;
     out.shift();
+  }
+
+  /*
+   * No exhibit twice running — decided HERE, last, in output order.
+   *
+   * The writing pass already rotates a repeated kind, but it works through
+   * the transcript, which is source order. The director hoists a hook, so
+   * two scenes that were nowhere near each other in the footage end up
+   * adjacent in the cut: on a real upload two `toggle-pair`s landed back to
+   * back that way, which is the slideshow-of-one-card the rule exists to
+   * stop. Output order is the only order a viewer ever sees.
+   *
+   * After the absorb pass rather than before it, because absorbing a brief
+   * placement closes a gap between two scenes that were not neighbours a
+   * moment ago — which is its own way of putting two of a kind together.
+   */
+  for (let i = 1; i < out.length; i++) {
+    const previous = out[i - 1].kind;
+    if (out[i].kind !== previous) continue;
+    const other = renderableKinds(out[i]).find((k) => k !== previous);
+    if (other) out[i] = { ...out[i], kind: other };
   }
 
   return out;

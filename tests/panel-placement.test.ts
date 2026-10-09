@@ -31,8 +31,14 @@ function scene(id: string, startSec: number, endSec: number): PanelScene {
     headline: null,
     figure: null,
     items: ['one', 'two'],
+    values: [],
     icons: [],
-    imageUrl: null,
+    imageUrl: '',
+    imagePrompt: '',
+    chip: '',
+    label: '',
+    winner: -1,
+    iconSvgs: [],
     reason: 'test',
   } as unknown as PanelScene;
 }
@@ -106,5 +112,50 @@ describe('placing the panel', () => {
   it('gives up and returns nothing rather than half a panel', () => {
     expect(placePanel([], SEGMENTS, DURATION)).toEqual([]);
     expect(placePanel(written, [], DURATION)).toEqual([]);
+  });
+});
+
+/**
+ * The no-repeat rule has to be applied in the order a viewer sees.
+ *
+ * `sanitisePanel` already rotates a repeated kind, but it reads the
+ * transcript, which is source order. The director hoists a hook, so two
+ * scenes nowhere near each other in the footage can land adjacent in the
+ * cut — on a real upload two `toggle-pair`s did exactly that.
+ */
+describe('two exhibits of the same kind landing next to each other', () => {
+  function toggle(id: string, startSec: number, endSec: number, items: string[]): PanelScene {
+    return { ...scene(id, startSec, endSec), kind: 'toggle-pair', items } as PanelScene;
+  }
+
+  it('rotates the second one to something else it can draw', () => {
+    // Source 36–38 is the hook and moves to the front, landing beside the
+    // exhibit written for source 1–3. Both are toggle-pairs.
+    const placed = placePanel(
+      [toggle('hook', 36, 38, ['A', 'B']), toggle('open', 1, 3, ['C', 'D'])],
+      SEGMENTS,
+      DURATION,
+    );
+    expect(placed).toHaveLength(2);
+    expect(placed[0].kind).not.toBe(placed[1].kind);
+  });
+
+  it('leaves a kind alone when the scene can draw nothing else', () => {
+    // One item: `toggle-pair` is the only thing this data renders as, and a
+    // rotation into a kind with nothing to draw would be worse than a repeat.
+    const bare = (id: string, a: number, b: number) =>
+      ({ ...scene(id, a, b), kind: 'hero-image', items: [], imagePrompt: 'a desk' }) as PanelScene;
+    const placed = placePanel([bare('x', 36, 38), bare('y', 1, 3)], SEGMENTS, DURATION);
+    expect(placed.every((p) => p.kind === 'hero-image')).toBe(true);
+  });
+
+  it('never repeats a kind anywhere in a full panel', () => {
+    const written = Array.from({ length: 20 }, (_, i) =>
+      toggle(`s${i}`, i * 2, i * 2 + 2, ['Left', 'Right']),
+    );
+    const placed = placePanel(written, SEGMENTS, DURATION);
+    for (let i = 1; i < placed.length; i++) {
+      expect(placed[i].kind, `${placed[i - 1].id} then ${placed[i].id}`).not.toBe(placed[i - 1].kind);
+    }
   });
 });
