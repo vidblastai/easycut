@@ -278,7 +278,7 @@ export function buildEdl(input: BuildEdlInput): Edl {
     annotations,
     // Written against the transcript, so it arrives in SOURCE seconds and
     // has to be moved onto the cut timeline before it means anything.
-    panel: placePanel(input.panel ?? [], mapper, durationSec),
+    panel: placePanel(input.panel ?? [], segments, durationSec),
     transitions,
     punchIns,
     reframe: input.reframe,
