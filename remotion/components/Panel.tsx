@@ -97,11 +97,26 @@ export const Panel: React.FC<{ edl: Edl }> = ({ edl }) => {
           overflow: 'hidden',
         }}
       >
+        {/*
+          Each exhibit outlives its own slot by the length of the fade, so the
+          one arriving rises while the one leaving falls.
+
+          Butted exactly end to end, they do not cross: the outgoing exhibit
+          spends its last seven frames fading to nothing and the incoming one
+          has not mounted yet, so the panel dips to bare grey at every change
+          — eighteen times in a 32-second video. It was survivable while an
+          exhibit was a small card in the middle of the strip and obvious the
+          moment the drawing filled it.
+
+          Later exhibits are painted after earlier ones, so the one arriving
+          is on top, which is the right way round: a drawing resolving over a
+          fading one reads as a replacement rather than as a dissolve.
+        */}
         {edl.panel.map((scene) => {
           const from = Math.round(scene.outStartSec * fps);
           const frames = Math.max(1, Math.round((scene.outEndSec - scene.outStartSec) * fps));
           return (
-            <Sequence key={scene.id} from={from} durationInFrames={frames} layout="none">
+            <Sequence key={scene.id} from={from} durationInFrames={frames + FADE} layout="none">
               <Stage scene={scene} frames={frames} accent={accent} u={u} pw={pw} ph={ph} />
             </Sequence>
           );
@@ -135,7 +150,8 @@ const Stage: React.FC<{
 }> = ({ scene, frames, accent, u, pw, ph }) => {
   const frame = useCurrentFrame();
   const enter = kf(frame, [[0, 0], [FADE, 1]], easeOutQuint);
-  const leave = kf(frame, [[frames - FADE, 1], [frames, 0]], easeOutQuint);
+  // Out across the overlap, which begins exactly where the next exhibit does.
+  const leave = kf(frame, [[frames, 1], [frames + FADE, 0]], easeOutQuint);
   const life = Math.min(enter, leave);
   const blur = (1 - life) * u * 0.9;
   /** A hero fills the strip, so the label and the chip sit on a photograph. */
