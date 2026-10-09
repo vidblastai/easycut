@@ -61,15 +61,26 @@ export async function dressPanel(
   const dressed = new Map<string, Promise<{ iconSvgs: string[]; imageUrl: string }>>();
 
   const dress = async (scene: PanelScene, index: number) => {
-    const iconSvgs = (
-      await Promise.all(
-        scene.icons.map(async (name, i) => {
-          const markup = await brandMarkup(name, `p${index}i${i}`);
-          if (!markup) missing.push(name);
-          return markup;
-        }),
-      )
-    ).filter((m): m is string => Boolean(m));
+    /*
+     * Position is meaning here, so a failed lookup leaves a hole rather than
+     * closing one.
+     *
+     * This used to `.filter(Boolean)`, which compacts: a `toggle-pair` whose
+     * FIRST icon did not resolve got its second icon drawn on the left tile
+     * and nothing on the right, so the panel showed one picture labelled
+     * with the other side's name and a blank beside it. The renderer reads
+     * `iconSvgs[0]` and `iconSvgs[1]` as the two sides, and `icon-hub` reads
+     * them against its own labels, so index i must stay the icon asked for
+     * at index i. An empty string is the hole, and the tile draws its
+     * label's initials instead.
+     */
+    const iconSvgs = await Promise.all(
+      scene.icons.map(async (name, i) => {
+        const markup = await brandMarkup(name, `p${index}i${i}`);
+        if (!markup) missing.push(name);
+        return markup ?? '';
+      }),
+    );
 
     let imageUrl = scene.imageUrl;
     if (

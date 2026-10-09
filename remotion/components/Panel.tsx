@@ -360,7 +360,9 @@ const IconHub: React.FC<KindProps> = ({ scene, frame, accent, u, pw }) => {
           transform: `scale(${kf(frame, [[0, 0.82], [9, 1]], easeOutExpo)})`,
         }}
       >
-        <Burst />
+        {/* The hub is the thing everything connects TO, so it says which
+            thing. A burst is the same picture in every hub in every video. */}
+        <Monogram label={scene.label} u={hub / 11} />
       </div>
 
       {/* the connectors, one at a time */}
@@ -411,13 +413,22 @@ const IconHub: React.FC<KindProps> = ({ scene, frame, accent, u, pw }) => {
                 borderRadius: tile * 0.23,
                 overflow: 'hidden',
                 boxShadow: `0 ${u * 1}px ${u * 2.6}px rgba(16,16,24,0.16)`,
-                background: '#FFFFFF',
+                background: svg
+                  ? '#FFFFFF'
+                  : `linear-gradient(160deg, ${accent}, ${shade(accent, -0.16)})`,
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
               }}
               dangerouslySetInnerHTML={svg ? { __html: fit(svg) } : undefined}
-            />
+            >
+              {/* A lookup that failed leaves an index empty rather than
+                  closing the gap, so the tile here is a hole — and a white
+                  square on a light panel is an invisible one. */}
+              {svg ? undefined : (
+                <Monogram label={scene.items[i] ?? scene.icons[i] ?? ''} u={tile / 10} />
+              )}
+            </div>
             {tick > 0.01 ? (
               <div
                 style={{
