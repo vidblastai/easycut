@@ -148,3 +148,81 @@ describe('words on a panel are labels', () => {
     expect(scene.chip).toBe('HOLT SICH ALLES SELBST');
   });
 });
+
+/**
+ * What the panel looked like on a real upload, and why.
+ *
+ * Sixteen of eighteen exhibits came back with no `icons` at all, so every
+ * `toggle-pair` in the video drew the same two orange starbursts — the
+ * fallback tile — and the whole panel read as one template repeating. Three
+ * more came back with nothing in them and rendered as blank white cards.
+ */
+describe('an exhibit that would draw nothing', () => {
+  it('gives a toggle-pair its items as icons when the model named none', () => {
+    const [scene] = sanitisePanel(
+      [{ startSec: 0, endSec: 2, kind: 'toggle-pair', items: ['Video editor', 'Cloud Code'], icons: [] }],
+      4,
+    );
+    // The two things a toggle names ARE its items, and the icon resolver
+    // answers "video editor" as readily as it answers "instagram".
+    expect(scene.icons).toEqual(['video editor', 'cloud code']);
+  });
+
+  it('leaves the icons the model did name alone', () => {
+    const [scene] = sanitisePanel(
+      [{ startSec: 0, endSec: 2, kind: 'toggle-pair', items: ['Before', 'After'], icons: ['figma', 'notion'] }],
+      4,
+    );
+    expect(scene.icons).toEqual(['figma', 'notion']);
+  });
+
+  it('drops a scene with nothing to draw rather than showing a blank card', () => {
+    const scenes = sanitisePanel(
+      [
+        { startSec: 0, endSec: 2, kind: 'list-panel', eyebrowA: 'THE OLD WAY', eyebrowB: 'HUMAN EDITORS' },
+        { startSec: 2, endSec: 4, kind: 'chat-card', label: 'Claude', items: ['edit my video'] },
+      ],
+      4,
+    );
+    expect(scenes).toHaveLength(1);
+    expect(scenes[0].kind).toBe('chat-card');
+    // And the survivor still covers the whole runtime.
+    expect(scenes[0].outStartSec).toBe(0);
+    expect(scenes[0].outEndSec).toBe(4);
+  });
+
+  it('still butts the survivors together when one in the middle is dropped', () => {
+    const scenes = sanitisePanel(
+      [
+        { startSec: 0, endSec: 2, kind: 'list-panel', items: ['a', 'b'] },
+        { startSec: 2, endSec: 4, kind: 'list-panel' },
+        { startSec: 4, endSec: 6, kind: 'chat-card', items: ['c'] },
+      ],
+      6,
+    );
+    expect(scenes).toHaveLength(2);
+    expect(scenes[0].outEndSec).toBeCloseTo(scenes[1].outStartSec, 2);
+    expect(scenes[scenes.length - 1].outEndSec).toBe(6);
+  });
+});
+
+describe('what does not get an icon lookup', () => {
+  it('leaves a chat-card alone — its items are lines of a message', () => {
+    const [scene] = sanitisePanel(
+      [{ startSec: 0, endSec: 2, kind: 'chat-card', label: 'Claude', items: ['Need more time', 'Sending revisions'] }],
+      4,
+    );
+    expect(scene.kind).toBe('chat-card');
+    // Asking an icon library for "need more time" is a round trip for a
+    // picture nothing on this card renders.
+    expect(scene.icons).toEqual([]);
+  });
+
+  it('leaves a list-panel alone for the same reason', () => {
+    const [scene] = sanitisePanel(
+      [{ startSec: 0, endSec: 2, kind: 'list-panel', items: ['clip_01.mp4', 'clip_02.mp4'] }],
+      4,
+    );
+    expect(scene.icons).toEqual([]);
+  });
+});

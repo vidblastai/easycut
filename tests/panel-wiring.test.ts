@@ -114,3 +114,37 @@ describe('the pipeline', () => {
     expect(source).toMatch(/writePanel\(ctx\.transcript, ctx\.media\.durationSec\)/);
   });
 });
+
+/**
+ * The bug that only exists in the preview.
+ *
+ * The editor's Player composes on a smaller canvas than the export so a
+ * browser can keep up — `PREVIEW_LONG_EDGE` is 720, so a 1080×1920 video
+ * previews at 406×720. A component that measures itself against
+ * `edl.format` is then wrong by that ratio: the panel's `u` came out 2.7×
+ * too big inside a box 2.7× too small, so the eyebrow ran off both edges
+ * and a toggle-pair's tiles hung over the sides of the frame.
+ *
+ * It rendered perfectly at export resolution, which is why nobody caught it
+ * — the only place it was wrong was the only place anybody looks.
+ */
+describe('a component that draws to the canvas', () => {
+  const files = [
+    'remotion/components/Panel.tsx',
+    'remotion/components/VideoTrack.tsx',
+    'remotion/components/BrollLayer.tsx',
+    'remotion/components/Captions.tsx',
+    'remotion/components/Scenes.tsx',
+  ];
+
+  it('takes its pixel sizes from useVideoConfig, never from edl.format', () => {
+    for (const file of files) {
+      const source = readFileSync(join(process.cwd(), file), 'utf8');
+      // `edl.format.layout`, `.aspect`, `.fps` and `.durationSec` are facts
+      // about the document. `.width` and `.height` are a canvas measurement,
+      // and the canvas is not the document.
+      const geometry = source.match(/edl\.format\.(width|height)/g) ?? [];
+      expect(geometry, `${file} measures itself against the document`).toEqual([]);
+    }
+  });
+});

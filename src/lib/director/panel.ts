@@ -61,7 +61,7 @@ This is the format that AI-news creators use and it works for one reason: a view
 - "rank-list" — rows with bars and a figure each; one of them fills with the accent colour and wins. \`winner\` is its index. For "it tells you which format is working".
 - "chat-card" — a compose window writing itself a line at a time. \`label\` is the tool's name, \`items\` are the lines it writes. For "it drafts the next post".
 - "list-panel" — a list that grows under a count: comments, files, takes, messages. \`figure\` is the count, \`label\` what they are, \`items\` the rows.
-- "toggle-pair" — two things and a switch between them that flips on. \`items\` are their two names. For "connect A to B".
+- "toggle-pair" — two things and a switch between them that flips on. \`items\` are their two names AND \`icons\` are the two pictures, one per side, in that order. For "connect A to B", "the editor becomes the AI".
 - "hero-image" — one generated picture, held still. Use for a physical thing with no interface: a brain, a crowd, a machine.
 
 ## Rules
@@ -74,8 +74,11 @@ This is the format that AI-news creators use and it works for one reason: a view
 6. **The eyebrow is two parts**, in the speaker's language, each two or three words, and it names what the viewer is looking at: ["DIE ZAHLEN", "AUS DEINEN REELS"], ["DER SCHNITT", "UND DER UPLOAD"]. Not a sentence, not a summary of the speech.
 7. **The chip is a verdict**, three or four words, and most scenes have one: "HOLT SICH ALLES SELBST", "KEINE BLEIBT LIEGEN". Leave it empty when nothing is worth saying.
 8. **Short words.** An item is one to four words. These are labels inside a mock interface, not sentences.
-9. **\`icons\` are English brand or object names** — "instagram", "linkedin", "youtube", "facebook", "figma", "notion". They are looked up in an icon library, so a German word finds nothing.
-10. **Vary the kind.** Across the whole video use at least five of the eight. Three "list-panel" in a row is a slideshow of one card. The reference never repeats a kind twice running.`;
+9. **\`icons\` are English brand or object names** — "instagram", "linkedin", "youtube", "figma", "notion", and also plain objects: "video camera", "scissors", "folder", "robot", "clock". They are looked up in an icon library, so a German word finds nothing and a phrase like "your amazing footage" finds nothing. One or two English words, naming a THING.
+10. **Every tile carries an icon.** "icon-hub" needs three or four; "toggle-pair" needs exactly two, left then right. An exhibit that draws tiles and names none is drawn as blank tiles, which is the one way this panel looks broken.
+11. **Vary the kind.** Across the whole video use at least five of the eight. Three "list-panel" in a row is a slideshow of one card, and alternating two kinds for twenty scenes is the same fault more slowly. The reference never repeats a kind twice running.
+12. **An exhibit is never empty.** Every scene needs something to draw — \`items\`, \`icons\`, a \`figure\` or an \`imagePrompt\`. A scene with an eyebrow and nothing else is a blank card, and it is dropped.
+13. **Use the speaker's own nouns.** The viewer is reading the panel and hearing the voice at the same time, so the words should meet. If the voice says "b-roll, motion graphics and so much more", the items are "B-roll", "Motion graphics" — not "Extra features". Name what they named.`;
 
 const jsonSchema = {
   type: 'object',
@@ -260,7 +263,7 @@ export function sanitisePanel(raw: RawScene[], durationSec: number): PanelScene[
   for (let i = 0; i < ordered.length; i++) {
     const s = ordered[i];
     // Butt each scene against the next, and the last one against the end.
-    const start = i === 0 ? 0 : out[out.length - 1].outEndSec;
+    const start = out.length ? out[out.length - 1].outEndSec : 0;
     const nextStart = i + 1 < ordered.length ? Math.max(ordered[i + 1].startSec, start + MIN_SEC) : durationSec;
     const end = Math.min(durationSec, Math.max(start + MIN_SEC, Math.min(nextStart, start + MAX_SEC)));
     if (end <= start + 0.2) continue;
@@ -275,14 +278,25 @@ export function sanitisePanel(raw: RawScene[], durationSec: number): PanelScene[
      * toggle while a list of them is a list.
      */
     let kind = PANEL_KINDS.includes(s.kind as never) ? (s.kind as PanelScene['kind']) : 'list-panel';
-    const icons = list(s.icons).slice(0, 4).map((t) => t.toLowerCase());
     const items = list(s.items).slice(0, 4).map((t) => words(t, 4)).filter(Boolean);
     const values = list(s.values).slice(0, 4).map((t) => t.slice(0, 10));
     const figure = String(s.figure ?? '').trim().slice(0, 14);
     const imagePrompt = (s.imagePrompt ?? '').trim();
-    const can = renderable({ icons, items, values, figure, imagePrompt });
 
-    if (!can.includes(kind)) kind = can[0] ?? 'list-panel';
+    const asked = list(s.icons).slice(0, 4).map((t) => t.toLowerCase());
+    const can = renderable({ icons: asked, items, values, figure, imagePrompt });
+
+    /*
+     * An exhibit with nothing in it is worse than one fewer exhibit.
+     *
+     * `can[0] ?? 'list-panel'` used to be the floor, so a scene the model
+     * sent with no items, no figure and no icons became a `list-panel` with
+     * an empty list: a blank white card on screen for two seconds. Three of
+     * eighteen were that. Dropping it costs nothing, because the scene after
+     * it starts where this one would have.
+     */
+    if (!can.length) continue;
+    if (!can.includes(kind)) kind = can[0];
 
     /*
      * Never the same exhibit twice running.
@@ -296,6 +310,30 @@ export function sanitisePanel(raw: RawScene[], durationSec: number): PanelScene[
      */
     const previous = out[out.length - 1]?.kind;
     if (kind === previous) kind = can.find((k) => k !== previous) ?? kind;
+
+    /*
+     * A tile with no icon is a tile with no meaning.
+     *
+     * `toggle-pair` draws two tiles and `icon-hub` draws a ring of them, and
+     * the model fills `icons` for the hub it was told about and almost never
+     * for the toggle. Measured on one upload: sixteen of eighteen exhibits
+     * came back with no icons at all, so every toggle-pair in the video drew
+     * the same two orange starbursts — the fallback tile — and the whole
+     * panel read as one template repeating. It was the thing the customer
+     * saw first.
+     *
+     * The two things a toggle names ARE its items, so the items stand in.
+     * `brandMarkup` tries the brand sets and then the general resolver,
+     * which answers "video editor" as readily as "instagram", and two
+     * different pictures is the whole point of the exhibit.
+     *
+     * Only for the kinds that DRAW tiles, and only after the kind is settled:
+     * a `chat-card`'s items are lines of a message, and asking an icon
+     * library for "need more time" is a network round trip for a picture
+     * nothing renders.
+     */
+    const drawsTiles = kind === 'toggle-pair' || kind === 'icon-hub';
+    const icons = asked.length || !drawsTiles ? asked : items.slice(0, 4).map((t) => t.toLowerCase());
 
     out.push(
       PanelSceneSchema.parse({

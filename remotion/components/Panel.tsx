@@ -58,15 +58,29 @@ const FADE = 7;
  * with the frame, because `u` comes from the frame.
  */
 export const Panel: React.FC<{ edl: Edl }> = ({ edl }) => {
-  const { fps } = useVideoConfig();
+  /*
+   * The CANVAS's size, never `edl.format`.
+   *
+   * They are not the same. The editor composes the preview on a smaller
+   * canvas so a browser can keep up — a 1080×1920 export previews at
+   * 360×640 — and every size in this file is a multiple of `u`. Measured off
+   * the document, `u` came out three times too big inside a box three times
+   * too small, so the eyebrow ran off both edges of the panel and the two
+   * tiles of a toggle-pair hung over the sides of the frame. It rendered
+   * perfectly at export resolution, which is why it survived a review: the
+   * only place it was wrong was the only place anybody looks at it.
+   *
+   * `VideoTrack` carries the same warning for the same reason.
+   */
+  const { fps, width: canvasWidth, height: canvasHeight } = useVideoConfig();
   const plan = layoutPlanFor(edl);
   const region = plan.panel;
   if (!region || !edl.panel.length) return null;
 
   const accent = edl.captionStyle.emphasisColor || '#C96442';
   /** A hundredth of the panel's height, in pixels. Every size is a multiple. */
-  const u = (edl.format.height * region.h) / 100;
-  const pw = edl.format.width * region.w;
+  const u = (canvasHeight * region.h) / 100;
+  const pw = canvasWidth * region.w;
 
   return (
     <AbsoluteFill>
@@ -913,7 +927,7 @@ const Tile: React.FC<{
       }}
       dangerouslySetInnerHTML={svg ? { __html: fit(svg) } : undefined}
     >
-      {svg ? undefined : <Burst />}
+      {svg ? undefined : <Monogram label={label} u={u} />}
     </div>
     {label ? (
       <div
@@ -930,6 +944,43 @@ const Tile: React.FC<{
     ) : null}
   </div>
 );
+
+/**
+ * The tile when no icon resolved.
+ *
+ * It used to be one starburst, the same on every tile — so a `toggle-pair`
+ * whose icons did not come back drew the same picture twice with two
+ * different labels under it, and a video with four toggle-pairs in it drew
+ * that same picture eight times. The exhibit's whole argument is "this thing
+ * becomes that thing", and it was showing one thing becoming itself.
+ *
+ * Initials are not a picture, but they are the label's own initials, so two
+ * tiles differ and each one says which side it is. A starburst is kept for
+ * the case there is nothing to take initials from.
+ */
+const Monogram: React.FC<{ label: string; u: number }> = ({ label, u }) => {
+  const initials = label
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((word) => word[0]?.toUpperCase() ?? '')
+    .join('');
+
+  if (!initials) return <Burst />;
+  return (
+    <span
+      style={{
+        color: '#FFFFFF',
+        fontSize: u * (initials.length > 1 ? 8.5 : 11),
+        fontWeight: 800,
+        letterSpacing: u * -0.2,
+        lineHeight: 1,
+      }}
+    >
+      {initials}
+    </span>
+  );
+};
 
 /* ----------------------------------------------------------------- surface */
 
