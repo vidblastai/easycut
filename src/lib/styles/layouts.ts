@@ -526,3 +526,66 @@ export function regionStyle(region: Region): {
     height: pct(region.h),
   };
 }
+
+/**
+ * The layout as it must be drawn for THIS document.
+ *
+ * `layoutPlan` describes the shape a style asks for. This describes the shape
+ * the renderer can actually honour, and the difference is one case: a layout
+ * that reserves a strip for the explainer panel, in a document whose panel
+ * track is empty.
+ *
+ * That case shipped as a black band across the top 42.5% of the frame — the
+ * speaker is sized to its own region, the panel draws nothing, and what shows
+ * through at the seam is the composition's background. The layer that failed
+ * was two modules away (the pipeline imported the panel writer and never
+ * called it) and the render reported success, which is the worst combination:
+ * every automated check passed and the video was half empty.
+ *
+ * So the geometry refuses to describe a region nothing fills. No panel
+ * content, no reserved strip: the speaker takes the whole frame and the
+ * captions go back to wherever their own preset puts them. A video that
+ * silently lost its panel is then an ordinary full-frame edit rather than a
+ * broken one.
+ */
+export function layoutPlanFor(edl: {
+  format: { layout: Layout; width: number; height: number };
+  panel: readonly unknown[];
+}): LayoutPlan {
+  const plan = layoutPlan(edl.format.layout, edl.format);
+  if (!plan.panel || edl.panel.length > 0) return plan;
+
+  const strip = plan.panel;
+
+  /*
+   * Only the region the strip was taken FROM gets it back.
+   *
+   * A region that shares an edge with the panel is the other half of a
+   * divided frame, so the union of the two is the shape the layout would
+   * have had without a panel. A region that does not — a reaction cut's
+   * corner box, say — is an overlay riding on top of that frame, and growing
+   * it to swallow the strip would turn a small box into most of the picture.
+   * Written as a union rather than as `{0,0,1,1}` so it still holds if the
+   * panel ever sits somewhere other than the top.
+   */
+  const absorb = (region: Region): Region => {
+    const top = Math.min(region.y, strip.y);
+    const bottom = Math.max(region.y + region.h, strip.y + strip.h);
+    const adjoins =
+      Math.abs(region.y - (strip.y + strip.h)) < 0.001 ||
+      Math.abs(strip.y - (region.y + region.h)) < 0.001;
+    return adjoins ? { x: region.x, y: top, w: region.w, h: bottom - top } : region;
+  };
+
+  return {
+    ...plan,
+    speaker: absorb(plan.speaker),
+    // Left alone: an inset is drawn OVER the frame, not beside the panel.
+    speakerWithBroll: plan.speakerWithBroll,
+    broll: plan.broll ? absorb(plan.broll) : null,
+    panel: null,
+    // The seam it was sitting under is gone. 0.447 of a full-frame shot is the
+    // middle of the speaker's face.
+    captionY: null,
+  };
+}

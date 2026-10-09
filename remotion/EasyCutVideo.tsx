@@ -1,7 +1,7 @@
 import React from 'react';
 import { AbsoluteFill, Audio, Sequence, useVideoConfig } from 'remotion';
 import { sfxDurationSec } from '../src/lib/assets/sfx';
-import { layoutPlan } from '../src/lib/styles/layouts';
+import { layoutPlanFor } from '../src/lib/styles/layouts';
 import { FONT_FAMILY } from './lib/fonts';
 import type { Edl } from '../src/lib/edl/types';
 import { BrollLayer } from './components/BrollLayer';
@@ -69,7 +69,7 @@ export interface EasyCutVideoProps {
 export const EasyCutVideo: React.FC<EasyCutVideoProps> = ({ edl, previewAudio = false, onMediaError, lowDetail = false }) => {
   const { fps } = useVideoConfig();
 
-  const plan = layoutPlan(edl.format.layout, edl.format);
+  const plan = layoutPlanFor(edl);
 
   /*
    * A reaction cut and a commentary bubble invert the two bottom layers.

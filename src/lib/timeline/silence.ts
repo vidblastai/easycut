@@ -26,16 +26,34 @@ export const SILENCE_PRESETS: Record<'aggressive' | 'balanced' | 'gentle' | 'mic
 };
 
 /**
- * Finds the silent stretches worth removing.
+ * The ASR's word boundaries are approximate. ffmpeg's are not.
  *
- * Two signals, deliberately combined:
- *  - **transcript gaps** know where words aren't, but a gap can contain a laugh,
- *    a sigh, a prop reveal or a beat that carries the joke;
- *  - **acoustic silence** (ffmpeg `silencedetect`) knows where there is genuinely
- *    no sound.
+ * This used to look for gaps BETWEEN words and then ask the acoustic detector
+ * to confirm them, and on real footage that missed most of the pauses. Three
+ * measured from a 40s take:
  *
- * We only cut where both agree. That single rule is what stops an automated
- * editor from butchering delivery, and it costs nothing.
+ *   - 0.57s of silence at 3.65–4.21, where the transcript's gap is 0.16s. The
+ *     word before it is "not…", timed to 3.92: Deepgram pushed the boundary a
+ *     quarter-second past the last audible sound, so the gap never cleared the
+ *     0.22s floor and the pause was never a candidate.
+ *   - 0.34s at 30.13–30.47, straddling a sentence boundary whose transcript
+ *     gap is 0.08s.
+ *   - 0.25s at 34.15–34.40, sitting INSIDE the word "and" — one word given a
+ *     0.64s span because the speaker paused in the middle of saying it. There
+ *     is no gap there at all to find.
+ *
+ * Together that is 1.9s of dead air in a 40s video, which is the difference
+ * between an edit that feels cut and one that does not. So the acoustic
+ * signal leads now: `silencedetect` at -50dB does not trip on room tone or
+ * breathing, and where it says there is no sound, cutting removes nothing
+ * audible — whatever the word timings claim.
+ *
+ * The transcript's job is the veto, not the proposal. A laugh, a sigh or a
+ * prop reveal is not silent, so it never appears here in the first place; and
+ * a stretch the ASR puts the CENTRE of a word inside is one where the two
+ * signals genuinely disagree, so it is left alone. That invariant is what
+ * keeps the division of labour honest: this pass removes silence and can
+ * never remove a word. Cleanup removes words.
  */
 export function detectRemovableSilence(
   transcript: Transcript,
@@ -45,46 +63,79 @@ export function detectRemovableSilence(
   const words = transcript.words;
   if (!words.length) return [];
 
-  const gaps: Interval[] = [];
+  const candidates: Interval[] = [];
 
-  // Head: dead air before the first word (someone walking back to the camera).
-  if (words[0].startSec > options.minSilenceSec) {
-    gaps.push({ startSec: 0, endSec: words[0].startSec });
-  }
-
-  for (let i = 1; i < words.length; i++) {
-    const gap = words[i].startSec - words[i - 1].endSec;
-    if (gap >= options.minSilenceSec) {
-      gaps.push({ startSec: words[i - 1].endSec, endSec: words[i].startSec });
+  if (acousticSilence.length) {
+    for (const quiet of acousticSilence) {
+      // The two signals disagree about this stretch: ffmpeg heard nothing,
+      // the ASR heard the middle of a word. Nothing gets cut on a
+      // disagreement — a dropped word is a far worse edit than a kept pause.
+      if (holdsAWord(quiet, words)) continue;
+      candidates.push(quiet);
+    }
+  } else {
+    /*
+     * No acoustic data — `silencedetect` failed or was never run. Fall back to
+     * the transcript's own gaps, which is what this function did for every
+     * stretch before the acoustic signal led. Worse, and still an edit.
+     */
+    if (words[0].startSec > options.minSilenceSec) {
+      candidates.push({ startSec: 0, endSec: words[0].startSec });
+    }
+    for (let i = 1; i < words.length; i++) {
+      if (words[i].startSec - words[i - 1].endSec >= options.minSilenceSec) {
+        candidates.push({ startSec: words[i - 1].endSec, endSec: words[i].startSec });
+      }
     }
   }
 
-  // Tail: trailing silence after the last word (reaching for the stop button).
+  /*
+   * The tail is always transcript-driven.
+   *
+   * `silencedetect` reports a `silence_start` and waits for the sound to come
+   * back before reporting the end of the interval — and on a take that ends
+   * in silence it never does, so the last interval is dropped at EOF. That is
+   * the one stretch the parser cannot see and the one most likely to be
+   * several seconds long: somebody reaching for the stop button.
+   */
   const lastWord = words[words.length - 1];
   if (transcript.durationSec - lastWord.endSec > options.minSilenceSec) {
-    gaps.push({ startSec: lastWord.endSec, endSec: transcript.durationSec });
+    candidates.push({ startSec: lastWord.endSec, endSec: transcript.durationSec });
   }
 
   const confirmed: Interval[] = [];
-  for (const gap of gaps) {
-    // How much of this gap is acoustically silent?
-    const quiet = acousticSilence.length
-      ? intersectionLength(gap, acousticSilence)
-      : gap.endSec - gap.startSec; // no acoustic data → trust the transcript
-
-    const gapLength = gap.endSec - gap.startSec;
-    // Less than 60 % quiet means something is happening in there. Leave it.
-    if (quiet / gapLength < 0.6) continue;
+  for (const quiet of mergeIntervals(candidates)) {
+    if (quiet.endSec - quiet.startSec < options.minSilenceSec) continue;
 
     // Shrink by the padding so the cut keeps a natural breath on each side.
-    const start = gap.startSec + options.paddingSec;
-    const end = gap.endSec - options.paddingSec;
+    const start = quiet.startSec + options.paddingSec;
+    // Except at the very end, where there is nothing left to breathe before.
+    const atEnd = quiet.endSec >= transcript.durationSec - 0.01;
+    const end = atEnd ? quiet.endSec : quiet.endSec - options.paddingSec;
     if (end - start >= options.minKeepSec) {
       confirmed.push({ startSec: start, endSec: end });
     }
   }
 
   return mergeIntervals(confirmed);
+}
+
+/**
+ * Whether a silent stretch contains the centre of a spoken word.
+ *
+ * The midpoint rather than any overlap, and that is the same test
+ * `wordsOutsideRemovals` uses to decide which words survive a cut — they have
+ * to agree, or this pass can propose a removal that silently deletes a word
+ * from the captions. Overlap alone would veto almost everything: the ASR runs
+ * its boundaries into the silence on both sides of every pause, which is the
+ * whole reason this function is needed.
+ */
+function holdsAWord(quiet: Interval, words: TranscriptWord[]): boolean {
+  for (const word of words) {
+    const mid = (word.startSec + word.endSec) / 2;
+    if (mid > quiet.startSec && mid < quiet.endSec) return true;
+  }
+  return false;
 }
 
 /** Proportion of the timeline that is dead air — drives the raw/roughcut hint. */

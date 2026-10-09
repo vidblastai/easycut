@@ -398,6 +398,38 @@ async function stageDirect(ctx: PipelineContext): Promise<void> {
   }
 
   /*
+   * The explainer panel.
+   *
+   * Only for a layout that HAS a panel — `explainer` reserves the top 42.5%
+   * of the frame for it, and a layout without one has nowhere to put an
+   * exhibit. Written here, in footage time, because that is the only time the
+   * transcript is in; `placePanel` maps it onto the cut timeline later.
+   *
+   * Non-fatal, but never silent: a panel region with nothing in it renders as
+   * a black band across the top of the video, which is far worse than no
+   * panel at all, so every path out of here either fills `ctx.panel` or says
+   * why it did not.
+   */
+  const wantsPanel = Boolean(layoutPlan(ctx.style.layout, { width: 1, height: 1 }).panel);
+
+  if (wantsPanel && !isPanelPassConfigured()) {
+    ctx.degraded.push('the explainer panel (no MOTION_MODEL configured)');
+  } else if (wantsPanel) {
+    const pass = await writePanel(ctx.transcript, ctx.media.durationSec);
+    ctx.panel = pass.scenes;
+    if (pass.costUsd > 0) ctx.ledger.add('director', pass.costUsd, `panel:${pass.model}`);
+    if (pass.error) ctx.degraded.push(`the explainer panel (${pass.error})`);
+    ctx.log.push({
+      stage: 'direct',
+      status: 'ok',
+      ms: 0,
+      message: pass.scenes.length
+        ? `Panel: ${pass.scenes.length} exhibits over ${ctx.media.durationSec.toFixed(0)}s`
+        : 'Panel: nothing written',
+    });
+  }
+
+  /*
    * A second pass, on a stronger model, for the faceless scenes.
    *
    * This is the one judgement in the pipeline worth paying for. A scene takes

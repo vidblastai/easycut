@@ -173,6 +173,11 @@ export const SPANISH: LanguagePack = {
     'despues', 'sin', 'menos', 'siempre', 'ya', 'puesto', 'mientras', 'excepto',
   ]),
 
+  clauseOpeners: new Set([
+    'pero', 'y', 'e', 'o', 'porque', 'que', 'quien', 'cuando', 'si', 'entonces', 'pues', 'aunque',
+    'sino', 'como', 'mientras', 'salvo',
+  ]),
+
   negations: new Set(['no', 'nunca', 'jamás', 'jamas', 'nada', 'ningún', 'ningun', 'ninguna', 'nadie',
     'sin', 'ni', 'tampoco']),
 

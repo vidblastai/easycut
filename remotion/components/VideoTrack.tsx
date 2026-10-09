@@ -3,7 +3,7 @@ import { AbsoluteFill, OffthreadVideo, Sequence, useCurrentFrame, useVideoConfig
 import type { Edl } from '../../src/lib/edl/types';
 import { cameraFrame, punchScaleAt, sampleTrack } from '../lib/reframe';
 import { ramp } from '../lib/timing';
-import { brollCoverage, layoutPlan, lerpRegion, regionStyle } from '../../src/lib/styles/layouts';
+import { brollCoverage, layoutPlanFor, lerpRegion, regionStyle } from '../../src/lib/styles/layouts';
 
 /**
  * The speaker.
@@ -34,7 +34,7 @@ export const VideoTrack: React.FC<{ edl: Edl; onMediaError?: (message: string) =
   // The speaker gets a box rather than the frame: on a split screen it is the
   // upper half, and the crop has to be computed against THAT shape or the
   // picture is letterboxed inside its own half.
-  const plan = layoutPlan(edl.format.layout, edl.format);
+  const plan = layoutPlanFor(edl);
 
   /*
    * On a reaction cut the box MOVES.

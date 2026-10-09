@@ -95,3 +95,75 @@ describe('interval algebra', () => {
     expect(invertIntervals([], 5)).toEqual([{ startSec: 0, endSec: 5 }]);
   });
 });
+
+/**
+ * The three pauses a real 40-second take hid from the old detector.
+ *
+ * Every number here was measured off `out/user/IMG_4836.MOV`, and the point of
+ * the file is that the transcript could not see any of them: the ASR runs its
+ * word boundaries into the silence, so the GAP is a fraction of the pause and
+ * in the worst case there is no gap at all.
+ */
+describe('the pauses the transcript cannot see', () => {
+  const PRESET = SILENCE_PRESETS.aggressive;
+
+  function cut(words: TranscriptWord[], acoustic: { startSec: number; endSec: number }[], durationSec: number) {
+    return detectRemovableSilence(transcriptOf(words, durationSec), acoustic, PRESET);
+  }
+
+  it('cuts a pause whose transcript gap is too short to qualify', () => {
+    // "not…" is timed to 3.92; the last audible sound is at 3.65. The gap is
+    // 0.16s, under the 0.22s floor, and the pause is 0.57s.
+    const words = [word('but', 3.2, 3.36), word('not...', 3.36, 3.92), word('Because', 4.08, 4.48)];
+    const [removal] = cut(words, [{ startSec: 3.65, endSec: 4.21 }], 5);
+    expect(removal.startSec).toBeCloseTo(3.7, 2);
+    expect(removal.endSec).toBeCloseTo(4.16, 2);
+  });
+
+  it('cuts a pause that sits inside a single word', () => {
+    // One word, "and", given a 0.64s span because the speaker paused halfway
+    // through saying it. There is no gap here at all.
+    const words = [word('it', 33.51, 33.75), word('and', 33.75, 34.39), word('it', 34.47, 34.63)];
+    const [removal] = cut(words, [{ startSec: 34.15, endSec: 34.4 }], 36);
+    expect(removal.startSec).toBeCloseTo(34.2, 2);
+    expect(removal.endSec).toBeCloseTo(34.35, 2);
+  });
+
+  it('never proposes a cut that would delete a word', () => {
+    // ffmpeg says silent, the ASR says there is a word in the middle of it.
+    // On a disagreement nothing is cut: a dropped word is a worse edit than a
+    // kept pause, and `wordsOutsideRemovals` judges by the same midpoint.
+    const words = [word('one', 1, 1.3), word('quiet', 2, 2.6), word('three', 3.4, 3.8)];
+    const removals = cut(words, [{ startSec: 1.4, endSec: 3.3 }], 5);
+    // The tail after "three" is still fair game; the disputed stretch is not.
+    expect(removals.filter((r) => r.startSec < 3.8)).toEqual([]);
+  });
+
+  it('cuts a trailing pause all the way to the end of the file', () => {
+    // `silencedetect` never closes an interval that runs to EOF, so the tail
+    // is the one stretch that stays transcript-driven — and it gets no
+    // padding at the far end, because there is nothing after it to breathe.
+    const words = [word('done.', 1, 1.5)];
+    const [, tail] = cut(words, [{ startSec: 0, endSec: 1 }], 4);
+    expect(tail.startSec).toBeCloseTo(1.55, 2);
+    expect(tail.endSec).toBeCloseTo(4, 2);
+  });
+
+  it('still cuts on the transcript alone when there is no acoustic data', () => {
+    const words = [word('Hello', 1, 1.4), word('again.', 4, 4.5)];
+    const [head, gap] = cut(words, [], 5);
+    expect(head.startSec).toBeCloseTo(0.05, 2);
+    expect(gap.startSec).toBeCloseTo(1.45, 2);
+    expect(gap.endSec).toBeCloseTo(3.95, 2);
+  });
+
+  it('leaves a laugh alone, because a laugh is not silent', () => {
+    const words = [word('Hello', 1, 1.4), word('again.', 4, 4.5)];
+    // A 2.6s hole between the words, of which only the first 0.2s is silent.
+    // The old detector asked whether 60% of the GAP was quiet and cut the
+    // whole thing when it was; this one cuts the quiet part and only if there
+    // is enough of it. 0.2s does not clear the 0.22s floor, so nothing goes.
+    const removals = cut(words, [{ startSec: 1.4, endSec: 1.6 }], 5);
+    expect(removals.filter((r) => r.startSec < 4.5)).toEqual([]);
+  });
+});

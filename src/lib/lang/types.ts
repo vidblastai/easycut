@@ -71,6 +71,19 @@ export interface LanguagePack {
   subordinators: Set<string>;
 
   /**
+   * What can begin a clause the speaker then abandoned.
+   *
+   * Only ever consulted on the last few words of a sentence that already
+   * trails off — "Cloud Code just replaced video editors, but not…" — where
+   * the job is to find where the dead clause started so the live one can be
+   * kept. That makes a generous list cheap and a stingy one lossy, which is
+   * the opposite of `coordinators`: that one decides whether a long sentence
+   * is an enumeration, so a word added to it changes how every list in the
+   * video is read. They are separate for that reason and must stay separate.
+   */
+  clauseOpeners: Set<string>;
+
+  /**
    * Negation.
    *
    * "You are not competing on features" and "you are competing on how

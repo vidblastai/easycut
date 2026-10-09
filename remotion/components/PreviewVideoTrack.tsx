@@ -1,7 +1,7 @@
 import React, { useEffect, useLayoutEffect, useRef } from 'react';
 import { AbsoluteFill, Internals, useCurrentFrame, useVideoConfig } from 'remotion';
 import type { Edl } from '../../src/lib/edl/types';
-import { brollCoverage, layoutPlan, lerpRegion, regionStyle } from '../../src/lib/styles/layouts';
+import { brollCoverage, layoutPlanFor, lerpRegion, regionStyle } from '../../src/lib/styles/layouts';
 import { cameraFrame, punchScaleAt, sampleTrack } from '../lib/reframe';
 import { ramp } from '../lib/timing';
 import { planPreviewFrame } from '../../src/lib/timeline/preview-plan';
@@ -86,7 +86,7 @@ export const PreviewVideoTrack: React.FC<{
   const outSec = frame / fps;
 
   /* ---- geometry, identical to the renderer's video track ---- */
-  const plan = layoutPlan(edl.format.layout, edl.format);
+  const plan = layoutPlanFor(edl);
   const coverage = plan.speakerWithBroll ? brollCoverage(edl.broll, outSec) : 0;
   const region = plan.speakerWithBroll
     ? lerpRegion(plan.speaker, plan.speakerWithBroll, ease(coverage))

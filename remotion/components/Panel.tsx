@@ -1,6 +1,6 @@
 import React from 'react';
 import { AbsoluteFill, Sequence, useCurrentFrame, useVideoConfig } from 'remotion';
-import { layoutPlan } from '../../src/lib/styles/layouts';
+import { layoutPlanFor } from '../../src/lib/styles/layouts';
 import type { Edl, PanelScene } from '../../src/lib/edl/types';
 import { easeOutExpo, easeOutQuint, kf, stagger } from '../lib/motion';
 
@@ -59,7 +59,7 @@ const FADE = 7;
  */
 export const Panel: React.FC<{ edl: Edl }> = ({ edl }) => {
   const { fps } = useVideoConfig();
-  const plan = layoutPlan(edl.format.layout, edl.format);
+  const plan = layoutPlanFor(edl);
   const region = plan.panel;
   if (!region || !edl.panel.length) return null;
 

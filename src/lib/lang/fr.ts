@@ -172,6 +172,11 @@ export const FRENCH: LanguagePack = {
     'apres', 'sans', 'moins', 'pourvu', 'bien', 'tandis', 'alors',
   ]),
 
+  clauseOpeners: new Set([
+    'mais', 'et', 'ou', 'parce', 'que', 'qui', 'quand', 'si', 'donc', 'car', 'lorsque', 'alors',
+    'puisque', 'comme', 'sauf', 'tandis',
+  ]),
+
   negations: new Set(['ne', 'pas', 'jamais', 'rien', 'aucun', 'aucune', 'non', 'personne', 'sans', 'ni']),
 
   numberWords: {

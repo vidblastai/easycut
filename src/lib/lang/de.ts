@@ -197,6 +197,11 @@ export const GERMAN: LanguagePack = {
     'solange', 'sofern', 'ausser', 'ohne', 'anstatt', 'sodass', 'wohingegen',
   ]),
 
+  clauseOpeners: new Set([
+    'aber', 'und', 'oder', 'weil', 'denn', 'dass', 'wenn', 'als', 'obwohl', 'sondern', 'also',
+    'doch', 'damit', 'sodass', 'wobei', 'wahrend', 'bis', 'bevor',
+  ]),
+
   negations: new Set(['nicht', 'kein', 'keine', 'keinen', 'keiner', 'nie', 'niemals', 'nichts', 'niemand',
     'ohne', 'weder']),
 

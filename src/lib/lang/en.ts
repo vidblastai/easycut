@@ -170,6 +170,11 @@ export const ENGLISH: LanguagePack = {
     'after', 'except', 'without', 'versus',
   ]),
 
+  clauseOpeners: new Set([
+    'but', 'so', 'and', 'or', 'because', 'cause', 'which', 'that', 'than', 'if', 'when', 'while',
+    'though', 'although', 'since', 'where', 'whereas', 'plus', 'like', 'as',
+  ]),
+
   negations: new Set(['not', 'dont', 'doesnt', 'didnt', 'cant', 'cannot', 'wont', 'isnt', 'arent', 'wasnt',
     'never', 'no', 'none', 'nobody', 'nothing', 'nor', 'without', 'havent', 'hasnt']),
 

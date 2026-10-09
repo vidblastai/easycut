@@ -4,7 +4,7 @@ import type { BrollClip, Edl } from '../../src/lib/edl/types';
 import { ramp } from '../lib/timing';
 import { BrollOverlay } from './BrollOverlay';
 import { ClipFrameFilter, ClipTransitionEffect, clipFilter, clipFrameStyle, clipNeedsFilter, clipPhase, clipTransitionSec, fitTransitions } from '../lib/clip-transition';
-import { layoutPlan, regionStyle } from '../../src/lib/styles/layouts';
+import { layoutPlanFor, regionStyle } from '../../src/lib/styles/layouts';
 
 /**
  * B-roll inserts.
@@ -28,7 +28,7 @@ export const BrollLayer: React.FC<{ edl: Edl; onMediaError?: (message: string) =
   // own half, which is on screen throughout, so the half gets a backing panel:
   // a moment of black where one clip ends and the next begins would read as a
   // dropout rather than a cut.
-  const plan = layoutPlan(edl.format.layout, edl.format);
+  const plan = layoutPlanFor(edl);
   const region = plan.broll;
 
   const inserts = edl.broll.map((clip) => {
