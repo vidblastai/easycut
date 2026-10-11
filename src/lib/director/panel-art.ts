@@ -75,8 +75,15 @@ const PER_CALL = 3;
  * until the socket gives up on its own schedule — which on the failures
  * measured here was four minutes of nothing followed by `fetch failed`, with
  * no attempt left to make.
+ *
+ * Seven minutes, not four. Four was measured before the drawings were asked
+ * what they DO as well as what they are, and the longer prompt pushed a
+ * batch past it: a run that drew fifteen of eighteen exhibits lost the other
+ * three to this ceiling, retried, and hit it again — 480s of wall time for
+ * nothing. A timeout that fires on healthy work is worse than no timeout,
+ * because it costs the full attempt AND the retry.
  */
-const BATCH_TIMEOUT_MS = 240_000;
+const BATCH_TIMEOUT_MS = 420_000;
 
 /** A dropped connection is worth one more go; a refusal is not. */
 const ATTEMPTS = 2;
