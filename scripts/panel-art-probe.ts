@@ -38,9 +38,11 @@ async function main() {
       0,
     );
     const idles = art.parts.filter((p) => p.idle !== 'none').length;
+    const acting = art.parts.filter((p) => p.act !== 'none');
     console.log(
       `  ${String(i).padStart(2)} ${String(art.parts.length).padStart(2)} parts ` +
-        `${String(shapes).padStart(3)} shapes ${idles} moving  ${said}`,
+        `${String(shapes).padStart(3)} shapes ${idles} idle ` +
+        `${String(acting.length).padStart(2)} acting [${acting.map((p) => `${p.act}@${p.actAt.toFixed(2)}`).join(' ')}]  ${said}`,
     );
     const svg = `<svg viewBox="${art.viewBox}" xmlns="http://www.w3.org/2000/svg" width="500">` +
       `<rect x="0" y="0" width="1000" height="756" fill="#F1F1F3"/>${art.defs}` +
