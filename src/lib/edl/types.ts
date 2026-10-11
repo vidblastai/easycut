@@ -2,7 +2,7 @@ import { z } from 'zod';
 // Relative, not `@/`: this module is in the Remotion bundle, whose webpack
 // config does not carry the alias. One aliased import here fails the whole
 // composition — see the note in the motion-graphics skill.
-import { ART_ENTERS, ART_IDLES } from '../assets/illustration';
+import { ART_ACTS, ART_ENTERS, ART_IDLES } from '../assets/illustration';
 import { floorFor } from './safe-area';
 
 /**
@@ -1167,6 +1167,9 @@ export const ArtSchema = z
           idle: 'bob' as const,
           hasPivot: false,
           pivot: { x: 500, y: 500 },
+          act: 'none' as const,
+          actAt: 0.42,
+          box: { x: 0, y: 0, w: 1000, h: 1000 },
         })),
         z.object({
           markup: z.string(),
@@ -1181,6 +1184,20 @@ export const ArtSchema = z
           pivot: z
             .object({ x: z.number(), y: z.number() })
             .default({ x: 500, y: 500 }),
+          /**
+           * What the piece does once the drawing has assembled, and when.
+           *
+           * Defaulted rather than required: every drawing made before this
+           * field existed is in the database, and a document that will not
+           * parse is a project that will not open. An old one assembles and
+           * idles, which is all it ever did.
+           */
+          act: z.enum(ART_ACTS).catch('none').default('none'),
+          actAt: z.number().min(0).max(1).catch(0.42).default(0.42),
+          /** The piece's own bounding box, so an act can anchor to it. */
+          box: z
+            .object({ x: z.number(), y: z.number(), w: z.number(), h: z.number() })
+            .default({ x: 0, y: 0, w: 1000, h: 1000 }),
         }),
       ]),
     ),

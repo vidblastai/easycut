@@ -56,6 +56,16 @@ const PART_STAGGER = 5;
 const ENTER_FRAMES = 12;
 
 /**
+ * How long an act takes.
+ *
+ * Longer than an entrance, because an entrance is a piece appearing and an
+ * act is a piece DOING something — a bar that fills in twelve frames has not
+ * filled, it has switched on. Short enough to finish well inside a two-second
+ * exhibit, so the result is on screen to be read.
+ */
+const ACT_FRAMES = 20;
+
+/**
  * The pan between two beats.
  *
  * Short on purpose. The camera crosses the boundary between two squares, and
@@ -149,6 +159,12 @@ export const Illustration: React.FC<{
             part={part}
             index={i}
             at={partStartsAt(art, part, i, plan)}
+            // Timed off the BEAT, not off the piece's own staggered arrival,
+            // so two pieces acting at the same fraction act together.
+            actFrame={
+              plan.startsAt[Math.min(part.stage, plan.startsAt.length - 1)] +
+              Math.round(plan.length * part.actAt)
+            }
             frame={frame}
             camera={camera}
             band={band}
@@ -297,8 +313,22 @@ const Part: React.FC<{
   width: number;
   band: number;
   seed: string;
-}> = ({ part, index, at, frame, camera, width, band, seed }) => {
-  const entry = enterOf(part, frame, at, width, band);
+  /** The frame this piece's act happens on, worked out from its beat. */
+  actFrame: number;
+}> = ({ part, index, at, frame, camera, width, band, seed, actFrame }) => {
+  /*
+   * An act is the EVENT; the entrance is only the assembly.
+   *
+   * So a piece that lands or is revealed does not arrive on its staggered
+   * slot at all — it arrives when its act says, well after the rest of the
+   * drawing has settled. That lateness is the whole effect: a tick that
+   * appears with everything else is part of the picture, and the same tick
+   * arriving a second later is a result.
+   */
+  const deferred = part.act === 'land' || part.act === 'reveal';
+  const arrivesAt = deferred ? actFrame : at;
+
+  const entry = enterOf(part, frame, arrivesAt, width, band);
 
   /*
    * Parallax: the camera's drift, weighted by how near the piece is.
@@ -312,7 +342,8 @@ const Part: React.FC<{
   const parallaxX = -camera.driftX * lean;
   const parallaxY = -camera.driftY * lean;
 
-  const idle = idleOf(part.idle, frame, at, index, width, band, seed);
+  const idle = idleOf(part.idle, frame, arrivesAt, index, width, band, seed);
+  const act = actOf(part, frame, actFrame);
 
   /*
    * Everything pivots on the PIECE, not on the canvas.
@@ -330,25 +361,89 @@ const Part: React.FC<{
       ` rotate(${(entry.rotate + idle.rotate).toFixed(3)})`,
   );
 
-  // A self-drawing stroke: `pathLength="1"` was injected at parse time, so one
-  // dash is the whole line and the offset walks it on from end to end.
+  /*
+   * A self-drawing stroke: `pathLength="1"` was injected at parse time, so one
+   * dash is the whole line and the offset walks it on from end to end.
+   *
+   * Two things reach for it — an `enter: draw`, which walks the line on as
+   * the piece arrives, and an `act: draw-on`, which holds the line empty and
+   * walks it on later. They are the same mechanism at different times, so
+   * whichever applies owns the dash; `draw-on` wins, because a piece asked to
+   * draw itself as its ACT was meant to be absent until then.
+   */
+  const dashAt =
+    part.act === 'draw-on' ? actFrame : part.enter === 'draw' ? arrivesAt : null;
   const drawing =
-    part.enter === 'draw'
-      ? {
+    dashAt === null
+      ? undefined
+      : {
           strokeDasharray: 1,
-          strokeDashoffset: kf(frame, [[at, 1], [at + ENTER_FRAMES + 6, 0]], easeOutCubic),
-        }
-      : undefined;
+          strokeDashoffset: kf(frame, [[dashAt, 1], [dashAt + ENTER_FRAMES + 6, 0]], easeOutCubic),
+        };
 
   return (
-    <g
-      opacity={entry.opacity}
-      transform={transform}
-      style={drawing}
-      dangerouslySetInnerHTML={{ __html: part.markup }}
-    />
+    <g opacity={entry.opacity * act.opacity} transform={transform} style={drawing}>
+      {/*
+        The act is a SECOND transform, nested inside the first.
+
+        It has to be: a bar that fills scales about its own left EDGE, while
+        everything above pivots on the piece's centre. One element cannot hold
+        two origins, and collapsing them makes a filling bar grow out of the
+        middle of itself.
+      */}
+      <g transform={act.transform} dangerouslySetInnerHTML={{ __html: part.markup }} />
+    </g>
   );
 };
+
+/**
+ * The act: what the piece does once the drawing has assembled.
+ *
+ * Returns a transform rather than a pose, because every act here anchors to
+ * an EDGE of the piece's own box — a bar fills from its left, a column grows
+ * from its floor — and an edge is not something a translate/scale/rotate pose
+ * can express.
+ *
+ * Nothing here moves before `actFrame`, and everything here is finished by
+ * `actFrame + ACT_FRAMES`: an act that ran for the whole beat would read as
+ * drift, and the point is that it reads as an event.
+ */
+function actOf(
+  part: ArtPart,
+  frame: number,
+  actFrame: number,
+): { transform: string | undefined; opacity: number } {
+  const still = { transform: undefined, opacity: 1 };
+  if (part.act === 'none' || part.act === 'draw-on') return still;
+
+  // `land` and `reveal` are timed by the piece's own entrance, which has
+  // already been moved to `actFrame`. Nothing further to do here.
+  if (part.act === 'land' || part.act === 'reveal') return still;
+
+  const t = kf(frame, [[actFrame, 0], [actFrame + ACT_FRAMES, 1]], easeOutExpo);
+  const { x, y, w, h } = part.box;
+
+  switch (part.act) {
+    case 'fill': {
+      // From the left edge, held at a sliver rather than zero: a bar scaled
+      // to exactly 0 disappears, and an empty track that vanishes reads as a
+      // rendering fault rather than as an empty track.
+      const scale = 0.001 + 0.999 * t;
+      return { transform: `translate(${x} 0) scale(${scale} 1) translate(${-x} 0)`, opacity: 1 };
+    }
+    case 'grow-up': {
+      const scale = 0.001 + 0.999 * t;
+      const floor = y + h;
+      return { transform: `translate(0 ${floor}) scale(1 ${scale}) translate(0 ${-floor})`, opacity: 1 };
+    }
+    case 'travel':
+      // Across the piece's own width again, which is how far a playhead on a
+      // track or a cursor crossing a card actually goes.
+      return { transform: `translate(${(w * 1.6 * t).toFixed(2)} 0)`, opacity: 1 };
+    default:
+      return still;
+  }
+}
 
 interface Pose {
   opacity: number;

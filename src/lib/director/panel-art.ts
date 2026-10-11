@@ -103,10 +103,14 @@ Every top-level \`<g>\` is one piece, in the order it should arrive. **Four to e
 - **data-stage** — always \`0\`. There is only one beat.
 - **data-depth** — 0 is far behind, 1 is at the lens. Give the pieces different depths; the parallax is what stops a flat drawing reading as a sticker.
 - **data-enter** — \`pop\`, \`rise\`, \`slide-left\`, \`slide-right\`, \`grow\`, \`draw\` (a stroke draws itself end to end).
-- **data-idle** — what it keeps doing: \`bob\`, \`drift\`, \`sway\`, \`pulse\`, \`tick\`, \`spin\`, \`none\`. At least two pieces must keep moving, or the exhibit is a still picture for two seconds.
+- **data-idle** — what it keeps doing in the background: \`bob\`, \`drift\`, \`sway\`, \`pulse\`, \`tick\`, \`spin\`, \`none\`. This is ambience, not the event — see \`data-act\` for the event. Keep it to \`none\` on anything that acts, or the act fights the wobble.
 - **data-pivot** — \`"x y"\`, the point this piece turns and scales about. **Required on anything that ticks, spins or sways.**
+- **data-act** — what this piece DOES once the drawing has assembled, which is the difference between a picture that arrived and a thing happening. \`fill\` (a bar or track grows from its left edge — a progress bar, a loading bar, a meter), \`grow-up\` (a column grows from its floor — a chart bar), \`draw-on\` (a stroke draws itself LATER, after everything has landed — a tick, a connector being made, a ring closing), \`travel\` (slides across its own width — a playhead crossing a track, a cursor crossing a card), \`land\` (stays hidden and then arrives, with weight — a tick, a badge, a notification, a reply), \`reveal\` (stays hidden and then fades up — a result, a panel of output), \`none\`.
+- **data-act-at** — when, as a fraction of the time this exhibit is on screen. \`0.35\` to \`0.6\` is the useful range: before 0.3 the piece is still arriving and the act is lost in the assembly, after 0.7 nobody sees the result.
 
-One \`<desc data-stage="0">\` right after the opening tag, one sentence, saying only what physically CHANGES.
+**Two or three pieces per exhibit must act, and the rest must not.** An exhibit where everything acts is noise; one where nothing acts is a still picture that flew in. The act is the sentence: a track that FILLS says the work is being done, a tick that LANDS says it finished, a playhead that TRAVELS says it is playing. Choose the ones that say what the voice is saying.
+
+One \`<desc data-stage="0">\` right after the opening tag, one sentence, saying only what physically CHANGES — and it must describe the ACTS you set, not something else.
 
 ## Hard requirements
 
@@ -137,7 +141,7 @@ a dashboard of stat tiles · a chat thread with a reply arriving · a file list 
 
 ## Do not do these
 
-Flat clipart. A ring of icons around a circle (the renderer already has one). Everything the same depth. A drawing that would not read in flat grey. The same composition twice in one video. Anything spelled out in shapes that are secretly letters.`;
+An exhibit where nothing acts — that is a picture that flew in, and it is the single most common way these come out lifeless. Flat clipart. A ring of icons around a circle (the renderer already has one). Everything the same depth. A drawing that would not read in flat grey. The same composition twice in one video. Anything spelled out in shapes that are secretly letters.`;
 
 export interface PanelArtResult {
   /** Keyed by scene id. A scene missing from here keeps its template kind. */

@@ -32,6 +32,35 @@ export type ArtEnter = (typeof ART_ENTERS)[number];
 export const ART_IDLES = ['none', 'bob', 'sway', 'spin', 'tick', 'pulse', 'drift'] as const;
 export type ArtIdle = (typeof ART_IDLES)[number];
 
+/**
+ * What a piece DOES, once the drawing has assembled.
+ *
+ * ── Why this exists ─────────────────────────────────────────────────────
+ *
+ * Every drawing already ships with a line saying what physically changes in
+ * it — the model writes `<desc data-stage="0">The bar fills and the tick
+ * lands.</desc>` because it is the only thing that knows which group is a bar
+ * and which is a tick. That line was read by exactly one file: the prompt
+ * that hands a rendered plate to a video model. In the VECTOR path nothing
+ * read it, so the described change never happened: pieces flew in, then
+ * bobbed, for the whole of every exhibit.
+ *
+ * That is the difference between a nice picture that wobbled in and a thing
+ * happening. The reference edits are full of the second kind — a counter
+ * running up, a take strip whose duration falls as it is trimmed, a reply
+ * landing in a thread — and none of it is possible from an entrance and an
+ * idle.
+ *
+ * An entrance is ASSEMBLY and an act is the EVENT, so an act is deliberately
+ * late: `actAt` is a fraction of the piece's beat, not a frame, and the
+ * default sits well after everything has arrived.
+ */
+export const ART_ACTS = ['none', 'fill', 'grow-up', 'draw-on', 'travel', 'land', 'reveal'] as const;
+export type ArtAct = (typeof ART_ACTS)[number];
+
+/** Where in a beat an act happens, as a fraction, when none was given. */
+const DEFAULT_ACT_AT = 0.42;
+
 export interface ArtPart {
   markup: string;
   /**
@@ -69,6 +98,19 @@ export interface ArtPart {
    * and harmless for a full-width background.
    */
   pivot: { x: number; y: number };
+  /** What this piece does once the drawing has assembled. */
+  act: ArtAct;
+  /** When it does it, as a fraction of the beat. 0 = on arrival, 1 = at the end. */
+  actAt: number;
+  /**
+   * The piece's own bounding box, in viewBox units.
+   *
+   * Measured here rather than in the renderer because the renderer never sees
+   * the markup as anything but a string it injects. An act needs it: a bar
+   * that fills has to scale from its own LEFT edge, not from the drawing's
+   * centre, or it grows out of the middle of the picture.
+   */
+  box: { x: number; y: number; w: number; h: number };
 }
 
 export interface Illustration {
@@ -201,7 +243,18 @@ export function parseIllustration(markup: string, idPrefix = ''): Illustration |
           motion,
           stages: 1,
           parts: [
-            { markup: whole, stage: 0, depth: 0.5, enter: 'pop', idle: 'bob', hasPivot: false, pivot: centre },
+            {
+              markup: whole,
+              stage: 0,
+              depth: 0.5,
+              enter: 'pop',
+              idle: 'bob',
+              hasPivot: false,
+              pivot: centre,
+              act: 'none',
+              actAt: DEFAULT_ACT_AT,
+              box: boundsOf(whole) ?? { x: centre.x - 1, y: centre.y - 1, w: 2, h: 2 },
+            },
           ],
         }
       : null;
@@ -262,9 +315,14 @@ function toPart(group: string, centre: { x: number; y: number }): ArtPart | null
   // a mistake where one that draws reads as intent.
   const fallbackEnter: ArtEnter = enter === 'pop' && looksLikeStroke(body) ? 'draw' : enter;
   const idle = pick(attr(body, 'data-idle'), ART_IDLES, fallbackEnter === 'draw' ? 'none' : 'bob');
+  const act = pick(attr(body, 'data-act'), ART_ACTS, 'none');
 
   return {
-    markup: fallbackEnter === 'draw' ? normaliseStrokeLengths(body) : body,
+    // `draw-on` walks a dash along the stroke exactly as `draw` does, so it
+    // needs the same `pathLength` normalisation — without it the dash is in
+    // user units and a long path never finishes drawing.
+    markup:
+      fallbackEnter === 'draw' || act === 'draw-on' ? normaliseStrokeLengths(body) : body,
     stage: Math.max(0, Math.floor(Number(attr(body, 'data-stage') ?? '0')) || 0),
     depth,
     enter: fallbackEnter,
@@ -275,7 +333,23 @@ function toPart(group: string, centre: { x: number; y: number }): ArtPart | null
     // orbiting the whole picture.
     hasPivot: readPivot(attr(body, 'data-pivot')) !== null,
     pivot: readPivot(attr(body, 'data-pivot')) ?? estimatePivot(body) ?? centre,
+    act,
+    actAt: fraction(attr(body, 'data-act-at'), DEFAULT_ACT_AT),
+    box: boundsOf(body) ?? { x: centre.x - 1, y: centre.y - 1, w: 2, h: 2 },
   };
+}
+
+/** The smallest rectangle covering every coordinate the piece draws at. */
+function boundsOf(markup: string): { x: number; y: number; w: number; h: number } | null {
+  const points = coordinatesOf(markup);
+  if (points.length < 2) return null;
+
+  const xs = points.map((pt) => pt.x);
+  const ys = points.map((pt) => pt.y);
+  const x = Math.min(...xs);
+  const y = Math.min(...ys);
+  // A degenerate box would make `fill` divide by zero and `travel` go nowhere.
+  return { x, y, w: Math.max(1, Math.max(...xs) - x), h: Math.max(1, Math.max(...ys) - y) };
 }
 
 function attr(markup: string, name: string): string | null {
@@ -292,6 +366,19 @@ function pick<T extends string>(value: string | null, allowed: readonly T[], fal
 
 function clamp01(value: number, fallback: number): number {
   return Number.isFinite(value) ? Math.min(1, Math.max(0, value)) : fallback;
+}
+
+/**
+ * A 0..1 attribute, or the fallback when it is absent.
+ *
+ * Explicit about the missing case because `Number('')` is 0, not NaN — so
+ * reading an absent attribute through `clamp01` silently returns zero, which
+ * for `data-act-at` meant every act fired on arrival and the whole point of
+ * an act being LATE was lost.
+ */
+function fraction(value: string | null, fallback: number): number {
+  if (value === null || value.trim() === '') return fallback;
+  return clamp01(Number(value), fallback);
 }
 
 /** Strokes with nothing filled: a connector rather than an object. */

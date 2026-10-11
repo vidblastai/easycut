@@ -80,7 +80,12 @@ describe('a drawn scene shows no words, so the captions may', () => {
     motion: [],
     stages: 2,
     parts: [
-      { markup: '<circle cx="500" cy="500" r="200" fill="#111"/>', stage: 0, depth: 0.5, enter: 'pop' as const, idle: 'bob' as const, hasPivot: false, pivot: { x: 500, y: 500 } },
+      {
+        markup: '<circle cx="500" cy="500" r="200" fill="#111"/>',
+        stage: 0, depth: 0.5, enter: 'pop' as const, idle: 'bob' as const,
+        hasPivot: false, pivot: { x: 500, y: 500 },
+        act: 'none' as const, actAt: 0.42, box: { x: 300, y: 300, w: 400, h: 400 },
+      },
     ],
   };
 
