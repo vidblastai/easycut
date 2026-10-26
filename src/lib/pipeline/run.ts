@@ -13,6 +13,7 @@ import { designScenes, isScenePassConfigured, type PlannedScene } from '@/lib/di
 import { buildEdl } from '@/lib/edl/builder';
 import { stripLayers } from '@/lib/edl/layers';
 import { illustrateScenes, isIllustratorConfigured, MAX_DRAWN_SCENES } from '@/lib/director/illustrate';
+import { composeSceneClips, isSceneComposerConfigured } from '@/lib/assets/scene-clips';
 import { fallbackScene } from '@/lib/edl/scene-fallback';
 import { ASPECT_DIMENSIONS, type Aspect, type Edl } from '@/lib/edl/types';
 import {
@@ -842,7 +843,16 @@ async function drawScenes(ctx: PipelineContext): Promise<void> {
   const mapper = new TimeMapper(ctx.edl.segments);
   const transcript = ctx.transcript;
 
-  const { drawn, costUsd, errors } = await illustrateScenes(ctx.edl.scenes, (scene) =>
+  /*
+   * HyperFrames first, when it is switched on. Every scene it renders is
+   * finished footage and needs no drawing; every scene it does not is drawn
+   * the SVG way below, so turning it on can only add to what a video gets.
+   */
+  const composed = env.scenes.engine === 'hyperframes' ? await composeScenes(ctx, mapper) : new Set<string>();
+  const remaining = ctx.edl.scenes.filter((scene) => !composed.has(scene.id));
+  if (!remaining.length) return;
+
+  const { drawn, costUsd, errors } = await illustrateScenes(remaining, (scene) =>
     // What is actually being SAID under this scene, in source time — the
     // drawing has to illustrate the sentence, and the scene's own headline is
     // at most a handful of words off it.
@@ -857,17 +867,56 @@ async function drawScenes(ctx: PipelineContext): Promise<void> {
     scenes: ctx.edl.scenes.map((scene) => ({ ...scene, art: drawn.get(scene.id) ?? null })),
   };
 
-  const missing = ctx.edl.scenes.length - drawn.size;
+  const missing = remaining.length - drawn.size;
   if (missing > 0) {
     ctx.degraded.push(
       `${missing} scene${missing === 1 ? '' : 's'} drawn from icons instead of an illustration` +
-        (ctx.edl.scenes.length > MAX_DRAWN_SCENES
+        (remaining.length > MAX_DRAWN_SCENES
           ? ` (only the first ${MAX_DRAWN_SCENES} are illustrated)`
           : errors.length
             ? ` (${errors[0]})`
             : ''),
     );
   }
+}
+
+/**
+ * Opus writes each scene as a HyperFrames composition and it is rendered to a
+ * clip. Returns the ids that got one; the rest are left for the drawing pass.
+ */
+async function composeScenes(ctx: PipelineContext, mapper: TimeMapper): Promise<Set<string>> {
+  const edl = ctx.edl!;
+  const transcript = ctx.transcript!;
+  if (!isSceneComposerConfigured()) return new Set();
+
+  const { clips, costUsd, errors } = await composeSceneClips(edl.scenes, {
+    projectId: ctx.request.projectId,
+    workDir: ctx.workDir,
+    width: edl.format.width,
+    height: edl.format.height,
+    fps: edl.format.fps,
+    lineFor: (scene) =>
+      spokenBetween(transcript, mapper.toSource(scene.outStartSec), mapper.toSource(scene.outEndSec)) ||
+      [scene.headline, ...scene.items].filter(Boolean).join('. '),
+    // In the SCENE's time, through the cut: a beat lands on the word as the
+    // viewer hears it, not where it sat in the raw file.
+    wordsFor: (scene) =>
+      transcript.words
+        .map((word) => ({ text: word.text, out: mapper.toOutput(word.startSec) }))
+        .filter((word): word is { text: string; out: number } => word.out !== null)
+        .filter((word) => word.out >= scene.outStartSec - 0.15 && word.out < scene.outEndSec)
+        .map((word) => ({ text: word.text, atSec: Math.max(0, word.out - scene.outStartSec) })),
+  });
+
+  if (costUsd > 0) ctx.ledger.add('director', costUsd, 'scene compositions');
+  ctx.log.push({ stage: 'assets', status: 'ok', ms: 0, message: `HyperFrames: rendered ${clips.size} scene clip(s)` });
+  if (errors.length) ctx.degraded.push(`HyperFrames scenes fell back to drawings (${[...new Set(errors)].join('; ').slice(0, 300)})`);
+
+  ctx.edl = {
+    ...edl,
+    scenes: edl.scenes.map((scene) => (clips.has(scene.id) ? { ...scene, clipUrl: clips.get(scene.id)! } : scene)),
+  };
+  return new Set(clips.keys());
 }
 
 /** The words spoken in a source-time window, joined back into a sentence. */
