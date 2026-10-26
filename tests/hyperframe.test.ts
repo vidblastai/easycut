@@ -11,7 +11,9 @@ import {
 } from '@/lib/director/hyperframe';
 import { sceneHasText, sceneIsDrawn, type AnimatedScene } from '@/lib/edl/types';
 
-const fixture = readFileSync('tests/fixtures/hyperframe-scene.txt', 'utf8');
+const FIXTURES = ['drafts', 'everywhere', 'hours'];
+const read = (name: string) => readFileSync(`tests/fixtures/hyperframes/${name}.txt`, 'utf8');
+const fixture = read('drafts');
 const frame = { width: 1080, height: 1920, durationSec: 4.5, ground: '#FCFCFD', words: [{ text: 'buzzes', atSec: 0.4 }] };
 
 const scene = (over: Partial<AnimatedScene> = {}): AnimatedScene => ({
@@ -21,9 +23,14 @@ const scene = (over: Partial<AnimatedScene> = {}): AnimatedScene => ({
 });
 
 describe('parsing what the model returns', () => {
-  it('finds the three blocks in the hand-written fixture', () => {
+  it('finds the three blocks in every hand-written fixture', () => {
+    for (const name of FIXTURES) {
+      const parts = parseComposition(read(name));
+      expect(parts, name).not.toBeNull();
+      expect(parts!.script, name).toContain('tl.');
+    }
     const parts = parseComposition(fixture)!;
-    expect(parts.style).toContain('#strip');
+    expect(parts.style).toContain('#pool');
     expect(parts.markup.startsWith('<div id="scene">')).toBe(true);
     expect(parts.script).toContain('tl.fromTo');
   });
@@ -43,12 +50,12 @@ describe('the audit', () => {
   const parts = parseComposition(fixture)!;
   const broken = (over: Partial<CompositionParts>) => auditComposition({ ...parts, ...over });
 
-  it('passes the fixture clean', () => {
-    expect(auditComposition(parts)).toEqual([]);
+  it('passes every fixture clean', () => {
+    for (const name of FIXTURES) expect(auditComposition(parseComposition(read(name))!), name).toEqual([]);
   });
 
   it('catches words on screen, which the captions own', () => {
-    const problems = broken({ markup: parts.markup.replace('<g id="far">', '<g id="far"><text>Focus</text>') });
+    const problems = broken({ markup: parts.markup.replace('<div id="cards">', '<div id="cards"><svg><text>Focus</text></svg>') });
     expect(problems.some((p) => p.includes('SVG text'))).toBe(true);
     expect(problems.some((p) => p.includes('puts words on screen'))).toBe(true);
     expect(problems.every(isFatal)).toBe(true);

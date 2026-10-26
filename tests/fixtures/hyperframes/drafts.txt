@@ -1,0 +1,144 @@
+<style>
+#pool { position:absolute; left:-460px; top:-300px; width:2000px; height:2000px; border-radius:50%;
+  background: radial-gradient(circle, rgba(155,24,244,.85) 0%, rgba(110,16,190,.55) 18%, rgba(22,0,38,.9) 45%, rgba(3,1,5,0) 70%); }
+#fg { position:absolute; left:-1350px; top:1240px; width:2100px; height:2100px; border-radius:50%;
+  background: radial-gradient(circle at 70% 20%, #1c0b2c 0%, #0A0410 40%, #030105 70%); border-top:3px solid rgba(155,24,244,.45); }
+#fg2 { position:absolute; left:820px; top:-420px; width:900px; height:900px; border-radius:50%;
+  background: radial-gradient(circle at 20% 80%, #170827 0%, #0A0410 55%); border-left:2px solid rgba(155,24,244,.3); }
+#cam { position:absolute; inset:0; }
+.sat { position:absolute; border-radius:12px; background:linear-gradient(160deg,#1a0b28,#07030b); border:1px solid rgba(190,183,198,.12); opacity:.55; }
+.card { position:absolute; width:170px; height:116px; border-radius:16px;
+  background:linear-gradient(160deg,#2c1243 0%,#120720 60%,#0b0512 100%);
+  border:1.5px solid rgba(190,183,198,.28); box-shadow:0 18px 40px rgba(0,0,0,.55); }
+.card .dot { position:absolute; left:18px; top:18px; width:26px; height:26px; border-radius:50%; background:#9B18F4; opacity:.85; }
+.card .bar { position:absolute; left:18px; height:10px; border-radius:5px; background:#BEB7C6; }
+.card .b1 { top:60px; opacity:.55; } .card .b2 { top:82px; opacity:.3; }
+#strip { position:absolute; left:380px; top:640px; width:320px; height:14px; background:#C323DC; transform-origin:0 50%; }
+#drawer { position:absolute; left:0; top:0; }
+</style>
+<div id="scene">
+  <div id="pool"></div>
+  <div id="cam">
+    <div id="far"><div class="sat" id="s0" style="left:40px;top:90px;width:90px;height:60px"></div><div class="sat" id="s1" style="left:940px;top:240px;width:110px;height:74px"></div><div class="sat" id="s2" style="left:60px;top:860px;width:70px;height:48px"></div><div class="sat" id="s3" style="left:960px;top:780px;width:84px;height:56px"></div></div>
+    <div id="cards">
+    <div class="card" id="c0" style="left:135px;top:210px">
+      <div class="dot"></div><div class="bar b1" style="width:70px"></div><div class="bar b2" style="width:50px"></div>
+    </div><div class="card" id="c1" style="left:335px;top:210px">
+      <div class="dot"></div><div class="bar b1" style="width:107px"></div><div class="bar b2" style="width:103px"></div>
+    </div><div class="card" id="c2" style="left:535px;top:210px">
+      <div class="dot"></div><div class="bar b1" style="width:84px"></div><div class="bar b2" style="width:86px"></div>
+    </div><div class="card" id="c3" style="left:735px;top:210px">
+      <div class="dot"></div><div class="bar b1" style="width:121px"></div><div class="bar b2" style="width:69px"></div>
+    </div><div class="card" id="c4" style="left:165px;top:336px">
+      <div class="dot"></div><div class="bar b1" style="width:98px"></div><div class="bar b2" style="width:52px"></div>
+    </div><div class="card" id="c5" style="left:365px;top:336px">
+      <div class="dot"></div><div class="bar b1" style="width:75px"></div><div class="bar b2" style="width:105px"></div>
+    </div><div class="card" id="c6" style="left:565px;top:336px">
+      <div class="dot"></div><div class="bar b1" style="width:112px"></div><div class="bar b2" style="width:88px"></div>
+    </div><div class="card" id="c7" style="left:765px;top:336px">
+      <div class="dot"></div><div class="bar b1" style="width:89px"></div><div class="bar b2" style="width:71px"></div>
+    </div><div class="card" id="c8" style="left:135px;top:462px">
+      <div class="dot"></div><div class="bar b1" style="width:126px"></div><div class="bar b2" style="width:54px"></div>
+    </div><div class="card" id="c9" style="left:335px;top:462px">
+      <div class="dot"></div><div class="bar b1" style="width:103px"></div><div class="bar b2" style="width:107px"></div>
+    </div><div class="card" id="c10" style="left:535px;top:462px">
+      <div class="dot"></div><div class="bar b1" style="width:80px"></div><div class="bar b2" style="width:90px"></div>
+    </div><div class="card" id="c11" style="left:735px;top:462px">
+      <div class="dot"></div><div class="bar b1" style="width:117px"></div><div class="bar b2" style="width:73px"></div>
+    </div><div class="card" id="c12" style="left:165px;top:588px">
+      <div class="dot"></div><div class="bar b1" style="width:94px"></div><div class="bar b2" style="width:56px"></div>
+    </div><div class="card" id="c13" style="left:365px;top:588px">
+      <div class="dot"></div><div class="bar b1" style="width:71px"></div><div class="bar b2" style="width:109px"></div>
+    </div><div class="card" id="c14" style="left:565px;top:588px">
+      <div class="dot"></div><div class="bar b1" style="width:108px"></div><div class="bar b2" style="width:92px"></div>
+    </div><div class="card" id="c15" style="left:765px;top:588px">
+      <div class="dot"></div><div class="bar b1" style="width:85px"></div><div class="bar b2" style="width:75px"></div>
+    </div><div class="card" id="c16" style="left:135px;top:714px">
+      <div class="dot"></div><div class="bar b1" style="width:122px"></div><div class="bar b2" style="width:58px"></div>
+    </div><div class="card" id="c17" style="left:335px;top:714px">
+      <div class="dot"></div><div class="bar b1" style="width:99px"></div><div class="bar b2" style="width:111px"></div>
+    </div><div class="card" id="c18" style="left:535px;top:714px">
+      <div class="dot"></div><div class="bar b1" style="width:76px"></div><div class="bar b2" style="width:94px"></div>
+    </div><div class="card" id="c19" style="left:735px;top:714px">
+      <div class="dot"></div><div class="bar b1" style="width:113px"></div><div class="bar b2" style="width:77px"></div>
+    </div>
+    </div>
+    <div id="strip"></div>
+    <svg id="drawer" width="1080" height="1920" viewBox="0 0 1080 1920">
+      <defs>
+        <linearGradient id="metal" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stop-color="#3b2a4c"/><stop offset=".08" stop-color="#cfc6d8"/><stop offset=".16" stop-color="#2a1d36"/><stop offset="1" stop-color="#0c0612"/>
+        </linearGradient>
+        <linearGradient id="face" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stop-color="#22122f"/><stop offset=".55" stop-color="#0f0717"/><stop offset="1" stop-color="#05020a"/>
+        </linearGradient>
+        <linearGradient id="handle" x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0" stop-color="#5a4a6a"/><stop offset=".5" stop-color="#F5F2F7"/><stop offset="1" stop-color="#5a4a6a"/>
+        </linearGradient>
+        <radialGradient id="lockGlow"><stop offset="0" stop-color="#C323DC" stop-opacity=".9"/><stop offset="1" stop-color="#C323DC" stop-opacity="0"/></radialGradient>
+      </defs>
+      <rect x="150" y="840" width="780" height="300" rx="18" fill="#08040c"/>
+      <rect x="150" y="840" width="780" height="6" rx="3" fill="#8d7aa0" opacity=".7"/>
+      <rect id="mouth" x="190" y="862" width="700" height="46" rx="8" fill="#000"/>
+      <g id="front">
+        <rect x="170" y="900" width="740" height="176" rx="16" fill="url(#face)"/>
+        <rect x="170" y="900" width="740" height="176" rx="16" fill="none" stroke="url(#metal)" stroke-width="5"/>
+        <rect x="190" y="918" width="700" height="2" fill="#F5F2F7" opacity=".35"/>
+        <rect x="420" y="1010" width="240" height="22" rx="11" fill="url(#handle)"/>
+        <rect x="420" y="1030" width="240" height="6" rx="3" fill="#000" opacity=".6"/>
+        <circle id="lockHalo" cx="540" cy="962" r="46" fill="url(#lockGlow)"/>
+        <circle id="lock" cx="540" cy="962" r="13" fill="#C323DC"/>
+        <circle cx="536" cy="958" r="4" fill="#F5F2F7" opacity=".8"/>
+      </g>
+    </svg>
+    <div id="fg"></div>
+    <div id="fg2"></div>
+  </div>
+</div>
+<script>
+const SURV = 6;
+const N = 20;
+tl.fromTo("#cam", { scale: 1.04 }, { scale: 1.1, duration: DURATION, ease: "none" }, 0);
+tl.fromTo("#pool", { scale: .9, opacity: .7 }, { scale: 1.05, opacity: 1, duration: 1.4, ease: "power2.out" }, 0);
+tl.fromTo("#fg", { y: 260 }, { y: -40, duration: DURATION, ease: "power2.out" }, 0);
+tl.fromTo("#fg2", { x: 160 }, { x: 0, duration: 1.2, ease: "expo.out" }, 0);
+tl.fromTo(".sat", { opacity: 0 }, { opacity: .55, duration: .8, stagger: .1, ease: "power2.out" }, .1);
+tl.fromTo("#far", { y: 30 }, { y: -30, duration: DURATION, ease: "none" }, 0);
+tl.fromTo("#front", { y: 120, opacity: 0 }, { y: 0, opacity: 1, duration: .7, ease: "expo.out" }, .05);
+
+// The wall of ideas: twenty of them, arriving from scattered depths.
+for (let i = 0; i < N; i++) {
+  tl.fromTo("#c" + i,
+    { opacity: 0, y: 140 + rand(i) * 160, x: (rand(i + 40) - .5) * 120, scale: .7, rotation: (rand(i + 80) - .5) * 20 },
+    { opacity: 1, y: 0, x: 0, scale: 1, rotation: (rand(i + 120) - .5) * 6, duration: .7, ease: "expo.out" },
+    .15 + i * .035);
+}
+
+// Nineteen of them never make it: one at a time they drop into the drawer.
+const never = at("never", 1.6);
+let k = 0;
+for (let i = 0; i < N; i++) {
+  if (i === SURV) continue;
+  const t = never + k * .075;
+  const el = document.getElementById("c" + i);
+  const dx = 455 - parseFloat(el.style.left);
+  const dy = 905 - parseFloat(el.style.top);
+  tl.to("#c" + i, { x: dx, y: dy, scale: .55, rotation: (rand(i + 200) - .5) * 40, duration: .42, ease: "power3.in" }, t);
+  tl.to("#c" + i, { opacity: 0, duration: .08, ease: "none" }, t + .4);
+  tl.fromTo("#front", { y: 0 }, { y: 4, duration: .05, yoyo: true, repeat: 1, ease: "power1.out" }, t + .42);
+  k++;
+}
+
+// The survivor stays lit and moves to the middle of the frame.
+tl.to("#c" + SURV, { x: 540 - 85 - 565, y: 520 - 58 - 336, scale: 1.7, rotation: 0, duration: .9, ease: "expo.out" }, never + .5);
+tl.to("#c" + SURV, { borderColor: "#C323DC", boxShadow: "0 0 70px rgba(195,35,220,.75), 0 18px 40px rgba(0,0,0,.55)", duration: .5, ease: "power2.out" }, never + .7);
+
+// "…in the drafts folder": the drawer slams, its light dies, the room dims.
+const shut = at("drafts", 3.3);
+tl.to("#front", { y: -38, scaleY: .96, transformOrigin: "50% 0%", duration: .16, ease: "power4.in" }, shut);
+tl.to("#cam", { y: 10, duration: .05, yoyo: true, repeat: 3, ease: "none" }, shut + .16);
+tl.to("#lock", { fill: "#2a1238", duration: .25, ease: "power2.out" }, shut + .18);
+tl.to("#lockHalo", { opacity: 0, scale: .4, svgOrigin: "540 962", duration: .3, ease: "power2.out" }, shut + .18);
+tl.to("#pool", { opacity: .45, scale: .85, duration: .8, ease: "power2.out" }, shut + .15);
+tl.fromTo("#strip", { scaleX: 0 }, { scaleX: 1, duration: .5, ease: "expo.out" }, shut + .3);
+</script>

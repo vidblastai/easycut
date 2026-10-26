@@ -1,0 +1,125 @@
+<style>
+#pool { position:absolute; left:-260px; top:-200px; width:1600px; height:1600px; border-radius:50%;
+  background: radial-gradient(circle, rgba(75,91,208,.42) 0%, rgba(26,31,68,.55) 28%, rgba(10,13,34,.6) 48%, rgba(5,6,15,0) 70%); }
+#cam { position:absolute; inset:0; }
+#art { position:absolute; left:0; top:0; }
+.glow { filter: drop-shadow(0 0 6px rgba(177,75,255,.9)) drop-shadow(0 0 22px rgba(177,75,255,.55)); }
+.cool { filter: drop-shadow(0 0 8px rgba(185,195,240,.7)); }
+.draw { stroke-dasharray: 1; stroke-dashoffset: 1; }
+#floor { position:absolute; left:0; top:1180px; width:1080px; height:740px;
+  background: linear-gradient(180deg, rgba(75,91,208,.18) 0%, rgba(5,6,15,0) 40%); border-top:2px solid rgba(75,91,208,.45); }
+</style>
+<div id="scene">
+  <div id="pool"></div>
+  <div id="floor"></div>
+  <div id="cam">
+    <svg id="art" width="1080" height="1920" viewBox="0 0 1080 1920">
+      <g id="stars"><circle cx="53" cy="97" r="1.5" fill="#B9C3F0" opacity="0.15"/><circle cx="250" cy="408" r="2.3" fill="#B9C3F0" opacity="0.38"/><circle cx="447" cy="719" r="3.1" fill="#B9C3F0" opacity="0.28"/><circle cx="644" cy="1030" r="3.9" fill="#B9C3F0" opacity="0.18"/><circle cx="841" cy="191" r="1.5" fill="#B9C3F0" opacity="0.42"/><circle cx="1038" cy="502" r="2.3" fill="#B9C3F0" opacity="0.32"/><circle cx="155" cy="813" r="3.1" fill="#B9C3F0" opacity="0.22"/><circle cx="352" cy="1124" r="3.9" fill="#B9C3F0" opacity="0.45"/><circle cx="549" cy="285" r="1.5" fill="#B9C3F0" opacity="0.35"/><circle cx="746" cy="596" r="2.3" fill="#B9C3F0" opacity="0.25"/><circle cx="943" cy="907" r="3.1" fill="#B9C3F0" opacity="0.15"/><circle cx="60" cy="68" r="3.9" fill="#B9C3F0" opacity="0.38"/><circle cx="257" cy="379" r="1.5" fill="#B9C3F0" opacity="0.28"/><circle cx="454" cy="690" r="2.3" fill="#B9C3F0" opacity="0.18"/><circle cx="651" cy="1001" r="3.1" fill="#B9C3F0" opacity="0.42"/><circle cx="848" cy="162" r="3.9" fill="#B9C3F0" opacity="0.32"/><circle cx="1045" cy="473" r="1.5" fill="#B9C3F0" opacity="0.22"/><circle cx="162" cy="784" r="2.3" fill="#B9C3F0" opacity="0.45"/><circle cx="359" cy="1095" r="3.1" fill="#B9C3F0" opacity="0.35"/><circle cx="556" cy="256" r="3.9" fill="#B9C3F0" opacity="0.25"/><circle cx="753" cy="567" r="1.5" fill="#B9C3F0" opacity="0.15"/><circle cx="950" cy="878" r="2.3" fill="#B9C3F0" opacity="0.38"/><circle cx="67" cy="39" r="3.1" fill="#B9C3F0" opacity="0.28"/><circle cx="264" cy="350" r="3.9" fill="#B9C3F0" opacity="0.18"/><circle cx="461" cy="661" r="1.5" fill="#B9C3F0" opacity="0.42"/><circle cx="658" cy="972" r="2.3" fill="#B9C3F0" opacity="0.32"/><circle cx="855" cy="133" r="3.1" fill="#B9C3F0" opacity="0.22"/><circle cx="1052" cy="444" r="3.9" fill="#B9C3F0" opacity="0.45"/><circle cx="169" cy="755" r="1.5" fill="#B9C3F0" opacity="0.35"/><circle cx="366" cy="1066" r="2.3" fill="#B9C3F0" opacity="0.25"/><circle cx="563" cy="227" r="3.1" fill="#B9C3F0" opacity="0.15"/><circle cx="760" cy="538" r="3.9" fill="#B9C3F0" opacity="0.38"/><circle cx="957" cy="849" r="1.5" fill="#B9C3F0" opacity="0.28"/><circle cx="74" cy="10" r="2.3" fill="#B9C3F0" opacity="0.18"/><circle cx="271" cy="321" r="3.1" fill="#B9C3F0" opacity="0.42"/><circle cx="468" cy="632" r="3.9" fill="#B9C3F0" opacity="0.32"/><circle cx="665" cy="943" r="1.5" fill="#B9C3F0" opacity="0.22"/><circle cx="862" cy="104" r="2.3" fill="#B9C3F0" opacity="0.45"/><circle cx="1059" cy="415" r="3.1" fill="#B9C3F0" opacity="0.35"/><circle cx="176" cy="726" r="3.9" fill="#B9C3F0" opacity="0.25"/><circle cx="373" cy="1037" r="1.5" fill="#B9C3F0" opacity="0.15"/><circle cx="570" cy="198" r="2.3" fill="#B9C3F0" opacity="0.38"/><circle cx="767" cy="509" r="3.1" fill="#B9C3F0" opacity="0.28"/><circle cx="964" cy="820" r="3.9" fill="#B9C3F0" opacity="0.18"/><circle cx="81" cy="1131" r="1.5" fill="#B9C3F0" opacity="0.42"/><circle cx="278" cy="292" r="2.3" fill="#B9C3F0" opacity="0.32"/><circle cx="475" cy="603" r="3.1" fill="#B9C3F0" opacity="0.22"/><circle cx="672" cy="914" r="3.9" fill="#B9C3F0" opacity="0.45"/><circle cx="869" cy="75" r="1.5" fill="#B9C3F0" opacity="0.35"/><circle cx="1066" cy="386" r="2.3" fill="#B9C3F0" opacity="0.25"/><circle cx="183" cy="697" r="3.1" fill="#B9C3F0" opacity="0.15"/><circle cx="380" cy="1008" r="3.9" fill="#B9C3F0" opacity="0.38"/><circle cx="577" cy="169" r="1.5" fill="#B9C3F0" opacity="0.28"/><circle cx="774" cy="480" r="2.3" fill="#B9C3F0" opacity="0.18"/><circle cx="971" cy="791" r="3.1" fill="#B9C3F0" opacity="0.42"/><circle cx="88" cy="1102" r="3.9" fill="#B9C3F0" opacity="0.32"/></g>
+      <circle id="fgRing" cx="-120" cy="1900" r="900" fill="none" stroke="#4B5BD0" stroke-width="5" stroke-dasharray="8 22" opacity=".4"/>
+      <circle id="fgRing2" cx="1250" cy="-150" r="420" fill="none" stroke="#B9C3F0" stroke-width="3" stroke-dasharray="4 16" opacity=".25"/>
+      <g id="phones" class="cool"><g id="p0" class="phone">
+        <rect id="ps0" x="682" y="152" width="116" height="204" rx="22" fill="#1A1F44" fill-opacity=".55" stroke="#4B5BD0" stroke-width="6"/>
+        <rect id="pg0" x="694" y="168" width="92" height="160" rx="12" fill="#B14BFF" opacity="0"/>
+        <rect x="724" y="160" width="32" height="5" rx="2.5" fill="#4B5BD0"/>
+        <g id="pc0" opacity="0">
+          <rect x="714" y="236" width="52" height="36" rx="8" fill="none" stroke="#FFFFFF" stroke-width="4"/>
+          <circle cx="742" cy="254" r="10" fill="none" stroke="#FFFFFF" stroke-width="4"/>
+          <circle cx="758" cy="244" r="3.5" fill="#FFFFFF"/>
+        </g>
+      </g><g id="p1" class="phone">
+        <rect id="ps1" x="882" y="498" width="116" height="204" rx="22" fill="#1A1F44" fill-opacity=".55" stroke="#4B5BD0" stroke-width="6"/>
+        <rect id="pg1" x="894" y="514" width="92" height="160" rx="12" fill="#B14BFF" opacity="0"/>
+        <rect x="924" y="506" width="32" height="5" rx="2.5" fill="#4B5BD0"/>
+        <g id="pc1" opacity="0">
+          <rect x="914" y="582" width="52" height="36" rx="8" fill="none" stroke="#FFFFFF" stroke-width="4"/>
+          <circle cx="942" cy="600" r="10" fill="none" stroke="#FFFFFF" stroke-width="4"/>
+          <circle cx="958" cy="590" r="3.5" fill="#FFFFFF"/>
+        </g>
+      </g><g id="p2" class="phone">
+        <rect id="ps2" x="682" y="844" width="116" height="204" rx="22" fill="#1A1F44" fill-opacity=".55" stroke="#4B5BD0" stroke-width="6"/>
+        <rect id="pg2" x="694" y="860" width="92" height="160" rx="12" fill="#B14BFF" opacity="0"/>
+        <rect x="724" y="852" width="32" height="5" rx="2.5" fill="#4B5BD0"/>
+        <g id="pc2" opacity="0">
+          <rect x="714" y="928" width="52" height="36" rx="8" fill="none" stroke="#FFFFFF" stroke-width="4"/>
+          <circle cx="742" cy="946" r="10" fill="none" stroke="#FFFFFF" stroke-width="4"/>
+          <circle cx="758" cy="936" r="3.5" fill="#FFFFFF"/>
+        </g>
+      </g><g id="p3" class="phone">
+        <rect id="ps3" x="282" y="844" width="116" height="204" rx="22" fill="#1A1F44" fill-opacity=".55" stroke="#4B5BD0" stroke-width="6"/>
+        <rect id="pg3" x="294" y="860" width="92" height="160" rx="12" fill="#B14BFF" opacity="0"/>
+        <rect x="324" y="852" width="32" height="5" rx="2.5" fill="#4B5BD0"/>
+        <g id="pc3" opacity="0">
+          <rect x="314" y="928" width="52" height="36" rx="8" fill="none" stroke="#FFFFFF" stroke-width="4"/>
+          <circle cx="342" cy="946" r="10" fill="none" stroke="#FFFFFF" stroke-width="4"/>
+          <circle cx="358" cy="936" r="3.5" fill="#FFFFFF"/>
+        </g>
+      </g><g id="p4" class="phone">
+        <rect id="ps4" x="82" y="498" width="116" height="204" rx="22" fill="#1A1F44" fill-opacity=".55" stroke="#4B5BD0" stroke-width="6"/>
+        <rect id="pg4" x="94" y="514" width="92" height="160" rx="12" fill="#B14BFF" opacity="0"/>
+        <rect x="124" y="506" width="32" height="5" rx="2.5" fill="#4B5BD0"/>
+        <g id="pc4" opacity="0">
+          <rect x="114" y="582" width="52" height="36" rx="8" fill="none" stroke="#FFFFFF" stroke-width="4"/>
+          <circle cx="142" cy="600" r="10" fill="none" stroke="#FFFFFF" stroke-width="4"/>
+          <circle cx="158" cy="590" r="3.5" fill="#FFFFFF"/>
+        </g>
+      </g><g id="p5" class="phone">
+        <rect id="ps5" x="282" y="152" width="116" height="204" rx="22" fill="#1A1F44" fill-opacity=".55" stroke="#4B5BD0" stroke-width="6"/>
+        <rect id="pg5" x="294" y="168" width="92" height="160" rx="12" fill="#B14BFF" opacity="0"/>
+        <rect x="324" y="160" width="32" height="5" rx="2.5" fill="#4B5BD0"/>
+        <g id="pc5" opacity="0">
+          <rect x="314" y="236" width="52" height="36" rx="8" fill="none" stroke="#FFFFFF" stroke-width="4"/>
+          <circle cx="342" cy="254" r="10" fill="none" stroke="#FFFFFF" stroke-width="4"/>
+          <circle cx="358" cy="244" r="3.5" fill="#FFFFFF"/>
+        </g>
+      </g></g>
+      <g id="lines" class="glow"><path id="l0" class="draw" d="M629 446 L681 356" pathLength="1" stroke="#FFFFFF" stroke-width="6" stroke-linecap="round" fill="none"/><path id="l1" class="draw" d="M718 600 L822 600" pathLength="1" stroke="#FFFFFF" stroke-width="6" stroke-linecap="round" fill="none"/><path id="l2" class="draw" d="M629 754 L681 844" pathLength="1" stroke="#FFFFFF" stroke-width="6" stroke-linecap="round" fill="none"/><path id="l3" class="draw" d="M451 754 L399 844" pathLength="1" stroke="#FFFFFF" stroke-width="6" stroke-linecap="round" fill="none"/><path id="l4" class="draw" d="M362 600 L258 600" pathLength="1" stroke="#FFFFFF" stroke-width="6" stroke-linecap="round" fill="none"/><path id="l5" class="draw" d="M451 446 L399 356" pathLength="1" stroke="#FFFFFF" stroke-width="6" stroke-linecap="round" fill="none"/></g>
+      <g id="hub" class="glow">
+        <circle id="track" cx="540" cy="600" r="170" fill="#0A0D22" stroke="#1A1F44" stroke-width="14"/>
+        <circle id="ring" class="draw" cx="540" cy="600" r="170" pathLength="1" fill="none" stroke="#B14BFF" stroke-width="14" stroke-linecap="round" transform="rotate(-90 540 600)"/>
+        <circle id="halo" cx="540" cy="600" r="212" fill="none" stroke="#B9C3F0" stroke-width="3" stroke-dasharray="3 14" opacity="0"/>
+      </g>
+      <g id="camera" class="glow">
+        <rect class="draw" x="280" y="462" width="520" height="318" rx="52" pathLength="1" fill="#0A0D22" stroke="#FFFFFF" stroke-width="12"/>
+        <rect class="draw" x="340" y="420" width="130" height="46" rx="14" pathLength="1" fill="none" stroke="#FFFFFF" stroke-width="10"/>
+        <circle class="draw" cx="560" cy="621" r="122" pathLength="1" fill="#1A1F44" stroke="#FFFFFF" stroke-width="12"/>
+        <circle class="draw" cx="560" cy="621" r="84" pathLength="1" fill="none" stroke="#B9C3F0" stroke-width="8"/>
+        <circle class="draw" cx="560" cy="621" r="42" pathLength="1" fill="#0A0D22" stroke="#4B5BD0" stroke-width="8"/>
+        <circle cx="538" cy="598" r="12" fill="#B9C3F0" opacity=".8"/>
+        <rect class="draw" x="322" y="510" width="70" height="26" rx="8" pathLength="1" fill="none" stroke="#B9C3F0" stroke-width="6"/>
+        <circle id="rec" cx="742" cy="514" r="18" fill="#B14BFF"/>
+        <circle id="recHalo" cx="742" cy="514" r="40" fill="none" stroke="#B14BFF" stroke-width="4"/>
+      </g>
+    </svg>
+  </div>
+</div>
+<script>
+tl.fromTo("#cam", { scale: 1 }, { scale: 1.07, duration: DURATION, ease: "none" }, 0);
+tl.fromTo("#pool", { opacity: .4, scale: .85 }, { opacity: 1, scale: 1.05, duration: 1.2, ease: "power2.out" }, 0);
+tl.fromTo("#stars", { y: 20, opacity: 0 }, { y: -40, opacity: 1, duration: DURATION, ease: "none" }, 0);
+tl.fromTo("#fgRing", { rotation: 0, svgOrigin: "-120 1900" }, { rotation: 10, duration: DURATION, ease: "none" }, 0);
+tl.fromTo("#fgRing2", { rotation: 0, svgOrigin: "1250 -150" }, { rotation: -14, duration: DURATION, ease: "none" }, 0);
+
+// The camera draws itself on, line by line, then starts recording.
+tl.to("#camera .draw", { strokeDashoffset: 0, duration: .7, stagger: .07, ease: "power3.out" }, .05);
+tl.fromTo("#rec", { scale: 0, svgOrigin: "742 514" }, { scale: 1, duration: .35, ease: "back.out(2.2)" }, at("Record", .2) + .45);
+tl.fromTo("#recHalo", { scale: .5, opacity: 1, svgOrigin: "742 514" }, { scale: 1.6, opacity: 0, duration: .6, ease: "power2.out" }, at("Record", .2) + .55);
+
+// "upload it": the camera shrinks into the hub and the ring fills around it.
+const up = at("upload", 1.3);
+tl.to("#camera", { scale: .38, x: -8, svgOrigin: "540 600", duration: .6, ease: "power3.inOut" }, up - .1);
+tl.fromTo("#track", { scale: .6, opacity: 0, svgOrigin: "540 600" }, { scale: 1, opacity: 1, duration: .5, ease: "expo.out" }, up + .15);
+tl.to("#ring", { strokeDashoffset: 0, duration: .9, ease: "power2.inOut" }, up + .3);
+tl.fromTo("#halo", { opacity: 0, rotation: 0, svgOrigin: "540 600" }, { opacity: .6, rotation: 90, duration: 2.4, ease: "none" }, up + .3);
+
+// "everywhere": six lines shoot out and every screen lights up in turn.
+const out = at("everywhere", 2.6);
+tl.fromTo(".phone", { opacity: 0, scale: .7, svgOrigin: "540 600" }, { opacity: 1, scale: 1, duration: .6, stagger: .04, ease: "expo.out" }, out - .35);
+for (let i = 0; i < 6; i++) {
+  const t = out + i * .08;
+  tl.to("#l" + i, { strokeDashoffset: 0, duration: .28, ease: "power2.in" }, t);
+  tl.to("#ps" + i, { stroke: "#FFFFFF", duration: .15, ease: "none" }, t + .26);
+  tl.to("#pg" + i, { opacity: .32, duration: .3, ease: "power2.out" }, t + .26);
+  tl.fromTo("#pc" + i, { opacity: 0, scale: .4, transformOrigin: "50% 50%" }, { opacity: 1, scale: 1, duration: .35, ease: "back.out(2)" }, t + .3);
+}
+tl.to("#hub", { scale: 1.08, svgOrigin: "540 600", duration: .18, yoyo: true, repeat: 1, ease: "power2.out" }, out + .75);
+</script>
