@@ -82,6 +82,8 @@ export interface PipelineRequest {
   brollSource?: string | null;
   /** The treatment every insert wears. Null takes the edit style's. */
   brollOverlay?: string | null;
+  /** Looks picked on the inspo page, in order — see assets/visual-inspo.ts. */
+  visualInspo?: readonly string[] | null;
   inputMode: 'raw' | 'roughcut';
   /**
    * The language the speaker is speaking, as a tag ("de", "fr-CA").

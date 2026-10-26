@@ -32,6 +32,8 @@ export const CreateProjectSchema = z.object({
   brollSource: z.enum(BROLL_SOURCES as unknown as [string, ...string[]]).optional(),
   /** The treatment every insert wears. Omitted takes the edit style's. */
   brollOverlay: z.enum(BROLL_OVERLAYS).optional(),
+  /** Looks picked on the inspo page, in order. Unknown ids are dropped, not refused. */
+  visualInspo: z.array(z.string()).max(12).optional(),
   inputMode: z.enum(['raw', 'roughcut']).default('raw'),
   /**
    * Layers the person declined, before anything is made.

@@ -7,6 +7,7 @@ import { selectMusic } from '@/lib/assets/music';
 import { searchStock, isStockConfigured, type StockClip } from '@/lib/assets/broll';
 import { isAiBrollConfigured, makeBrollAsset, type AiClip, type BrollSource } from '@/lib/assets/ai-broll';
 import { sourceForQuery } from '@/lib/assets/broll-mix';
+import { inspoForInsert } from '@/lib/assets/visual-inspo';
 import { sfxDefaultGain, sfxUrl, type SfxName } from '@/lib/assets/sfx';
 import type { CostLedger } from '@/lib/pricing/cost';
 import { photoSlotsFor, type Edl, type SceneKind } from '@/lib/edl/types';
@@ -38,6 +39,8 @@ export async function resolveAssets(
     ledger: CostLedger;
     /** Where the inserts come from. Defaults to stock — see ai-broll.ts. */
     brollSource?: BrollSource;
+    /** Looks picked on the inspo page; made inserts cycle through them. */
+    visualInspo?: readonly string[];
   },
 ): Promise<ResolveAssetsResult> {
   const degraded: string[] = [];
@@ -89,6 +92,7 @@ export async function resolveAssets(
             orientation,
             durationSec: insertLength,
             index,
+            inspo: inspoForInsert(options.visualInspo, index),
           }).catch(() => null);
           if (made) return { clip, resolved: made as StockClip | AiClip };
           aiMisses++;

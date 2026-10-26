@@ -1,5 +1,6 @@
 import { mkdir, rm } from 'node:fs/promises';
 import { isBrollSource } from '@/lib/assets/ai-broll';
+import { sceneLookForInspo } from '@/lib/assets/visual-inspo';
 import { stageDetail } from './detail';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
@@ -83,7 +84,15 @@ export async function runPipeline(
     request,
     // Provisional until ingest has the file in hand and ffprobe has measured it.
     mode: request.mode,
-    style: styleFor(request.styleId, request.captionPreset, request.sceneLook, request.clipTransitions, request.brollOverlay),
+    // A scene look chosen outright wins; failing that, the world closest to
+    // the first inspo pick, so the animated scenes match the made B-roll.
+    style: styleFor(
+      request.styleId,
+      request.captionPreset,
+      request.sceneLook ?? sceneLookForInspo(request.visualInspo),
+      request.clipTransitions,
+      request.brollOverlay,
+    ),
     ledger: new CostLedger(),
     workDir,
     degraded: [],
@@ -707,6 +716,7 @@ async function stageAssets(ctx: PipelineContext): Promise<void> {
     // Validated here rather than trusted: a stale value in a months-old
     // project should cost a preference, not the render.
     brollSource: isBrollSource(ctx.request.brollSource) ? ctx.request.brollSource : 'stock',
+    visualInspo: ctx.request.visualInspo ?? [],
   });
 
   ctx.edl = resolved.edl;

@@ -2,6 +2,7 @@ import { env } from '@/lib/config/env';
 import { isWavespeedMediaConfigured, runMediaJob } from './wavespeed-media';
 import type { StockClip } from './broll';
 import { brollPrompt } from './broll-prompt';
+import type { VisualInspo } from './visual-inspo';
 
 /**
  * B-roll that does not exist yet.
@@ -86,7 +87,7 @@ export interface GeneratedClip extends StockClip {
  */
 export async function generateBrollClip(
   subject: string,
-  options: { orientation: 'portrait' | 'landscape' | 'square'; durationSec: number },
+  options: { orientation: 'portrait' | 'landscape' | 'square'; durationSec: number; inspo?: VisualInspo | null },
 ): Promise<GeneratedClip | null> {
   if (!isGeneratedBrollConfigured()) return null;
 
@@ -98,7 +99,7 @@ export async function generateBrollClip(
   try {
     const { urls } = await runMediaJob({
       model: env.genvideo.model,
-      input: { prompt: brollPrompt(subject, 'clip'), aspect_ratio: aspect, duration },
+      input: { prompt: brollPrompt(subject, 'clip', options.inspo), aspect_ratio: aspect, duration },
       timeoutMs: TIMEOUT_MS,
       pollMs: 4000,
     });

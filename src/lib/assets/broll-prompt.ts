@@ -8,6 +8,8 @@
  * signage. Two copies of a rule is one rule and one bug.
  */
 
+import type { VisualInspo } from './visual-inspo';
+
 /**
  * Words that mean the subject of the shot is a PERSON.
  *
@@ -71,7 +73,7 @@ export function subjectHasPeople(subject: string): boolean {
  * test render of this had TKO SES LYOPE MOM across a cafe wall. Under our own
  * caption track that is the one artefact nobody can edit away afterwards.
  */
-export function brollPrompt(subject: string, medium: 'still' | 'clip'): string {
+export function brollPrompt(subject: string, medium: 'still' | 'clip', inspo?: VisualInspo | null): string {
   const recast = subjectHasPeople(subject)
     ? 'Shoot the OBJECTS and the SPACE only — the tools, surfaces, machines and room ' +
       'that belong to this, with nobody in the picture. '
@@ -82,16 +84,31 @@ export function brollPrompt(subject: string, medium: 'still' | 'clip'): string {
       ? 'Handheld documentary footage, small natural camera drift, one slow continuous move. '
       : 'A single documentary photograph. ';
 
+  const rules =
+    'NO PEOPLE: no person, no face, no body, no hands, no silhouette, no reflection of anyone. ' +
+    'No text of any kind anywhere in the frame: no signage, no labels, no lettering, no ' +
+    'logos, no captions, no watermark.';
+
+  /*
+   * A look the person picked replaces the realism, never the rules.
+   *
+   * They chose it from the inspo page knowing it will not pass as footage —
+   * that is the point of choosing clay or anime. Faces and lettering are still
+   * where every model gives itself away, in any style.
+   */
+  if (inspo && inspo.id !== 'documentary') {
+    const framing = medium === 'clip' ? 'One continuous shot with one slow camera move. ' : 'A single image. ';
+    return `${subject}. ${recast}${framing}Style: ${inspo.look} Generous room around the subject. ${rules}`;
+  }
+
   return (
     `${subject}. ${recast}${motion}` +
     // "Room around the subject" is not decoration: a still gets pushed into and
     // panned across, so anything tight to an edge leaves frame mid-insert.
     'Shot on a full-frame camera with a 35mm lens, natural available light, ordinary ' +
     'realistic colour, real materials and real wear, generous room around the subject. ' +
-    'NO PEOPLE: no person, no face, no body, no hands, no silhouette, no reflection of anyone. ' +
-    'No text of any kind anywhere in the frame: no signage, no labels, no lettering, no ' +
-    'logos, no captions, no watermark. ' +
-    'Not cinematic, not stylised, not a render, not an illustration — it must look like an ' +
+    rules +
+    ' Not cinematic, not stylised, not a render, not an illustration — it must look like an ' +
     'unremarkable frame from real footage.'
   );
 }
