@@ -3,7 +3,7 @@ import { languageBrief } from './prompt';
 import { GRAPHIC_ANIMATIONS, MOVING_GRAPHICS } from '@/lib/edl/types';
 import type { Transcript } from '@/lib/transcribe/types';
 import { DirectorGraphicSchema, type DirectorGraphic, type DirectorPlan } from './schema';
-import { wavespeedPriceFor } from './wavespeed';
+import { completionCostUsd, isChatConfigured, llmFetch, routedModel } from '@/lib/llm/chat';
 
 /**
  * The motion-graphics pass.
@@ -101,7 +101,7 @@ export interface MotionPassResult {
 }
 
 export function isMotionPassConfigured(): boolean {
-  return Boolean(env.llm.wavespeedKey && env.llm.motionModel);
+  return isChatConfigured();
 }
 
 export async function designMotionGraphics(
@@ -109,13 +109,13 @@ export async function designMotionGraphics(
   plan: DirectorPlan,
   durationSec: number,
 ): Promise<MotionPassResult> {
-  const model = env.llm.motionModel;
+  const model = routedModel(env.llm.motionModel);
   if (!isMotionPassConfigured()) {
     return { graphics: [], costUsd: 0, model, error: 'no motion model configured' };
   }
 
   try {
-    const response = await fetch(`${API_BASE}/chat/completions`, {
+    const response = await llmFetch(`${API_BASE}/chat/completions`, {
       method: 'POST',
       headers: {
         'content-type': 'application/json',
@@ -157,10 +157,7 @@ export async function designMotionGraphics(
       .map((r) => r.data)
       .filter((g) => g.atSec >= 0 && g.atSec < durationSec);
 
-    const pricing = wavespeedPriceFor(model);
-    const costUsd =
-      ((body.usage?.prompt_tokens ?? 0) / 1_000_000) * pricing.inputPerMTok +
-      ((body.usage?.completion_tokens ?? 0) / 1_000_000) * pricing.outputPerMTok;
+    const costUsd = completionCostUsd(body, model);
 
     return { graphics, costUsd, model };
   } catch (error) {

@@ -1,7 +1,7 @@
 import { env } from '@/lib/config/env';
 import { isDrawn, parseIllustration, type Illustration } from '@/lib/assets/illustration';
 import type { PanelScene } from '@/lib/edl/types';
-import { wavespeedPriceFor } from './wavespeed';
+import { completionCostUsd, isChatConfigured, llmFetch, routedModel } from '@/lib/llm/chat';
 
 /**
  * The panel, drawn rather than assembled.
@@ -158,7 +158,7 @@ export interface PanelArtResult {
 }
 
 export function isPanelArtConfigured(): boolean {
-  return Boolean(env.llm.wavespeedKey && env.llm.motionModel);
+  return isChatConfigured();
 }
 
 /**
@@ -220,10 +220,10 @@ async function drawBatch(
   accent: string,
 ): Promise<{ drawn: Map<string, Illustration>; costUsd: number; error?: string; transient?: boolean }> {
   const drawn = new Map<string, Illustration>();
-  const model = env.llm.motionModel;
+  const model = routedModel(env.llm.motionModel);
 
   try {
-    const response = await fetch(`${API_BASE}/chat/completions`, {
+    const response = await llmFetch(`${API_BASE}/chat/completions`, {
       method: 'POST',
       headers: {
         'content-type': 'application/json',
@@ -257,10 +257,7 @@ async function drawBatch(
       usage?: { prompt_tokens?: number; completion_tokens?: number };
     };
 
-    const pricing = wavespeedPriceFor(model);
-    const costUsd =
-      ((body.usage?.prompt_tokens ?? 0) / 1_000_000) * pricing.inputPerMTok +
-      ((body.usage?.completion_tokens ?? 0) / 1_000_000) * pricing.outputPerMTok;
+    const costUsd = completionCostUsd(body, model);
 
     const text = body.choices?.[0]?.message?.content ?? '';
     for (const [index, markup] of splitDrawings(text).entries()) {

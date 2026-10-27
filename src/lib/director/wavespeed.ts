@@ -3,6 +3,7 @@ import { buildDirectorPrompt, SYSTEM_PROMPT, type DirectorBrief } from './prompt
 import { directorJsonSchema } from './wire';
 import { DirectorPlanSchema, type DirectorPlan } from './schema';
 import type { DirectorCallResult } from './anthropic';
+import { chatProvider, completionCostUsd, isChatConfigured, llmFetch, routedModel } from '@/lib/llm/chat';
 
 /**
  * The director, through WaveSpeed.
@@ -57,8 +58,9 @@ const MODEL_PRICING: Record<string, { inputPerMTok: number; outputPerMTok: numbe
 
 const FALLBACK_PRICING = { inputPerMTok: 1, outputPerMTok: 5 };
 
+/** Whether this director can run — on WaveSpeed, or on Kie through `llmFetch`. */
 export function isWavespeedConfigured(): boolean {
-  return Boolean(env.llm.wavespeedKey);
+  return isChatConfigured();
 }
 
 export function wavespeedPriceFor(model: string) {
@@ -76,9 +78,9 @@ interface ChatResponse {
 }
 
 export async function runWavespeedDirector(brief: DirectorBrief): Promise<DirectorCallResult> {
-  const model = env.llm.wavespeedModel;
+  const model = routedModel(env.llm.wavespeedModel);
 
-  const response = await fetch(`${API_BASE}/chat/completions`, {
+  const response = await llmFetch(`${API_BASE}/chat/completions`, {
     method: 'POST',
     headers: {
       'content-type': 'application/json',
@@ -118,7 +120,7 @@ export async function runWavespeedDirector(brief: DirectorBrief): Promise<Direct
     if (response.status === 402) {
       throw new Error(`WaveSpeed account is out of credit: ${detail}`);
     }
-    throw new Error(`WaveSpeed director failed: ${detail}`);
+    throw new Error(`${chatProvider() === 'kie' ? 'Kie' : 'WaveSpeed'} director failed: ${detail}`);
   }
 
   const body = (await response.json()) as ChatResponse;
@@ -147,10 +149,7 @@ export async function runWavespeedDirector(brief: DirectorBrief): Promise<Direct
   const outputTokens = usage.completion_tokens ?? 0;
   const cachedTokens = usage.prompt_tokens_details?.cached_tokens ?? 0;
 
-  const pricing = wavespeedPriceFor(model);
-  const costUsd =
-    (inputTokens / 1_000_000) * pricing.inputPerMTok +
-    (outputTokens / 1_000_000) * pricing.outputPerMTok;
+  const costUsd = completionCostUsd(body, model);
 
   return {
     // Same lenient parse as the other providers: whatever came back, the

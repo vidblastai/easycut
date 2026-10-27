@@ -19,10 +19,15 @@ const ENV = {
   maxOutputTokens: 8000,
 };
 
+const KIE = { apiKey: undefined as string | undefined, chatModel: 'claude-opus-5-5', usdPerCredit: 0.005 };
+
 vi.mock('@/lib/config/env', () => ({
   env: {
     get llm() {
       return ENV;
+    },
+    get kie() {
+      return KIE;
     },
   },
 }));
@@ -36,7 +41,10 @@ function configure(patch: Partial<typeof ENV>) {
   }, patch);
 }
 
-afterEach(() => configure({}));
+afterEach(() => {
+  configure({});
+  KIE.apiKey = undefined;
+});
 
 describe('provider selection', () => {
   it('falls back to the rule-based director with no keys at all', async () => {
@@ -51,6 +59,13 @@ describe('provider selection', () => {
     const { selectedProvider } = await import('../src/lib/director');
     configure({ anthropicKey: 'sk-ant-x', geminiKey: 'AIza-x' });
     expect(selectedProvider()).toBe('anthropic');
+  });
+
+  it('runs the AI director on Kie when a Kie key is the only key', async () => {
+    const { selectedProvider } = await import('../src/lib/director');
+    configure({});
+    KIE.apiKey = 'kie-x';
+    expect(selectedProvider()).not.toBe('heuristic');
   });
 
   it('uses Gemini on auto when it is the only key', async () => {

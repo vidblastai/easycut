@@ -1,5 +1,5 @@
 import { env } from '@/lib/config/env';
-import { wavespeedPriceFor } from './wavespeed';
+import { completionCostUsd, isChatConfigured, llmFetch, routedModel } from '@/lib/llm/chat';
 
 /**
  * The second look at a pair of sentences that might be the same line twice.
@@ -116,13 +116,13 @@ function cacheKey(q: RestatementQuestion): string {
 }
 
 export function isRetakeReaderConfigured(): boolean {
-  return Boolean(env.llm.wavespeedKey);
+  return isChatConfigured();
 }
 
 export async function reviewRestatements(
   questions: RestatementQuestion[],
 ): Promise<RestatementReview> {
-  const model = env.llm.wavespeedModel;
+  const model = routedModel(env.llm.wavespeedModel);
   const answers = new Map<string, RestatementAnswer>();
   if (!questions.length) return { answers, costUsd: 0, model };
 
@@ -168,7 +168,7 @@ async function askBatch(
   model: string,
 ): Promise<{ answers: RestatementAnswer[]; costUsd: number; error?: string }> {
   try {
-    const response = await fetch(`${API_BASE}/chat/completions`, {
+    const response = await llmFetch(`${API_BASE}/chat/completions`, {
       method: 'POST',
       headers: {
         'content-type': 'application/json',
@@ -223,10 +223,7 @@ async function askBatch(
       )
       .map((v) => ({ ...v, keep: v.keep === 'earlier' ? 'earlier' : 'later' }) as RestatementAnswer);
 
-    const pricing = wavespeedPriceFor(model);
-    const costUsd =
-      ((body.usage?.prompt_tokens ?? 0) / 1_000_000) * pricing.inputPerMTok +
-      ((body.usage?.completion_tokens ?? 0) / 1_000_000) * pricing.outputPerMTok;
+    const costUsd = completionCostUsd(body, model);
 
     return { answers, costUsd };
   } catch (error) {

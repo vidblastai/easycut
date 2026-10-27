@@ -1,5 +1,6 @@
 import { env } from '@/lib/config/env';
 import { isWavespeedMediaConfigured, runMediaJob } from './wavespeed-media';
+import { KIE_IMAGE_COST_USD, KIE_IMAGE_MODEL, KIE_IMAGE_TIMEOUT_MS, isKieConfigured, runKieJob } from './kie';
 
 /**
  * Bespoke illustration, for the rare cue where no stock clip and no icon can
@@ -14,7 +15,7 @@ import { isWavespeedMediaConfigured, runMediaJob } from './wavespeed-media';
 
 export interface GeneratedImage {
   url: string;
-  provider: 'replicate' | 'fal' | 'wavespeed';
+  provider: 'replicate' | 'fal' | 'wavespeed' | 'kie';
   costUsd: number;
   prompt: string;
 }
@@ -32,13 +33,14 @@ const MAX_POLLS = 60;
 export function isImageGenConfigured(): boolean {
   if (!env.features.generatedImages) return false;
   return Boolean(
-    env.imagegen.replicateToken || env.imagegen.falKey || isWavespeedMediaConfigured(),
+    env.imagegen.replicateToken || env.imagegen.falKey || isKieConfigured() || isWavespeedMediaConfigured(),
   );
 }
 
 export function estimateImageCostUsd(count: number): number {
   if (env.imagegen.replicateToken) return count * REPLICATE_COST_USD;
   if (env.imagegen.falKey) return count * FAL_COST_USD;
+  if (isKieConfigured()) return count * KIE_IMAGE_COST_USD;
   return count * WAVESPEED_COST_USD;
 }
 
@@ -72,6 +74,12 @@ export async function generateImage(
     const result = await generateWithFal(styled, aspect).catch(() => null);
     if (result) return result;
   }
+  // Kie before WaveSpeed: the same account that makes the B-roll stills and
+  // runs the language model, so one key covers the whole video.
+  if (isKieConfigured()) {
+    const result = await generateWithKie(styled, aspect).catch(() => null);
+    if (result) return result;
+  }
   // Last, and reached by most deployments, because it is the key people
   // already have for the director. A failure here returns null like the
   // others: a missing illustration means the cue falls back to stock or an
@@ -80,6 +88,16 @@ export async function generateImage(
     return generateWithWavespeed(styled, aspect).catch(() => null);
   }
   return null;
+}
+
+async function generateWithKie(prompt: string, aspect: '9:16' | '16:9' | '1:1'): Promise<GeneratedImage | null> {
+  const { urls } = await runKieJob({
+    model: KIE_IMAGE_MODEL,
+    input: { prompt, aspect_ratio: aspect },
+    timeoutMs: KIE_IMAGE_TIMEOUT_MS,
+    pollMs: 1500,
+  });
+  return urls[0] ? { url: urls[0], provider: 'kie', costUsd: KIE_IMAGE_COST_USD, prompt } : null;
 }
 
 /** Sizes that match the frame the insert will sit in, at about one megapixel. */

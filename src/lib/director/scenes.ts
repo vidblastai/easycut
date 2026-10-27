@@ -4,7 +4,7 @@ import { PHOTO_GRID_MAX, PHOTO_ROW_MAX, SCENE_BACKDROPS, SCENE_KINDS } from '@/l
 import type { Transcript } from '@/lib/transcribe/types';
 import { z } from 'zod';
 import type { DirectorPlan } from './schema';
-import { wavespeedPriceFor } from './wavespeed';
+import { completionCostUsd, isChatConfigured, llmFetch, routedModel } from '@/lib/llm/chat';
 
 /**
  * Choosing which seconds of a video become a drawn scene, and what is in them.
@@ -206,7 +206,7 @@ export interface ScenePassResult {
 }
 
 export function isScenePassConfigured(): boolean {
-  return Boolean(env.llm.wavespeedKey && env.llm.motionModel);
+  return isChatConfigured();
 }
 
 /**
@@ -265,13 +265,13 @@ async function askForScenes(
   sourceDurationSec: number,
   finishedDurationSec: number,
 ): Promise<ScenePassResult> {
-  const model = env.llm.motionModel;
+  const model = routedModel(env.llm.motionModel);
   if (!isScenePassConfigured()) {
     return { scenes: [], considered: [], costUsd: 0, model, error: 'no scene model configured' };
   }
 
   try {
-    const response = await fetch(`${API_BASE}/chat/completions`, {
+    const response = await llmFetch(`${API_BASE}/chat/completions`, {
       method: 'POST',
       headers: {
         'content-type': 'application/json',
@@ -313,10 +313,7 @@ async function askForScenes(
       sourceDurationSec,
     );
 
-    const pricing = wavespeedPriceFor(model);
-    const costUsd =
-      ((body.usage?.prompt_tokens ?? 0) / 1_000_000) * pricing.inputPerMTok +
-      ((body.usage?.completion_tokens ?? 0) / 1_000_000) * pricing.outputPerMTok;
+    const costUsd = completionCostUsd(body, model);
 
     const considered = (raw.considered ?? []).filter((c): c is string => typeof c === 'string');
     return { scenes, considered, costUsd, model };
