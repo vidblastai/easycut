@@ -108,6 +108,24 @@ describe('the look-and-fix round', () => {
   });
 });
 
+describe('when one account refuses', () => {
+  it('falls through to the other, and names both when both refuse', async () => {
+    ENV.kie.apiKey = 'kie-key';
+    const fetchMock = vi.fn(async (url: string) =>
+      url.includes('kie.ai')
+        ? new Response(JSON.stringify({ msg: 'Unauthorized' }), { status: 401 })
+        : new Response(JSON.stringify({ choices: [{ message: { content: REVIEW_OK } }] })),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+    expect((await reviewScene(request, parts, sheet)).approved).toBe(true);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({ msg: 'nope' }), { status: 402 })));
+    const failed = await reviewScene(request, parts, sheet);
+    expect(failed.error).toMatch(/^kie: .* · wavespeed: /);
+  });
+});
+
 describe('through Kie', () => {
   it('is preferred when its key is set, unless WaveSpeed is asked for', () => {
     expect(composerProvider()).toBe('wavespeed');
