@@ -13,16 +13,19 @@ import { neon } from './neon';
  * type on a dark ground reads the same in both, and a scene that is drawn —
  * which is most of them, and all of them on the HyperFrames path — brings its
  * own picture anyway. What this file owns is the GROUND the fallback layout
- * sits on: deep navy, a field of stars, a huge planet edge cropped at the
- * bottom with a lit rim, and dust drifting at a different rate from the stars
- * so the frame has depth even before anything arrives.
+ * sits on: deep navy with a lighter pool where the subject goes, large blurred
+ * shapes far behind, and soft dust drifting at different rates so the frame
+ * has depth even before anything arrives. Abstract on purpose — a backdrop
+ * that is a place (space, a planet) puts a subject in every scene that the
+ * scene is not about.
  *
  * Everything else about the world lives in the style guide, which the drawing
  * and composition prompts read.
  */
 
 const GUIDE = STYLE_GUIDES.science;
-const STARS = 46;
+const DUST = 22;
+const BLURS = 3;
 
 const Ground: React.FC<{ ctx: LookContext }> = ({ ctx }) => {
   const frame = useCurrentFrame();
@@ -35,41 +38,49 @@ const Ground: React.FC<{ ctx: LookContext }> = ({ ctx }) => {
         background: `radial-gradient(ellipse at 50% 30%, ${GUIDE.palette[5].hex} 0%, ${GUIDE.ground} 70%)`,
       }}
     >
-      {Array.from({ length: STARS }, (_, i) => {
+      {Array.from({ length: BLURS }, (_, i) => {
+        const size = width * (0.55 + seeded(`${ctx.scene.id}-bs`, i) * 0.35);
+        const x = seeded(`${ctx.scene.id}-bx`, i) * width - size / 2;
+        const y = (0.15 + seeded(`${ctx.scene.id}-by`, i) * 0.75) * height - size / 2;
+        return (
+          <div
+            key={`b${i}`}
+            style={{
+              position: 'absolute',
+              left: x,
+              top: y,
+              width: size,
+              height: size,
+              borderRadius: '50%',
+              background: i === 0 ? GUIDE.palette[2].hex : GUIDE.palette[4].hex,
+              opacity: i === 0 ? 0.12 : 0.35,
+              filter: `blur(${unit * 30}px)`,
+              transform: `translate3d(0, ${(-frame * unit * (0.05 + i * 0.04)).toFixed(1)}px, 0)`,
+            }}
+          />
+        );
+      })}
+      {Array.from({ length: DUST }, (_, i) => {
         const x = seeded(`${ctx.scene.id}-sx`, i) * width;
-        const y = seeded(`${ctx.scene.id}-sy`, i) * height * 0.8;
-        const size = unit * (2 + seeded(`${ctx.scene.id}-ss`, i) * 4);
-        const twinkle = 0.45 + 0.35 * Math.sin(frame / (18 + (i % 7) * 5) + i);
+        const y = seeded(`${ctx.scene.id}-sy`, i) * height;
+        const size = unit * (3 + seeded(`${ctx.scene.id}-ss`, i) * 6);
         return (
           <div
             key={i}
             style={{
               position: 'absolute',
               left: x,
-              top: y - frame * unit * 0.08,
+              top: y - frame * unit * (0.1 + (i % 3) * 0.06),
               width: size,
               height: size,
               borderRadius: '50%',
-              background: i % 5 === 0 ? GUIDE.palette[1].hex : GUIDE.palette[0].hex,
-              opacity: twinkle,
+              background: i % 4 === 0 ? GUIDE.palette[1].hex : GUIDE.palette[0].hex,
+              opacity: 0.18,
+              filter: `blur(${unit * 1.5}px)`,
             }}
           />
         );
       })}
-      {/* The planet edge: wider than the frame, lit along its upper rim. */}
-      <div
-        style={{
-          position: 'absolute',
-          left: width * -0.4,
-          top: height * 0.7,
-          width: width * 1.8,
-          height: width * 1.8,
-          borderRadius: '50%',
-          background: `radial-gradient(circle at 40% 8%, ${GUIDE.palette[2].hex} 0%, ${GUIDE.palette[4].hex} 22%, ${GUIDE.palette[5].hex} 55%)`,
-          boxShadow: `0 ${-unit * 6}px ${unit * 40}px ${GUIDE.palette[2].hex}55`,
-          transform: `translate3d(0, ${(-frame * unit * 0.25).toFixed(1)}px, 0)`,
-        }}
-      />
     </AbsoluteFill>
   );
 };
