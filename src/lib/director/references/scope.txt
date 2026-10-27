@@ -1,0 +1,113 @@
+<!-- concept: a green beam traces a heart that beats faster and faster, then the heartbeat runs out of it as one trace and every beat fires a spike of electricity -->
+<style>
+#bg { position:absolute; inset:0; background: radial-gradient(ellipse at 50% 38%, #0A2412 0%, #04120A 45%, #020804 80%); }
+#grid { position:absolute; inset:0; background-image: linear-gradient(rgba(43,212,90,.10) 2px, transparent 2px), linear-gradient(90deg, rgba(43,212,90,.10) 2px, transparent 2px); background-size: 120px 120px; background-position: 0 40px; }
+#grid2 { position:absolute; inset:0; background-image: linear-gradient(rgba(43,212,90,.05) 1px, transparent 1px), linear-gradient(90deg, rgba(43,212,90,.05) 1px, transparent 1px); background-size: 24px 24px; }
+#scan { position:absolute; inset:0; background: repeating-linear-gradient(0deg, rgba(0,0,0,.28) 0 2px, transparent 2px 6px); }
+#vig { position:absolute; inset:0; background: radial-gradient(ellipse at 50% 40%, transparent 45%, rgba(0,0,0,.75) 100%); }
+#flash { position:absolute; inset:0; background: radial-gradient(circle at 50% 38%, rgba(124,255,138,.35), transparent 60%); opacity:0; }
+svg.layer { position:absolute; left:0; top:0; overflow:visible; }
+.beam { fill:none; stroke:#7CFF8A; stroke-linecap:round; stroke-linejoin:round; filter: drop-shadow(0 0 6px #7CFF8A) drop-shadow(0 0 18px #2BD45A) drop-shadow(0 0 40px rgba(43,212,90,.6)); }
+.core { fill:none; stroke:#E9FFE9; stroke-linecap:round; stroke-linejoin:round; }
+.echo { fill:none; stroke:#2BD45A; stroke-width:6; opacity:0; }
+#ecg, #ecgCore, #spk1, #spk1Core, #bolt, #boltCore { opacity:0; }
+</style>
+<div id="scene">
+  <div id="bg"></div>
+  <div id="grid2"></div>
+  <div id="grid"></div>
+  <div id="flash"></div>
+  <svg class="layer" id="world" width="1080" height="1920" viewBox="0 0 1080 1920">
+    <!-- axes of the graticule, slightly brighter -->
+    <line x1="0" y1="700" x2="1080" y2="700" stroke="#0F4A22" stroke-width="3"/>
+    <line x1="540" y1="160" x2="540" y2="1040" stroke="#0F4A22" stroke-width="3"/>
+    <g id="ticks" stroke="#0F4A22" stroke-width="3">
+      <line x1="60" y1="688" x2="60" y2="712"/><line x1="180" y1="688" x2="180" y2="712"/><line x1="300" y1="688" x2="300" y2="712"/><line x1="420" y1="688" x2="420" y2="712"/>
+      <line x1="660" y1="688" x2="660" y2="712"/><line x1="780" y1="688" x2="780" y2="712"/><line x1="900" y1="688" x2="900" y2="712"/><line x1="1020" y1="688" x2="1020" y2="712"/>
+      <line x1="528" y1="280" x2="552" y2="280"/><line x1="528" y1="400" x2="552" y2="400"/><line x1="528" y1="520" x2="552" y2="520"/><line x1="528" y1="880" x2="552" y2="880"/><line x1="528" y1="1000" x2="552" y2="1000"/>
+    </g>
+
+    <g id="heartG">
+      <path class="echo" id="e0" d="M540 930 C 290 780 200 610 285 500 C 360 400 490 420 540 520 C 590 420 720 400 795 500 C 880 610 790 780 540 930 Z"/>
+      <path class="echo" id="e1" d="M540 930 C 290 780 200 610 285 500 C 360 400 490 420 540 520 C 590 420 720 400 795 500 C 880 610 790 780 540 930 Z"/>
+      <path class="echo" id="e2" d="M540 930 C 290 780 200 610 285 500 C 360 400 490 420 540 520 C 590 420 720 400 795 500 C 880 610 790 780 540 930 Z"/>
+      <path class="echo" id="e3" d="M540 930 C 290 780 200 610 285 500 C 360 400 490 420 540 520 C 590 420 720 400 795 500 C 880 610 790 780 540 930 Z"/>
+      <path class="beam" id="heart" stroke-width="12" pathLength="1" stroke-dasharray="1" stroke-dashoffset="1" d="M540 930 C 290 780 200 610 285 500 C 360 400 490 420 540 520 C 590 420 720 400 795 500 C 880 610 790 780 540 930 Z"/>
+      <path class="core" id="heartCore" stroke-width="4" pathLength="1" stroke-dasharray="1" stroke-dashoffset="1" d="M540 930 C 290 780 200 610 285 500 C 360 400 490 420 540 520 C 590 420 720 400 795 500 C 880 610 790 780 540 930 Z"/>
+      <!-- an inner trace, the chamber -->
+      <path class="beam" id="inner" stroke-width="6" opacity=".55" pathLength="1" stroke-dasharray="1" stroke-dashoffset="1" d="M540 840 C 380 740 330 640 380 570 C 420 520 490 540 520 600"/>
+    </g>
+
+    <!-- the heartbeat, running through the heart -->
+    <path class="beam" id="ecg" stroke-width="10" pathLength="1" stroke-dasharray="1" stroke-dashoffset="1" d="M30 700 L250 700 L290 660 L330 700 L410 700 L450 740 L490 700 L510 700"/>
+    <path class="core" id="ecgCore" stroke-width="3.5" pathLength="1" stroke-dasharray="1" stroke-dashoffset="1" d="M30 700 L250 700 L290 660 L330 700 L410 700 L450 740 L490 700 L510 700"/>
+    <path class="beam" id="spk1" stroke-width="10" pathLength="1" stroke-dasharray="1" stroke-dashoffset="1" d="M510 700 L540 300 L575 980 L610 700 L700 700 L740 650 L790 700 L1050 700"/>
+    <path class="core" id="spk1Core" stroke-width="3.5" pathLength="1" stroke-dasharray="1" stroke-dashoffset="1" d="M510 700 L540 300 L575 980 L610 700 L700 700 L740 650 L790 700 L1050 700"/>
+
+    <!-- the spark at the top of the spike -->
+    <path class="beam" id="bolt" stroke-width="9" pathLength="1" stroke-dasharray="1" stroke-dashoffset="1" d="M540 300 L500 230 L560 210 L520 130"/>
+    <path class="core" id="boltCore" stroke-width="3" pathLength="1" stroke-dasharray="1" stroke-dashoffset="1" d="M540 300 L500 230 L560 210 L520 130"/>
+    <g id="sparks" class="beam" stroke-width="7">
+      <line class="spk" x1="540" y1="300" x2="470" y2="270"/>
+      <line class="spk" x1="540" y1="300" x2="610" y2="268"/>
+      <line class="spk" x1="540" y1="300" x2="455" y2="330"/>
+      <line class="spk" x1="540" y1="300" x2="625" y2="335"/>
+    </g>
+  </svg>
+  <div id="scan"></div>
+  <div id="vig"></div>
+</div>
+<script>
+// The screen hums: the picture breathes a touch and the beam flickers.
+tl.fromTo("#world", { scale: 1.02 }, { scale: 1.08, transformOrigin: "540px 640px", duration: DURATION, ease: "none" }, 0);
+tl.to(".beam", { opacity: .86, duration: .05, yoyo: true, repeat: 9, ease: "none" }, 1.2);
+
+// Hook: the beam starts tracing the heart at once and closes it on "heart".
+const heart = at("heart", .45);
+tl.to("#heart", { strokeDashoffset: 0, duration: heart + .35, ease: "power1.inOut" }, 0);
+tl.to("#heartCore", { strokeDashoffset: 0, duration: heart + .35, ease: "power1.inOut" }, .05);
+tl.to("#inner", { strokeDashoffset: 0, duration: .5, ease: "power1.inOut" }, heart + .1);
+
+// "beats": a strong double thump.
+const beats = at("beats", .66);
+const thump = (t, k) => {
+  tl.to("#heartG", { scale: 1 + .09 * k, svgOrigin: "540 700", duration: .09, ease: "power2.out" }, t);
+  tl.to("#heartG", { scale: 1, svgOrigin: "540 700", duration: .22, ease: "power2.in" }, t + .09);
+};
+thump(beats, 1.2);
+thump(beats + .32, .8);
+
+// "a hundred thousand times a day": the beats pile up, faster and faster, each leaving an echo.
+const many = at("hundred", 1.26);
+const fast = [0, .32, .58, .8, .98, 1.13, 1.26, 1.37];
+fast.forEach((d, i) => {
+  thump(many + d, .7);
+  const e = "#e" + (i % 4);
+  tl.fromTo(e, { opacity: .7, scale: 1, svgOrigin: "540 700" }, { opacity: 0, scale: 1.35 + i * .02, svgOrigin: "540 700", duration: .55, ease: "power2.out", immediateRender: false }, many + d);
+});
+
+// "every beat": the heart dims and its beat runs out of it as one trace across the screen.
+const every = at("every", 2.9) - .1;
+tl.to("#heart, #heartCore, #inner", { opacity: .35, duration: .3, ease: "power2.out" }, every);
+tl.set("#ecg, #ecgCore", { opacity: 1 }, every);
+tl.to("#ecg", { strokeDashoffset: 0, duration: .75, ease: "none" }, every);
+tl.to("#ecgCore", { strokeDashoffset: 0, duration: .75, ease: "none" }, every + .03);
+
+// "spike": the trace shoots up through the heart and runs on.
+const spike = at("spike", 4.06) - .12;
+tl.set("#spk1, #spk1Core", { opacity: 1 }, spike);
+tl.to("#spk1", { strokeDashoffset: 0, duration: .6, ease: "power1.out" }, spike);
+tl.to("#spk1Core", { strokeDashoffset: 0, duration: .6, ease: "power1.out" }, spike + .02);
+thump(spike + .08, 1.4);
+tl.to("#heart, #heartCore, #inner", { opacity: 1, duration: .1 }, spike + .08);
+
+// "electricity": a spark cracks off the top of the spike and the screen flares.
+const zap = at("electricity", 4.54) - .05;
+tl.set("#bolt, #boltCore", { opacity: 1 }, zap);
+tl.to("#bolt", { strokeDashoffset: 0, duration: .18, ease: "power2.out" }, zap);
+tl.to("#boltCore", { strokeDashoffset: 0, duration: .18, ease: "power2.out" }, zap + .02);
+tl.fromTo(".spk", { scale: 0, svgOrigin: "540 300" }, { scale: 1, svgOrigin: "540 300", duration: .25, stagger: .03, ease: "back.out(3)" }, zap + .05);
+tl.to("#flash", { opacity: 1, duration: .08, yoyo: true, repeat: 3, ease: "none" }, zap);
+tl.to("#bolt, #boltCore", { opacity: .4, duration: .06, yoyo: true, repeat: 5, ease: "none" }, zap + .25);
+thump(zap + .4, 1);
+</script>

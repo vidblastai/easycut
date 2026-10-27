@@ -1,0 +1,163 @@
+<!-- concept: a clay seed in a mound of soil drinks three drops of water, warms under a clay sun, then splits and pushes a sprout up toward the light -->
+<style>
+#bg { position:absolute; inset:0; background: linear-gradient(180deg, #F1E7DA 0%, #E9DCCB 62%, #DCCAB4 62.2%, #D3BFA6 100%); }
+#pool { position:absolute; left:90px; top:240px; width:900px; height:900px; border-radius:50%; background: radial-gradient(circle, rgba(255,241,224,.85) 0%, rgba(255,241,224,0) 65%); }
+.blob { position:absolute; border-radius:50%; filter: blur(60px); opacity:.35; }
+#b1 { left:-220px; top:120px; width:620px; height:620px; background:#F2C14E; }
+#b2 { left:720px; top:640px; width:560px; height:560px; background:#4FA3A5; opacity:.22; }
+svg.layer { position:absolute; left:0; top:0; overflow:visible; }
+#stem, #stemShine, #crack { opacity:0; }
+</style>
+<div id="scene">
+  <div id="bg"></div>
+  <div class="blob" id="b1"></div>
+  <div class="blob" id="b2"></div>
+  <div id="pool"></div>
+  <svg class="layer" id="world" width="1080" height="1920" viewBox="0 0 1080 1920">
+    <defs>
+      <radialGradient id="gSoil" cx=".38" cy=".25" r=".8"><stop offset="0" stop-color="#C9674C"/><stop offset=".55" stop-color="#A8432F"/><stop offset="1" stop-color="#7A2E20"/></radialGradient>
+      <radialGradient id="gSeed" cx=".34" cy=".28" r=".85"><stop offset="0" stop-color="#FFE7A8"/><stop offset=".5" stop-color="#F2C14E"/><stop offset="1" stop-color="#B98522"/></radialGradient>
+      <radialGradient id="gTeal" cx=".34" cy=".28" r=".85"><stop offset="0" stop-color="#9ADBD9"/><stop offset=".55" stop-color="#4FA3A5"/><stop offset="1" stop-color="#2C6B6D"/></radialGradient>
+      <radialGradient id="gSun" cx=".36" cy=".3" r=".8"><stop offset="0" stop-color="#FFE7A8"/><stop offset=".45" stop-color="#F2C14E"/><stop offset="1" stop-color="#E86A50"/></radialGradient>
+      <radialGradient id="gGlow"><stop offset="0" stop-color="#FFE7A8" stop-opacity=".9"/><stop offset=".5" stop-color="#F2C14E" stop-opacity=".35"/><stop offset="1" stop-color="#F2C14E" stop-opacity="0"/></radialGradient>
+      <filter id="press" x="-10%" y="-10%" width="120%" height="120%">
+        <feTurbulence type="fractalNoise" baseFrequency="1.1" numOctaves="2" seed="4" result="n"/>
+        <feColorMatrix in="n" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 .12 0" result="dots"/>
+        <feComposite in="dots" in2="SourceGraphic" operator="in" result="grain"/>
+        <feMerge><feMergeNode in="SourceGraphic"/><feMergeNode in="grain"/></feMerge>
+      </filter>
+    </defs>
+
+    <!-- the light the sprout grows toward -->
+    <g id="sun" transform="translate(0 40)">
+      <circle id="sunGlow" cx="540" cy="300" r="250" fill="url(#gGlow)"/>
+      <g id="rays">
+        <rect class="ray" x="528" y="140" width="24" height="56" rx="12" fill="#F2C14E" transform="rotate(0 540 300)"/>
+        <rect class="ray" x="528" y="140" width="24" height="56" rx="12" fill="#F2C14E" transform="rotate(45 540 300)"/>
+        <rect class="ray" x="528" y="140" width="24" height="56" rx="12" fill="#F2C14E" transform="rotate(90 540 300)"/>
+        <rect class="ray" x="528" y="140" width="24" height="56" rx="12" fill="#F2C14E" transform="rotate(135 540 300)"/>
+        <rect class="ray" x="528" y="140" width="24" height="56" rx="12" fill="#F2C14E" transform="rotate(180 540 300)"/>
+        <rect class="ray" x="528" y="140" width="24" height="56" rx="12" fill="#F2C14E" transform="rotate(225 540 300)"/>
+        <rect class="ray" x="528" y="140" width="24" height="56" rx="12" fill="#F2C14E" transform="rotate(270 540 300)"/>
+        <rect class="ray" x="528" y="140" width="24" height="56" rx="12" fill="#F2C14E" transform="rotate(315 540 300)"/>
+      </g>
+      <g id="sunBody" filter="url(#press)">
+        <circle cx="540" cy="300" r="92" fill="url(#gSun)"/>
+        <ellipse cx="510" cy="268" rx="30" ry="20" fill="#FFF1E0" opacity=".55"/>
+      </g>
+    </g>
+
+    <!-- contact shadow and the mound of soil -->
+    <ellipse cx="540" cy="1024" rx="430" ry="34" fill="#7A2E20" opacity=".22"/>
+    <g id="mound" filter="url(#press)">
+      <path d="M140 1012 C 180 860 360 770 540 770 C 720 770 900 860 940 1012 Z" fill="url(#gSoil)"/>
+      <path d="M250 860 C 330 800 430 782 520 784" fill="none" stroke="#D9826A" stroke-width="14" stroke-linecap="round" opacity=".55"/>
+      <circle cx="300" cy="930" r="16" fill="#7A2E20" opacity=".6"/>
+      <circle cx="760" cy="905" r="12" fill="#7A2E20" opacity=".6"/>
+      <circle cx="660" cy="965" r="18" fill="#7A2E20" opacity=".5"/>
+      <circle cx="420" cy="975" r="10" fill="#7A2E20" opacity=".5"/>
+      <ellipse cx="380" cy="842" rx="44" ry="16" fill="#FFF1E0" opacity=".22"/>
+    </g>
+
+    <!-- the sprout, hidden inside the seed until it pushes up -->
+    <g id="sprout">
+      <path id="stem" d="M540 770 C 540 660 512 570 548 470" pathLength="1" fill="none" stroke="url(#gTeal)" stroke-width="38" stroke-linecap="round" stroke-dasharray="1" stroke-dashoffset="1"/>
+      <path d="M528 740 C 526 650 506 580 534 500" fill="none" stroke="#9ADBD9" stroke-width="8" stroke-linecap="round" opacity=".5" id="stemShine" pathLength="1" stroke-dasharray="1" stroke-dashoffset="1"/>
+      <g id="leafL" filter="url(#press)">
+        <path d="M546 486 C 470 420 380 430 330 470 C 390 540 480 540 546 486 Z" fill="url(#gTeal)"/>
+        <path d="M540 488 C 470 470 410 468 350 472" fill="none" stroke="#2C6B6D" stroke-width="7" stroke-linecap="round" opacity=".7"/>
+        <ellipse cx="410" cy="462" rx="30" ry="10" fill="#FFF1E0" opacity=".4"/>
+      </g>
+      <g id="leafR" filter="url(#press)">
+        <path d="M552 474 C 610 390 700 370 760 395 C 720 470 630 500 552 474 Z" fill="url(#gTeal)"/>
+        <path d="M556 474 C 620 440 680 412 742 400" fill="none" stroke="#2C6B6D" stroke-width="7" stroke-linecap="round" opacity=".7"/>
+        <ellipse cx="660" cy="410" rx="28" ry="9" fill="#FFF1E0" opacity=".4"/>
+      </g>
+    </g>
+
+    <!-- the seed: two halves that split -->
+    <g id="seed">
+      <g id="seedL" filter="url(#press)">
+        <path d="M540 640 C 470 640 452 712 470 760 C 486 800 516 812 540 812 Z" fill="url(#gSeed)"/>
+        <ellipse cx="500" cy="684" rx="16" ry="26" fill="#FFF1E0" opacity=".55"/>
+      </g>
+      <g id="seedR" filter="url(#press)">
+        <path d="M540 640 C 610 640 628 712 610 760 C 594 800 564 812 540 812 Z" fill="#E0A93C"/>
+        <path d="M560 660 C 590 690 596 740 580 780" fill="none" stroke="#B98522" stroke-width="8" stroke-linecap="round" opacity=".5"/>
+      </g>
+      <path id="crack" d="M540 646 L 528 690 L 548 724 L 532 770" pathLength="1" fill="none" stroke="#7A2E20" stroke-width="7" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="1" stroke-dashoffset="1"/>
+    </g>
+
+    <!-- water -->
+    <g id="drops">
+      <path class="drop" id="d0" d="M470 180 C 470 180 446 214 446 232 C 446 246 457 256 470 256 C 483 256 494 246 494 232 C 494 214 470 180 470 180 Z" fill="url(#gTeal)"/>
+      <path class="drop" id="d1" d="M540 150 C 540 150 512 190 512 212 C 512 228 525 240 540 240 C 555 240 568 228 568 212 C 568 190 540 150 540 150 Z" fill="url(#gTeal)"/>
+      <path class="drop" id="d2" d="M610 180 C 610 180 586 214 586 232 C 586 246 597 256 610 256 C 623 256 634 246 634 232 C 634 214 610 180 610 180 Z" fill="url(#gTeal)"/>
+    </g>
+    <g id="splash">
+      <circle class="sp" cx="470" cy="640" r="12" fill="#4FA3A5"/>
+      <circle class="sp" cx="610" cy="640" r="12" fill="#4FA3A5"/>
+      <circle class="sp" cx="440" cy="670" r="9" fill="#4FA3A5"/>
+      <circle class="sp" cx="640" cy="670" r="9" fill="#4FA3A5"/>
+    </g>
+  </svg>
+</div>
+<script>
+// Never still: a slow tabletop push, and the colour behind drifts.
+tl.fromTo("#world", { scale: 1.26, transformOrigin: "540px 560px" }, { scale: 1.34, transformOrigin: "540px 560px", duration: DURATION, ease: "none" }, 0);
+tl.fromTo("#b1", { x: 0, y: 0 }, { x: 60, y: 40, duration: DURATION, ease: "none" }, 0);
+tl.fromTo("#b2", { x: 0 }, { x: -50, duration: DURATION, ease: "none" }, 0);
+
+// Hook: the mound is there; the seed drops in and squashes on "seed".
+const seed = Math.min(at("seed", .4), .5) - .3;
+tl.fromTo("#mound", { scaleY: .6, transformOrigin: "540px 1012px" }, { scaleY: 1, duration: .5, ease: "back.out(1.8)" }, 0);
+tl.fromTo("#seed", { y: -420, scaleX: .9, scaleY: 1.1, transformOrigin: "540px 812px" }, { y: 0, duration: .38, ease: "power2.in" }, seed);
+tl.to("#seed", { scaleX: 1.18, scaleY: .8, duration: .09, ease: "power1.out" }, seed + .38);
+tl.to("#seed", { scaleX: 1, scaleY: 1, duration: .45, ease: "back.out(3)" }, seed + .47);
+tl.to("#mound", { scaleY: .94, duration: .09, yoyo: true, repeat: 1, ease: "power1.out" }, seed + .38);
+
+// "water": three drops fall one after another and plop into the seed.
+const water = at("water", 1.1) - .25;
+["#d0", "#d1", "#d2"].forEach((id, i) => {
+  const t = water + i * .16;
+  tl.fromTo(id, { y: -260, opacity: 1, scaleY: 1.2, transformOrigin: "50% 100%" }, { y: 440 - (i === 1 ? 0 : 0), duration: .34, ease: "power2.in" }, t);
+  tl.to(id, { scaleY: .3, scaleX: 1.6, opacity: 0, duration: .14, ease: "power2.out" }, t + .34);
+});
+tl.fromTo(".sp", { scale: 0, opacity: 1, transformOrigin: "50% 50%" }, { scale: 1.3, opacity: 0, x: (i) => (i % 2 ? 40 : -40), y: -30, duration: .4, stagger: .05, ease: "power2.out" }, water + .4);
+tl.to("#seed", { scaleX: 1.12, scaleY: .9, duration: .1, yoyo: true, repeat: 5, ease: "sine.inOut" }, water + .34);
+
+// "warmth": the clay sun pops in above and glows; the seed swells.
+const warm = at("warmth", 1.8) - .15;
+tl.fromTo("#sunBody", { scale: 0, transformOrigin: "540px 300px" }, { scale: 1, duration: .55, ease: "back.out(2)" }, warm);
+tl.fromTo("#sunGlow", { scale: 0, opacity: 0, transformOrigin: "540px 300px" }, { scale: 1, opacity: 1, duration: .7, ease: "expo.out" }, warm + .05);
+tl.fromTo(".ray", { scaleY: 0, transformOrigin: "50% 160px" }, { scaleY: 1, duration: .35, stagger: .04, ease: "back.out(2.5)" }, warm + .25);
+tl.to("#rays", { rotation: 40, svgOrigin: "540 300", duration: DURATION - warm, ease: "none" }, warm);
+tl.to("#seed", { scale: 1.12, transformOrigin: "540px 812px", duration: .5, ease: "power2.out" }, warm + .2);
+
+// "time": the seed trembles and a crack runs down it.
+const time = at("time", 2.36) - .1;
+tl.to("#seed", { rotation: 4, duration: .06, yoyo: true, repeat: 7, ease: "sine.inOut", transformOrigin: "540px 812px" }, time);
+tl.set("#crack", { opacity: 1 }, time + .2);
+tl.to("#crack", { strokeDashoffset: 0, duration: .4, ease: "power2.inOut" }, time + .2);
+
+// "pushes up": the halves fall open and the stem shoves upward.
+const push = at("pushes", 3.3) - .15;
+tl.to("#crack", { opacity: 0, duration: .1 }, push);
+tl.to("#seedL", { rotation: -32, x: -40, svgOrigin: "540 812", duration: .45, ease: "back.out(2)" }, push);
+tl.to("#seedR", { rotation: 32, x: 40, svgOrigin: "540 812", duration: .45, ease: "back.out(2)" }, push);
+tl.set("#stem, #stemShine", { opacity: 1 }, push + .05);
+tl.to("#stem", { strokeDashoffset: 0, duration: .7, ease: "power3.out" }, push + .05);
+tl.to("#stemShine", { strokeDashoffset: 0, duration: .7, ease: "power3.out" }, push + .1);
+tl.fromTo("#sprout", { scaleY: .85, transformOrigin: "540px 780px" }, { scaleY: 1, duration: .5, ease: "back.out(2.4)" }, push + .55);
+tl.to("#mound", { scaleY: 1.06, duration: .12, yoyo: true, repeat: 1, ease: "power1.out" }, push);
+
+// "soil" … "light": the leaves unfold and the sprout leans into the sun, which flares.
+const leaves = at("soil", 4.3) - .25;
+tl.fromTo("#leafL", { scale: 0, rotation: 30, svgOrigin: "546 486" }, { scale: 1, rotation: 0, duration: .55, ease: "back.out(1.8)" }, leaves);
+tl.fromTo("#leafR", { scale: 0, rotation: -30, svgOrigin: "552 474" }, { scale: 1, rotation: 0, duration: .55, ease: "back.out(1.8)" }, leaves + .12);
+const light = at("light", 5.0) - .2;
+tl.to("#sprout", { rotation: -4, svgOrigin: "540 780", duration: .6, ease: "power2.out" }, light);
+tl.to("#sunBody", { scale: 1.18, transformOrigin: "540px 300px", duration: .3, yoyo: true, repeat: 1, ease: "power2.out" }, light);
+tl.to("#sunGlow", { scale: 1.35, transformOrigin: "540px 300px", duration: .5, ease: "expo.out" }, light);
+tl.to(".ray", { scaleY: 1.4, duration: .3, stagger: .03, ease: "back.out(2)" }, light);
+</script>

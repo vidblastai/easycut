@@ -1,0 +1,77 @@
+<!-- concept: a dot crawls along a nearly flat curve, then the curve bends upward and the money under it stacks itself higher and higher -->
+<style>
+#bg { position:absolute; inset:0; background: radial-gradient(ellipse at 50% 36%, #1A1C26 0%, #101118 60%, #0B0C11 100%); }
+svg.layer { position:absolute; left:0; top:0; overflow:visible; }
+#grid line { stroke:#4A4E5A; stroke-width:2; opacity:.35; }
+#flat, #steep, #flatGlow, #steepGlow { opacity:0; }
+.coin { opacity:0; }
+#bend { opacity:0; }
+</style>
+<div id="scene">
+  <div id="bg"></div>
+  <svg class="layer" id="world" width="1080" height="1920" viewBox="0 0 1080 1920">
+    <defs>
+      <linearGradient id="gArea" x1="0" y1="1" x2="0" y2="0"><stop offset="0" stop-color="#58C4DD" stop-opacity=".05"/><stop offset="1" stop-color="#58C4DD" stop-opacity=".32"/></linearGradient>
+      <clipPath id="reveal"><rect id="revealRect" x="170" y="150" width="0" height="860"/></clipPath>
+    </defs>
+    <g id="grid"><line x1="265" y1="200" x2="265" y2="1000" /><line x1="360" y1="200" x2="360" y2="1000" /><line x1="455" y1="200" x2="455" y2="1000" /><line x1="550" y1="200" x2="550" y2="1000" /><line x1="645" y1="200" x2="645" y2="1000" /><line x1="740" y1="200" x2="740" y2="1000" /><line x1="835" y1="200" x2="835" y2="1000" /><line x1="930" y1="200" x2="930" y2="1000" /><line x1="170" y1="905" x2="970" y2="905" /><line x1="170" y1="810" x2="970" y2="810" /><line x1="170" y1="715" x2="970" y2="715" /><line x1="170" y1="620" x2="970" y2="620" /><line x1="170" y1="525" x2="970" y2="525" /><line x1="170" y1="430" x2="970" y2="430" /><line x1="170" y1="335" x2="970" y2="335" /><line x1="170" y1="240" x2="970" y2="240" /></g>
+    <g id="axes" stroke="#C9CCD6" stroke-width="5" stroke-linecap="round" fill="none">
+      <path id="xAxis" d="M150 1000 L970 1000" pathLength="1" stroke-dasharray="1" stroke-dashoffset="1"/>
+      <path id="yAxis" d="M170 1020 L170 190" pathLength="1" stroke-dasharray="1" stroke-dashoffset="1"/>
+    </g>
+    <path id="arrowX" d="M950 984 L975 1000 L950 1016" fill="none" stroke="#C9CCD6" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+    <path id="arrowY" d="M154 210 L170 185 L186 210" fill="none" stroke="#C9CCD6" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+
+    <path id="area" d="M170 1000 L170.0 1000.0 L182.7 999.2 L195.3 998.3 L208.0 997.3 L220.7 996.3 L233.3 995.2 L246.0 994.0 L258.7 992.8 L271.3 991.4 L284.0 990.0 L296.7 988.4 L309.3 986.8 L322.0 985.0 L334.7 983.1 L347.3 981.0 L360.0 978.8 L372.7 976.4 L385.3 973.9 L398.0 971.2 L410.7 968.2 L423.3 965.1 L436.0 961.8 L448.7 958.2 L461.3 954.3 L474.0 950.2 L486.7 945.7 L499.3 940.9 L512.0 935.8 L524.7 930.4 L537.3 924.5 L550.0 918.2 L562.7 911.4 L575.3 904.2 L588.0 896.4 L600.7 888.0 L613.3 879.1 L626.0 869.5 L638.7 859.2 L651.3 848.2 L664.0 836.3 L676.7 823.7 L689.3 810.0 L702.0 795.4 L714.7 779.8 L727.3 763.0 L740.0 745.0 L752.7 725.6 L765.3 704.9 L778.0 682.7 L790.7 658.9 L803.3 633.3 L816.0 605.9 L828.7 576.5 L841.3 545.0 L854.0 511.1 L866.7 474.9 L879.3 436.0 L892.0 394.2 L904.7 349.5 L917.3 301.5 L930.0 250.0 L930 1000 Z" fill="url(#gArea)" clip-path="url(#reveal)"/>
+    <g id="coins" clip-path="url(#reveal)"><g class="coin c0"><circle cx="322" cy="972" r="18" fill="#FFFF66"/><circle cx="322" cy="972" r="10" fill="none" stroke="#101118" stroke-width="3" opacity=".5"/></g><g class="coin c1"><circle cx="474" cy="972" r="18" fill="#FFFF66"/><circle cx="474" cy="972" r="10" fill="none" stroke="#101118" stroke-width="3" opacity=".5"/></g><g class="coin c2"><circle cx="626" cy="972" r="18" fill="#FFFF66"/><circle cx="626" cy="972" r="10" fill="none" stroke="#101118" stroke-width="3" opacity=".5"/></g><g class="coin c2"><circle cx="626" cy="928" r="18" fill="#FFFF66"/><circle cx="626" cy="928" r="10" fill="none" stroke="#101118" stroke-width="3" opacity=".5"/></g><g class="coin c3"><circle cx="740" cy="972" r="18" fill="#FFFF66"/><circle cx="740" cy="972" r="10" fill="none" stroke="#101118" stroke-width="3" opacity=".5"/></g><g class="coin c3"><circle cx="740" cy="928" r="18" fill="#FFFF66"/><circle cx="740" cy="928" r="10" fill="none" stroke="#101118" stroke-width="3" opacity=".5"/></g><g class="coin c3"><circle cx="740" cy="884" r="18" fill="#FFFF66"/><circle cx="740" cy="884" r="10" fill="none" stroke="#101118" stroke-width="3" opacity=".5"/></g><g class="coin c3"><circle cx="740" cy="840" r="18" fill="#FFFF66"/><circle cx="740" cy="840" r="10" fill="none" stroke="#101118" stroke-width="3" opacity=".5"/></g><g class="coin c4"><circle cx="839" cy="972" r="18" fill="#FFFF66"/><circle cx="839" cy="972" r="10" fill="none" stroke="#101118" stroke-width="3" opacity=".5"/></g><g class="coin c4"><circle cx="839" cy="928" r="18" fill="#FFFF66"/><circle cx="839" cy="928" r="10" fill="none" stroke="#101118" stroke-width="3" opacity=".5"/></g><g class="coin c4"><circle cx="839" cy="884" r="18" fill="#FFFF66"/><circle cx="839" cy="884" r="10" fill="none" stroke="#101118" stroke-width="3" opacity=".5"/></g><g class="coin c4"><circle cx="839" cy="840" r="18" fill="#FFFF66"/><circle cx="839" cy="840" r="10" fill="none" stroke="#101118" stroke-width="3" opacity=".5"/></g><g class="coin c4"><circle cx="839" cy="796" r="18" fill="#FFFF66"/><circle cx="839" cy="796" r="10" fill="none" stroke="#101118" stroke-width="3" opacity=".5"/></g><g class="coin c4"><circle cx="839" cy="752" r="18" fill="#FFFF66"/><circle cx="839" cy="752" r="10" fill="none" stroke="#101118" stroke-width="3" opacity=".5"/></g><g class="coin c4"><circle cx="839" cy="708" r="18" fill="#FFFF66"/><circle cx="839" cy="708" r="10" fill="none" stroke="#101118" stroke-width="3" opacity=".5"/></g></g>
+
+    <path id="flatGlow" d="M170.0 1000.0 L180.4 999.3 L190.9 998.6 L201.3 997.8 L211.8 997.0 L222.2 996.2 L232.7 995.3 L243.2 994.3 L253.6 993.3 L264.1 992.2 L274.5 991.1 L285.0 989.9 L295.4 988.6 L305.9 987.2 L316.3 985.8 L326.8 984.3 L337.2 982.7 L347.7 980.9 L358.1 979.1 L368.6 977.2 L379.0 975.2 L389.5 973.0 L399.9 970.7 L410.4 968.3 L420.8 965.8 L431.3 963.0 L441.7 960.2 L452.2 957.1 L462.6 953.9 L473.1 950.5 L483.5 946.9 L493.9 943.0 L504.4 938.9 L514.9 934.6 L525.3 930.1 L535.8 925.2 L546.2 920.1 L556.7 914.7 L567.1 908.9 L577.6 902.8 L588.0 896.4" fill="none" stroke="#58C4DD" stroke-width="22" opacity=".25" stroke-linecap="round" pathLength="1" stroke-dasharray="1" stroke-dashoffset="1"/>
+    <path id="flat" d="M170.0 1000.0 L180.4 999.3 L190.9 998.6 L201.3 997.8 L211.8 997.0 L222.2 996.2 L232.7 995.3 L243.2 994.3 L253.6 993.3 L264.1 992.2 L274.5 991.1 L285.0 989.9 L295.4 988.6 L305.9 987.2 L316.3 985.8 L326.8 984.3 L337.2 982.7 L347.7 980.9 L358.1 979.1 L368.6 977.2 L379.0 975.2 L389.5 973.0 L399.9 970.7 L410.4 968.3 L420.8 965.8 L431.3 963.0 L441.7 960.2 L452.2 957.1 L462.6 953.9 L473.1 950.5 L483.5 946.9 L493.9 943.0 L504.4 938.9 L514.9 934.6 L525.3 930.1 L535.8 925.2 L546.2 920.1 L556.7 914.7 L567.1 908.9 L577.6 902.8 L588.0 896.4" fill="none" stroke="#58C4DD" stroke-width="8" stroke-linecap="round" pathLength="1" stroke-dasharray="1" stroke-dashoffset="1"/>
+    <path id="steepGlow" d="M588.0 896.4 L596.5 890.8 L605.1 885.0 L613.6 878.9 L622.2 872.5 L630.8 865.7 L639.3 858.7 L647.9 851.3 L656.4 843.5 L665.0 835.4 L673.5 826.9 L682.1 818.0 L690.6 808.6 L699.1 798.8 L707.7 788.5 L716.2 777.7 L724.8 766.4 L733.4 754.6 L741.9 742.2 L750.5 729.1 L759.0 715.5 L767.5 701.2 L776.1 686.1 L784.7 670.4 L793.2 653.9 L801.8 636.6 L810.3 618.5 L818.9 599.5 L827.4 579.5 L835.9 558.6 L844.5 536.7 L853.1 513.8 L861.6 489.7 L870.1 464.4 L878.7 438.0 L887.2 410.2 L895.8 381.1 L904.4 350.6 L912.9 318.7 L921.5 285.1 L930.0 250.0" fill="none" stroke="#FFFF66" stroke-width="24" opacity=".25" stroke-linecap="round" pathLength="1" stroke-dasharray="1" stroke-dashoffset="1"/>
+    <path id="steep" d="M588.0 896.4 L596.5 890.8 L605.1 885.0 L613.6 878.9 L622.2 872.5 L630.8 865.7 L639.3 858.7 L647.9 851.3 L656.4 843.5 L665.0 835.4 L673.5 826.9 L682.1 818.0 L690.6 808.6 L699.1 798.8 L707.7 788.5 L716.2 777.7 L724.8 766.4 L733.4 754.6 L741.9 742.2 L750.5 729.1 L759.0 715.5 L767.5 701.2 L776.1 686.1 L784.7 670.4 L793.2 653.9 L801.8 636.6 L810.3 618.5 L818.9 599.5 L827.4 579.5 L835.9 558.6 L844.5 536.7 L853.1 513.8 L861.6 489.7 L870.1 464.4 L878.7 438.0 L887.2 410.2 L895.8 381.1 L904.4 350.6 L912.9 318.7 L921.5 285.1 L930.0 250.0" fill="none" stroke="#FFFF66" stroke-width="9" stroke-linecap="round" pathLength="1" stroke-dasharray="1" stroke-dashoffset="1"/>
+
+    <!-- the bend, marked -->
+    <g id="bend"><circle cx="588" cy="896" r="34" fill="none" stroke="#FC6255" stroke-width="5"/><circle cx="588" cy="896" r="54" fill="none" stroke="#FC6255" stroke-width="3" opacity=".4"/></g>
+
+    <!-- the value riding the curve -->
+    <g id="dot"><circle cx="170" cy="1000" r="30" fill="#58C4DD" opacity=".3"/><circle cx="170" cy="1000" r="17" fill="#FFFFFF"/></g>
+  </svg>
+</div>
+<script>
+// A calm push towards where the curve is going.
+tl.fromTo("#world", { scale: 1.04 }, { scale: 1.12, transformOrigin: "560px 640px", duration: DURATION, ease: "none" }, 0);
+
+// Hook: the axes draw at once and the dot sits at the origin on "Compound interest".
+tl.to("#xAxis", { strokeDashoffset: 0, duration: .5, ease: "power2.inOut" }, 0);
+tl.to("#yAxis", { strokeDashoffset: 0, duration: .5, ease: "power2.inOut" }, .08);
+tl.fromTo("#arrowX, #arrowY", { opacity: 0 }, { opacity: 1, duration: .2 }, .45);
+tl.fromTo("#grid line", { opacity: 0 }, { opacity: .35, duration: .4, stagger: .02 }, .1);
+tl.fromTo("#dot", { scale: 0, svgOrigin: "170 1000" }, { scale: 1, svgOrigin: "170 1000", duration: .4, ease: "power2.out" }, .25);
+
+// "slow at first": the dot crawls along the almost-flat part as it draws.
+const slow = at("slow", 1.44) - .5;
+tl.set("#flat, #flatGlow", { opacity: 1 }, slow);
+tl.to("#flat, #flatGlow", { strokeDashoffset: 0, duration: 1.5, ease: "none" }, slow);
+tl.to("#revealRect", { attr: { width: 418 }, duration: 1.5, ease: "none" }, slow);
+tl.to("#dot", { keyframes: [{x:0.0,y:0.0},{x:43.9,y:-3.1},{x:87.8,y:-7.1},{x:130.6,y:-12.1},{x:173.5,y:-18.4},{x:216.3,y:-26.3},{x:259.2,y:-36.4},{x:301.0,y:-48.8},{x:341.7,y:-64.0},{x:380.4,y:-82.0},{x:418.0,y:-103.6}], duration: 1.5, ease: "none", easeEach: "none" }, slow);
+
+// "the curve bends upward": the bend is marked, then the curve shoots up and the dot rides it.
+const bends = at("bends", 3.14) - .35;
+tl.fromTo("#bend", { scale: 0, opacity: 1, svgOrigin: "588 896" }, { scale: 1, svgOrigin: "588 896", duration: .35, ease: "back.out(2.5)", immediateRender: false }, bends);
+tl.to("#bend", { opacity: 0, duration: .3 }, bends + .7);
+tl.set("#steep, #steepGlow", { opacity: 1 }, bends + .2);
+tl.to("#steep, #steepGlow", { strokeDashoffset: 0, duration: 1, ease: "power1.in" }, bends + .2);
+tl.to("#revealRect", { attr: { width: 760 }, duration: 1, ease: "power1.in" }, bends + .2);
+tl.to("#dot", { keyframes: [{x:418.0,y:-103.6},{x:477.9,y:-148.7},{x:530.9,y:-203.2},{x:575.3,y:-263.0},{x:613.8,y:-328.0},{x:646.3,y:-394.7},{x:674.5,y:-463.3},{x:700.1,y:-535.6},{x:722.4,y:-607.1},{x:742.0,y:-678.1},{x:760.0,y:-750.0}], duration: 1, ease: "power1.in", easeEach: "none" }, bends + .2);
+tl.to("#dot circle:last-child", { fill: "#FFFF66", duration: .3 }, bends + .5);
+
+// "your money starts growing on its own": coins stack themselves, each column double the last.
+const money = at("money", 4.24) - .1;
+for (let k = 0; k < 5; k++) {
+  tl.fromTo(".c" + k, { opacity: 0, y: -40, scale: .4, transformOrigin: "50% 50%" }, { opacity: 1, y: 0, scale: 1, duration: .3, stagger: .06, ease: "back.out(2)", immediateRender: false }, money + k * .17);
+}
+const own = at("own", 5.56) - .2;
+tl.to("#steep", { strokeWidth: 13, duration: .15, yoyo: true, repeat: 1, ease: "power2.out" }, own);
+tl.to("#steepGlow", { opacity: .6, duration: .2, yoyo: true, repeat: 1 }, own);
+tl.to("#dot", { scale: 1.4, svgOrigin: "930 250", duration: .2, yoyo: true, repeat: 1, ease: "power2.out" }, own);
+</script>

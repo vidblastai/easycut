@@ -1,0 +1,124 @@
+<!-- concept: a chalk leaf sketches itself on the board, sunlight, water and air are drawn flowing into it, and it turns them into a glowing sugar cube -->
+<style>
+#bg { position:absolute; inset:0; background: radial-gradient(ellipse at 50% 38%, #26352F 0%, #1E2B26 55%, #141D19 100%); }
+.smudge { position:absolute; border-radius:50%; background:#F2F0E6; filter: blur(50px); }
+#s1 { left:80px; top:260px; width:380px; height:180px; opacity:.05; transform: rotate(-12deg); }
+#s2 { left:600px; top:860px; width:420px; height:200px; opacity:.04; }
+#s3 { left:500px; top:120px; width:300px; height:140px; opacity:.035; }
+svg.layer { position:absolute; left:0; top:0; overflow:visible; }
+.chalk { fill:none; stroke-linecap:round; stroke-linejoin:round; filter:url(#chalk); }
+.h { stroke:#7FB7E3; stroke-width:5; opacity:0; }
+#leafHatch line.h { stroke:#9AD08A; }
+.draw { opacity:0; }
+</style>
+<div id="scene">
+  <div id="bg"></div>
+  <div class="smudge" id="s1"></div>
+  <div class="smudge" id="s2"></div>
+  <div class="smudge" id="s3"></div>
+  <svg class="layer" id="world" width="1080" height="1920" viewBox="0 0 1080 1920">
+    <defs>
+      <filter id="chalk" x="-5%" y="-5%" width="110%" height="110%">
+        <feTurbulence type="fractalNoise" baseFrequency=".9" numOctaves="2" seed="3" result="n"/>
+        <feDisplacementMap in="SourceGraphic" in2="n" scale="5" xChannelSelector="R" yChannelSelector="G" result="d"/>
+        <feColorMatrix in="n" type="matrix" values="0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 -1.6 1.45" result="holes"/>
+        <feComposite in="d" in2="holes" operator="in"/>
+      </filter>
+      <clipPath id="leafClip"><path d="M540 360 C 760 420 820 640 700 820 C 640 900 560 930 540 940 C 520 930 440 900 380 820 C 260 640 320 420 540 360 Z"/></clipPath>
+    </defs>
+
+    <!-- the leaf -->
+    <g id="leaf">
+      <g id="leafHatch" clip-path="url(#leafClip)" filter="url(#chalk)"><line class="h" x1="-40" y1="1000" x2="340" y2="300"/><line class="h" x1="-14" y1="1000" x2="366" y2="300"/><line class="h" x1="12" y1="1000" x2="392" y2="300"/><line class="h" x1="38" y1="1000" x2="418" y2="300"/><line class="h" x1="64" y1="1000" x2="444" y2="300"/><line class="h" x1="90" y1="1000" x2="470" y2="300"/><line class="h" x1="116" y1="1000" x2="496" y2="300"/><line class="h" x1="142" y1="1000" x2="522" y2="300"/><line class="h" x1="168" y1="1000" x2="548" y2="300"/><line class="h" x1="194" y1="1000" x2="574" y2="300"/><line class="h" x1="220" y1="1000" x2="600" y2="300"/><line class="h" x1="246" y1="1000" x2="626" y2="300"/><line class="h" x1="272" y1="1000" x2="652" y2="300"/><line class="h" x1="298" y1="1000" x2="678" y2="300"/><line class="h" x1="324" y1="1000" x2="704" y2="300"/><line class="h" x1="350" y1="1000" x2="730" y2="300"/><line class="h" x1="376" y1="1000" x2="756" y2="300"/><line class="h" x1="402" y1="1000" x2="782" y2="300"/><line class="h" x1="428" y1="1000" x2="808" y2="300"/><line class="h" x1="454" y1="1000" x2="834" y2="300"/><line class="h" x1="480" y1="1000" x2="860" y2="300"/><line class="h" x1="506" y1="1000" x2="886" y2="300"/><line class="h" x1="532" y1="1000" x2="912" y2="300"/><line class="h" x1="558" y1="1000" x2="938" y2="300"/><line class="h" x1="584" y1="1000" x2="964" y2="300"/><line class="h" x1="610" y1="1000" x2="990" y2="300"/><line class="h" x1="636" y1="1000" x2="1016" y2="300"/><line class="h" x1="662" y1="1000" x2="1042" y2="300"/><line class="h" x1="688" y1="1000" x2="1068" y2="300"/><line class="h" x1="714" y1="1000" x2="1094" y2="300"/><line class="h" x1="740" y1="1000" x2="1120" y2="300"/><line class="h" x1="766" y1="1000" x2="1146" y2="300"/><line class="h" x1="792" y1="1000" x2="1172" y2="300"/><line class="h" x1="818" y1="1000" x2="1198" y2="300"/><line class="h" x1="844" y1="1000" x2="1224" y2="300"/><line class="h" x1="870" y1="1000" x2="1250" y2="300"/><line class="h" x1="896" y1="1000" x2="1276" y2="300"/><line class="h" x1="922" y1="1000" x2="1302" y2="300"/><line class="h" x1="948" y1="1000" x2="1328" y2="300"/><line class="h" x1="974" y1="1000" x2="1354" y2="300"/></g>
+      <path class="chalk draw" id="leafLine" d="M540 360 C 760 420 820 640 700 820 C 640 900 560 930 540 940 C 520 930 440 900 380 820 C 260 640 320 420 540 360 Z" stroke="#F2F0E6" stroke-width="10" pathLength="1" stroke-dasharray="1" stroke-dashoffset="1"/>
+      <path class="chalk draw" id="rib" d="M540 1030 L540 400" stroke="#F2F0E6" stroke-width="8" pathLength="1" stroke-dasharray="1" stroke-dashoffset="1"/>
+      <g id="veins" class="chalk" stroke="#F2F0E6" stroke-width="6">
+        <path class="vein draw" d="M540 520 L430 460" pathLength="1" stroke-dasharray="1" stroke-dashoffset="1"/>
+        <path class="vein draw" d="M540 520 L650 460" pathLength="1" stroke-dasharray="1" stroke-dashoffset="1"/>
+        <path class="vein draw" d="M540 640 L390 560" pathLength="1" stroke-dasharray="1" stroke-dashoffset="1"/>
+        <path class="vein draw" d="M540 640 L690 560" pathLength="1" stroke-dasharray="1" stroke-dashoffset="1"/>
+        <path class="vein draw" d="M540 760 L410 690" pathLength="1" stroke-dasharray="1" stroke-dashoffset="1"/>
+        <path class="vein draw" d="M540 760 L670 690" pathLength="1" stroke-dasharray="1" stroke-dashoffset="1"/>
+      </g>
+    </g>
+
+    <!-- sunlight: a yellow chalk sun and an arrow swooping into the leaf -->
+    <g id="sun" class="chalk" stroke="#F6D55C" stroke-width="9" transform="translate(40 40)">
+      <circle class="draw" id="sunC" cx="200" cy="300" r="62" pathLength="1" stroke-dasharray="1" stroke-dashoffset="1"/>
+      <path class="ray draw" d="M200 205 L200 175" pathLength="1" stroke-dasharray="1" stroke-dashoffset="1"/>
+      <path class="ray draw" d="M295 300 L325 300" pathLength="1" stroke-dasharray="1" stroke-dashoffset="1"/>
+      <path class="ray draw" d="M267 233 L289 211" pathLength="1" stroke-dasharray="1" stroke-dashoffset="1"/>
+      <path class="ray draw" d="M267 367 L289 389" pathLength="1" stroke-dasharray="1" stroke-dashoffset="1"/>
+      <path class="ray draw" d="M105 300 L75 300" pathLength="1" stroke-dasharray="1" stroke-dashoffset="1"/>
+      <path class="ray draw" d="M133 233 L111 211" pathLength="1" stroke-dasharray="1" stroke-dashoffset="1"/>
+      <path class="draw" id="sunArrow" d="M290 380 C 340 450 380 470 440 500 M404 470 L442 502 L396 512" pathLength="1" stroke-dasharray="1" stroke-dashoffset="1"/>
+    </g>
+
+    <!-- water: a blue drop and an arrow up into the leaf -->
+    <g id="water" class="chalk" stroke="#7FB7E3" stroke-width="9" transform="translate(40 -30)">
+      <path class="draw" id="drop" d="M200 880 C 200 880 152 950 152 985 C 152 1013 174 1032 200 1032 C 226 1032 248 1013 248 985 C 248 950 200 880 200 880 Z" pathLength="1" stroke-dasharray="1" stroke-dashoffset="1"/>
+      <path class="draw" id="waterArrow" d="M262 930 C 320 900 360 880 420 850 M378 838 L422 849 L398 888" pathLength="1" stroke-dasharray="1" stroke-dashoffset="1"/>
+    </g>
+
+    <!-- air: three wavy white lines and an arrow in from the right -->
+    <g id="air" class="chalk" stroke="#F2F0E6" stroke-width="8" transform="translate(-70 0)">
+      <path class="draw wave" d="M840 560 q 20 -18 40 0 t 40 0 t 40 0" pathLength="1" stroke-dasharray="1" stroke-dashoffset="1"/>
+      <path class="draw wave" d="M820 610 q 20 -18 40 0 t 40 0 t 40 0 t 40 0" pathLength="1" stroke-dasharray="1" stroke-dashoffset="1"/>
+      <path class="draw wave" d="M850 660 q 20 -18 40 0 t 40 0 t 40 0" pathLength="1" stroke-dasharray="1" stroke-dashoffset="1"/>
+      <path class="draw" id="airArrow" d="M820 720 C 780 720 750 715 712 700 M748 680 L710 700 L746 724" pathLength="1" stroke-dasharray="1" stroke-dashoffset="1"/>
+    </g>
+
+    <!-- sugar: a chalk cube that grows out of the leaf -->
+    <g id="sugar">
+      <path d="M540 560 L660 620 L660 760 L540 820 L420 760 L420 620 Z" fill="#F2F0E6" opacity=".14"/>
+      <g class="chalk" stroke="#F28FAD" stroke-width="10">
+        <path d="M540 560 L660 620 L540 680 L420 620 Z"/>
+        <path d="M420 620 L420 760 L540 820 L540 680"/>
+        <path d="M660 620 L660 760 L540 820"/>
+      </g>
+      <g class="chalk" stroke="#F6D55C" stroke-width="7">
+        <path class="spark" d="M540 500 L540 460"/><path class="spark" d="M700 590 L735 570"/><path class="spark" d="M380 590 L345 570"/><path class="spark" d="M700 800 L735 820"/><path class="spark" d="M380 800 L345 820"/>
+      </g>
+    </g>
+  </svg>
+</div>
+<script>
+// The camera follows the drawing with a slow push; the board's dust drifts.
+tl.fromTo("#world", { scale: 1.24 }, { scale: 1.32, transformOrigin: "540px 650px", duration: DURATION, ease: "none" }, 0);
+tl.fromTo(".smudge", { x: 0 }, { x: 40, duration: DURATION, ease: "none" }, 0);
+const draw = (sel, t, d, ease) => { tl.set(sel, { opacity: 1 }, t); tl.to(sel, { strokeDashoffset: 0, duration: d, ease: ease || "power1.inOut" }, t); };
+
+// Hook: the leaf outline is sketched on straight away, then its rib and veins — "photosynthesis is simple".
+draw("#leafLine", 0, .9);
+draw("#rib", .6, .45);
+tl.add(() => {}, 0);
+document.querySelectorAll(".vein").forEach((v, i) => draw(v, .85 + i * .09, .22, "power2.out"));
+// …and hatched in, a few strokes at a time.
+tl.to(".h", { opacity: .55, duration: .05, stagger: .022, ease: "none" }, 1.0);
+
+// "sunlight": the sun is drawn and its arrow swoops into the leaf.
+const sun = at("sunlight", 2.86) - .45;
+draw("#sunC", sun, .35);
+document.querySelectorAll("#sun .ray").forEach((r, i) => draw(r, sun + .25 + i * .04, .12, "power2.out"));
+draw("#sunArrow", sun + .45, .35, "power2.out");
+
+// "water": the drop and its arrow.
+const water = at("water", 3.62) - .35;
+draw("#drop", water, .3);
+draw("#waterArrow", water + .25, .3, "power2.out");
+
+// "air": three breaths of wind and an arrow.
+const air = at("air", 4.2) - .3;
+document.querySelectorAll(".wave").forEach((w, i) => draw(w, air + i * .08, .25, "power1.out"));
+draw("#airArrow", air + .3, .3, "power2.out");
+
+// "turns them into sugar": the leaf brightens and a sugar cube grows out of its heart.
+const turn = at("turns", 4.98) - .1;
+tl.to(".h", { stroke: "#F6D55C", opacity: .7, duration: .3, stagger: .004, ease: "power1.out" }, turn);
+tl.to("#sun, #water, #air", { opacity: .35, duration: .4 }, turn);
+tl.to("#leaf", { scale: 1.04, svgOrigin: "540 650", duration: .3, yoyo: true, repeat: 1, ease: "power2.out" }, turn);
+const sugar = at("sugar", 5.76) - .35;
+tl.fromTo("#sugar", { scale: 0, rotation: -15, svgOrigin: "540 690" }, { scale: 1.3, rotation: 0, svgOrigin: "540 690", duration: .5, ease: "back.out(1.8)" }, sugar);
+tl.fromTo(".spark", { scale: 0, opacity: 0, transformOrigin: "50% 50%" }, { scale: 1, opacity: 1, duration: .25, stagger: .05, ease: "back.out(3)", immediateRender: false }, sugar + .35);
+tl.set(".spark", { opacity: 0 }, 0);
+</script>

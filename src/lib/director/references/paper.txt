@@ -1,0 +1,135 @@
+<!-- concept: a paper bee lands on a pop-up flower, a whole ring of flowers pops up as it zips between them, then they fold away into a paper honey jar that fills a little more with every trip -->
+<style>
+#bg { position:absolute; inset:0; background:#F3E9D8; }
+#grain { position:absolute; inset:0; background-image: radial-gradient(rgba(120,90,60,.07) 1px, transparent 1.4px); background-size: 7px 7px; }
+.sheet { position:absolute; background:#F8F0E3; box-shadow: 8px 10px 18px rgba(80,55,30,.16); }
+#sh1 { left:-120px; top:240px; width:760px; height:900px; transform: rotate(-6deg); border-radius: 6px 40px 10px 30px; }
+#sh2 { left:500px; top:420px; width:720px; height:820px; transform: rotate(5deg); background:#F5E6CF; border-radius: 30px 8px 40px 12px; }
+svg.layer { position:absolute; left:0; top:0; overflow:visible; }
+.card { filter: drop-shadow(6px 9px 6px rgba(60,40,20,.28)); }
+#trail { opacity:0; }
+#jar, .ring, #drip { opacity:0; }
+</style>
+<div id="scene">
+  <div id="bg"></div>
+  <div class="sheet" id="sh1"></div>
+  <div class="sheet" id="sh2"></div>
+  <div id="grain"></div>
+  <svg class="layer" id="world" width="1080" height="1920" viewBox="0 0 1080 1920">
+    <defs>
+      <g id="smallFlower">
+        <path d="M0 -70 C 28 -72 34 -40 18 -24 C 44 -40 70 -20 58 6 C 52 28 22 26 14 14 C 28 40 10 66 -12 62 C -36 58 -36 30 -20 18 C -46 30 -70 12 -62 -12 C -54 -36 -26 -32 -16 -22 C -30 -48 -22 -70 0 -70 Z" fill="#E8553D"/>
+        <circle r="24" fill="#F2A541"/><circle r="10" cx="-6" cy="-6" fill="#FFF8EC" opacity=".6"/>
+      </g>
+    </defs>
+
+    <!-- the ring of flowers: thousands, suggested by eight -->
+    <g id="ringG">
+      <g class="ring card" transform="translate(220 520)"><use href="#smallFlower"/></g>
+      <g class="ring card" transform="translate(860 520)"><use href="#smallFlower"/></g>
+      <g class="ring card" transform="translate(170 760)"><use href="#smallFlower"/></g>
+      <g class="ring card" transform="translate(910 760)"><use href="#smallFlower"/></g>
+      <g class="ring card" transform="translate(300 330)"><use href="#smallFlower"/></g>
+      <g class="ring card" transform="translate(780 330)"><use href="#smallFlower"/></g>
+      <g class="ring card" transform="translate(290 960)"><use href="#smallFlower"/></g>
+      <g class="ring card" transform="translate(790 960)"><use href="#smallFlower"/></g>
+    </g>
+
+    <!-- the big pop-up flower in the middle -->
+    <g id="flower">
+      <g class="card"><path d="M532 980 C 528 880 536 800 540 700 L556 700 C 552 800 548 880 552 980 Z" fill="#3E7CB1"/></g>
+      <g class="card" id="leaf"><path d="M548 880 C 600 820 690 820 720 850 C 680 910 600 920 548 880 Z" fill="#3E7CB1"/><path d="M560 878 C 610 860 660 852 700 852" stroke="#1F3A5F" stroke-width="5" fill="none" opacity=".5"/></g>
+      <g class="card" id="petals">
+        <path d="M540 470 C 600 466 618 540 590 580 C 650 540 720 560 716 620 C 712 676 650 690 616 664 C 660 712 640 780 586 790 C 540 798 516 760 524 726 C 490 770 420 770 400 720 C 382 672 420 636 458 640 C 400 620 382 560 420 524 C 456 490 500 510 512 540 C 500 500 500 472 540 470 Z" fill="#E8553D"/>
+      </g>
+      <g class="card"><path d="M540 560 C 590 558 612 600 606 636 C 598 676 562 690 534 686 C 496 680 474 650 478 616 C 482 580 510 562 540 560 Z" fill="#F2A541"/></g>
+      <circle cx="520" cy="600" r="14" fill="#FFF8EC" opacity=".7"/>
+    </g>
+
+    <!-- the honey jar, folded away until the flowers fold down -->
+    <g id="jar">
+      <g class="card"><path d="M380 520 L700 520 C 740 560 750 620 750 700 L750 900 C 750 960 710 990 660 990 L420 990 C 370 990 330 960 330 900 L330 700 C 330 620 340 560 380 520 Z" fill="#3E7CB1"/></g>
+      <clipPath id="jarIn"><path d="M392 540 L688 540 C 722 576 730 630 730 700 L730 896 C 730 944 698 968 656 968 L424 968 C 382 968 350 944 350 896 L350 700 C 350 630 358 576 392 540 Z"/></clipPath>
+      <g clip-path="url(#jarIn)">
+        <rect x="330" y="540" width="420" height="440" fill="#5B93C2"/>
+        <g id="honey"><path d="M330 960 C 420 940 500 980 560 960 C 620 940 680 970 750 950 L750 1000 L330 1000 Z" fill="#F2A541"/><rect x="330" y="985" width="420" height="500" fill="#F2A541"/></g>
+      </g>
+      <g class="card"><rect x="360" y="470" width="360" height="72" rx="12" fill="#1F3A5F"/></g>
+      <rect x="380" y="486" width="320" height="14" rx="7" fill="#FFF8EC" opacity=".25"/>
+      <path d="M380 600 C 372 680 372 780 384 860" stroke="#FFF8EC" stroke-width="16" stroke-linecap="round" fill="none" opacity=".35"/>
+      <g id="drip" class="card"><path d="M700 520 C 712 560 716 590 708 612 C 700 630 680 626 680 606 C 680 584 692 560 700 520 Z" fill="#F2A541"/></g>
+    </g>
+
+    <!-- the trail the bee leaves -->
+    <path id="trail" d="M120 760 C 260 600 420 760 520 600" fill="none" stroke="#1F3A5F" stroke-width="7" stroke-dasharray="16 18" stroke-linecap="round" opacity=".5"/>
+
+    <!-- the bee, drawn around its own centre -->
+    <g id="bee">
+      <g class="card" transform="scale(1.45)">
+        <path id="wingB" d="M-10 -34 C -40 -100 -110 -96 -100 -50 C -94 -22 -40 -20 -10 -34 Z" fill="#FFF8EC" opacity=".92"/>
+        <path d="M-70 4 C -70 -42 -20 -50 26 -40 C 70 -30 84 0 70 28 C 56 54 10 60 -30 50 C -56 44 -70 30 -70 4 Z" fill="#F2A541"/>
+        <path d="M-30 -44 C -20 -14 -20 26 -34 50 L -12 54 C 2 26 2 -14 -8 -48 Z" fill="#1F3A5F"/>
+        <path d="M12 -44 C 24 -14 24 26 10 56 L 32 52 C 46 22 44 -14 34 -38 Z" fill="#1F3A5F"/>
+        <circle cx="74" cy="0" r="30" fill="#1F3A5F"/>
+        <circle cx="84" cy="-8" r="8" fill="#FFF8EC"/>
+        <path d="M-70 4 L -96 10 L -70 18 Z" fill="#1F3A5F"/>
+        <path id="wingF" d="M10 -36 C 10 -110 80 -116 80 -70 C 80 -40 40 -30 10 -36 Z" fill="#FFF8EC"/>
+      </g>
+    </g>
+  </svg>
+</div>
+<script>
+// Paper on a table: a gentle push and a slight slide across the layers.
+tl.fromTo("#world", { scale: 1.12, x: 10 }, { scale: 1.2, x: -10, transformOrigin: "540px 680px", duration: DURATION, ease: "none" }, 0);
+tl.fromTo("#sh1", { x: 0 }, { x: 30, duration: DURATION, ease: "none" }, 0);
+tl.fromTo("#sh2", { x: 0 }, { x: -24, duration: DURATION, ease: "none" }, 0);
+// Wings flutter all the way through (finite).
+tl.to("#wingF, #wingB", { scaleY: .55, transformOrigin: "50% 100%", duration: .06, yoyo: true, repeat: 61, ease: "none" }, 0);
+
+// Hook: the flower folds up like a pop-up page while the bee flies in on "bee".
+tl.fromTo("#flower", { scaleY: 0, svgOrigin: "540 980" }, { scaleY: 1, svgOrigin: "540 980", duration: .5, ease: "back.out(1.4)" }, 0);
+tl.fromTo("#petals", { rotation: -25, svgOrigin: "540 630" }, { rotation: 0, svgOrigin: "540 630", duration: .6, ease: "back.out(1.6)" }, .15);
+const bee = at("bee", .76) - .55;
+tl.fromTo("#bee", { x: -160, y: 760, rotation: -20 }, { x: 300, y: 600, rotation: 8, duration: .5, ease: "power2.out" }, Math.max(0, bee));
+// "visits": it lands on the flower's heart with a little squash.
+const visit = at("visits", 1.02);
+tl.to("#bee", { x: 540, y: 560, rotation: 0, duration: .35, ease: "back.out(1.6)" }, visit);
+tl.set("#trail", { opacity: .5 }, Math.max(0, bee));
+tl.fromTo("#trail", { strokeDashoffset: 400 }, { strokeDashoffset: 0, duration: .9, ease: "power1.out" }, Math.max(0, bee));
+tl.to("#trail", { opacity: 0, duration: .3 }, visit + .5);
+tl.to("#flower", { scaleY: .94, svgOrigin: "540 980", duration: .1, yoyo: true, repeat: 1 }, visit + .3);
+
+// "five thousand flowers": a ring of flowers pops up around it and the bee zips between them.
+const many = at("5", 1.52) - .1;
+tl.set(".ring", { opacity: 1 }, many);
+document.querySelectorAll(".ring").forEach((r, i) => {
+  tl.fromTo(r.firstElementChild, { scale: 0, rotation: -60 }, { scale: 1, rotation: 0, duration: .35, ease: "back.out(2)", immediateRender: false }, many + i * .07);
+});
+const stops = [[230, 450], [860, 450], [180, 690], [910, 690], [540, 560]];
+stops.forEach((p, i) => {
+  tl.to("#bee", { x: p[0], y: p[1], rotation: i % 2 ? 12 : -12, scale: .8, duration: .16, ease: "power2.inOut" }, at("flowers", 2.38) - .3 + i * .17);
+});
+tl.to("#bee", { scale: 1, rotation: 0, duration: .2 }, at("flowers", 2.38) - .3 + 5 * .17);
+
+// "every trip makes the honey": the flowers fold down flat and a paper jar flips up in their place.
+const trip = at("every", 3.48) - .15;
+tl.to(".ring", { scaleY: 0, transformOrigin: "50% 100%", duration: .22, stagger: .02, ease: "power3.in" }, trip);
+tl.to("#flower", { scaleY: 0, svgOrigin: "540 980", duration: .25, ease: "power3.in" }, trip);
+tl.set("#jar", { opacity: 1 }, trip + .22);
+tl.fromTo("#jar", { scaleY: 0, rotation: 6, svgOrigin: "540 990" }, { scaleY: 1, rotation: 0, svgOrigin: "540 990", duration: .45, ease: "back.out(1.5)", immediateRender: false }, trip + .22);
+tl.to("#bee", { x: 760, y: 420, rotation: 10, duration: .3, ease: "power2.out" }, trip + .1);
+// …and every trip into the jar raises the honey a step.
+for (let k = 0; k < 3; k++) {
+  const t = at("honey", 4.38) - .35 + k * .3;
+  tl.to("#bee", { x: 600, y: 470, rotation: -20, duration: .12, ease: "power2.in" }, t);
+  tl.to("#bee", { x: 770, y: 400, rotation: 10, duration: .14, ease: "power2.out" }, t + .12);
+  tl.to("#honey", { y: -110 * (k + 1), duration: .25, ease: "back.out(1.6)" }, t + .1);
+}
+// "a little sweeter": the jar is full, honey drips over the rim and the jar does a happy hop.
+const sweet = at("sweeter", 5.08) - .1;
+tl.to("#honey", { y: -400, duration: .3, ease: "back.out(1.4)" }, sweet);
+tl.set("#drip", { opacity: 1 }, sweet + .15);
+tl.fromTo("#drip", { scaleY: 0, svgOrigin: "700 520" }, { scaleY: 1, svgOrigin: "700 520", duration: .4, ease: "back.out(1.6)", immediateRender: false }, sweet + .15);
+tl.to("#jar", { y: -30, duration: .14, yoyo: true, repeat: 1, ease: "power2.out" }, sweet + .1);
+tl.to("#bee", { x: 540, y: 380, rotation: 0, scale: 1.1, duration: .35, ease: "back.out(1.6)" }, sweet + .2);
+</script>

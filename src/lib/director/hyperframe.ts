@@ -4,7 +4,7 @@ import { env } from '@/lib/config/env';
 import type { SceneLook } from '@/lib/edl/types';
 import { guideAsPrompt, styleGuideFor } from '@/lib/scenes/style-guides';
 import { completionCostUsd, composerProviders as scenesRoute, llmFetch, routedModel, type ChatProvider } from '@/lib/llm/chat';
-import { REFERENCE_LINE, REFERENCE_SCENE } from '@/lib/director/reference-scene';
+import { referenceFor } from '@/lib/director/reference-scene';
 
 const require_ = createRequire(import.meta.url);
 
@@ -101,8 +101,10 @@ export function isComposerConfigured(): boolean {
  * The prompt. Written in numbers wherever there is one, because "smooth" and
  * "punchy" give a different scene every call.
  */
-export function systemPrompt(width: number, height: number, durationSec: number): string {
+export function systemPrompt(width: number, height: number, durationSec: number, look: SceneLook = 'science'): string {
   const dur = durationSec.toFixed(2);
+  const reference = referenceFor(look);
+  const sameWorld = reference.look === look;
   return `You make one shot of a video as an HTML motion graphic: the picture AND how it moves, beat by beat.
 
 It plays full-screen on a phone for ${dur} seconds while someone talks over it. It IS the shot — no footage behind it — so it has to carry the frame on its own and it must never sit still.
@@ -171,15 +173,24 @@ A sequence, not a picture that moves, cut for a short vertical video where atten
 
 The world below sets the drawing technique, palette and motion character. Where it suggests anything about layout or framing — panning across, things at the frame edges, a split composition — the rules above win: one subject, centred, above the captions.
 
+## Traps that break a scene
+
+- **A line drawn on**: give it \`pathLength="1" stroke-dasharray="1" stroke-dashoffset="1"\` and tween \`strokeDashoffset\` to 0. Hide it with \`opacity: 0\` in the CSS and \`tl.set(el, {opacity: 1}, t)\` when it starts — a round line cap still shows as a dot while the line is undrawn.
+- **Things that appear later**: \`fromTo\` paints its FROM state at time 0. For anything that should not be visible yet, hide it in the CSS, \`tl.set\` it visible when it arrives, and pass \`immediateRender: false\` to its \`fromTo\`.
+- **Pivots**: give each SVG element ONE \`transformOrigin\` or \`svgOrigin\` — the same in every tween of it, or once in a \`tl.set\` at 0. Changing it between tweens shifts the element.
+- **One job per element**: an element that enters with a \`y\` tween must not also get a looping wobble on \`y\`; put the wobble, the camera drift and the entrance on different wrapper groups.
+- **Keyframes**: \`keyframes: [...]\` eases each step with \`power1.inOut\` by default; pass \`easeEach: "none"\` when the path should move evenly.
+- \`at(word, fallback)\` matches the whole word first, then a word starting with it.
+
 ## Hard rules
 
 No \`Math.random\`, \`Date\`, \`setTimeout\`, \`setInterval\`, \`requestAnimationFrame\`, \`fetch\`, CSS \`animation\` or \`transition\`, and no \`repeat: -1\` (a finite \`repeat\` is fine). Everything visible is a function of the timeline's time. Do not touch \`#root\` or \`#stage\`; everything lives inside \`#scene\`.
 
 ## The bar
 
-This is a finished scene that meets the bar, written for the line "${REFERENCE_LINE}" in a flat, glowing world. Match its CRAFT: one big, richly drawn subject in the middle landing on its word, little sparks acting around it, the camera diving into it until its colour fills the frame, the next beat growing out of that colour as a system that fills the centre, and something alive in every frame to the end. Never copy its subject, its palette or its layout — yours come from your line and from the world you are given.
+This is a finished scene that meets the bar, written for the line "${reference.line}"${sameWorld ? ' in the same world you are drawing in. Match its technique and its craft' : ' in another world. Match its craft'}: one big, richly drawn subject in the middle landing on its word, the next beat made out of the last one, a payoff at the end, and something alive in every frame. Never copy its subject or its layout — yours come from your line.
 
-${REFERENCE_SCENE}`;
+${reference.scene}`;
 }
 
 export function briefFor(request: CompositionRequest): string {
@@ -292,6 +303,30 @@ export function auditComposition(parts: CompositionParts): string[] {
 }
 
 /** GSAP, read once and inlined, so a render never reaches for a CDN. */
+/**
+ * `strokeDashoffset`, tweened without rounding.
+ *
+ * GSAP's CSS plugin snaps it to whole pixels, and every line in these scenes
+ * is drawn with `pathLength="1"` — so a line went from hidden to fully drawn
+ * in one frame instead of drawing itself, which is most of what a line in
+ * motion design is for. A plugin by the property's own name takes precedence
+ * over the CSS one, so the model's ordinary `strokeDashoffset: 0` now
+ * interpolates through every fraction in between.
+ */
+const DASH_PLUGIN = `gsap.registerPlugin({
+  name: "strokeDashoffset",
+  init(target, value, tween, index, targets) {
+    if (typeof value === "function") value = value(index, target, targets);
+    const inline = target.style && target.style.strokeDashoffset;
+    const attr = target.getAttribute && target.getAttribute("stroke-dashoffset");
+    const start = parseFloat(inline || attr || "0") || 0;
+    const relative = typeof value === "string" && /^[+-]=/.test(value);
+    const amount = parseFloat(String(value).replace(/^([+-])=/, "$1"));
+    this.t = target; this.s = start; this.e = relative ? start + amount : amount;
+  },
+  render(ratio, data) { data.t.style.strokeDashoffset = String(data.s + (data.e - data.s) * ratio); },
+});`;
+
 let gsapSource: string | null = null;
 function gsapScript(): string {
   if (gsapSource === null) {
@@ -328,6 +363,7 @@ export function buildCompositionHtml(parts: CompositionParts, frame: Composition
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=${width}, height=${height}" />
     <script>${gsapScript()}</script>
+    <script>${DASH_PLUGIN}</script>
     <style>
       * { margin: 0; padding: 0; box-sizing: border-box; }
       html, body { width: ${width}px; height: ${height}px; overflow: hidden; background: ${ground}; }
@@ -349,9 +385,15 @@ ${parts.markup}
       (function () {
         const W = ${width}, H = ${height}, DURATION = ${dur};
         const WORDS = ${words};
+        // The whole word first: "light" must not land on "lighthouse" when
+        // both are said. Then a word that starts with it, then anywhere in one.
+        const clean = (text) => String(text).toLowerCase().replace(/[^\\p{L}\\p{N}']/gu, "");
         const at = (word, fallback) => {
-          const needle = String(word).toLowerCase();
-          const hit = WORDS.find((w) => w.text.toLowerCase().includes(needle));
+          const needle = clean(word);
+          const hit =
+            WORDS.find((w) => clean(w.text) === needle) ||
+            WORDS.find((w) => clean(w.text).startsWith(needle)) ||
+            WORDS.find((w) => clean(w.text).includes(needle));
           return hit ? hit.atSec : fallback;
         };
         const rand = (i) => { const x = Math.sin(i * 12.9898 + 78.233) * 43758.5453; return x - Math.floor(x); };
@@ -383,7 +425,7 @@ export async function composeScene(
 ): Promise<CompositionResult> {
   if (!isComposerConfigured()) return { parts: null, costUsd: 0, error: 'no motion model configured' };
 
-  const system = systemPrompt(request.width, request.height, request.durationSec);
+  const system = systemPrompt(request.width, request.height, request.durationSec, request.look);
   const brief = briefFor(request);
   const faultsOf = async (parts: CompositionParts) => [...auditComposition(parts), ...(check ? await check(parts) : [])];
 
@@ -500,7 +542,7 @@ export async function reviewScene(
   try {
     const reply = await complete(
       [
-        { role: 'system', content: systemPrompt(request.width, request.height, request.durationSec) },
+        { role: 'system', content: systemPrompt(request.width, request.height, request.durationSec, request.look) },
         { role: 'user', content: briefFor(request) },
         { role: 'assistant', content: serialiseComposition(parts) },
         {
