@@ -255,6 +255,340 @@ export const STYLE_GUIDES: Record<SceneLook, StyleGuide> = {
       'space, planets, stars or moons unless the line is about them',
     ],
   },
+
+  /*
+   * The looks below were added after a survey of the styles people ask Opus
+   * to animate in — paper cut-outs, monoline ink, blueprints, riso prints,
+   * pixel art and the rest. Each is described from scratch in our own terms:
+   * how to draw and move in it, never what to draw. A look that names
+   * subjects puts them in every scene (Flat science once had a planet).
+   */
+
+  paper: {
+    id: 'paper',
+    ground: '#F3E9D8',
+    palette: [
+      { role: 'the top sheet, the subject’s main body', hex: '#E8553D' },
+      { role: 'a second sheet stacked beneath, for depth', hex: '#F2A541' },
+      { role: 'a cool sheet for secondary parts', hex: '#3E7CB1' },
+      { role: 'deep sheet for the darkest layer and inner cut-outs', hex: '#1F3A5F' },
+      { role: 'pale sheet for highlights and small details', hex: '#FFF8EC' },
+    ],
+    accent: '#E8553D',
+    rendering:
+      'Layered paper cut-out: every shape is a flat sheet of coloured card with slightly irregular hand-cut edges ' +
+      '(paths with gentle wobble, no perfect circles), stacked two to four sheets deep. Each sheet casts a soft short ' +
+      'drop shadow (offset 6–10px down-right, blur 10px, 25% black) onto the sheet below. Detail is made by cutting ' +
+      'holes and laying smaller sheets on top, never by drawing lines.',
+    lighting:
+      'Soft daylight from the upper left. Light only shows as the drop shadows between layers; no glows, no gradients ' +
+      'inside a sheet beyond a barely visible paper grain.',
+    ground_rule:
+      'A warm cream card ground with a faint fibre texture, and one or two very large pale sheets far behind the ' +
+      'subject casting their own soft shadows. Abstract only.',
+    motion:
+      'Sheets slide in and flip up like paper on a table: arrivals use back.out(1.3) with a slight rotation that ' +
+      'settles to a resting tilt of ±2°. Layers move at different speeds for parallax. Things unfold, fold and pop up ' +
+      'like a pop-up book. No smooth morphing between unrelated shapes — a sheet is swapped by flipping it.',
+    camera: 'A gentle push and slight lateral slide across the layers; a dive goes between sheets, revealing the layer behind.',
+    never: ['outlines or strokes', 'glows', 'glossy or metallic surfaces', 'photographs', 'perfect geometric circles'],
+  },
+
+  ink: {
+    id: 'ink',
+    ground: '#F4EFE4',
+    palette: [
+      { role: 'the ink line itself, every outline', hex: '#141414' },
+      { role: 'a light grey wash for shadow sides', hex: '#CFC8BA' },
+      { role: 'the paper, used to knock out shapes', hex: '#F4EFE4' },
+      { role: 'a muted secondary wash, used sparingly', hex: '#8FA3A8' },
+    ],
+    accent: '#E0412C',
+    rendering:
+      'Monoline ink drawing on paper: everything is an open black stroke of one weight (6–8px, round caps and joins), ' +
+      'like a confident pen drawing. Shapes are left mostly unfilled; at most a flat light-grey wash on shadow sides. ' +
+      'The one accent colour is a single filled shape or underline per beat — the thing to look at.',
+    lighting: 'None to speak of: flat paper light. Shade only with the grey wash or a few parallel hatch strokes.',
+    ground_rule:
+      'Plain warm off-white paper with a very faint grain and a soft vignette; nothing else behind the subject.',
+    motion:
+      'Lines draw themselves on (strokeDashoffset) in the order a hand would draw them, 0.3–0.6 s per stroke, ' +
+      'power2.inOut. Finished drawings transform by redrawing: strokes retract and new ones draw on. Small objects ' +
+      'pop with back.out(1.6). The accent fills in last, like a marker stroke.',
+    camera: 'Mostly still with a slow push; a dive follows a single line into the next drawing.',
+    never: ['gradients', 'glows', 'more than one accent colour', 'thick filled cartoon shapes', 'dark backgrounds'],
+  },
+
+  blueprint: {
+    id: 'blueprint',
+    ground: '#0F3B78',
+    palette: [
+      { role: 'the main drafting line', hex: '#EAF2FF' },
+      { role: 'construction lines and the grid, faint', hex: '#5E8AC7' },
+      { role: 'the paper, a slightly lighter blue for panels', hex: '#174A8F' },
+      { role: 'hidden or secondary edges, dashed', hex: '#9BB8E3' },
+    ],
+    accent: '#FFC94A',
+    rendering:
+      'Technical blueprint: objects drawn as precise thin white lines (3–4px) in clean orthographic or isometric ' +
+      'projection, with dashed hidden edges, centre lines, circles for joints and short dimension arrows WITHOUT numbers. ' +
+      'Almost no fills — a faint lighter-blue panel at most. The accent marks the one part that matters.',
+    lighting: 'Flat; the lines are the image. A very soft lighter-blue pool behind the subject for depth.',
+    ground_rule:
+      'Blueprint blue with a fine square grid (60px, 12% white) and a heavier grid every fifth line, slightly faded at the frame edges.',
+    motion:
+      'Construction first: faint guide lines sweep across, then the object draws on line by line along them ' +
+      '(strokeDashoffset, power1.inOut). Parts slide apart into an exploded view and back together. Dimension ' +
+      'arrows extend from their tick marks. Motion is precise and mechanical — no bounce.',
+    camera: 'Steady and level; pans along the drawing like a draftsman’s eye, and dives by zooming into one detail until it becomes the next drawing.',
+    never: ['text or numbers on dimension lines', 'soft cartoon blobs', 'glows', 'photorealism', 'warm backgrounds'],
+  },
+
+  riso: {
+    id: 'riso',
+    ground: '#F2EDE3',
+    palette: [
+      { role: 'fluorescent pink ink, the main shape colour', hex: '#FF48B0' },
+      { role: 'blue ink, the second plate', hex: '#0078BF' },
+      { role: 'yellow ink, the third plate', hex: '#FFE800' },
+      { role: 'where pink and blue overprint', hex: '#6C3A8C' },
+    ],
+    accent: '#FF48B0',
+    rendering:
+      'Risograph print: bold flat shapes in two or three spot inks with mix-blend-mode: multiply so overlaps make new ' +
+      'colours. Each ink plate is slightly misregistered (offset 4–8px). Shading is a coarse halftone dot pattern ' +
+      '(an SVG pattern of dots), never a gradient. Edges are crisp but a little rough.',
+    lighting: 'No light — print logic only. Shadow is a halftone in the darker ink.',
+    ground_rule:
+      'Off-white recycled paper with a faint speckled grain and a large halftone dot field in one ink fading out from behind the subject.',
+    motion:
+      'Snappy and graphic: shapes slam in with expo.out, plates slide into registration a beat apart, halftone ' +
+      'dots grow from nothing. Things stamp, slide and stack like printed layers. A little misregistration jitter on landing.',
+    camera: 'Flat and frontal; cuts are replaced by one plate sliding over the next, or a halftone dot growing to fill the frame.',
+    never: ['smooth gradients', 'glows', 'more than three inks', 'photorealism', 'drop shadows'],
+  },
+
+  pixel: {
+    id: 'pixel',
+    ground: '#1B1F3B',
+    palette: [
+      { role: 'the main sprite colour', hex: '#4CC9F0' },
+      { role: 'the sprite shadow', hex: '#3A0CA3' },
+      { role: 'warm highlight pixels', hex: '#FFD166' },
+      { role: 'a second sprite colour', hex: '#F72585' },
+      { role: 'light outline pixels', hex: '#F1FAEE' },
+    ],
+    accent: '#FFD166',
+    rendering:
+      'Pixel art: everything is built from square cells on a strict grid (cells of 20–24px), drawn as rects with ' +
+      'shape-rendering: crispEdges. A one-cell dark outline around each sprite, one cell of highlight and one of shadow. ' +
+      'A limited palette, no anti-aliasing, no gradients, no curves — diagonals are stair-steps.',
+    lighting: 'Baked into the cells: highlight on the top-left cells, shadow on the bottom-right. No glow filters.',
+    ground_rule:
+      'A dark blue ground with a sparse grid of tiny single-cell dots and two or three big blocky shapes far behind in a slightly lighter blue.',
+    motion:
+      'Stepped, like a game: positions move in whole cells with ease "steps(6)" or similar, sprites squash one cell ' +
+      'on landing, things appear by filling in cell by cell. Bounces are crisp arcs. Two-frame idle loops (finite repeats).',
+    camera: 'Moves in whole-cell steps; a dive is a blocky zoom where the pixels get bigger until one cell fills the frame.',
+    never: ['anti-aliased curves', 'gradients', 'blur or glow', 'thin lines', 'photographs'],
+  },
+
+  chalk: {
+    id: 'chalk',
+    ground: '#1E2B26',
+    palette: [
+      { role: 'white chalk, every main line', hex: '#F2F0E6' },
+      { role: 'yellow chalk for the important part', hex: '#F6D55C' },
+      { role: 'blue chalk for secondary parts', hex: '#7FB7E3' },
+      { role: 'pink chalk, sparingly', hex: '#F28FAD' },
+    ],
+    accent: '#F6D55C',
+    rendering:
+      'Chalk on a blackboard: strokes 6–10px with a rough, broken texture (an SVG turbulence filter or dashed overlays ' +
+      'so the line is grainy), loose hand-drawn shapes, fills done as quick diagonal hatching rather than solid colour.',
+    lighting: 'Flat classroom light. No glows; brightness is only chalk pressure.',
+    ground_rule:
+      'A deep green-black board with faint smudges of erased chalk (very low-opacity blurred white patches) and soft darker corners.',
+    motion:
+      'Drawn on by hand: strokes write on with strokeDashoffset, hatching fills in quickly, arrows swoop in. ' +
+      'Changes happen by wiping: a soft eraser smear clears an area before the next drawing appears. Small wobble on landing.',
+    camera: 'Pans across the board as if following the teacher; zooms in on one drawing to start the next.',
+    never: ['clean vector fills', 'glows', 'gradients', 'photorealism', 'white backgrounds'],
+  },
+
+  scope: {
+    id: 'scope',
+    ground: '#020804',
+    palette: [
+      { role: 'the bright phosphor trace', hex: '#7CFF8A' },
+      { role: 'the trace’s glow halo', hex: '#2BD45A' },
+      { role: 'the faint graticule and afterglow', hex: '#0F4A22' },
+      { role: 'a hot white centre on the brightest points', hex: '#E9FFE9' },
+    ],
+    accent: '#E9FFE9',
+    rendering:
+      'Oscilloscope vector display: everything is a single continuous glowing green line (3–4px core with a soft blur ' +
+      'halo), like a beam tracing shapes. Objects are outlines and Lissajous-style curves; no fills at all.',
+    lighting: 'The beam is the only light: a bright core, a green halo (drop-shadow glow), and a fading afterglow trail.',
+    ground_rule:
+      'Near-black CRT glass with a faint green graticule grid, a subtle round vignette and thin horizontal scanlines.',
+    motion:
+      'The beam traces each shape on (strokeDashoffset, ease "none" or power1.inOut) leaving an afterglow that fades. ' +
+      'Shapes morph into each other line-to-line, waves oscillate, the trace flickers very slightly. Smooth and continuous.',
+    camera: 'Static like a fixed screen; the image itself zooms and rotates inside it.',
+    never: ['filled shapes', 'colours other than greens', 'flat cartoon style', 'photographs', 'light backgrounds'],
+  },
+
+  graph: {
+    id: 'graph',
+    ground: '#101118',
+    palette: [
+      { role: 'the primary curve and main object', hex: '#58C4DD' },
+      { role: 'the secondary curve', hex: '#FFFF66' },
+      { role: 'a third quantity', hex: '#83C167' },
+      { role: 'axes and faint grid lines', hex: '#4A4E5A' },
+      { role: 'a warm highlight for the answer', hex: '#FC6255' },
+    ],
+    accent: '#FFFF66',
+    rendering:
+      'Mathematical animation: precise thin strokes (4–6px) and translucent fills (20–30% opacity) in clear distinct ' +
+      'colours on near-black, clean geometry — curves, vectors with arrowheads, shaded areas, dots on a plane. ' +
+      'Elegant and exact; no texture, no cartoon features.',
+    lighting: 'None; colour and opacity do the work. A very faint glow on the active curve only.',
+    ground_rule:
+      'Near-black with an optional faint coordinate grid that fades out towards the edges, and nothing else.',
+    motion:
+      'Smooth, deliberate transformations: shapes morph continuously into the next form, curves draw on left to ' +
+      'right, areas fill in, vectors rotate about their tails, the plane itself stretches. power2.inOut throughout, ' +
+      'unhurried. Nothing bounces.',
+    camera: 'Calm pans and zooms across the plane; a dive zooms into a point until a new plane opens from it.',
+    never: ['cartoon characters', 'bouncy springs', 'textures', 'warm backgrounds', 'heavy outlines'],
+  },
+
+  glass: {
+    id: 'glass',
+    ground: '#0E1024',
+    palette: [
+      { role: 'frosted glass panel body, white at low opacity', hex: '#FFFFFF' },
+      { role: 'a violet colour blob behind the glass', hex: '#7B5CFF' },
+      { role: 'a cyan colour blob behind the glass', hex: '#3FD0FF' },
+      { role: 'a pink colour blob behind the glass', hex: '#FF5FA2' },
+      { role: 'deep ground behind everything', hex: '#15183A' },
+    ],
+    accent: '#3FD0FF',
+    rendering:
+      'Glass: objects are rounded translucent panels and shapes (white at 8–16% opacity with backdrop-filter: ' +
+      'blur(24px)), a 1.5px bright rim on the top-left edge, a soft inner highlight, over large saturated blurred ' +
+      'colour blobs that show through. Clean and premium.',
+    lighting: 'Light from the top left catches the glass rims; colour comes from the blobs behind, refracted through the panels.',
+    ground_rule:
+      'A deep indigo ground with three large, heavily blurred colour blobs (violet, cyan, pink) drifting slowly behind the subject.',
+    motion:
+      'Smooth and weighty: panels glide in with expo.out and settle, blobs drift and swap places behind, the glass ' +
+      'subtly tilts (small rotationX/rotationY) as it lands. Elements morph between rounded shapes. No hard snaps.',
+    camera: 'A slow push with gentle parallax between the glass and the blobs; a dive goes through a panel into the colour behind.',
+    never: ['flat opaque cartoon shapes', 'hard black outlines', 'pixelated edges', 'textures like paper or grain', 'white backgrounds'],
+  },
+
+  clay: {
+    id: 'clay',
+    ground: '#E9DCCB',
+    palette: [
+      { role: 'the main clay body', hex: '#E86A50' },
+      { role: 'a second clay colour', hex: '#4FA3A5' },
+      { role: 'a warm third clay', hex: '#F2C14E' },
+      { role: 'clay shadow side, darker and warmer', hex: '#A8432F' },
+      { role: 'soft highlight on the rounded tops', hex: '#FFF1E0' },
+    ],
+    accent: '#F2C14E',
+    rendering:
+      'Claymation: chunky, soft, rounded forms with no sharp corners, each modelled with a radial gradient (lit top-left, ' +
+      'warmer darker underside), a soft highlight blob and a subtle noise texture so the surface looks hand-pressed. ' +
+      'Slightly uneven proportions, thick and toy-like.',
+    lighting: 'One warm soft key light from the upper left; soft contact shadows directly under each object on the ground.',
+    ground_rule:
+      'A matte clay tabletop in warm beige meeting a slightly darker backdrop with a soft curved horizon, soft shadows under everything.',
+    motion:
+      'Stop-motion feel: squash and stretch on every landing (scaleY 0.85 → 1.05 → 1), arrivals with back.out(1.8), ' +
+      'objects reshape by squishing into the next form. A slight step to the motion (ease with steps on small idle ' +
+      'moves) sells the handmade look.',
+    camera: 'A tabletop camera: small slow dolly and push, a dive presses into the clay until its colour fills the frame.',
+    never: ['thin lines', 'glows', 'neon colours', 'flat vector shapes without shading', 'dark backgrounds'],
+  },
+
+  poster: {
+    id: 'poster',
+    ground: '#F6E4C6',
+    palette: [
+      { role: 'cobalt, the dominant bold shape', hex: '#2B3BFF' },
+      { role: 'deep ink for contrast shapes', hex: '#0E0F1F' },
+      { role: 'tangerine, the second bold colour', hex: '#FF5A1F' },
+      { role: 'pink, small punchy details', hex: '#FF7DC7' },
+    ],
+    accent: '#FF5A1F',
+    rendering:
+      'Loud graphic poster: huge flat geometric shapes — circles, half-circles, bars, arrows, rectangles — in a few ' +
+      'saturated colours, hard edges, no shading, bold scale contrast (one shape fills half the frame next to a small ' +
+      'one). The subject is built from these primitives, Bauhaus-like.',
+    lighting: 'None. Pure flat colour; contrast comes from scale and colour blocking.',
+    ground_rule:
+      'Flat warm cream paper, with one oversized cropped shape bleeding off an edge far behind the subject in a pale tint of a palette colour.',
+    motion:
+      'Punchy and rhythmic: shapes slam in on the beat with expo.out or back.out(2), wipe across with hard masks, ' +
+      'rotate in 90° snaps, scale from 0 to full in 0.25 s. Strong overlap and staggered rhythm, like it is cut to music.',
+    camera: 'Mostly locked off; big moves are done by the shapes, plus hard zooms that punch into a shape to fill the frame.',
+    never: ['gradients', 'textures', 'soft glows', 'thin lines', 'realistic detail'],
+  },
+
+  diorama: {
+    id: 'diorama',
+    ground: '#F6DCD6',
+    palette: [
+      { role: 'dusty pink, the main walls and surfaces', hex: '#E9A3A0' },
+      { role: 'mint, the second surface colour', hex: '#9ED2C6' },
+      { role: 'mustard for the key object', hex: '#E7B75F' },
+      { role: 'deep burgundy for trims and shadows', hex: '#7D2E3A' },
+      { role: 'cream highlights', hex: '#FFF4E8' },
+    ],
+    accent: '#7D2E3A',
+    rendering:
+      'Pastel miniature diorama: a perfectly symmetrical, front-facing composition, like a tiny set built in a box. ' +
+      'Flat pastel shapes with neat trims and small precise details, centred on the vertical axis, everything placed ' +
+      'with fussy order. Soft shading only.',
+    lighting: 'Even, soft, slightly warm light from the front; tiny soft shadows under objects.',
+    ground_rule:
+      'A pastel back wall and floor meeting at a horizon, with symmetric framing elements (a proscenium-like frame) at both sides.',
+    motion:
+      'Precise and deadpan: objects slide in on straight lines and stop exactly in place (power3.out), doors and ' +
+      'panels flip open, things pop up from below the floor. Symmetric pairs move in mirror image.',
+    camera: 'Dead-centre and level always; moves are straight pushes in and straight lateral tracks, never tilted.',
+    never: ['asymmetric layouts', 'dark backgrounds', 'neon colours', 'glows', 'messy hand-drawn lines'],
+  },
+
+  pencil: {
+    id: 'pencil',
+    ground: '#F6F0E1',
+    palette: [
+      { role: 'warm graphite for outlines', hex: '#4A4038' },
+      { role: 'coloured pencil red', hex: '#D9534F' },
+      { role: 'coloured pencil blue', hex: '#4A7FB5' },
+      { role: 'coloured pencil green', hex: '#6BA368' },
+      { role: 'coloured pencil yellow', hex: '#F0C04A' },
+    ],
+    accent: '#D9534F',
+    rendering:
+      'Coloured-pencil storybook illustration: soft, slightly wobbly graphite outlines (3–4px), colour laid in as ' +
+      'visible pencil hatching — fills made of many thin parallel strokes at a slight angle, or a fill with an SVG ' +
+      'turbulence texture so paper shows through. Charming, gentle, hand-made.',
+    lighting: 'Soft daylight; shading is denser hatching on the shadow side.',
+    ground_rule:
+      'Warm sketchbook paper with a faint tooth texture, and a loose pale pencil wash around the subject fading to bare paper.',
+    motion:
+      'Gentle and storybook-like: outlines sketch on, hatching fills in a few strokes at a time, objects bob in with ' +
+      'back.out(1.4). Small boiling wobble on lines (tiny finite jitter) gives it life. Transitions draw the next page over the last.',
+    camera: 'Soft slow push; a dive follows a pencil line into the next drawing.',
+    never: ['clean vector fills', 'glows', 'neon colours', 'dark backgrounds', 'photorealism'],
+  },
 };
 
 export function styleGuideFor(look: SceneLook): StyleGuide {

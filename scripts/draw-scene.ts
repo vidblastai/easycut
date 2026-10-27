@@ -3,17 +3,13 @@ import { join } from 'node:path';
 import '../src/lib/config/load-env';
 import { drawScene } from '../src/lib/director/illustrate';
 import { SCENE_LOOKS, type SceneLook } from '../src/lib/edl/types';
+import { STYLE_GUIDES } from '../src/lib/scenes/style-guides';
 
-/** Matches the grounds in `director/illustrate.ts`, so a dark drawing on a dark
- *  world is judged the way it will actually be seen rather than on white. */
-const GROUND: Record<SceneLook, string> = {
-  studio: '#FCFCFD',
-  neon: '#05060F',
-  gallery: '#EFF0F4',
-  archive: '#0B0710',
-  editorial: '#030105',
-  science: '#0B1636',
-};
+/** The look's own ground, so a dark drawing on a dark world is judged the way
+ *  it will actually be seen rather than on white. */
+const GROUND: Record<SceneLook, string> = Object.fromEntries(
+  SCENE_LOOKS.map((look) => [look, STYLE_GUIDES[look].ground]),
+) as Record<SceneLook, string>;
 
 /**
  * Ask the motion model to draw one scene, and write the result out.
