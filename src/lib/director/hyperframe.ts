@@ -4,6 +4,7 @@ import { env } from '@/lib/config/env';
 import type { SceneLook } from '@/lib/edl/types';
 import { guideAsPrompt, styleGuideFor } from '@/lib/scenes/style-guides';
 import { completionCostUsd, composerProviders as scenesRoute, llmFetch, routedModel, type ChatProvider } from '@/lib/llm/chat';
+import { REFERENCE_LINE, REFERENCE_SCENE } from '@/lib/director/reference-scene';
 
 const require_ = createRequire(import.meta.url);
 
@@ -139,8 +140,8 @@ The page around them is provided. The frame is ${width}×${height} px. Inside yo
 
 - Build it from \`<div>\`s and inline \`<svg>\` (path, circle, rect, polygon, line, g, linearGradient, radialGradient). Position things absolutely in px against the ${width}×${height} frame.
 - **One background that fills the whole frame, edge to edge**: the world's ground with a soft pool of light behind the subject. It is the only background there is, and it stays quiet.
-- **One subject, in the centre, in focus.** Each beat has ONE hero object, centred horizontally, its middle about ${Math.round(height * 0.36)}px down, spanning 55–80% of the frame's width. Everything that matters happens there; the eye never has to search. At most three to six small supporting pieces, close around it and clearly part of it (sparks off a wire, the pieces of a cut clip) — never things parked at the top and bottom of the frame with empty space between.
-- **Minimal.** Generous empty space around the subject. Detail goes INTO the subject — shading, a rim of light, a few inner parts — not into more objects. 20 to 80 shapes in all.
+- **One subject, in the centre, in focus, and BIG.** Each beat has ONE hero object, centred horizontally, its middle about ${Math.round(height * 0.36)}px down, at least ${Math.round(width * 0.6)}px wide (60–85% of the frame) — a subject a third of the width is a postage stamp. Everything that matters happens there; the eye never has to search. At most three to six small supporting pieces, close around it and clearly part of it (sparks off a wire, the pieces of a cut clip) — never things parked at the top and bottom of the frame with empty space between.
+- **Minimal means few objects, not plain ones.** Generous empty space around the subject, but the subject itself is richly drawn: base colour, a darker shadow side, a light rim, inner parts (a brain has its folds and a highlight; a film clip has sprocket holes, frames, a sheen). A flat circle with an icon on it is a placeholder, not an illustration. A later beat often multiplies the subject into a small system that fills the centre — one brain becomes a web of seven linked neurons. 20 to 80 shapes in all.
 - **No screens.** No phone frames, monitors, app windows, dashboards, toolbars or interface mock-ups — a full-size device on screen is an empty box with things at its edges. Software is shown by what it does, as an object: a clip, a play button, scissors, a waveform, a check mark.
 - Depth comes from the backdrop: a couple of dim, soft, blurred shapes far behind, moving slower than the subject when the camera moves.
 - **No text of any kind.** No letters, numbers, labels or words anywhere — not in an element, not in an SVG. The video's captions are the only words on screen and they are drawn over your shot afterwards.
@@ -156,6 +157,7 @@ A sequence, not a picture that moves: two or three beats, each one a thing the v
 - **Overlap**: the next element starts when the previous is 30–50% done. Stagger repeats 0.05–0.12 s apart.
 - **Transform, never cut.** Every beat is made out of the previous one. The camera dives INTO the subject until its colour fills the frame and the next beat grows out of that colour; or a shape morphs into the next (a circle becomes a clock face, a card grows into the next frame, a line becomes a chart); or the subject shrinks into a detail of something larger. 0.5–0.7 s, accelerating in (\`power3.in\`) and settling out (\`expo.out\`). Never a hard cut between beats, never a fade to an empty frame, never two beats side by side.
 - **Two or three things per beat ACT after they land**: a bar fills, a needle swings to its mark, a line draws itself (\`strokeDashoffset\`), a tick lands, a counter dial turns. The act is the sentence — pick the ones that show what the voice says.
+- **Something visibly changes at least every 0.4 s**, from the first frame to the last — a beat lands, a part acts, a pulse travels, the camera dives. A subject that just sits there for two seconds is a still image with a caption.
 - **It never stops**: a slow camera drift on the outermost wrapper from 0 to ${dur} (scale 1 → 1.08, a little x/y, \`ease: "none"\`), so no frame is a photograph. A landed object holds still — no breathing, bobbing or pulsing loops — UNLESS the world below says things drift, bob or pulse; then its motion line wins, gently and with finite repeats.
 - Pivots: set \`transformOrigin\` on anything that rotates — a clock hand turns about its pin, not about the frame.
 - Animate transforms (x, y, scale, rotation), opacity, \`strokeDashoffset\` and SVG \`attr\`. Not \`left\`/\`top\`/\`width\`/\`height\`, never \`display\` or \`visibility\`.
@@ -163,7 +165,13 @@ A sequence, not a picture that moves: two or three beats, each one a thing the v
 
 ## Hard rules
 
-No \`Math.random\`, \`Date\`, \`setTimeout\`, \`setInterval\`, \`requestAnimationFrame\`, \`fetch\`, CSS \`animation\` or \`transition\`, and no \`repeat: -1\` (a finite \`repeat\` is fine). Everything visible is a function of the timeline's time. Do not touch \`#root\` or \`#stage\`; everything lives inside \`#scene\`.`;
+No \`Math.random\`, \`Date\`, \`setTimeout\`, \`setInterval\`, \`requestAnimationFrame\`, \`fetch\`, CSS \`animation\` or \`transition\`, and no \`repeat: -1\` (a finite \`repeat\` is fine). Everything visible is a function of the timeline's time. Do not touch \`#root\` or \`#stage\`; everything lives inside \`#scene\`.
+
+## The bar
+
+This is a finished scene that meets the bar, written for the line "${REFERENCE_LINE}" in a flat, glowing world. Match its CRAFT: one big, richly drawn subject in the middle landing on its word, little sparks acting around it, the camera diving into it until its colour fills the frame, the next beat growing out of that colour as a system that fills the centre, and something alive in every frame to the end. Never copy its subject, its palette or its layout — yours come from your line and from the world you are given.
+
+${REFERENCE_SCENE}`;
 }
 
 export function briefFor(request: CompositionRequest): string {
@@ -451,11 +459,11 @@ export function reviewInstructions(times: number[], height: number, blank = fals
 Look at them the way a motion designer reviewing a colleague's work would, and check:
 
 1. Any letters, numbers or words visible anywhere — they must not be.
-2. A frame whose centre is empty, a subject too small to read on a phone, or things spread to the top and bottom instead of one subject in the middle.
+2. A frame whose centre is empty, a subject narrower than 60% of the frame, a plain flat placeholder shape instead of a richly drawn object, or things spread to the top and bottom instead of one subject in the middle.
 3. Anything important inside the caption band, ${Math.round(height * 0.55)}–${Math.round(height * 0.75)}px down.
 4. Pieces overlapping by accident, cut off by the frame edge unintentionally, or misaligned.
 5. Something rotating about the wrong point, or a shape that looks broken or unfinished.
-6. Beats that look the same — the frames should show the sequence progressing.
+6. Two frames that look nearly the same — the scene has stalled between them. Every frame should show the sequence clearly progressing.
 7. Colours outside the palette you were given, or a flat look with no depth.
 8. Whether the frames actually show your concept and what is being said.
 9. Clutter: more than one main object per beat, a screen, phone or app window, or anything that is not something the line is about — a planet, stars, a creature or any decoration the words never mention. Replace it with the thing being talked about.
