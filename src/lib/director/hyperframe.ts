@@ -108,7 +108,7 @@ It plays full-screen on a phone for ${dur} seconds while someone talks over it. 
 
 ## Draw what is being said
 
-Every object on screen is something the line is literally about, or a picture a viewer would read instantly as that thing. "Put in your footage and it does everything else" is a phone, video clips dropping into a timeline, cuts and captions snapping into place — not a planet, a rocket or a galaxy. The world below decides HOW things are drawn (shapes, colours, light, motion), never WHAT is drawn: it has no subjects of its own. No decorative props that the line does not mention — no planets, stars, moons, rockets, cells, atoms or creatures unless the words are about them. If you would have to explain why an object is there, it does not belong.
+Every object on screen is something the line is literally about, or a picture a viewer would read instantly as that thing. "Put in your footage and it does everything else" is one film clip that gets snipped into pieces that snap into a neat strip and light up — not a planet, a rocket or a galaxy. The world below decides HOW things are drawn (shapes, colours, light, motion), never WHAT is drawn: it has no subjects of its own. No decorative props that the line does not mention — no planets, stars, moons, rockets, cells, atoms or creatures unless the words are about them. If you would have to explain why an object is there, it does not belong.
 
 ## Decide the idea first
 
@@ -116,7 +116,7 @@ Before any markup, commit to ONE concept in one sentence and write it as the ver
 
 <!-- concept: one sentence -->
 
-A concept is a single visual idea that carries the whole shot, built from the things being said, not a list of things to show. Good: "a seed cracks open and its root becomes the line of a growth chart" for a line about growth. "A brain, then neurons, then lightning" is a list, not a concept. Everything you build serves that sentence.
+A concept is a single visual idea that carries the whole shot, built from the things being said, not a list of things to show. The simplest image that says the line wins: ONE object that turns into the next. Good: "a brain, and the camera dives into it until its colour becomes a web of firing neurons" for a line about the brain; "a seed cracks open and its root becomes the line of a growth chart" for a line about growth. "A brain, then neurons, then lightning" is a list, not a concept. Everything you build serves that sentence.
 
 ## What you return
 
@@ -138,12 +138,13 @@ The page around them is provided. The frame is ${width}×${height} px. Inside yo
 ## The picture
 
 - Build it from \`<div>\`s and inline \`<svg>\` (path, circle, rect, polygon, line, g, linearGradient, radialGradient). Position things absolutely in px against the ${width}×${height} frame.
-- **One background that fills the whole frame, edge to edge**, and give it something to look at — a floor line, a soft pool of light, a gradient, a grid. It is the only background there is.
-- **Big.** The subject spans at least 70% of the frame's width. Anything at half scale is a postage stamp on a phone.
-- **Three depth planes**: a large cropped foreground shape running off an edge, the focal subject, two to four dim, smaller related objects behind. Move them by different amounts when the camera moves — that parallax is what makes it a space instead of a sticker.
-- Real detail. A clock has a bezel, a dial, twelve marks, two tapered hands and a cap over the pin. 40 to 120 shapes in all.
+- **One background that fills the whole frame, edge to edge**: the world's ground with a soft pool of light behind the subject. It is the only background there is, and it stays quiet.
+- **One subject, in the centre, in focus.** Each beat has ONE hero object, centred horizontally, its middle about ${Math.round(height * 0.36)}px down, spanning 55–80% of the frame's width. Everything that matters happens there; the eye never has to search. At most three to six small supporting pieces, close around it and clearly part of it (sparks off a wire, the pieces of a cut clip) — never things parked at the top and bottom of the frame with empty space between.
+- **Minimal.** Generous empty space around the subject. Detail goes INTO the subject — shading, a rim of light, a few inner parts — not into more objects. 20 to 80 shapes in all.
+- **No screens.** No phone frames, monitors, app windows, dashboards, toolbars or interface mock-ups — a full-size device on screen is an empty box with things at its edges. Software is shown by what it does, as an object: a clip, a play button, scissors, a waveform, a check mark.
+- Depth comes from the backdrop: a couple of dim, soft, blurred shapes far behind, moving slower than the subject when the camera moves.
 - **No text of any kind.** No letters, numbers, labels or words anywhere — not in an element, not in an SVG. The video's captions are the only words on screen and they are drawn over your shot afterwards.
-- **Keep the band from ${Math.round(height * 0.55)}px to ${Math.round(height * 0.75)}px down clear of anything important** — the captions sit there.
+- **The captions sit from ${Math.round(height * 0.55)}px to ${Math.round(height * 0.75)}px down.** Keep the subject above that band; below it is backdrop only — nothing is placed down there.
 - No \`<img>\`, \`<image>\`, \`<video>\`, \`<audio>\`, \`<iframe>\`, \`<link>\`, \`<text>\`, no \`url(http…)\`, no \`@import\`, no web fonts. Nothing may load from anywhere.
 
 ## The motion
@@ -269,7 +270,7 @@ export function auditComposition(parts: CompositionParts): string[] {
   }
 
   const shapes = parts.markup.match(/<(div|path|circle|ellipse|rect|polygon|polyline|line)\b/gi)?.length ?? 0;
-  if (shapes < 25) problems.push(`Only ${shapes} shapes — too sparse to be an illustration; aim for 40 to 120.`);
+  if (shapes < 15) problems.push(`Only ${shapes} shapes — too sparse to be an illustration; aim for 20 to 80, the detail inside the one subject.`);
 
   return problems;
 }
@@ -450,14 +451,14 @@ export function reviewInstructions(times: number[], height: number, blank = fals
 Look at them the way a motion designer reviewing a colleague's work would, and check:
 
 1. Any letters, numbers or words visible anywhere — they must not be.
-2. A frame that is mostly empty background, or a subject too small to read on a phone.
+2. A frame whose centre is empty, a subject too small to read on a phone, or things spread to the top and bottom instead of one subject in the middle.
 3. Anything important inside the caption band, ${Math.round(height * 0.55)}–${Math.round(height * 0.75)}px down.
 4. Pieces overlapping by accident, cut off by the frame edge unintentionally, or misaligned.
 5. Something rotating about the wrong point, or a shape that looks broken or unfinished.
 6. Beats that look the same — the frames should show the sequence progressing.
 7. Colours outside the palette you were given, or a flat look with no depth.
 8. Whether the frames actually show your concept and what is being said.
-9. Anything that is not something the line is about — a planet, stars, a creature or any decoration the words never mention. Replace it with the thing being talked about.
+9. Clutter: more than one main object per beat, a screen, phone or app window, or anything that is not something the line is about — a planet, stars, a creature or any decoration the words never mention. Replace it with the thing being talked about.
 
 If it is genuinely good, reply with exactly: ${REVIEW_OK}
 
