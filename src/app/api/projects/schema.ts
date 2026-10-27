@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { BROLL_SOURCES } from '@/lib/assets/ai-broll';
 import { BROLL_OVERLAYS, CLIP_TRANSITIONS } from '@/lib/edl/types';
+import { VISUAL_INSPO } from '@/lib/assets/visual-inspo';
 
 /**
  * What the upload wizard sends.
@@ -32,6 +33,8 @@ export const CreateProjectSchema = z.object({
   brollSource: z.enum(BROLL_SOURCES as unknown as [string, ...string[]]).optional(),
   /** The treatment every insert wears. Omitted takes the edit style's. */
   brollOverlay: z.enum(BROLL_OVERLAYS).optional(),
+  /** Looks picked on the inspo page, in order. Unknown ids are dropped, not refused. */
+  visualInspo: z.array(z.string()).max(VISUAL_INSPO.length).optional(),
   inputMode: z.enum(['raw', 'roughcut']).default('raw'),
   /**
    * Layers the person declined, before anything is made.

@@ -210,6 +210,43 @@ export const STYLE_GUIDES: Record<SceneLook, StyleGuide> = {
       'glow used in place of design',
     ],
   },
+  /*
+   * The big science-explainer channels' house style, described rather than
+   * named: flat vector shapes with no outlines, every object lit by a lighter
+   * crescent on one edge, saturated colour on a deep navy, layered depth, and a
+   * camera that never cuts inside a topic — it dives INTO an object and that
+   * object becomes the next scene. Their characters and branding are theirs;
+   * the visual grammar is the thing worth having.
+   */
+  science: {
+    id: 'science',
+    ground: '#0B1636',
+    palette: [
+      { role: 'cream highlight, the rim of light on a lit edge', hex: '#FFF6E0' },
+      { role: 'warm yellow, glowing things and stars', hex: '#FFD166' },
+      { role: 'teal, life and the cool side of an object', hex: '#2EC4B6' },
+      { role: 'coral, danger and warmth', hex: '#FF5D73' },
+      { role: 'indigo, the shadowed body of an object', hex: '#2B3A8C' },
+      { role: 'deep navy, background planes', hex: '#142257' },
+    ],
+    accent: '#FFB627',
+    rendering:
+      'Flat vector illustration with NO outlines. Simple geometric, rounded shapes. Every object has a base colour, ' +
+      'a darker shadow side, and a thin lighter crescent rim on its lit edge. Soft radial glows behind glowing things. ' +
+      'Cute and readable — a cell, a planet or a creature is a few clean shapes, not a diagram.',
+    lighting:
+      'Light comes from the upper left. Rims and highlights face it; a soft glow surrounds anything that emits light. ' +
+      'No cast shadows on a floor — depth comes from layered planes getting darker and bluer with distance.',
+    ground_rule:
+      'Deep navy space with three to five layered planes behind the subject: a scatter of small stars, a huge curved ' +
+      'planet or landscape edge cropped at the bottom, and soft floating particles, each plane darker and less saturated.',
+    motion:
+      'Never still: everything drifts, bobs or rotates gently, particles float, glows pulse slowly. Objects pop in with ' +
+      'a soft spring overshoot. Between ideas the camera dives INTO an object and that object becomes the next scene — ' +
+      'no hard cuts inside a topic.',
+    camera: 'A slow continuous push, and a fast zoom-dive into an object to move to the next idea.',
+    never: ['outlines or strokes around shapes', 'photorealism', 'pure black backgrounds', 'muddy gradients', 'thin line art'],
+  },
 };
 
 export function styleGuideFor(look: SceneLook): StyleGuide {

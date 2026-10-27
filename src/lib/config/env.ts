@@ -194,6 +194,14 @@ export const env = {
     apiKey: str('KIE_API_KEY'),
     /** Which model a video insert is generated with, when AI B-roll is on. */
     videoModel: str('KIE_VIDEO_MODEL') ?? 'bytedance/v1-pro-text-to-video',
+    /**
+     * Claude through Kie, for the HyperFrames scene composer. Kie serves the
+     * Anthropic Messages API, so images (the review round's frames) work.
+     * Note the DASHES: Kie spells it `claude-opus-5-5`, WaveSpeed with a dot.
+     */
+    chatModel: str('KIE_CHAT_MODEL') ?? 'claude-opus-5-5',
+    /** What one Kie credit costs: sixteen credits for eight cents. */
+    usdPerCredit: num('KIE_USD_PER_CREDIT', 0.005),
   },
 
   imagegen: {
@@ -358,6 +366,39 @@ export const env = {
     maxUploadMb: num('MAX_UPLOAD_MB', 4096),
     maxShortDurationSec: num('MAX_SHORT_DURATION_SEC', 90),
     maxLongDurationSec: num('MAX_LONG_DURATION_SEC', 600),
+  },
+
+  /**
+   * How a drawn scene is made into motion.
+   *
+   *   hyperframes  Opus writes the whole scene — picture AND choreography — as
+   *                an HTML page with a GSAP timeline, and HyperFrames renders it
+   *                to a clip. See src/lib/director/hyperframe.ts. The default:
+   *                it falls back to `svg` per scene whenever a composition
+   *                fails, and wholesale when no composer key is set, so it can
+   *                only add to what a video gets.
+   *   svg          Opus draws a still SVG in parts and Remotion animates the
+   *                parts with a fixed vocabulary of moves.
+   */
+  scenes: {
+    engine: (str('SCENE_ENGINE') ?? 'hyperframes') as 'svg' | 'hyperframes',
+    /**
+     * The headless Chrome HyperFrames captures with. Unset, the renderer
+     * reuses the one Remotion already downloaded, so the image carries one
+     * browser rather than two.
+     */
+    hyperframesBrowserPath: str('HYPERFRAMES_BROWSER_PATH'),
+    /**
+     * Whether the model looks at frames of its own scene and fixes them
+     * before it renders. One extra call and about ten seconds per scene;
+     * worth it, and on by default for that reason.
+     */
+    review: bool('SCENE_REVIEW', true),
+    /**
+     * Who serves the model that writes HyperFrames scenes. `auto` takes Kie
+     * when KIE_API_KEY is set, and WaveSpeed's MOTION_MODEL otherwise.
+     */
+    composerProvider: (str('SCENE_COMPOSER_PROVIDER') ?? 'auto') as 'auto' | 'kie' | 'wavespeed',
   },
 
   features: {

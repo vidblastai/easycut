@@ -4,6 +4,7 @@ import { BROLL_SOURCES } from '@/lib/assets/ai-broll';
 import { BROLL_OVERLAYS, CLIP_TRANSITIONS, SCENE_LOOKS } from '@/lib/edl/types';
 import { CAPTION_PRESETS } from '@/lib/captions/presets';
 import { STYLE_PRESETS } from '@/lib/styles/presets';
+import { VISUAL_INSPO } from '@/lib/assets/visual-inspo';
 
 /**
  * Everything the picker can produce, the upload has to accept.
@@ -45,6 +46,10 @@ describe('what the upload wizard can send', () => {
     for (const overlay of BROLL_OVERLAYS) {
       expect(why({ ...base, brollOverlay: overlay }), overlay).toBeNull();
     }
+  });
+
+  it('accepts every inspo look the picker offers, all picked at once', () => {
+    expect(why({ ...base, brollSource: 'ai-image', visualInspo: VISUAL_INSPO.map((i) => i.id) })).toBeNull();
   });
 
   it('accepts the whole transition vocabulary at once', () => {

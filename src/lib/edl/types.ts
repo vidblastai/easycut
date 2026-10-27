@@ -1225,8 +1225,10 @@ export type Art = z.infer<typeof ArtSchema>;
  *   archive  cinematic amber, film-strip bars, a push-in that never stops
  *   editorial  near-black and violet: heavy type on magenta highlight strips,
  *              huge cropped foreground curves, rim-lit metal objects
+ *   science    flat-vector science explainer: deep space navy, saturated
+ *              rim-lit shapes, layered planes, the camera diving into things
  */
-export const SCENE_LOOKS = ['studio', 'neon', 'gallery', 'archive', 'editorial'] as const;
+export const SCENE_LOOKS = ['studio', 'neon', 'gallery', 'archive', 'editorial', 'science'] as const;
 export type SceneLook = (typeof SCENE_LOOKS)[number];
 
 export const AnimatedSceneSchema = z.object({
@@ -1274,6 +1276,16 @@ export const AnimatedSceneSchema = z.object({
    */
   photoUrls: z.array(z.string().nullable()).default([]),
   art: ArtSchema,
+  /**
+   * The scene as finished footage, when HyperFrames rendered it.
+   *
+   * Opus wrote the picture and its choreography as an HTML composition and it
+   * was rendered to a silent clip at the frame's own size, so the renderer
+   * plays it full-frame in place of the drawing and draws the captions over
+   * it. `art` is usually still set alongside: it is what the scene falls back
+   * to if this clip cannot be loaded. See src/lib/director/hyperframe.ts.
+   */
+  clipUrl: z.string().nullable().default(null),
   accent: z.string().default('#9B7BFF'),
   /** Kept so the editor can show why this moment was chosen. */
   reason: z.string().default(''),
@@ -1328,7 +1340,7 @@ export function sceneIsDrawn(scene: AnimatedScene): boolean {
    * place.
    */
   if (photoSlotsFor(scene) > 0) return false;
-  return Boolean(scene.art && scene.art.parts.length);
+  return Boolean(scene.clipUrl || (scene.art && scene.art.parts.length));
 }
 
 /* ------------------------------------------------------------- annotations */

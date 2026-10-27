@@ -9,6 +9,7 @@ import {
 } from './kie';
 import { generateBrollClip, isGeneratedBrollConfigured } from './generated-broll';
 import { brollPrompt } from './broll-prompt';
+import type { VisualInspo } from './visual-inspo';
 import { estimateImageCostUsd, generateImage, isImageGenConfigured } from './images';
 import type { StockClip } from './broll';
 
@@ -186,6 +187,8 @@ export async function makeBrollAsset(
     durationSec: number;
     /** Position in the video, so the still's move cycles rather than repeats. */
     index: number;
+    /** The look picked on the inspo page, for this insert. Null is realism. */
+    inspo?: VisualInspo | null;
   },
 ): Promise<AiClip | null> {
   if (source === 'ai-image') return makeStill(subject, options);
@@ -202,7 +205,7 @@ export async function makeBrollAsset(
 
 async function makeStill(
   subject: string,
-  options: { orientation: 'portrait' | 'landscape' | 'square'; durationSec: number; index: number },
+  options: { orientation: 'portrait' | 'landscape' | 'square'; durationSec: number; index: number; inspo?: VisualInspo | null },
 ): Promise<AiClip | null> {
   const aspect =
     options.orientation === 'portrait' ? '9:16' : options.orientation === 'square' ? '1:1' : '16:9';
@@ -221,7 +224,7 @@ async function makeStill(
    * to pass as footage. `brollPrompt` already writes the photographic one.
    */
   if (!isKieConfigured()) {
-    const made = await generateImage(brollPrompt(subject, 'still'), aspect, { styled: false });
+    const made = await generateImage(brollPrompt(subject, 'still', options.inspo), aspect, { styled: false });
     if (!made) return null;
     const [width, height] =
       aspect === '9:16' ? [1024, 1792] : aspect === '1:1' ? [1024, 1024] : [1792, 1024];
@@ -246,7 +249,7 @@ async function makeStill(
     const { urls } = await runKieJob({
       model: KIE_IMAGE_MODEL,
       input: {
-        prompt: brollPrompt(subject, 'still'),
+        prompt: brollPrompt(subject, 'still', options.inspo),
         aspect_ratio: aspect,
       },
       timeoutMs: KIE_IMAGE_TIMEOUT_MS,
@@ -286,7 +289,7 @@ async function makeStill(
 
 async function makeClip(
   subject: string,
-  options: { orientation: 'portrait' | 'landscape' | 'square'; durationSec: number },
+  options: { orientation: 'portrait' | 'landscape' | 'square'; durationSec: number; inspo?: VisualInspo | null },
 ): Promise<AiClip | null> {
   const model = kieVideoModel(env.kie.videoModel);
   const aspect =
@@ -307,7 +310,7 @@ async function makeClip(
     const { urls } = await runKieJob({
       model: model.id,
       input: {
-        prompt: brollPrompt(subject, 'clip'),
+        prompt: brollPrompt(subject, 'clip', options.inspo),
         aspect_ratio: aspect,
         resolution: model.resolution,
         // The Seedance 1.x models want a STRING here and the 2.x ones a

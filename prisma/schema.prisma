@@ -93,6 +93,11 @@ model Project {
   // one this edit style declares", the same contract as the looks above.
   brollOverlay String?
 
+  // The looks picked on the inspo page, as a JSON array of ids in the order
+  // they were picked — see src/lib/assets/visual-inspo.ts. Only asked for when
+  // the B-roll is made rather than found. Null means the default realism.
+  visualInspo String?
+
   // Optional free-text steer, e.g. "focus on the pricing section".
   userNote String?
 

@@ -48,6 +48,8 @@ const CONTENT: Partial<Record<SceneKind, { headline: string; items: string[] }>>
 const PHOTO_FLAG = process.argv.find((a) => a.startsWith('--photos'));
 const PHOTO_FILE = PHOTO_FLAG?.split('=')[1] ?? 'out/photos/hero.webp';
 const WIDE = process.argv.includes('--wide');
+/** A HyperFrames render to play as the scene — see scripts/hyperframe-scene.ts. */
+const CLIP_FLAG = process.argv.find((a) => a.startsWith('--clip='));
 
 /** The most recent drawing for a look, whatever `draw-scene.ts` numbered it. */
 async function findDrawing(look: SceneLook): Promise<string | null> {
@@ -76,6 +78,9 @@ async function main() {
 
   const photo = PHOTO_FLAG ? (assets.urlFor(resolve(PHOTO_FILE)) ?? '') : '';
   if (PHOTO_FLAG && !photo) throw new Error(`Cannot serve ${PHOTO_FILE}`);
+
+  const clipUrl = CLIP_FLAG ? (assets.urlFor(resolve(CLIP_FLAG.split('=')[1])) ?? '') : '';
+  if (CLIP_FLAG && !clipUrl) throw new Error(`Cannot serve ${CLIP_FLAG}`);
 
   const content = CONTENT[kind] ?? CONTENT['kinetic-text']!;
   const inputProps = {
@@ -108,6 +113,7 @@ async function main() {
           iconSvgs: content.items.map(() => null),
           photoUrls: content.items.map(() => (photo ? photo : null)),
           art,
+          clipUrl: clipUrl || null,
           accent: '#9B7BFF',
           reason: 'clip',
         },
@@ -160,7 +166,7 @@ async function main() {
     chromiumOptions: { ignoreCertificateErrors: env.render.ignoreCertificateErrors },
   });
 
-  const output = join(OUT, `${look}-${kind}${WIDE ? '-wide' : ''}.mp4`);
+  const output = join(OUT, `${look}-${kind}${WIDE ? '-wide' : ''}${clipUrl ? '-hyperframes' : ''}.mp4`);
   await renderMedia({
     composition,
     serveUrl,

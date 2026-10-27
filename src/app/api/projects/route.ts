@@ -8,6 +8,7 @@ import { currentUserId, ensureUser, isAuthEnabled } from '@/lib/auth';
 import { LAYER_NAMES, type LayerName } from '@/lib/edl/layers';
 import { SCENE_LOOKS } from '@/lib/edl/types';
 import { CreateProjectSchema } from './schema';
+import { sanitiseInspo } from '@/lib/assets/visual-inspo';
 
 export const runtime = 'nodejs';
 
@@ -59,6 +60,11 @@ export async function POST(request: Request) {
   // reads as no pick: a client built against a newer list should cost you the
   // transitions this build has never heard of, not the upload.
   const transitions = sanitiseTransitions(input.clipTransitions);
+  // Same contract for the inspo picks, and they only mean anything when the
+  // inserts are made: on stock B-roll there is nothing for a look to steer.
+  const inspo = input.brollSource === 'ai-image' || input.brollSource === 'ai-video'
+    ? sanitiseInspo(input.visualInspo)
+    : [];
 
   // Stamped at creation. A project with no owner is one nobody can ever open
   // again once auth is on, so this is not a field to backfill later.
@@ -86,6 +92,7 @@ export async function POST(request: Request) {
       clipTransitions: transitions ? JSON.stringify(transitions) : null,
       brollSource: input.brollSource ?? null,
       brollOverlay: input.brollOverlay ?? null,
+      visualInspo: inspo.length ? JSON.stringify(inspo) : null,
       inputMode: input.inputMode,
       userNote: input.userNote,
       status: 'draft',

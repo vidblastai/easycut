@@ -500,6 +500,7 @@ export function placeScenes(
       // Drawn later, in the assets stage: the selection pass says WHERE and
       // WHAT, the illustration pass draws it.
       art: null,
+      clipUrl: null,
       // Fetched later, in the asset stage — this is the deterministic half.
       iconSvgs: cue.iconQueries.map(() => null),
       photoUrls: cue.items.map(() => null),

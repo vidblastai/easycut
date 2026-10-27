@@ -17,6 +17,7 @@ import { TransitionPicker } from '@/components/transitions/TransitionPicker';
 import { BrollSourcePicker } from '@/components/broll/BrollSourcePicker';
 import { brollShapeFor, priceBrollRate, waitForBrollRate, type BrollSourceRate } from '@/lib/assets/ai-broll';
 import { OverlayPicker } from '@/components/broll/OverlayPicker';
+import { InspoPicker } from '@/components/broll/InspoPicker';
 import type { BrollSource } from '@/lib/assets/ai-broll';
 
 /**
@@ -101,11 +102,22 @@ type Phase = 'choose' | 'uploading' | 'starting';
  * choose between. The footage answers it, and the answer decides which styles
  * are even worth showing.
  */
-const QUESTIONS = ['style', 'edits'] as const;
+type Question = 'style' | 'edits' | 'inspo';
 
-/** Which of the four steps each question belongs to. */
-const STEP_OF: Record<Question, StepKey> = { style: 'style', edits: 'edits' };
-type Question = (typeof QUESTIONS)[number];
+/**
+ * The inspo page is a third question, and only for some people.
+ *
+ * It exists to steer pictures that get MADE, so it appears only once somebody
+ * has chosen AI pictures or AI video — a found stock clip has no look to
+ * steer, and asking would be a decision that cannot matter. It sits after
+ * "What goes in it" because that is where the choice that summons it is made.
+ */
+function questionsFor(madeBroll: boolean): Question[] {
+  return madeBroll ? ['style', 'edits', 'inspo'] : ['style', 'edits'];
+}
+
+/** Which of the four steps each question belongs to. The inspo page is part of choosing the edits. */
+const STEP_OF: Record<Question, StepKey> = { style: 'style', edits: 'edits', inspo: 'edits' };
 
 export function UploadFlow({
   styles,
@@ -177,6 +189,11 @@ export function UploadFlow({
 
   /** What every insert wears. Null means whatever the edit style declares. */
   const [brollOverlay, setBrollOverlay] = useState<BrollOverlay | null>(null);
+
+  /** Looks picked on the inspo page, in the order they were picked. */
+  const [inspo, setInspo] = useState<string[]>([]);
+  const madeBroll = layers.broll && (brollSource === 'ai-image' || brollSource === 'ai-video');
+  const questions = useMemo(() => questionsFor(madeBroll), [madeBroll]);
   useEffect(() => {
     // On mount, not during render: localStorage is not there on the server and
     // can throw in a private window, and a mismatch would flash the wrong tile.
@@ -190,7 +207,7 @@ export function UploadFlow({
   const [error, setError] = useState<string | null>(null);
   const [dragging, setDragging] = useState(false);
 
-  const question: Question = QUESTIONS[at];
+  const question: Question = questions[Math.min(at, questions.length - 1)];
   const busy = phase !== 'choose';
   const format = useMemo(() => formats.find((f) => f.mode === mode), [formats, mode]);
 
@@ -298,13 +315,13 @@ export function UploadFlow({
       if (event.key !== 'Enter') return;
       const target = event.target as HTMLElement | null;
       if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA')) return;
-      if (at < QUESTIONS.length - 1) setAt((n) => n + 1);
+      if (at < questions.length - 1) setAt((n) => n + 1);
       else if (file) void submit();
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [at, busy, file]);
+  }, [at, busy, file, questions]);
 
   async function submit() {
     if (!file) return;
@@ -333,6 +350,9 @@ export function UploadFlow({
           // request — an explicit "stock" says nothing the absence did not.
           brollSource: brollSource === 'stock' ? undefined : brollSource,
           brollOverlay: brollOverlay ?? undefined,
+          // Only when the page that asks for it was shown: picks left over
+          // from before switching back to stock would steer nothing.
+          visualInspo: madeBroll && inspo.length ? inspo : undefined,
           inputMode,
           // Only the ones being declined: the default is everything on, and a
           // request that spells out six `true`s says nothing the absence did not.
@@ -393,7 +413,7 @@ export function UploadFlow({
     <div className="pb-4">
       {/* One stepper, not two. The wizard's own hairline rail said the same
           thing as the four steps above it, in a second visual language. */}
-      <Stepper current={STEP_OF[question]} onStepClick={(k) => setAt(QUESTIONS.indexOf(k as Question))} />
+      <Stepper current={STEP_OF[question]} onStepClick={(k) => setAt(questions.indexOf(k as Question))} />
 
       <div key={question} className="mt-7 animate-rise">
         {question === 'style' ? (
@@ -645,6 +665,15 @@ export function UploadFlow({
           </Ask>
         ) : null}
 
+        {question === 'inspo' ? (
+          <Ask
+            title="Pick some inspo"
+            sub="Point at the looks you like. Every picture we make for your video is made in them, and the animated scenes follow the first one."
+          >
+            <InspoPicker value={inspo} onChange={setInspo} />
+          </Ask>
+        ) : null}
+
       </div>
 
       {error ? (
@@ -658,7 +687,7 @@ export function UploadFlow({
           </button>
         ) : null}
 
-        {at < QUESTIONS.length - 1 ? (
+        {at < questions.length - 1 ? (
           <button
             type="button"
             onClick={() => setAt(at + 1)}
@@ -676,11 +705,12 @@ export function UploadFlow({
         )}
       </div>
 
-      {at === QUESTIONS.length - 1 && file ? (
+      {at === questions.length - 1 && file ? (
         <p className="mt-4 text-[12.5px] text-faint">
           {file.name} · {format?.label} · {style?.name} ·{' '}
           {inputMode === 'raw' ? 'Completely raw' : 'Already trimmed'}
           {off.length ? ` · no ${off.join(', ')}` : ''}
+          {madeBroll && inspo.length ? ` · inspo: ${inspo.length}` : ''}
         </p>
       ) : null}
     </div>

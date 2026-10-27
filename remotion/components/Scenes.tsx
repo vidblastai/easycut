@@ -1,5 +1,5 @@
 import React from 'react';
-import { AbsoluteFill, Img, Sequence, useCurrentFrame, useVideoConfig } from 'remotion';
+import { AbsoluteFill, Img, OffthreadVideo, Sequence, useCurrentFrame, useVideoConfig } from 'remotion';
 import { PHOTO_GRID_MAX, PHOTO_ROW_MAX, sceneIsDrawn, type AnimatedScene, type Edl } from '../../src/lib/edl/types';
 import { FONT_FAMILY } from '../lib/fonts';
 import { easeOutCubic, kf, riseIn, riseProgress, stagger, transformOf } from '../lib/motion';
@@ -208,6 +208,7 @@ const Arrangement: React.FC<{ ctx: LookContext; look: Look }> = ({ ctx, look }) 
    * gradient is a video of title cards. The words are still there; they are
    * just the size a caption should be.
    */
+  if (scene.clipUrl) return <Composed src={scene.clipUrl} />;
   if (sceneIsDrawn(scene)) return <Drawn ctx={ctx} look={look} />;
 
   switch (scene.kind) {
@@ -345,6 +346,20 @@ const Arrangement: React.FC<{ ctx: LookContext; look: Look }> = ({ ctx, look }) 
  * The scene's own words are still in the document. The editor shows them and
  * the illustrator is briefed with them; they are simply never rendered.
  */
+/**
+ * A scene HyperFrames already rendered.
+ *
+ * Opus choreographed it and it arrives as finished, silent footage at the
+ * frame's own size, so there is nothing left to arrange: it fills the frame,
+ * the transitions around it still come from `SceneView`, and the captions
+ * play over it exactly as they do over a drawing.
+ */
+const Composed: React.FC<{ src: string }> = ({ src }) => (
+  <AbsoluteFill>
+    <OffthreadVideo src={src} muted style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+  </AbsoluteFill>
+);
+
 const Drawn: React.FC<{ ctx: LookContext; look: Look }> = ({ ctx, look }) => {
   const { scene } = ctx;
   const art = scene.art!;

@@ -94,6 +94,14 @@ const NAMED: Record<SceneLook, Omit<LookMeta, 'swatch' | 'tone'>> = {
     bestFor: 'Punchy talking-head takes — heavy type, one violet light, deep black.',
     entry: 'cut',
   },
+  science: {
+    id: 'science',
+    name: 'Flat science',
+    ink: '#FFF6E0',
+    dim: '#9FB3E8',
+    bestFor: 'Explaining how something works — bright flat shapes in deep space, the camera diving in.',
+    entry: 'cut',
+  },
   archive: {
     id: 'archive',
     name: 'Archive',
