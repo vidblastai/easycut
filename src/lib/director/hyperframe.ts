@@ -78,8 +78,18 @@ export interface CompositionResult {
   error?: string;
 }
 
+/** Which account serves the composer: Kie when it has a key, unless told otherwise. */
+export function composerProvider(): 'kie' | 'wavespeed' | null {
+  const kie = Boolean(env.kie.apiKey && env.kie.chatModel);
+  const wavespeed = Boolean(env.llm.wavespeedKey && env.llm.motionModel);
+  const wanted = env.scenes.composerProvider;
+  if (wanted === 'kie') return kie ? 'kie' : null;
+  if (wanted === 'wavespeed') return wavespeed ? 'wavespeed' : null;
+  return kie ? 'kie' : wavespeed ? 'wavespeed' : null;
+}
+
 export function isComposerConfigured(): boolean {
-  return Boolean(env.llm.wavespeedKey && env.llm.motionModel);
+  return composerProvider() !== null;
 }
 
 /**
@@ -497,10 +507,71 @@ export function isFatal(problem: string): boolean {
 
 type Content = string | Array<{ type: 'text'; text: string } | { type: 'image_url'; image_url: { url: string } }>;
 
-async function complete(
-  messages: Array<{ role: 'system' | 'user' | 'assistant'; content: Content }>,
-  temperature: number,
-): Promise<{ text: string; costUsd: number }> {
+type Message = { role: 'system' | 'user' | 'assistant'; content: Content };
+
+async function complete(messages: Message[], temperature: number): Promise<{ text: string; costUsd: number }> {
+  return composerProvider() === 'kie' ? completeWithKie(messages, temperature) : completeWithWavespeed(messages, temperature);
+}
+
+/**
+ * Claude through Kie's Anthropic Messages endpoint.
+ *
+ * The system prompt moves to the top-level field and an image becomes a
+ * base64 `image` block — the OpenAI-shaped `image_url` the rest of this file
+ * speaks is translated here rather than written twice.
+ */
+async function completeWithKie(messages: Message[], temperature: number): Promise<{ text: string; costUsd: number }> {
+  const system = messages.filter((m) => m.role === 'system').map((m) => String(m.content)).join('\n\n');
+  const body = {
+    model: env.kie.chatModel,
+    max_tokens: 20000,
+    temperature,
+    stream: false,
+    ...(system ? { system } : {}),
+    messages: messages
+      .filter((m) => m.role !== 'system')
+      .map((m) => ({
+        role: m.role,
+        content: typeof m.content === 'string'
+          ? m.content
+          : m.content.map((block) => {
+              if (block.type === 'text') return block;
+              const match = block.image_url.url.match(/^data:([^;]+);base64,(.*)$/);
+              return match
+                ? { type: 'image', source: { type: 'base64', media_type: match[1], data: match[2] } }
+                : { type: 'image', source: { type: 'url', url: block.image_url.url } };
+            }),
+      })),
+  };
+
+  const response = await fetch('https://api.kie.ai/claude/v1/messages', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', authorization: `Bearer ${env.kie.apiKey!}` },
+    body: JSON.stringify(body),
+  });
+  const json = (await response.json().catch(() => ({}))) as {
+    content?: Array<{ type?: string; text?: string }>;
+    usage?: { input_tokens?: number; output_tokens?: number };
+    credits_consumed?: number;
+    error?: { message?: string } | string;
+    msg?: string;
+  };
+  if (!response.ok || !json.content) {
+    const reason = typeof json.error === 'string' ? json.error : json.error?.message ?? json.msg;
+    throw new Error(reason ?? `${response.status} ${response.statusText}`);
+  }
+
+  const text = json.content.filter((block) => block.type === 'text').map((block) => block.text ?? '').join('');
+  // Kie bills in credits and says how many; tokens at the Opus rate otherwise.
+  const pricing = wavespeedPriceFor('anthropic/claude-opus-5.5');
+  const costUsd = typeof json.credits_consumed === 'number'
+    ? json.credits_consumed * env.kie.usdPerCredit
+    : ((json.usage?.input_tokens ?? 0) / 1_000_000) * pricing.inputPerMTok +
+      ((json.usage?.output_tokens ?? 0) / 1_000_000) * pricing.outputPerMTok;
+  return { text, costUsd };
+}
+
+async function completeWithWavespeed(messages: Message[], temperature: number): Promise<{ text: string; costUsd: number }> {
   const model = env.llm.motionModel;
   const response = await fetch(`${API_BASE}/chat/completions`, {
     method: 'POST',

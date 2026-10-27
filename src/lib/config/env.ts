@@ -194,6 +194,14 @@ export const env = {
     apiKey: str('KIE_API_KEY'),
     /** Which model a video insert is generated with, when AI B-roll is on. */
     videoModel: str('KIE_VIDEO_MODEL') ?? 'bytedance/v1-pro-text-to-video',
+    /**
+     * Claude through Kie, for the HyperFrames scene composer. Kie serves the
+     * Anthropic Messages API, so images (the review round's frames) work.
+     * Note the DASHES: Kie spells it `claude-opus-5-5`, WaveSpeed with a dot.
+     */
+    chatModel: str('KIE_CHAT_MODEL') ?? 'claude-opus-5-5',
+    /** What one Kie credit costs: sixteen credits for eight cents. */
+    usdPerCredit: num('KIE_USD_PER_CREDIT', 0.005),
   },
 
   imagegen: {
@@ -384,6 +392,11 @@ export const env = {
      * worth it, and on by default for that reason.
      */
     review: bool('SCENE_REVIEW', true),
+    /**
+     * Who serves the model that writes HyperFrames scenes. `auto` takes Kie
+     * when KIE_API_KEY is set, and WaveSpeed's MOTION_MODEL otherwise.
+     */
+    composerProvider: (str('SCENE_COMPOSER_PROVIDER') ?? 'auto') as 'auto' | 'kie' | 'wavespeed',
   },
 
   features: {

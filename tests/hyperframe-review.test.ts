@@ -1,12 +1,16 @@
 import { readFileSync } from 'node:fs';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-vi.mock('@/lib/config/env', () => ({
-  env: { llm: { wavespeedKey: 'test-key', motionModel: 'anthropic/claude-opus-5.5' } },
+const ENV = vi.hoisted(() => ({
+  llm: { wavespeedKey: 'test-key' as string | undefined, motionModel: 'anthropic/claude-opus-5.5' },
+  kie: { apiKey: undefined as string | undefined, chatModel: 'claude-opus-5-5', usdPerCredit: 0.005 },
+  scenes: { composerProvider: 'auto' as 'auto' | 'kie' | 'wavespeed' },
 }));
+vi.mock('@/lib/config/env', () => ({ env: ENV }));
 
 import {
   auditComposition,
+  composerProvider,
   isFatal,
   parseComposition,
   REVIEW_OK,
@@ -40,7 +44,11 @@ function replyWith(text: string) {
   return fetchMock;
 }
 
-afterEach(() => vi.unstubAllGlobals());
+afterEach(() => {
+  vi.unstubAllGlobals();
+  ENV.kie.apiKey = undefined;
+  ENV.scenes.composerProvider = 'auto';
+});
 
 describe('the concept line', () => {
   it('is read off the reply and survives a round trip', () => {
@@ -97,5 +105,39 @@ describe('the look-and-fix round', () => {
 
   it('looks at the scene early, mid-move, late and settled', () => {
     expect(reviewTimes(4)).toEqual([0.8, 1.8, 2.8, 3.72]);
+  });
+});
+
+describe('through Kie', () => {
+  it('is preferred when its key is set, unless WaveSpeed is asked for', () => {
+    expect(composerProvider()).toBe('wavespeed');
+    ENV.kie.apiKey = 'kie-key';
+    expect(composerProvider()).toBe('kie');
+    ENV.scenes.composerProvider = 'wavespeed';
+    expect(composerProvider()).toBe('wavespeed');
+  });
+
+  it('speaks the Anthropic Messages shape, frames included, and bills by credits', async () => {
+    ENV.kie.apiKey = 'kie-key';
+    const fetchMock = vi.fn(async () =>
+      new Response(JSON.stringify({ content: [{ type: 'text', text: REVIEW_OK }], credits_consumed: 20 })),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+
+    const result = await reviewScene(request, parts, sheet);
+    expect(result.approved).toBe(true);
+    expect(result.costUsd).toBeCloseTo(0.1);
+
+    const [url, init] = fetchMock.mock.calls[0] as unknown as [string, { body: string; headers: Record<string, string> }];
+    expect(url).toBe('https://api.kie.ai/claude/v1/messages');
+    expect(init.headers.authorization).toBe('Bearer kie-key');
+    const body = JSON.parse(init.body);
+    expect(body.model).toBe('claude-opus-5-5');
+    expect(body.system).toContain('You make one shot');
+    expect(body.messages.some((m: { role: string }) => m.role === 'system')).toBe(false);
+    expect(body.messages.at(-1).content[1]).toEqual({
+      type: 'image',
+      source: { type: 'base64', media_type: 'image/jpeg', data: 'AAAA' },
+    });
   });
 });
