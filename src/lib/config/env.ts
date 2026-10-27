@@ -371,15 +371,17 @@ export const env = {
   /**
    * How a drawn scene is made into motion.
    *
-   *   svg          Opus draws a still SVG in parts and Remotion animates the
-   *                parts with a fixed vocabulary of moves. The default.
    *   hyperframes  Opus writes the whole scene — picture AND choreography — as
    *                an HTML page with a GSAP timeline, and HyperFrames renders it
-   *                to a clip. See src/lib/director/hyperframe.ts. Falls back to
-   *                `svg` per scene whenever a composition fails.
+   *                to a clip. See src/lib/director/hyperframe.ts. The default:
+   *                it falls back to `svg` per scene whenever a composition
+   *                fails, and wholesale when no composer key is set, so it can
+   *                only add to what a video gets.
+   *   svg          Opus draws a still SVG in parts and Remotion animates the
+   *                parts with a fixed vocabulary of moves.
    */
   scenes: {
-    engine: (str('SCENE_ENGINE') ?? 'svg') as 'svg' | 'hyperframes',
+    engine: (str('SCENE_ENGINE') ?? 'hyperframes') as 'svg' | 'hyperframes',
     /**
      * The headless Chrome HyperFrames captures with. Unset, the renderer
      * reuses the one Remotion already downloaded, so the image carries one
