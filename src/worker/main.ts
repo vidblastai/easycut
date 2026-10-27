@@ -8,6 +8,7 @@ import { queue } from '@/lib/queue';
 import { makeProjectProxy, processProject, rerenderProject, type ProcessJobPayload } from './process-project';
 import { selectedProvider } from '@/lib/director';
 import { reportError } from '@/lib/errors/report';
+import { chatProvider, routedModel } from '@/lib/llm/chat';
 
 /**
  * The worker loop.
@@ -92,7 +93,7 @@ export async function main(): Promise<void> {
   console.log(`  director : ${
     director === 'anthropic' ? env.llm.model
     : director === 'gemini' ? env.llm.geminiModel
-    : director === 'wavespeed' ? `${env.llm.wavespeedModel} (via WaveSpeed)`
+    : director === 'wavespeed' ? `${routedModel(env.llm.wavespeedModel)} (via ${chatProvider() === 'kie' ? 'Kie' : 'WaveSpeed'})`
     : 'rule-based (no director key configured)'}`);
   console.log(`  workers  : ${env.queue.concurrency}`);
 

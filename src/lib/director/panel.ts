@@ -4,7 +4,7 @@ import { languageBrief } from './prompt';
 import { renderableKinds } from '@/lib/edl/panel-kinds';
 import { PANEL_KINDS, PanelSceneSchema, type PanelScene } from '@/lib/edl/types';
 import type { Transcript } from '@/lib/transcribe/types';
-import { wavespeedPriceFor } from './wavespeed';
+import { completionCostUsd, isChatConfigured, llmFetch, routedModel } from '@/lib/llm/chat';
 
 /**
  * The explainer panel's script.
@@ -117,20 +117,20 @@ const jsonSchema = {
 } as const;
 
 export function isPanelPassConfigured(): boolean {
-  return Boolean(env.llm.wavespeedKey && env.llm.motionModel);
+  return isChatConfigured();
 }
 
 export async function writePanel(
   transcript: Transcript,
   durationSec: number,
 ): Promise<PanelPassResult> {
-  const model = env.llm.motionModel;
+  const model = routedModel(env.llm.motionModel);
   if (!isPanelPassConfigured()) {
     return { scenes: [], costUsd: 0, model, error: 'no model configured' };
   }
 
   try {
-    const response = await fetch(`${API_BASE}/chat/completions`, {
+    const response = await llmFetch(`${API_BASE}/chat/completions`, {
       method: 'POST',
       headers: {
         'content-type': 'application/json',
@@ -169,10 +169,7 @@ export async function writePanel(
     const raw = JSON.parse(unfence(text)) as { scenes?: unknown[] };
     const scenes = sanitisePanel((raw.scenes ?? []) as RawScene[], durationSec);
 
-    const pricing = wavespeedPriceFor(model);
-    const costUsd =
-      ((body.usage?.prompt_tokens ?? 0) / 1_000_000) * pricing.inputPerMTok +
-      ((body.usage?.completion_tokens ?? 0) / 1_000_000) * pricing.outputPerMTok;
+    const costUsd = completionCostUsd(body, model);
 
     return { scenes, costUsd, model };
   } catch (error) {

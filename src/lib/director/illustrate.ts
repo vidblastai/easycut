@@ -2,7 +2,7 @@ import { env } from '@/lib/config/env';
 import { auditIllustration, parseIllustration, isDrawn, type Illustration } from '@/lib/assets/illustration';
 import type { AnimatedScene, SceneLook } from '@/lib/edl/types';
 import { guideAsPrompt, styleGuideFor } from '@/lib/scenes/style-guides';
-import { wavespeedPriceFor } from './wavespeed';
+import { completionCostUsd, isChatConfigured, llmFetch, routedModel } from '@/lib/llm/chat';
 
 /**
  * Opus draws the picture.
@@ -158,7 +158,7 @@ export interface IllustrationResult {
 }
 
 export function isIllustratorConfigured(): boolean {
-  return Boolean(env.llm.wavespeedKey && env.llm.motionModel);
+  return isChatConfigured();
 }
 
 /**
@@ -248,7 +248,7 @@ function sequenceFor(kind: string): string {
 }
 
 export async function drawScene(request: IllustrationRequest): Promise<IllustrationResult> {
-  const model = env.llm.motionModel;
+  const model = routedModel(env.llm.motionModel);
   if (!isIllustratorConfigured()) {
     return { illustration: null, costUsd: 0, error: 'no illustration model configured' };
   }
@@ -281,7 +281,7 @@ ${guideAsPrompt(guide, ['palette', 'rendering', 'lighting', 'ground_rule'])}
 Draw this as ${STAGES} beats: ${sequenceFor(request.kind)}. Return only the <svg>.`;
 
   try {
-    const response = await fetch(`${API_BASE}/chat/completions`, {
+    const response = await llmFetch(`${API_BASE}/chat/completions`, {
       method: 'POST',
       headers: { 'content-type': 'application/json', authorization: `Bearer ${env.llm.wavespeedKey!}` },
       body: JSON.stringify({
@@ -316,10 +316,7 @@ Draw this as ${STAGES} beats: ${sequenceFor(request.kind)}. Return only the <svg
       usage?: { prompt_tokens?: number; completion_tokens?: number };
     };
 
-    const pricing = wavespeedPriceFor(model);
-    const costUsd =
-      ((body.usage?.prompt_tokens ?? 0) / 1_000_000) * pricing.inputPerMTok +
-      ((body.usage?.completion_tokens ?? 0) / 1_000_000) * pricing.outputPerMTok;
+    const costUsd = completionCostUsd(body, model);
 
     const drawn = body.choices?.[0]?.message?.content ?? '';
     const illustration = parseIllustration(drawn, request.id ?? '');
@@ -374,7 +371,7 @@ async function repairScene(
   model: string,
 ): Promise<{ illustration: Illustration | null; costUsd: number }> {
   try {
-    const response = await fetch(`${API_BASE}/chat/completions`, {
+    const response = await llmFetch(`${API_BASE}/chat/completions`, {
       method: 'POST',
       headers: { 'content-type': 'application/json', authorization: `Bearer ${env.llm.wavespeedKey!}` },
       body: JSON.stringify({
@@ -405,10 +402,7 @@ async function repairScene(
       choices?: Array<{ message?: { content?: string } }>;
       usage?: { prompt_tokens?: number; completion_tokens?: number };
     };
-    const pricing = wavespeedPriceFor(model);
-    const costUsd =
-      ((body.usage?.prompt_tokens ?? 0) / 1_000_000) * pricing.inputPerMTok +
-      ((body.usage?.completion_tokens ?? 0) / 1_000_000) * pricing.outputPerMTok;
+    const costUsd = completionCostUsd(body, model);
 
     const fixed = parseIllustration(body.choices?.[0]?.message?.content ?? '', request.id ?? '');
     if (!fixed || !isDrawn(fixed)) return { illustration: null, costUsd };

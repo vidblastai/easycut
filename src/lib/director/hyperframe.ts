@@ -544,7 +544,40 @@ async function complete(messages: Message[], temperature: number): Promise<{ tex
  * base64 `image` block — the OpenAI-shaped `image_url` the rest of this file
  * speaks is translated here rather than written twice.
  */
+/**
+ * A Kie refusal that means "not now" rather than "no".
+ *
+ * The second live run reached Kie with a good key and was told "Resources are
+ * tight, please try again later" — capacity, not a fault — and one attempt
+ * turned a busy minute into a video with no scenes.
+ */
+export function isBusy(status: number, message: string): boolean {
+  return status === 429 || status === 502 || status === 503 || status === 504 ||
+    /try again later|resources are tight|rate limit|overloaded|too many requests/i.test(message);
+}
+
+/** Waits between attempts when Kie is busy. Short enough to fit inside a render. */
+export const KIE_RETRY_DELAYS_MS = [5_000, 15_000, 30_000];
+
 async function completeWithKie(messages: Message[], temperature: number): Promise<{ text: string; costUsd: number }> {
+  for (let attempt = 0; ; attempt++) {
+    try {
+      return await completeWithKieOnce(messages, temperature);
+    } catch (error) {
+      const busy = error instanceof KieError && isBusy(error.status, error.message);
+      if (!busy || attempt >= KIE_RETRY_DELAYS_MS.length) throw error;
+      await new Promise((resolve) => setTimeout(resolve, KIE_RETRY_DELAYS_MS[attempt]));
+    }
+  }
+}
+
+class KieError extends Error {
+  constructor(message: string, readonly status: number) {
+    super(message);
+  }
+}
+
+async function completeWithKieOnce(messages: Message[], temperature: number): Promise<{ text: string; costUsd: number }> {
   const system = messages.filter((m) => m.role === 'system').map((m) => String(m.content)).join('\n\n');
   const body = {
     model: env.kie.chatModel,
@@ -582,7 +615,7 @@ async function completeWithKie(messages: Message[], temperature: number): Promis
   };
   if (!response.ok || !json.content) {
     const reason = typeof json.error === 'string' ? json.error : json.error?.message ?? json.msg;
-    throw new Error(reason ?? `${response.status} ${response.statusText}`);
+    throw new KieError(reason ?? `${response.status} ${response.statusText}`, response.status);
   }
 
   const text = json.content.filter((block) => block.type === 'text').map((block) => block.text ?? '').join('');

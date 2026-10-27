@@ -152,6 +152,12 @@ export const env = {
      */
     motionModel: str('MOTION_MODEL') ?? 'anthropic/claude-opus-5.5',
     maxOutputTokens: num('LLM_MAX_OUTPUT_TOKENS', 8000),
+    /**
+     * Who answers the WaveSpeed-shaped passes (director, retakes, scenes,
+     * panel, panel art, motion, illustrations). `auto` takes Kie's Claude
+     * (KIE_CHAT_MODEL) when KIE_API_KEY is set — see src/lib/llm/chat.ts.
+     */
+    chatProvider: (str('CHAT_PROVIDER') ?? 'auto') as 'auto' | 'kie' | 'wavespeed',
   },
 
   stock: {

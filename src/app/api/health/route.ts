@@ -6,6 +6,7 @@ import { env } from '@/lib/config/env';
 import { selectedProvider } from '@/lib/director';
 import { isScenePassConfigured } from '@/lib/director/scenes';
 import { isAuthEnabled } from '@/lib/auth';
+import { chatProvider, routedModel } from '@/lib/llm/chat';
 
 export const dynamic = 'force-dynamic';
 
@@ -54,10 +55,11 @@ export async function GET() {
   }
   checks.queue = env.queue.driver;
   checks.renderer = env.render.driver;
-  checks.director = selectedProvider();
+  // Which account answers, so "is it on Kie yet?" is one request away.
+  checks.director = selectedProvider() === 'wavespeed' ? `${chatProvider()}:${routedModel(env.llm.wavespeedModel)}` : selectedProvider();
   // Reported because "did the animated scenes run?" was, for two rounds of
   // testing, a question nobody could answer without reading the source.
-  checks.scenes = isScenePassConfigured() ? env.llm.motionModel : 'off (no MOTION_MODEL)';
+  checks.scenes = isScenePassConfigured() ? `${chatProvider()}:${routedModel(env.llm.motionModel)}` : 'off (no model key)';
   checks.auth = isAuthEnabled() ? 'clerk' : 'OPEN — anyone can see any project';
   checks.transcription = env.transcription.deepgramKey || env.transcription.groqKey || env.transcription.assemblyaiKey
     ? 'configured'
