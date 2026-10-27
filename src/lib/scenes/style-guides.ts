@@ -340,7 +340,7 @@ export const STYLE_GUIDES: Record<SceneLook, StyleGuide> = {
       'Construction first: faint guide lines sweep across, then the object draws on line by line along them ' +
       '(strokeDashoffset, power1.inOut). Parts slide apart into an exploded view and back together. Dimension ' +
       'arrows extend from their tick marks. Motion is precise and mechanical — no bounce.',
-    camera: 'Steady and level; pans along the drawing like a draftsman’s eye, and dives by zooming into one detail until it becomes the next drawing.',
+    camera: 'Steady, level and centred on the drawing; a slow push, and a dive that zooms into one detail until it becomes the next drawing.',
     never: ['text or numbers on dimension lines', 'soft cartoon blobs', 'glows', 'photorealism', 'warm backgrounds'],
   },
 
@@ -412,7 +412,7 @@ export const STYLE_GUIDES: Record<SceneLook, StyleGuide> = {
     motion:
       'Drawn on by hand: strokes write on with strokeDashoffset, hatching fills in quickly, arrows swoop in. ' +
       'Changes happen by wiping: a soft eraser smear clears an area before the next drawing appears. Small wobble on landing.',
-    camera: 'Pans across the board as if following the teacher; zooms in on one drawing to start the next.',
+    camera: 'Stays centred on the drawing with a slow push; zooms into one drawing to start the next.',
     never: ['clean vector fills', 'glows', 'gradients', 'photorealism', 'white backgrounds'],
   },
 
@@ -461,7 +461,7 @@ export const STYLE_GUIDES: Record<SceneLook, StyleGuide> = {
       'Smooth, deliberate transformations: shapes morph continuously into the next form, curves draw on left to ' +
       'right, areas fill in, vectors rotate about their tails, the plane itself stretches. power2.inOut throughout, ' +
       'unhurried. Nothing bounces.',
-    camera: 'Calm pans and zooms across the plane; a dive zooms into a point until a new plane opens from it.',
+    camera: 'Centred on the active shape with a calm slow push; a dive zooms into a point until a new plane opens from it.',
     never: ['cartoon characters', 'bouncy springs', 'textures', 'warm backgrounds', 'heavy outlines'],
   },
 
@@ -528,15 +528,15 @@ export const STYLE_GUIDES: Record<SceneLook, StyleGuide> = {
     accent: '#FF5A1F',
     rendering:
       'Loud graphic poster: huge flat geometric shapes — circles, half-circles, bars, arrows, rectangles — in a few ' +
-      'saturated colours, hard edges, no shading, bold scale contrast (one shape fills half the frame next to a small ' +
-      'one). The subject is built from these primitives, Bauhaus-like.',
+      'saturated colours, hard edges, no shading. The subject is built big from a handful of these primitives, ' +
+      'Bauhaus-like, with bold scale contrast between its own parts.',
     lighting: 'None. Pure flat colour; contrast comes from scale and colour blocking.',
     ground_rule:
       'Flat warm cream paper, with one oversized cropped shape bleeding off an edge far behind the subject in a pale tint of a palette colour.',
     motion:
       'Punchy and rhythmic: shapes slam in on the beat with expo.out or back.out(2), wipe across with hard masks, ' +
       'rotate in 90° snaps, scale from 0 to full in 0.25 s. Strong overlap and staggered rhythm, like it is cut to music.',
-    camera: 'Mostly locked off; big moves are done by the shapes, plus hard zooms that punch into a shape to fill the frame.',
+    camera: 'Locked off and centred; big moves are done by the shapes, plus a hard zoom that punches into a shape until it fills the frame.',
     never: ['gradients', 'textures', 'soft glows', 'thin lines', 'realistic detail'],
   },
 
@@ -557,7 +557,7 @@ export const STYLE_GUIDES: Record<SceneLook, StyleGuide> = {
       'with fussy order. Soft shading only.',
     lighting: 'Even, soft, slightly warm light from the front; tiny soft shadows under objects.',
     ground_rule:
-      'A pastel back wall and floor meeting at a horizon, with symmetric framing elements (a proscenium-like frame) at both sides.',
+      'A soft pastel back wall and floor meeting at a horizon behind the centred subject, with a faint symmetrical arch or panel directly behind it. Nothing at the frame edges.',
     motion:
       'Precise and deadpan: objects slide in on straight lines and stop exactly in place (power3.out), doors and ' +
       'panels flip open, things pop up from below the floor. Symmetric pairs move in mirror image.',

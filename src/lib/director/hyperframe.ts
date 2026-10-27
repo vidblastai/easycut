@@ -150,7 +150,11 @@ The page around them is provided. The frame is ${width}×${height} px. Inside yo
 
 ## The motion
 
-A sequence, not a picture that moves: two or three beats, each one a thing the viewer looks at and then leaves behind, following what the voice says.
+A sequence, not a picture that moves, cut for a short vertical video where attention is gone in a second:
+
+- **Hook at once.** The subject is on screen and moving by 0.3 s — no fade-up from an empty frame, no slow build.
+- **Beats follow the words.** Two beats for a shot under 4 s, three at most for a longer one. Each beat shows the thing being said at that moment — the noun or verb the voice is on — and changes when the voice moves on.
+- **The last beat is the payoff**: the biggest, most detailed moment of the shot, held until the end.
 
 - **Land on the word.** Each beat's key move starts at \`at("word", fallback)\` for the word that names it. A move three frames late reads as lag.
 - **Ease by role, in numbers.** Arrivals ease out on a long tail: \`expo.out\` or \`power4.out\`, 0.4–0.8 s — or, where the world below says things pop or spring, \`back.out(1.4)\` to \`back.out(2)\`: a tightly damped spring with a small overshoot, never a wobble. Camera moves ease both ways with \`power2.inOut\` and run at half the speed you would default to, except the dive between beats. Exits accelerate with \`power3.in\` and are 40–50% shorter than their entrance. When content swaps in place, the outgoing piece leaves before the incoming one lands — separate their timing. Never the same ease and duration on everything.
@@ -162,6 +166,10 @@ A sequence, not a picture that moves: two or three beats, each one a thing the v
 - Pivots: set \`transformOrigin\` on anything that rotates — a clock hand turns about its pin, not about the frame.
 - Animate transforms (x, y, scale, rotation), opacity, \`strokeDashoffset\` and SVG \`attr\`. Not \`left\`/\`top\`/\`width\`/\`height\`, never \`display\` or \`visibility\`.
 - The last beat has settled by ${(durationSec - 0.4).toFixed(2)} s and stays on screen to the end; nothing exits at the end — the edit cuts away.
+
+## When the world and these rules disagree
+
+The world below sets the drawing technique, palette and motion character. Where it suggests anything about layout or framing — panning across, things at the frame edges, a split composition — the rules above win: one subject, centred, above the captions.
 
 ## Hard rules
 
@@ -464,9 +472,10 @@ Look at them the way a motion designer reviewing a colleague's work would, and c
 4. Pieces overlapping by accident, cut off by the frame edge unintentionally, or misaligned.
 5. Something rotating about the wrong point, or a shape that looks broken or unfinished.
 6. Two frames that look nearly the same — the scene has stalled between them. Every frame should show the sequence clearly progressing.
-7. Colours outside the palette you were given, or a flat look with no depth.
+7. Colours outside the palette you were given, or a drawing technique that does not match the world you were given (paper looks like paper, chalk like chalk, pixels like pixels).
 8. Whether the frames actually show your concept and what is being said.
 9. Clutter: more than one main object per beat, a screen, phone or app window, or anything that is not something the line is about — a planet, stars, a creature or any decoration the words never mention. Replace it with the thing being talked about.
+10. A weak ending — the last frame should be the payoff: the biggest, most finished moment, not smaller or emptier than what came before.
 
 If it is genuinely good, reply with exactly: ${REVIEW_OK}
 
