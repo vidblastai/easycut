@@ -1,0 +1,91 @@
+<!-- concept: a clean lightbulb idea is redrawn as a messy scribble on a napkin, a perfect circle tries to close around it and never does, and the scrappy sketch is the one that lights up -->
+<style>
+#bg { position:absolute; inset:0; background: radial-gradient(ellipse at 50% 38%, #FAF6EE 0%, #F4EFE4 60%, #E9E2D3 100%); }
+#grain { position:absolute; inset:0; background-image: radial-gradient(rgba(20,20,20,.05) 1px, transparent 1.3px); background-size: 6px 6px; }
+svg.layer { position:absolute; left:0; top:0; overflow:visible; }
+.ink { fill:none; stroke:#141414; stroke-linecap:round; stroke-linejoin:round; }
+.d { opacity:0; }
+#napkin, #wait, #glow { opacity:0; }
+</style>
+<div id="scene">
+  <div id="bg"></div>
+  <div id="grain"></div>
+  <svg class="layer" id="world" width="1080" height="1920" viewBox="0 0 1080 1920">
+    <!-- the napkin: a zigzag-edged square with a grey wash and a fold -->
+    <g id="napkin">
+      <path d="M250 300 l20 -12 l20 12 l20 -12 l20 12 l20 -12 l20 12 l20 -12 l20 12 l20 -12 l20 12 l20 -12 l20 12 l20 -12 l20 12 l20 -12 l20 12 l20 -12 l20 12 l20 -12 l20 12 l20 -12 l20 12 l20 -12 l20 12 l20 -12 l20 12 l20 -12 l20 12 L830 960 l-20 12 l-20 -12 l-20 12 l-20 -12 l-20 12 l-20 -12 l-20 12 l-20 -12 l-20 12 l-20 -12 l-20 12 l-20 -12 l-20 12 l-20 -12 l-20 12 l-20 -12 l-20 12 l-20 -12 l-20 12 l-20 -12 l-20 12 l-20 -12 l-20 12 l-20 -12 l-20 12 l-20 -12 l-20 12 l-20 -12 l-20 12 Z" fill="#FFFFFF" stroke="#141414" stroke-width="5" stroke-linejoin="round"/>
+      <path d="M250 300 L830 960" stroke="#CFC8BA" stroke-width="5" opacity=".8"/>
+      <path d="M540 630 L830 300 L830 960 Z" fill="#CFC8BA" opacity=".28"/>
+      <circle cx="700" cy="840" r="70" fill="none" stroke="#8FA3A8" stroke-width="10" opacity=".35"/>
+    </g>
+
+    <!-- the clean bulb: the idea as you imagine it -->
+    <g id="clean">
+      <path class="ink d" stroke-width="8" pathLength="1" stroke-dasharray="1" stroke-dashoffset="1" d="M540 380 C 400 380 340 480 368 590 C 386 656 442 690 454 760 L626 760 C 638 690 694 656 712 590 C 740 480 680 380 540 380 Z"/>
+      <path class="ink d" stroke-width="8" pathLength="1" stroke-dasharray="1" stroke-dashoffset="1" d="M470 790 L610 790 M478 822 L602 822 M500 854 L580 854"/>
+      <path class="ink d" stroke-width="7" pathLength="1" stroke-dasharray="1" stroke-dashoffset="1" d="M500 760 L500 650 L520 610 L540 650 L560 610 L580 650 L580 760"/>
+    </g>
+
+    <!-- the bad sketch: the same bulb, scribbled fast -->
+    <g id="messy">
+      <path id="fill" d="M540 392 C 410 386 346 486 376 592 C 394 656 444 690 458 752 L622 756 C 636 688 690 652 706 590 C 734 482 672 386 540 392 Z" fill="#E0412C" opacity="0"/>
+      <path class="ink d m" stroke-width="7" pathLength="1" stroke-dasharray="1" stroke-dashoffset="1" d="M548 372 C 392 378 330 492 366 600 C 384 662 446 690 450 768 L632 754 C 640 684 700 654 716 584 C 746 470 666 372 520 386"/>
+      <path class="ink d m" stroke-width="6" pathLength="1" stroke-dasharray="1" stroke-dashoffset="1" d="M530 394 C 410 394 352 480 380 586 C 398 650 452 694 460 762 M612 760 C 630 692 690 650 704 592 C 728 492 690 410 560 386"/>
+      <path class="ink d m" stroke-width="7" pathLength="1" stroke-dasharray="1" stroke-dashoffset="1" d="M458 794 L620 784 M470 826 L606 820 L470 832 M498 858 L586 852"/>
+      <path class="ink d m" stroke-width="6" pathLength="1" stroke-dasharray="1" stroke-dashoffset="1" d="M498 762 L504 652 L516 604 L542 660 L556 600 L584 656 L576 766"/>
+    </g>
+
+    <!-- waiting: three dots, then struck out -->
+    <g id="wait">
+      <circle class="wd" cx="470" cy="1022" r="16" fill="#141414"/><circle class="wd" cx="540" cy="1022" r="16" fill="#141414"/><circle class="wd" cx="610" cy="1022" r="16" fill="#141414"/>
+      <path id="strike" d="M430 1052 L650 992" stroke="#E0412C" stroke-width="12" stroke-linecap="round" pathLength="1" stroke-dasharray="1" stroke-dashoffset="1"/>
+    </g>
+
+    <!-- the perfect circle that never closes -->
+    <circle id="perfect" cx="540" cy="620" r="330" fill="none" stroke="#141414" stroke-width="5" stroke-dasharray="1" stroke-dashoffset="1" pathLength="1" transform="rotate(-90 540 620)" opacity="0"/>
+
+    <!-- the sketch lights up -->
+    <g id="glow" stroke="#E0412C" stroke-width="10" stroke-linecap="round">
+      <path class="ray" d="M540 330 L540 270"/><path class="ray" d="M730 400 L775 360"/><path class="ray" d="M350 400 L305 360"/><path class="ray" d="M780 580 L840 580"/><path class="ray" d="M300 580 L240 580"/>
+    </g>
+  </svg>
+</div>
+<script>
+const draw = (el, t, d, ease) => { tl.set(el, { opacity: 1 }, t); tl.to(el, { strokeDashoffset: 0, duration: d, ease: ease || "power1.inOut" }, t); };
+tl.fromTo("#world", { scale: 1.08 }, { scale: 1.16, transformOrigin: "540px 640px", duration: DURATION, ease: "none" }, 0);
+
+// Hook: a clean bulb draws itself at once — "most great ideas".
+const clean = document.querySelectorAll("#clean .d");
+draw(clean[0], 0, .7);
+draw(clean[1], .45, .3, "power2.out");
+draw(clean[2], .6, .35, "power2.out");
+
+// "a bad sketch on a napkin": the napkin slaps down, the clean bulb lifts away and a scribble takes its place.
+const sketch = at("bad", 1.72) - .35;
+tl.set("#napkin", { opacity: 1 }, sketch);
+tl.fromTo("#napkin", { y: 700, rotation: -14, svgOrigin: "540 630" }, { y: 0, rotation: -4, svgOrigin: "540 630", duration: .4, ease: "back.out(1.3)", immediateRender: false }, sketch);
+tl.to("#clean", { opacity: 0, scale: 1.1, svgOrigin: "540 620", duration: .25, ease: "power2.in" }, sketch + .15);
+document.querySelectorAll("#messy .m").forEach((m, i) => draw(m, sketch + .35 + i * .14, .28, "power2.out"));
+// It boils a little — a hand-drawn line never sits perfectly still.
+tl.to("#messy", { x: 2, y: -2, rotation: .6, svgOrigin: "540 620", duration: .08, yoyo: true, repeat: 11, ease: "steps(1)" }, sketch + 1);
+
+// "stop waiting": three dots tick on, and a red stroke strikes them out.
+const wait = at("waiting", 3.62) - .3;
+tl.set("#wait", { opacity: 1 }, wait - .1);
+tl.fromTo(".wd", { scale: 0, transformOrigin: "50% 50%" }, { scale: 1, duration: .15, stagger: .1, ease: "back.out(3)", immediateRender: false }, wait - .1);
+draw("#strike", wait + .3, .2, "power3.out");
+
+// "for the perfect one": a perfect circle starts closing round the sketch… and gives up.
+const perfect = at("perfect", 4.28) - .3;
+tl.to("#wait", { opacity: 0, duration: .2 }, perfect);
+tl.set("#perfect", { opacity: .9 }, perfect);
+tl.to("#perfect", { strokeDashoffset: .3, duration: .45, ease: "power1.inOut" }, perfect);
+tl.to("#perfect", { opacity: 0, scale: 1.08, svgOrigin: "540 620", duration: .25, ease: "power2.in" }, perfect + .5);
+
+// Payoff on "one": the scrappy sketch is the one that lights up — the only red in the picture.
+const one = at("one", 4.62) + .05;
+tl.to("#fill", { opacity: .9, duration: .25, ease: "power2.out" }, one);
+tl.set("#glow", { opacity: 1 }, one + .05);
+tl.fromTo(".ray", { scale: 0, transformOrigin: "50% 100%" }, { scale: 1, duration: .25, stagger: .04, ease: "back.out(3)", immediateRender: false }, one + .05);
+tl.to("#messy", { scale: 1.05, svgOrigin: "540 620", duration: .15, yoyo: true, repeat: 1, ease: "power2.out" }, one);
+</script>

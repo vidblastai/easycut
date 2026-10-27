@@ -1,0 +1,95 @@
+<!-- concept: a bicycle wheel is drafted on blueprint paper — rim, hub, then thirty-six spokes laced in one by one — and tension arrows close in on the rim from every side -->
+<style>
+#bg { position:absolute; inset:0; background: radial-gradient(ellipse at 50% 36%, #1A5299 0%, #0F3B78 60%, #0B2F62 100%); }
+#grid { position:absolute; inset:0; background-image: linear-gradient(rgba(234,242,255,.12) 2px, transparent 2px), linear-gradient(90deg, rgba(234,242,255,.12) 2px, transparent 2px), linear-gradient(rgba(234,242,255,.06) 1px, transparent 1px), linear-gradient(90deg, rgba(234,242,255,.06) 1px, transparent 1px); background-size: 300px 300px, 300px 300px, 60px 60px, 60px 60px; background-position: -60px 60px; }
+#fade { position:absolute; inset:0; background: radial-gradient(ellipse at 50% 38%, transparent 40%, rgba(11,47,98,.85) 100%); }
+svg.layer { position:absolute; left:0; top:0; overflow:visible; }
+.ln { fill:none; stroke:#EAF2FF; stroke-linecap:round; stroke-linejoin:round; }
+.guide { fill:none; stroke:#5E8AC7; stroke-width:3; }
+.spoke { fill:none; stroke:#EAF2FF; stroke-width:3; stroke-linecap:round; opacity:0; }
+.arrow path { fill:none; stroke:#FFC94A; stroke-width:7; stroke-linecap:round; stroke-linejoin:round; }
+.arrow { opacity:0; }
+.d { opacity:0; }
+</style>
+<div id="scene">
+  <div id="bg"></div>
+  <div id="grid"></div>
+  <div id="fade"></div>
+  <svg class="layer" id="world" width="1080" height="1920" viewBox="0 0 1080 1920">
+    <!-- construction first: centre lines and a guide circle -->
+    <g id="guides">
+      <path class="guide d" id="gH" d="M90 660 L990 660" stroke-dasharray="40 12 6 12" />
+      <path class="guide d" id="gV" d="M540 230 L540 1090" stroke-dasharray="40 12 6 12" />
+      <circle class="guide d" id="gC" cx="540" cy="660" r="390" stroke-dasharray="10 14"/>
+    </g>
+
+    <g id="wheel">
+      <!-- rim: outer and inner edge, plus the tyre -->
+      <circle class="ln d" id="tyre" cx="540" cy="660" r="358" stroke-width="5" pathLength="1" stroke-dasharray="1" stroke-dashoffset="1" transform="rotate(-90 540 660)"/>
+      <circle class="ln d" id="rimO" cx="540" cy="660" r="330" stroke-width="4" pathLength="1" stroke-dasharray="1" stroke-dashoffset="1" transform="rotate(-90 540 660)"/>
+      <circle class="ln d" id="rimI" cx="540" cy="660" r="304" stroke-width="3" pathLength="1" stroke-dasharray="1" stroke-dashoffset="1" transform="rotate(-90 540 660)"/>
+      <circle cx="540" cy="660" r="344" fill="none" stroke="#9BB8E3" stroke-width="2" stroke-dasharray="8 10" opacity=".55" class="d" id="hidden"/>
+      <g id="spokes"><path class="spoke" d="M588.8 642.2 L844.0 660.0" pathLength="1" stroke-dasharray="1" stroke-dashoffset="1"/><path class="spoke" d="M585.0 686.0 L839.4 712.8" pathLength="1" stroke-dasharray="1" stroke-dashoffset="1"/><path class="spoke" d="M592.0 660.0 L825.7 764.0" pathLength="1" stroke-dasharray="1" stroke-dashoffset="1"/><path class="spoke" d="M573.4 699.9 L803.3 812.0" pathLength="1" stroke-dasharray="1" stroke-dashoffset="1"/><path class="spoke" d="M588.9 677.7 L772.9 855.4" pathLength="1" stroke-dasharray="1" stroke-dashoffset="1"/><path class="spoke" d="M557.7 708.9 L735.4 892.9" pathLength="1" stroke-dasharray="1" stroke-dashoffset="1"/><path class="spoke" d="M579.9 693.4 L692.0 923.3" pathLength="1" stroke-dasharray="1" stroke-dashoffset="1"/><path class="spoke" d="M540.0 712.0 L644.0 945.7" pathLength="1" stroke-dasharray="1" stroke-dashoffset="1"/><path class="spoke" d="M566.0 705.0 L592.8 959.4" pathLength="1" stroke-dasharray="1" stroke-dashoffset="1"/><path class="spoke" d="M522.2 708.8 L540.0 964.0" pathLength="1" stroke-dasharray="1" stroke-dashoffset="1"/><path class="spoke" d="M549.1 711.2 L487.2 959.4" pathLength="1" stroke-dasharray="1" stroke-dashoffset="1"/><path class="spoke" d="M506.5 699.8 L436.0 945.7" pathLength="1" stroke-dasharray="1" stroke-dashoffset="1"/><path class="spoke" d="M531.0 711.2 L388.0 923.3" pathLength="1" stroke-dasharray="1" stroke-dashoffset="1"/><path class="spoke" d="M494.9 686.0 L344.6 892.9" pathLength="1" stroke-dasharray="1" stroke-dashoffset="1"/><path class="spoke" d="M514.0 705.1 L307.1 855.4" pathLength="1" stroke-dasharray="1" stroke-dashoffset="1"/><path class="spoke" d="M488.8 669.0 L276.7 812.0" pathLength="1" stroke-dasharray="1" stroke-dashoffset="1"/><path class="spoke" d="M500.2 693.5 L254.3 764.0" pathLength="1" stroke-dasharray="1" stroke-dashoffset="1"/><path class="spoke" d="M488.8 650.9 L240.6 712.8" pathLength="1" stroke-dasharray="1" stroke-dashoffset="1"/><path class="spoke" d="M491.2 677.8 L236.0 660.0" pathLength="1" stroke-dasharray="1" stroke-dashoffset="1"/><path class="spoke" d="M495.0 634.0 L240.6 607.2" pathLength="1" stroke-dasharray="1" stroke-dashoffset="1"/><path class="spoke" d="M488.0 660.0 L254.3 556.0" pathLength="1" stroke-dasharray="1" stroke-dashoffset="1"/><path class="spoke" d="M506.6 620.1 L276.7 508.0" pathLength="1" stroke-dasharray="1" stroke-dashoffset="1"/><path class="spoke" d="M491.1 642.3 L307.1 464.6" pathLength="1" stroke-dasharray="1" stroke-dashoffset="1"/><path class="spoke" d="M522.3 611.1 L344.6 427.1" pathLength="1" stroke-dasharray="1" stroke-dashoffset="1"/><path class="spoke" d="M500.1 626.6 L388.0 396.7" pathLength="1" stroke-dasharray="1" stroke-dashoffset="1"/><path class="spoke" d="M540.0 608.0 L436.0 374.3" pathLength="1" stroke-dasharray="1" stroke-dashoffset="1"/><path class="spoke" d="M514.0 615.0 L487.2 360.6" pathLength="1" stroke-dasharray="1" stroke-dashoffset="1"/><path class="spoke" d="M557.8 611.2 L540.0 356.0" pathLength="1" stroke-dasharray="1" stroke-dashoffset="1"/><path class="spoke" d="M530.9 608.8 L592.8 360.6" pathLength="1" stroke-dasharray="1" stroke-dashoffset="1"/><path class="spoke" d="M573.5 620.2 L644.0 374.3" pathLength="1" stroke-dasharray="1" stroke-dashoffset="1"/><path class="spoke" d="M549.0 608.8 L692.0 396.7" pathLength="1" stroke-dasharray="1" stroke-dashoffset="1"/><path class="spoke" d="M585.1 634.0 L735.4 427.1" pathLength="1" stroke-dasharray="1" stroke-dashoffset="1"/><path class="spoke" d="M566.0 614.9 L772.9 464.6" pathLength="1" stroke-dasharray="1" stroke-dashoffset="1"/><path class="spoke" d="M591.2 651.0 L803.3 508.0" pathLength="1" stroke-dasharray="1" stroke-dashoffset="1"/><path class="spoke" d="M579.8 626.5 L825.7 556.0" pathLength="1" stroke-dasharray="1" stroke-dashoffset="1"/><path class="spoke" d="M591.2 669.1 L839.4 607.2" pathLength="1" stroke-dasharray="1" stroke-dashoffset="1"/></g>
+      <g id="nipples" class="d"><circle cx="844.0" cy="660.0" r="5" fill="#EAF2FF"/><circle cx="839.4" cy="712.8" r="5" fill="#EAF2FF"/><circle cx="825.7" cy="764.0" r="5" fill="#EAF2FF"/><circle cx="803.3" cy="812.0" r="5" fill="#EAF2FF"/><circle cx="772.9" cy="855.4" r="5" fill="#EAF2FF"/><circle cx="735.4" cy="892.9" r="5" fill="#EAF2FF"/><circle cx="692.0" cy="923.3" r="5" fill="#EAF2FF"/><circle cx="644.0" cy="945.7" r="5" fill="#EAF2FF"/><circle cx="592.8" cy="959.4" r="5" fill="#EAF2FF"/><circle cx="540.0" cy="964.0" r="5" fill="#EAF2FF"/><circle cx="487.2" cy="959.4" r="5" fill="#EAF2FF"/><circle cx="436.0" cy="945.7" r="5" fill="#EAF2FF"/><circle cx="388.0" cy="923.3" r="5" fill="#EAF2FF"/><circle cx="344.6" cy="892.9" r="5" fill="#EAF2FF"/><circle cx="307.1" cy="855.4" r="5" fill="#EAF2FF"/><circle cx="276.7" cy="812.0" r="5" fill="#EAF2FF"/><circle cx="254.3" cy="764.0" r="5" fill="#EAF2FF"/><circle cx="240.6" cy="712.8" r="5" fill="#EAF2FF"/><circle cx="236.0" cy="660.0" r="5" fill="#EAF2FF"/><circle cx="240.6" cy="607.2" r="5" fill="#EAF2FF"/><circle cx="254.3" cy="556.0" r="5" fill="#EAF2FF"/><circle cx="276.7" cy="508.0" r="5" fill="#EAF2FF"/><circle cx="307.1" cy="464.6" r="5" fill="#EAF2FF"/><circle cx="344.6" cy="427.1" r="5" fill="#EAF2FF"/><circle cx="388.0" cy="396.7" r="5" fill="#EAF2FF"/><circle cx="436.0" cy="374.3" r="5" fill="#EAF2FF"/><circle cx="487.2" cy="360.6" r="5" fill="#EAF2FF"/><circle cx="540.0" cy="356.0" r="5" fill="#EAF2FF"/><circle cx="592.8" cy="360.6" r="5" fill="#EAF2FF"/><circle cx="644.0" cy="374.3" r="5" fill="#EAF2FF"/><circle cx="692.0" cy="396.7" r="5" fill="#EAF2FF"/><circle cx="735.4" cy="427.1" r="5" fill="#EAF2FF"/><circle cx="772.9" cy="464.6" r="5" fill="#EAF2FF"/><circle cx="803.3" cy="508.0" r="5" fill="#EAF2FF"/><circle cx="825.7" cy="556.0" r="5" fill="#EAF2FF"/><circle cx="839.4" cy="607.2" r="5" fill="#EAF2FF"/></g>
+      <!-- hub -->
+      <g id="hub" class="d">
+        <circle cx="540" cy="660" r="62" fill="#174A8F" stroke="#EAF2FF" stroke-width="4"/>
+        <circle cx="540" cy="660" r="24" fill="none" stroke="#EAF2FF" stroke-width="4"/>
+        <circle cx="540" cy="660" r="8" fill="#FFC94A"/>
+      </g>
+    </g>
+
+    <!-- tension, from every side -->
+    <g id="arrows"><g class="arrow a0"><path d="M950.5 770.0 L878.1 750.6"/><path d="M903.3 744.5 L878.1 750.6 L896.9 768.5"/></g><g class="arrow a1"><path d="M840.5 960.5 L787.5 907.5"/><path d="M812.4 914.8 L787.5 907.5 L794.8 932.4"/></g><g class="arrow a2"><path d="M650.0 1070.5 L630.6 998.1"/><path d="M648.5 1016.9 L630.6 998.1 L624.5 1023.3"/></g><g class="arrow a3"><path d="M430.0 1070.5 L449.4 998.1"/><path d="M455.5 1023.3 L449.4 998.1 L431.5 1016.9"/></g><g class="arrow a4"><path d="M239.5 960.5 L292.5 907.5"/><path d="M285.2 932.4 L292.5 907.5 L267.6 914.8"/></g><g class="arrow a5"><path d="M129.5 770.0 L201.9 750.6"/><path d="M183.1 768.5 L201.9 750.6 L176.7 744.5"/></g><g class="arrow a6"><path d="M129.5 550.0 L201.9 569.4"/><path d="M176.7 575.5 L201.9 569.4 L183.1 551.5"/></g><g class="arrow a7"><path d="M239.5 359.5 L292.5 412.5"/><path d="M267.6 405.2 L292.5 412.5 L285.2 387.6"/></g><g class="arrow a8"><path d="M430.0 249.5 L449.4 321.9"/><path d="M431.5 303.1 L449.4 321.9 L455.5 296.7"/></g><g class="arrow a9"><path d="M650.0 249.5 L630.6 321.9"/><path d="M624.5 296.7 L630.6 321.9 L648.5 303.1"/></g><g class="arrow a10"><path d="M840.5 359.5 L787.5 412.5"/><path d="M794.8 387.6 L787.5 412.5 L812.4 405.2"/></g><g class="arrow a11"><path d="M950.5 550.0 L878.1 569.4"/><path d="M896.9 551.5 L878.1 569.4 L903.3 575.5"/></g></g>
+
+    <!-- a dimension line under the wheel: ticks and arrows, no numbers -->
+    <g id="dim" class="d" stroke="#9BB8E3" stroke-width="3" fill="none">
+      <path d="M182 1060 L898 1060"/><path d="M182 1040 L182 1080"/><path d="M898 1040 L898 1080"/>
+      <path d="M210 1046 L182 1060 L210 1074"/><path d="M870 1046 L898 1060 L870 1074"/>
+    </g>
+  </svg>
+</div>
+<script>
+const draw = (el, t, d, ease) => { tl.set(el, { opacity: 1 }, t); tl.to(el, { strokeDashoffset: 0, duration: d, ease: ease || "power1.inOut" }, t); };
+// The draftsman's eye: a steady, slow push into the drawing.
+tl.fromTo("#world", { scale: 1.02 }, { scale: 1.1, transformOrigin: "540px 660px", duration: DURATION, ease: "none" }, 0);
+
+// Hook: guide lines sweep across, then the rim draws round on "bicycle wheel".
+tl.set("#guides .d", { opacity: 1 }, 0);
+tl.fromTo("#gH", { scaleX: 0, svgOrigin: "540 660" }, { scaleX: 1, svgOrigin: "540 660", duration: .35, ease: "power2.out", immediateRender: false }, 0);
+tl.fromTo("#gV", { scaleY: 0, svgOrigin: "540 660" }, { scaleY: 1, svgOrigin: "540 660", duration: .35, ease: "power2.out", immediateRender: false }, .08);
+tl.fromTo("#gC", { scale: 0, svgOrigin: "540 660" }, { scale: 1, svgOrigin: "540 660", duration: .4, ease: "power2.out", immediateRender: false }, .15);
+draw("#rimO", .15, .7);
+draw("#rimI", .3, .65);
+draw("#tyre", .45, .6);
+tl.set("#hidden", { opacity: .55 }, .9);
+tl.set("#hub", { opacity: 1 }, at("wheel", .86));
+tl.fromTo("#hub", { scale: 0, svgOrigin: "540 660" }, { scale: 1, svgOrigin: "540 660", duration: .3, ease: "power3.out", immediateRender: false }, at("wheel", .86));
+tl.to("#guides", { opacity: .4, duration: .4 }, 1.2);
+
+// "stays strong": the dimension line extends from its ticks.
+const strong = at("strong", 1.68) - .1;
+tl.set("#dim", { opacity: 1 }, strong);
+tl.fromTo("#dim", { scaleX: 0, svgOrigin: "540 1060" }, { scaleX: 1, svgOrigin: "540 1060", duration: .4, ease: "power2.out", immediateRender: false }, strong);
+
+// "thirty six thin spokes": laced in, one after another, all the way round.
+const spokes = at("36", 2.44) - .1;
+document.querySelectorAll(".spoke").forEach((s, i) => draw(s, spokes + i * .028, .22, "power1.out"));
+tl.set("#nipples", { opacity: 1 }, spokes + 1);
+tl.fromTo("#nipples circle", { scale: 0, transformOrigin: "50% 50%" }, { scale: 1, duration: .15, stagger: .008, ease: "back.out(3)", immediateRender: false }, spokes + 1);
+
+// "pull on the rim": tension arrows press in; "from every side": they come from all round.
+const pull = at("pull", 3.66) - .1;
+for (let i = 0; i < 12; i++) {
+  const t = i < 2 ? pull + i * .1 : at("every", 4.74) - .3 + (i - 2) * .05;
+  tl.set(".a" + i, { opacity: 1 }, t);
+  tl.fromTo(".a" + i, { scale: 1.35, svgOrigin: "540 660" }, { scale: 1, svgOrigin: "540 660", duration: .3, ease: "power3.out", immediateRender: false }, t);
+}
+tl.to("#rimO, #rimI", { stroke: "#FFC94A", duration: .2, ease: "power1.out" }, at("rim", 4.3) - .1);
+tl.to(".spoke", { stroke: "#FFC94A", duration: .15, stagger: .01, ease: "none" }, at("rim", 4.3));
+
+// Payoff on "side": the arrows squeeze in once together and the finished wheel turns.
+const side = at("side", 5.04);
+tl.to("#arrows", { scale: .97, svgOrigin: "540 660", duration: .12, yoyo: true, repeat: 1, ease: "power2.out" }, side);
+tl.to("#spokes, #nipples", { rotation: 20, svgOrigin: "540 660", duration: DURATION - side, ease: "power1.out" }, side - .2);
+</script>

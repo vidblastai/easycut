@@ -1,0 +1,115 @@
+<!-- concept: three bold bars slam in for three habits, then each becomes its habit built from shapes — a sun rising, a body moving, and a giant check that lands before lunch -->
+<style>
+#bg { position:absolute; inset:0; background:#F6E4C6; }
+#far { position:absolute; left:-520px; top:1080px; width:1300px; height:1300px; border-radius:50%; background:#2B3BFF; opacity:.09; }
+#far2 { position:absolute; left:760px; top:-260px; width:620px; height:620px; background:#FF5A1F; opacity:.08; transform: rotate(18deg); }
+.bar { position:absolute; left:190px; width:700px; height:130px; }
+#bar1 { top:440px; background:#2B3BFF; }
+#bar2 { top:610px; background:#FF5A1F; }
+#bar3 { top:780px; background:#0E0F1F; }
+.dot { position:absolute; width:54px; height:54px; border-radius:50%; background:#F6E4C6; top:38px; left:40px; }
+#sunBox { position:absolute; left:160px; top:330px; width:760px; height:420px; overflow:hidden; }
+#sun { position:absolute; left:110px; top:420px; width:540px; height:540px; border-radius:50%; background:#FF5A1F; }
+#horizon { position:absolute; left:160px; top:740px; width:760px; height:56px; background:#0E0F1F; }
+.ray { position:absolute; left:529px; top:120px; width:22px; height:120px; background:#FF7DC7; transform-origin: 11px 520px; }
+#figure { position:absolute; left:0; top:0; width:1080px; height:1920px; }
+#head { position:absolute; left:450px; top:300px; width:180px; height:180px; border-radius:50%; background:#2B3BFF; }
+#torso { position:absolute; left:485px; top:500px; width:110px; height:290px; background:#0E0F1F; }
+.arm { position:absolute; left:540px; top:520px; width:260px; height:54px; background:#FF5A1F; transform-origin: 0 27px; }
+.leg { position:absolute; left:540px; top:770px; width:250px; height:62px; background:#2B3BFF; transform-origin: 0 31px; }
+#plate { position:absolute; left:220px; top:340px; width:640px; height:640px; border-radius:50%; background:#FF7DC7; }
+#check { position:absolute; left:0; top:0; width:1080px; height:1920px; }
+#c1 { position:absolute; left:300px; top:640px; width:250px; height:96px; background:#0E0F1F; transform: rotate(45deg); transform-origin: 0 50%; }
+#c2 { position:absolute; left:470px; top:810px; width:470px; height:96px; background:#0E0F1F; transform: rotate(-50deg); transform-origin: 0 50%; }
+.conf { position:absolute; }
+#k1 { left:210px; top:300px; width:90px; height:90px; background:#FF5A1F; }
+#k2 { left:800px; top:330px; width:84px; height:84px; border-radius:50%; background:#2B3BFF; }
+#k3 { left:830px; top:900px; width:0; height:0; border-left:52px solid transparent; border-right:52px solid transparent; border-bottom:90px solid #0E0F1F; }
+#sunBox, #horizon, #figure, #plate, #check, .conf { opacity:0; }
+</style>
+<div id="scene">
+  <div id="bg"></div>
+  <div id="far"></div>
+  <div id="far2"></div>
+
+  <div class="bar" id="bar1"><div class="dot"></div></div>
+  <div class="bar" id="bar2"><div class="dot"></div></div>
+  <div class="bar" id="bar3"><div class="dot"></div></div>
+
+  <div id="sunBox">
+    <div id="sun"></div>
+  </div>
+  <div id="rays">
+    <div class="ray" style="transform: rotate(-60deg)"></div><div class="ray" style="transform: rotate(-30deg)"></div><div class="ray" style="transform: rotate(0deg)"></div><div class="ray" style="transform: rotate(30deg)"></div><div class="ray" style="transform: rotate(60deg)"></div>
+  </div>
+  <div id="horizon"></div>
+
+  <div id="figure">
+    <div class="leg" id="legL"></div><div class="leg" id="legR"></div>
+    <div id="torso"></div>
+    <div class="arm" id="armL"></div><div class="arm" id="armR"></div>
+    <div id="head"></div>
+  </div>
+
+  <div id="plate"></div>
+  <div id="check"><div id="c1"></div><div id="c2"></div></div>
+  <div class="conf" id="k1"></div><div class="conf" id="k2"></div><div class="conf" id="k3"></div>
+</div>
+<script>
+tl.set("#figure", { scale: 1.35, transformOrigin: "540px 560px" }, 0);
+
+// Hook: three bars slam in on the beat, one per habit.
+["#bar1", "#bar2", "#bar3"].forEach((id, i) => {
+  tl.fromTo(id, { x: i % 2 ? 1100 : -1100 }, { x: 0, duration: .32, ease: "expo.out" }, .05 + i * .16);
+});
+tl.fromTo(".dot", { scale: 0 }, { scale: 1, duration: .25, stagger: .16, ease: "back.out(3)" }, .3);
+// "changed everything": the stack punches.
+const all = at("everything", 1.08);
+tl.to(".bar", { scaleX: 1.08, duration: .1, yoyo: true, repeat: 1, stagger: .05, ease: "power2.out" }, all);
+tl.to("#far", { scale: 1.12, transformOrigin: "50% 50%", duration: 2, ease: "power1.out" }, all);
+
+// "wake up early": the bars snap away and a sun rises over a horizon.
+const wake = at("wake", 1.98) - .25;
+tl.to("#bar1", { scaleX: 0, transformOrigin: "100% 50%", duration: .22, ease: "power3.in" }, wake);
+tl.to("#bar2", { scaleX: 0, transformOrigin: "0% 50%", duration: .22, ease: "power3.in" }, wake + .05);
+tl.to("#bar3", { scaleY: .43, y: -10, duration: .22, ease: "power3.in" }, wake + .05);
+tl.set("#horizon, #sunBox", { opacity: 1 }, wake + .25);
+tl.set("#bar3", { opacity: 0 }, wake + .28);
+tl.fromTo("#sun", { y: 0 }, { y: -380, duration: .55, ease: "back.out(1.3)", immediateRender: false }, wake + .28);
+tl.fromTo(".ray", { scaleY: 0, opacity: 1 }, { scaleY: 1, opacity: 1, duration: .25, stagger: .05, ease: "back.out(2.5)", immediateRender: false }, at("early", 2.3) - .05);
+tl.set(".ray", { opacity: 0 }, 0);
+
+// "move your body": the sun wipes off and a body of shapes snaps through moves.
+const move = at("move", 2.94) - .15;
+tl.to("#sunBox, #horizon, #rays", { x: -1200, duration: .25, ease: "power3.in" }, move);
+tl.set("#figure", { opacity: 1 }, move + .2);
+tl.fromTo("#figure", { x: 1100 }, { x: 0, duration: .3, ease: "expo.out", immediateRender: false }, move + .2);
+const poses = [[-45, 225, 70, 110], [-135, 315, 40, 140], [-45, 225, 100, 80], [-150, 330, 60, 120]];
+poses.forEach((p, i) => {
+  const t = move + .35 + i * .2;
+  tl.to("#armR", { rotation: p[0], duration: .1, ease: "power4.out" }, t);
+  tl.to("#armL", { rotation: p[1], duration: .1, ease: "power4.out" }, t);
+  tl.to("#legR", { rotation: p[2], duration: .1, ease: "power4.out" }, t);
+  tl.to("#legL", { rotation: p[3], duration: .1, ease: "power4.out" }, t);
+  tl.to("#figure", { y: i % 2 ? 0 : -40, duration: .1, ease: "power3.out" }, t);
+});
+
+// "finish one hard task": the body slides out, a pink plate lands and a giant check slams onto it.
+const finish = at("finish", 3.82) - .1;
+tl.to("#figure", { x: 1200, duration: .22, ease: "power3.in" }, finish);
+tl.set("#plate", { opacity: 1 }, finish + .15);
+tl.fromTo("#plate", { scale: 0 }, { scale: 1, duration: .35, ease: "back.out(1.6)", immediateRender: false }, finish + .15);
+const hard = at("hard", 4.34) - .05;
+tl.set("#check", { opacity: 1 }, hard);
+tl.fromTo("#c1", { scaleX: 0 }, { scaleX: 1, duration: .14, ease: "power4.out", immediateRender: false }, hard);
+tl.fromTo("#c2", { scaleX: 0 }, { scaleX: 1, duration: .2, ease: "power4.out", immediateRender: false }, hard + .14);
+tl.fromTo("#check", { scale: 1.25 }, { scale: 1, transformOrigin: "540px 700px", duration: .3, ease: "expo.out", immediateRender: false }, hard + .34);
+
+// "before lunch": the payoff — the plate punches and three shapes burst out around it.
+const lunch = at("lunch", 5.28) - .15;
+tl.to("#plate", { scale: 1.08, duration: .12, yoyo: true, repeat: 1, ease: "power2.out" }, lunch);
+tl.set(".conf", { opacity: 1 }, lunch);
+tl.fromTo("#k1", { scale: 0, rotation: -90 }, { scale: 1, rotation: 0, duration: .3, ease: "back.out(2.5)", immediateRender: false }, lunch);
+tl.fromTo("#k2", { scale: 0 }, { scale: 1, duration: .3, ease: "back.out(2.5)", immediateRender: false }, lunch + .06);
+tl.fromTo("#k3", { scale: 0, rotation: 90 }, { scale: 1, rotation: 0, duration: .3, ease: "back.out(2.5)", immediateRender: false }, lunch + .12);
+</script>

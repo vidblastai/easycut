@@ -1,0 +1,146 @@
+<!-- concept: a coloured-pencil lighthouse under a hatched night sky; the keeper's little lantern climbs step after step up the tower until the lamp switches on and its beam finds a ship -->
+<style>
+#bg { position:absolute; inset:0; background: radial-gradient(ellipse at 50% 40%, #FBF6EA 0%, #F6F0E1 60%, #EDE4CF 100%); }
+#tooth { position:absolute; inset:0; background-image: radial-gradient(rgba(74,64,56,.06) 1px, transparent 1.4px); background-size: 5px 5px; }
+svg.layer { position:absolute; left:0; top:0; overflow:visible; }
+.g { fill:none; stroke:#4A4038; stroke-width:4; stroke-linecap:round; stroke-linejoin:round; }
+#beamL, #beamR, #glowLamp, .stp, #ship { opacity:0; }
+</style>
+<div id="scene">
+  <div id="bg"></div>
+  <div id="tooth"></div>
+  <svg class="layer" id="world" width="1080" height="1920" viewBox="0 0 1080 1920">
+  <g id="boil">
+    <defs>
+      <filter id="pencil" x="-5%" y="-5%" width="110%" height="110%">
+        <feTurbulence type="fractalNoise" baseFrequency="1.4" numOctaves="2" seed="7" result="n"/>
+        <feDisplacementMap in="SourceGraphic" in2="n" scale="3" xChannelSelector="R" yChannelSelector="G" result="d"/>
+        <feColorMatrix in="n" type="matrix" values="0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 -1.1 1.2" result="tooth"/>
+        <feComposite in="d" in2="tooth" operator="in"/>
+      </filter>
+      <pattern id="hBlue" patternUnits="userSpaceOnUse" width="12" height="12" patternTransform="rotate(32)"><line x1="0" y1="0" x2="0" y2="12" stroke="#4A7FB5" stroke-width="6"/></pattern>
+      <pattern id="hBlueX" patternUnits="userSpaceOnUse" width="14" height="14" patternTransform="rotate(-28)"><line x1="0" y1="0" x2="0" y2="14" stroke="#2F5A86" stroke-width="4"/></pattern>
+      <pattern id="hRed" patternUnits="userSpaceOnUse" width="9" height="9" patternTransform="rotate(40)"><line x1="0" y1="0" x2="0" y2="9" stroke="#D9534F" stroke-width="5"/></pattern>
+      <pattern id="hYellow" patternUnits="userSpaceOnUse" width="10" height="10" patternTransform="rotate(25)"><line x1="0" y1="0" x2="0" y2="10" stroke="#F0C04A" stroke-width="6"/></pattern>
+      <pattern id="hGreen" patternUnits="userSpaceOnUse" width="10" height="10" patternTransform="rotate(-35)"><line x1="0" y1="0" x2="0" y2="10" stroke="#6BA368" stroke-width="5"/></pattern>
+      <pattern id="hGrey" patternUnits="userSpaceOnUse" width="10" height="10" patternTransform="rotate(20)"><line x1="0" y1="0" x2="0" y2="10" stroke="#8C8274" stroke-width="4"/></pattern>
+    </defs>
+
+    <!-- night: a hatched sky circle and a moon -->
+    <g id="sky" filter="url(#pencil)">
+      <circle cx="540" cy="620" r="440" fill="url(#hBlue)" opacity=".75"/>
+      <circle cx="540" cy="620" r="440" fill="url(#hBlueX)" opacity=".35"/>
+      <circle id="moon" cx="300" cy="380" r="62" fill="#F6F0E1"/>
+      <circle cx="300" cy="380" r="62" fill="url(#hYellow)" opacity=".7"/>
+      <g fill="#F6F0E1"><circle class="star" cx="760" cy="300" r="9"/><circle class="star" cx="820" cy="460" r="7"/><circle class="star" cx="250" cy="560" r="7"/><circle class="star" cx="690" cy="210" r="6"/></g>
+    </g>
+
+    <!-- the beams, behind the tower -->
+    <g filter="url(#pencil)">
+      <path id="beamL" d="M540 372 L60 260 L60 520 Z" fill="url(#hYellow)" opacity=".9"/>
+      <path id="beamR" d="M540 372 L1020 260 L1020 520 Z" fill="url(#hYellow)" opacity=".9"/>
+    </g>
+
+    <!-- sea and rocks -->
+    <g id="sea" filter="url(#pencil)">
+      <path d="M100 1000 C 300 980 780 980 980 1000 L980 1050 L100 1050 Z" fill="url(#hBlue)"/>
+      <path class="g wave" d="M130 1000 q 25 -16 50 0 t 50 0 t 50 0 t 50 0" stroke="#4A7FB5"/>
+      <path class="g wave" d="M700 1004 q 25 -16 50 0 t 50 0 t 50 0 t 50 0" stroke="#4A7FB5"/>
+      <path d="M380 1010 C 400 960 460 940 540 942 C 620 940 690 960 708 1010 Z" fill="url(#hGrey)"/>
+      <path class="g" d="M380 1010 C 400 960 460 940 540 942 C 620 940 690 960 708 1010"/>
+      <path d="M410 985 C 440 960 470 958 490 962" stroke="#6BA368" stroke-width="10" fill="none" stroke-linecap="round" opacity=".8"/>
+    </g>
+
+    <!-- the lighthouse -->
+    <g id="tower" filter="url(#pencil)">
+      <path d="M450 960 L488 430 L592 430 L630 960 Z" fill="#F6F0E1"/>
+      <path d="M455 890 L460 820 L620 820 L625 890 Z" fill="url(#hRed)"/>
+      <path d="M465 750 L470 680 L610 680 L615 750 Z" fill="url(#hRed)"/>
+      <path d="M475 610 L480 540 L600 540 L605 610 Z" fill="url(#hRed)"/>
+      <path class="g" d="M450 960 L488 430 M592 430 L630 960 M440 962 L640 962"/>
+      <rect x="478" y="400" width="124" height="30" fill="url(#hGrey)"/>
+      <path class="g" d="M470 400 L610 400 M478 430 L602 430"/>
+      <!-- lamp room -->
+      <rect id="lampRoom" x="492" y="318" width="96" height="82" fill="#FBF6EA"/>
+      <rect id="glowLamp" x="492" y="318" width="96" height="82" fill="url(#hYellow)"/>
+      <path class="g" d="M492 318 L492 400 M588 318 L588 400 M540 318 L540 400"/>
+      <path d="M470 320 L540 262 L610 320 Z" fill="url(#hRed)"/>
+      <path class="g" d="M470 320 L540 262 L610 320 Z"/>
+      <path class="g" d="M540 262 L540 240"/>
+      <!-- door and windows -->
+      <path class="g" d="M520 960 L520 912 C 520 900 560 900 560 912 L560 960"/>
+      <rect class="g" x="526" y="772" width="28" height="34"/>
+      <rect class="g" x="526" y="630" width="28" height="34"/>
+      <rect class="g" x="526" y="488" width="28" height="34"/>
+    </g>
+
+    <!-- the steps, ticked up the tower in a zigzag, and the keeper's lantern climbing them -->
+    <g id="steps" stroke="#4A4038" stroke-width="5" stroke-linecap="round">
+      <line class="stp" x1="490" y1="940" x2="510" y2="930"/><line class="stp" x1="560" y1="905" x2="580" y2="895"/><line class="stp" x1="500" y1="862" x2="520" y2="852"/><line class="stp" x1="560" y1="825" x2="580" y2="815"/>
+      <line class="stp" x1="500" y1="782" x2="520" y2="772"/><line class="stp" x1="560" y1="742" x2="580" y2="732"/><line class="stp" x1="505" y1="700" x2="525" y2="690"/><line class="stp" x1="560" y1="660" x2="578" y2="650"/>
+      <line class="stp" x1="508" y1="620" x2="526" y2="610"/><line class="stp" x1="556" y1="580" x2="574" y2="570"/><line class="stp" x1="510" y1="540" x2="528" y2="530"/><line class="stp" x1="552" y1="500" x2="570" y2="490"/>
+    </g>
+    <g id="keeper">
+      <circle cx="0" cy="0" r="26" fill="#F0C04A" opacity=".45"/>
+      <circle cx="0" cy="0" r="12" fill="#F0C04A"/>
+      <circle cx="0" cy="0" r="12" fill="none" stroke="#4A4038" stroke-width="3"/>
+    </g>
+
+    <!-- the ship -->
+    <g id="ship" filter="url(#pencil)">
+      <path d="M150 975 L330 975 L300 1010 L180 1010 Z" fill="url(#hRed)"/>
+      <path class="g" d="M150 975 L330 975 L300 1010 L180 1010 Z"/>
+      <path class="g" d="M240 975 L240 850"/>
+      <path d="M244 860 L310 960 L244 960 Z" fill="#F6F0E1"/>
+      <path class="g" d="M244 860 L310 960 L244 960 Z"/>
+      <path d="M236 880 L190 960 L236 960 Z" fill="url(#hBlue)"/>
+      <path class="g" d="M236 880 L190 960 L236 960 Z"/>
+    </g>
+  </g>
+  </svg>
+</div>
+<script>
+// A soft, slow push like turning a page; the lines boil a little.
+tl.fromTo("#world", { scale: 1.3 }, { scale: 1.38, transformOrigin: "540px 620px", duration: DURATION, ease: "none" }, 0);
+tl.to("#boil", { x: 1.5, y: -1, duration: .1, yoyo: true, repeat: 27, ease: "steps(1)" }, 0);
+
+// Hook: the night sky blooms and the lighthouse rises into it — "every night".
+tl.fromTo("#sky", { scale: .3, opacity: 0, svgOrigin: "540 620" }, { scale: 1, opacity: 1, svgOrigin: "540 620", duration: .55, ease: "back.out(1.3)" }, 0);
+tl.fromTo("#tower", { y: 500 }, { y: 0, duration: .5, ease: "back.out(1.4)" }, .1);
+tl.fromTo("#sea", { y: 160, opacity: 0 }, { y: 0, opacity: 1, duration: .4, ease: "power2.out" }, .15);
+tl.to(".star", { opacity: .3, duration: .2, yoyo: true, repeat: 7, stagger: .1, ease: "steps(1)" }, .5);
+tl.to(".wave", { x: 20, duration: .6, yoyo: true, repeat: 7, ease: "sine.inOut" }, 0);
+
+// "the old lighthouse keeper": his lantern appears at the door.
+const keeper = at("keeper", 1.5) - .2;
+tl.fromTo("#keeper", { x: 540, y: 940, scale: 0 }, { x: 540, y: 940, scale: 1, duration: .3, ease: "back.out(2)" }, keeper);
+
+// "climbs ninety nine steps": up the zigzag, a step ticking in under each footfall.
+const climb = at("climbs", 1.9) - .05;
+const pts = [[500, 925], [570, 890], [510, 847], [570, 810], [510, 767], [570, 727], [515, 685], [569, 645], [517, 605], [565, 565], [519, 525], [561, 485], [540, 420]];
+pts.forEach((p, i) => {
+  const t = climb + i * .13;
+  tl.to("#keeper", { x: p[0], y: p[1], duration: .12, ease: "power1.inOut" }, t);
+  if (i < 12) {
+    tl.set(".stp:nth-child(" + (i + 1) + ")", { opacity: 1 }, t + .06);
+  }
+});
+
+// "switch on the light": the lamp room fills with yellow and the beams swing out.
+const sw = at("switch", 3.6) - .1;
+tl.to("#keeper", { scale: 0, duration: .15, ease: "power2.in" }, sw - .05);
+tl.to("#glowLamp", { opacity: 1, duration: .08, yoyo: true, repeat: 2, ease: "steps(1)" }, sw);
+tl.set("#glowLamp", { opacity: 1 }, sw + .3);
+const light = at("light", 4.14) - .15;
+tl.set("#beamL, #beamR", { opacity: .9 }, light);
+tl.fromTo("#beamL", { scaleX: 0, svgOrigin: "540 372" }, { scaleX: 1, svgOrigin: "540 372", duration: .4, ease: "power3.out", immediateRender: false }, light);
+tl.fromTo("#beamR", { scaleX: 0, svgOrigin: "540 372" }, { scaleX: 1, svgOrigin: "540 372", duration: .4, ease: "power3.out", immediateRender: false }, light + .05);
+tl.to("#sky", { opacity: .8, duration: .4 }, light);
+
+// "for the ships": the left beam dips onto a ship sailing in, which bobs in its light.
+const ships = at("ships", 4.64) - .2;
+tl.set("#ship", { opacity: 1 }, ships);
+tl.fromTo("#ship", { x: -260 }, { x: 0, duration: .5, ease: "power3.out", immediateRender: false }, ships);
+tl.to("#beamL", { rotation: -14, svgOrigin: "540 372", duration: .5, ease: "power2.inOut" }, ships);
+tl.to("#ship", { y: -8, rotation: -2, svgOrigin: "240 1000", duration: .25, yoyo: true, repeat: 3, ease: "sine.inOut" }, ships + .5);
+</script>

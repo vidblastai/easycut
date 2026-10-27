@@ -1,0 +1,121 @@
+<!-- concept: a symmetrical pastel Lisbon pops up around a steep hill, a tiny yellow tram climbs it to the top, and a clock above turns a full twelve minutes -->
+<style>
+#bg { position:absolute; inset:0; background: linear-gradient(180deg, #F9E6E1 0%, #F6DCD6 60%, #EFC9C2 60.2%, #E9BDB5 100%); }
+#pool { position:absolute; left:140px; top:250px; width:800px; height:800px; border-radius:50%; background: radial-gradient(circle, rgba(255,244,232,.9) 0%, rgba(255,244,232,0) 68%); }
+svg.layer { position:absolute; left:0; top:0; overflow:visible; }
+#track, #ties, #tram { opacity:0; }
+</style>
+<div id="scene">
+  <div id="bg"></div>
+  <div id="pool"></div>
+  <svg class="layer" id="world" width="1080" height="1920" viewBox="0 0 1080 1920">
+    <!-- the arch on the back wall, dead centre -->
+    <path id="arch" d="M300 1000 L300 420 A240 240 0 0 1 780 420 L780 1000 Z" fill="#FFF4E8" opacity=".7"/>
+    <path d="M330 1000 L330 425 A210 210 0 0 1 750 425 L750 1000" fill="none" stroke="#E9A3A0" stroke-width="10" opacity=".6"/>
+
+    <!-- the town, in mirrored pairs behind the hill -->
+    <defs><clipPath id="above"><rect x="0" y="0" width="1080" height="1010"/></clipPath></defs>
+    <g clip-path="url(#above)">
+    <g id="townL">
+      <g class="house" id="h0"><rect x="150" y="610" width="110" height="400" fill="#9ED2C6"/><path d="M140 615 L205 555 L270 615 Z" fill="#7D2E3A"/><rect x="175" y="650" width="26" height="36" fill="#FFF4E8"/><rect x="215" y="650" width="26" height="36" fill="#FFF4E8"/><rect x="175" y="710" width="26" height="36" fill="#FFF4E8"/><rect x="215" y="710" width="26" height="36" fill="#FFF4E8"/></g>
+      <g class="house" id="h1"><rect x="262" y="540" width="100" height="470" fill="#E7B75F"/><rect x="256" y="530" width="112" height="18" fill="#7D2E3A"/><rect x="285" y="575" width="22" height="34" fill="#FFF4E8"/><rect x="318" y="575" width="22" height="34" fill="#FFF4E8"/><rect x="285" y="630" width="22" height="34" fill="#FFF4E8"/><rect x="318" y="630" width="22" height="34" fill="#FFF4E8"/></g>
+      <g class="house" id="h2"><rect x="364" y="470" width="96" height="540" fill="#E9A3A0"/><path d="M356 476 L412 420 L468 476 Z" fill="#7D2E3A"/><circle cx="412" cy="510" r="16" fill="#FFF4E8"/><rect x="384" y="550" width="22" height="34" fill="#FFF4E8"/><rect x="418" y="550" width="22" height="34" fill="#FFF4E8"/></g>
+    </g>
+    <g id="townR">
+      <g class="house" id="h3"><rect x="820" y="610" width="110" height="400" fill="#9ED2C6"/><path d="M810 615 L875 555 L940 615 Z" fill="#7D2E3A"/><rect x="839" y="650" width="26" height="36" fill="#FFF4E8"/><rect x="879" y="650" width="26" height="36" fill="#FFF4E8"/><rect x="839" y="710" width="26" height="36" fill="#FFF4E8"/><rect x="879" y="710" width="26" height="36" fill="#FFF4E8"/></g>
+      <g class="house" id="h4"><rect x="718" y="540" width="100" height="470" fill="#E7B75F"/><rect x="712" y="530" width="112" height="18" fill="#7D2E3A"/><rect x="740" y="575" width="22" height="34" fill="#FFF4E8"/><rect x="773" y="575" width="22" height="34" fill="#FFF4E8"/><rect x="740" y="630" width="22" height="34" fill="#FFF4E8"/><rect x="773" y="630" width="22" height="34" fill="#FFF4E8"/></g>
+      <g class="house" id="h5"><rect x="620" y="470" width="96" height="540" fill="#E9A3A0"/><path d="M612 476 L668 420 L724 476 Z" fill="#7D2E3A"/><circle cx="668" cy="510" r="16" fill="#FFF4E8"/><rect x="640" y="550" width="22" height="34" fill="#FFF4E8"/><rect x="674" y="550" width="22" height="34" fill="#FFF4E8"/></g>
+    </g>
+
+    </g>
+    <!-- the hill: steep, symmetric, with a little plateau at the top -->
+    <g id="hill">
+      <path d="M100 1010 L470 640 Q540 590 610 640 L980 1010 Z" fill="#9ED2C6"/>
+      <path d="M100 1010 L470 640 Q540 590 610 640 L640 670 Q540 610 450 690 L160 1010 Z" fill="#B7DED5"/>
+      <path d="M980 1010 L610 640 L640 640 L1000 1010 Z" fill="#7FBFB2"/>
+      <rect x="80" y="1006" width="920" height="16" rx="8" fill="#7D2E3A"/>
+    </g>
+    <!-- the rails up the left slope -->
+    <path id="track" d="M150 990 L478 662 Q540 618 602 662" pathLength="1" fill="none" stroke="#7D2E3A" stroke-width="8" stroke-dasharray="1" stroke-dashoffset="1"/>
+    <g id="ties" stroke="#7D2E3A" stroke-width="6" stroke-linecap="round">
+      <line x1="200" y1="952" x2="220" y2="972"/><line x1="260" y1="892" x2="280" y2="912"/><line x1="320" y1="832" x2="340" y2="852"/><line x1="380" y1="772" x2="400" y2="792"/><line x1="440" y1="712" x2="460" y2="732"/>
+    </g>
+
+    <!-- the clock above the hill: twelve marks, no numbers -->
+    <g id="clock">
+      <circle cx="540" cy="330" r="112" fill="#7D2E3A"/>
+      <circle cx="540" cy="330" r="96" fill="#FFF4E8"/>
+      <g stroke="#7D2E3A" stroke-width="7" stroke-linecap="round">
+        <line x1="540" y1="246" x2="540" y2="262"/><line x1="582" y1="257" x2="574" y2="271"/><line x1="613" y1="288" x2="599" y2="296"/><line x1="624" y1="330" x2="608" y2="330"/><line x1="613" y1="372" x2="599" y2="364"/><line x1="582" y1="403" x2="574" y2="389"/>
+        <line x1="540" y1="414" x2="540" y2="398"/><line x1="498" y1="403" x2="506" y2="389"/><line x1="467" y1="372" x2="481" y2="364"/><line x1="456" y1="330" x2="472" y2="330"/><line x1="467" y1="288" x2="481" y2="296"/><line x1="498" y1="257" x2="506" y2="271"/>
+      </g>
+      <line id="hourHand" x1="540" y1="330" x2="540" y2="290" stroke="#7D2E3A" stroke-width="12" stroke-linecap="round"/>
+      <line id="minHand" x1="540" y1="330" x2="540" y2="262" stroke="#E7B75F" stroke-width="9" stroke-linecap="round"/>
+      <circle cx="540" cy="330" r="12" fill="#7D2E3A"/>
+      <path id="sweep" d="M540 330 L540 250 A80 80 0 0 1 540 250 Z" fill="#E7B75F" opacity=".25"/>
+    </g>
+
+    <!-- the tram: drawn around its bottom centre, moved as a whole -->
+    <g id="tram">
+      <line x1="-10" y1="-118" x2="20" y2="-150" stroke="#7D2E3A" stroke-width="5" stroke-linecap="round"/>
+      <line x1="20" y1="-150" x2="44" y2="-150" stroke="#7D2E3A" stroke-width="5" stroke-linecap="round"/>
+      <rect x="-92" y="-122" width="184" height="16" rx="8" fill="#FFF4E8"/>
+      <rect x="-86" y="-110" width="172" height="92" rx="16" fill="#E7B75F"/>
+      <rect x="-86" y="-48" width="172" height="12" fill="#FFF4E8"/>
+      <rect x="-72" y="-96" width="34" height="38" rx="6" fill="#FFF4E8" stroke="#7D2E3A" stroke-width="5"/>
+      <rect x="-28" y="-96" width="34" height="38" rx="6" fill="#FFF4E8" stroke="#7D2E3A" stroke-width="5"/>
+      <rect x="16" y="-96" width="22" height="66" rx="5" fill="#7D2E3A"/>
+      <rect x="46" y="-96" width="28" height="38" rx="6" fill="#FFF4E8" stroke="#7D2E3A" stroke-width="5"/>
+      <rect x="-86" y="-24" width="172" height="10" rx="5" fill="#7D2E3A"/>
+      <circle cx="-50" cy="-8" r="12" fill="#7D2E3A"/><circle cx="50" cy="-8" r="12" fill="#7D2E3A"/>
+      <circle cx="-50" cy="-8" r="4" fill="#FFF4E8"/><circle cx="50" cy="-8" r="4" fill="#FFF4E8"/>
+      <circle id="lamp" cx="80" cy="-70" r="7" fill="#FFF4E8"/>
+    </g>
+    <g id="puffs" fill="#FFF4E8">
+      <circle class="puff" cx="0" cy="0" r="14"/><circle class="puff" cx="0" cy="0" r="10"/><circle class="puff" cx="0" cy="0" r="8"/>
+    </g>
+  </svg>
+</div>
+<script>
+// A straight, level push into the set — never tilted.
+tl.fromTo("#world", { scale: 1.12 }, { scale: 1.2, transformOrigin: "540px 640px", duration: DURATION, ease: "none" }, 0);
+
+// Hook: the hill is there and the town pops up behind it in mirrored pairs on "Lisbon".
+const lisbon = Math.min(at("Lisbon", .5), .5) - .4;
+tl.fromTo("#hill", { y: 120, opacity: 0 }, { y: 0, opacity: 1, duration: .45, ease: "power3.out" }, 0);
+tl.fromTo("#arch", { scaleY: 0, transformOrigin: "540px 1000px" }, { scaleY: 1, duration: .6, ease: "power3.out" }, .1);
+[["#h2", "#h5"], ["#h1", "#h4"], ["#h0", "#h3"]].forEach((pair, i) => {
+  tl.fromTo(pair, { y: 520 }, { y: 0, duration: .5, ease: "back.out(1.4)" }, lisbon + .3 + i * .12);
+});
+
+// "tiny yellow tram": the tram slides in at the foot of the hill, already on the slope.
+const tram = at("tram", 1.78) - .45;
+const footX = 230, footY = 910;
+tl.set("#track, #ties", { opacity: 1 }, tram - .2);
+tl.to("#track", { strokeDashoffset: 0, duration: .6, ease: "power2.inOut" }, tram - .2);
+tl.fromTo("#ties line", { scale: 0, transformOrigin: "50% 50%" }, { scale: 1, duration: .2, stagger: .05, ease: "back.out(3)" }, tram);
+tl.set("#tram", { opacity: 1 }, tram);
+tl.fromTo("#tram", { x: footX - 240, y: footY + 240, rotation: -45, scale: 1.25 }, { x: footX, y: footY, scale: 1.25, duration: .45, ease: "power3.out", immediateRender: false }, tram);
+tl.to("#lamp", { fill: "#E7B75F", duration: .1, yoyo: true, repeat: 3, ease: "none" }, tram + .45);
+
+// "climbs the steepest hill": up the 45° slope, then it levels out on the plateau at the top.
+const climb = at("climbs", 2.08) - .05;
+tl.to("#tram", { x: 470, y: 670, duration: 1.15, ease: "power1.inOut" }, climb);
+tl.to("#tram", { x: 540, y: 626, rotation: 0, scale: 1.3, duration: .5, ease: "power2.out" }, climb + 1.15);
+for (let i = 0; i < 3; i++) {
+  const t = climb + .2 + i * .4;
+  tl.fromTo(".puff:nth-child(" + (i + 1) + ")", { x: 230 + i * 80, y: 820 - i * 80, scale: .2, opacity: .9 }, { x: 190 + i * 80, y: 760 - i * 80, scale: 1.4, opacity: 0, duration: .7, ease: "power1.out", immediateRender: false }, t);
+}
+
+// "every twelve minutes": the clock pops in above and its minute hand sweeps a full turn.
+const every = at("every", 3.86) - .2;
+tl.fromTo("#clock", { scale: 0, svgOrigin: "540 330" }, { scale: 1, svgOrigin: "540 330", duration: .5, ease: "back.out(1.8)" }, every);
+tl.fromTo("#minHand", { rotation: 0, svgOrigin: "540 330" }, { rotation: 360, svgOrigin: "540 330", duration: 1.1, ease: "power2.inOut" }, every + .35);
+tl.fromTo("#hourHand", { rotation: 0, svgOrigin: "540 330" }, { rotation: 30, svgOrigin: "540 330", duration: 1.1, ease: "power2.inOut" }, every + .35);
+
+// Payoff on "minutes": the tram rings in at the top and the town's windows light up.
+const done = at("minutes", 4.58) + .2;
+tl.to("#tram", { y: 612, duration: .12, yoyo: true, repeat: 1, ease: "power2.out" }, done);
+tl.to("#lamp", { fill: "#E7B75F", duration: .08, yoyo: true, repeat: 5, ease: "none" }, done);
+tl.to(".house rect:not(:first-child), .house circle", { fill: "#E7B75F", duration: .2, stagger: .02, ease: "power1.out" }, done);
+</script>

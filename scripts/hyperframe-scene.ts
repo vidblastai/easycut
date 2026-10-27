@@ -1,4 +1,5 @@
 import { readFile, mkdir } from 'node:fs/promises';
+import { readFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import '../src/lib/config/load-env';
 import { designScene } from '../src/lib/assets/scene-clips';
@@ -11,6 +12,7 @@ import {
   type CompositionParts,
   type WordCue,
 } from '../src/lib/director/hyperframe';
+import { REFERENCE_LINES, referencePath } from '../src/lib/director/reference-scene';
 import { SCENE_LOOKS, type SceneLook } from '../src/lib/edl/types';
 import { run, FFMPEG } from '../src/lib/media/ffmpeg';
 import { allBlank, isBlank, lintProject, renderProject, snapshotProject, validateProject, writeProject } from '../src/lib/render/hyperframes';
@@ -33,7 +35,17 @@ import { styleGuideFor } from '../src/lib/scenes/style-guides';
 
 const OUT = 'out/hyperframes';
 /** The hand-written scenes, with the line each one is written to. */
-const FIXTURES: Record<string, { look: SceneLook; line: string; seconds: number }> = {
+interface Fixture {
+  look: SceneLook;
+  line: string;
+  seconds: number;
+  /** Where the composition lives, when it is not in tests/fixtures. */
+  path?: string;
+  /** Real word timings, when the line was recorded rather than spread evenly. */
+  words?: WordCue[];
+}
+
+const FIXTURES: Record<string, Fixture> = {
   drafts: {
     look: 'editorial',
     line: 'Ninety five percent of your ideas never get posted. They die in the drafts folder.',
@@ -56,6 +68,26 @@ const FIXTURES: Record<string, { look: SceneLook; line: string; seconds: number 
   },
 };
 
+/**
+ * The per-look references the composer is shown (`director/references`), each
+ * written to a voiced line whose real word timings sit beside them — so they
+ * render here exactly as they were checked.
+ */
+const REFERENCE_WORDS: Record<string, WordCue[]> = JSON.parse(
+  readFileSync('src/lib/director/references/words.json', 'utf8'),
+);
+for (const [look, line] of Object.entries(REFERENCE_LINES) as Array<[SceneLook, string]>) {
+  const words = REFERENCE_WORDS[look];
+  if (!words) continue;
+  FIXTURES[`ref-${look}`] = {
+    look,
+    line,
+    seconds: Math.ceil((words[words.length - 1].atSec + 1) * 10) / 10,
+    path: referencePath(look),
+    words,
+  };
+}
+
 /** Spreads the words evenly when there is no transcript to time them from. */
 function evenWords(line: string, seconds: number): WordCue[] {
   const words = line.split(/\s+/).filter(Boolean);
@@ -74,9 +106,9 @@ async function main() {
     for (const name of names) {
       const fixture = FIXTURES[name];
       if (!fixture) throw new Error(`Unknown fixture ${name}: ${Object.keys(FIXTURES).join(', ')}`);
-      const parts = parseComposition(await readFile(`tests/fixtures/hyperframes/${name}.txt`, 'utf8'));
+      const parts = parseComposition(await readFile(fixture.path ?? `tests/fixtures/hyperframes/${name}.txt`, 'utf8'));
       if (!parts) throw new Error(`fixture ${name} did not parse`);
-      await renderScene(name, parts, fixture.look, fixture.line, fixture.seconds);
+      await renderScene(name, parts, fixture.look, fixture.line, fixture.seconds, fixture.words);
     }
     return;
   }
@@ -107,11 +139,18 @@ async function main() {
 const WIDTH = 1080;
 const HEIGHT = 1920;
 
-async function renderScene(name: string, parts: CompositionParts, look: SceneLook, line: string, seconds: number) {
+async function renderScene(
+  name: string,
+  parts: CompositionParts,
+  look: SceneLook,
+  line: string,
+  seconds: number,
+  timed?: WordCue[],
+) {
   console.log(`\n${name} (${look}, ${seconds}s)`);
   const width = WIDTH;
   const height = HEIGHT;
-  const words = evenWords(line, seconds);
+  const words = timed ?? evenWords(line, seconds);
   const audit = auditComposition(parts);
   if (audit.length) console.log('audit:\n  ' + audit.join('\n  '));
 
