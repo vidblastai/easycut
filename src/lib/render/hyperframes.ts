@@ -4,7 +4,7 @@ import { mkdir, rm, writeFile } from 'node:fs/promises';
 import { createRequire } from 'node:module';
 import { dirname, join } from 'node:path';
 import { env } from '@/lib/config/env';
-import { FFMPEG, FFPROBE } from '@/lib/media/ffmpeg';
+import { FFMPEG, FFPROBE, ffmpeg } from '@/lib/media/ffmpeg';
 
 /**
  * HyperFrames, driven as a CLI.
@@ -154,22 +154,83 @@ export async function renderProject(dir: string, outPath: string, options: Hyper
 }
 
 /**
+ * Errors the page throws when it actually runs in a browser.
+ *
+ * The lint reads the source; this loads it. A typo in the model's script —
+ * one undefined variable — stops the timeline being built at all, and the
+ * render is then the bare ground for the whole scene. That reads as a clean
+ * lint and a silent failure unless something runs the page.
+ */
+export async function validateProject(dir: string): Promise<string[]> {
+  const { stdout } = await runCli(['validate', dir, '--json', '--no-contrast'], dir, 90_000);
+  try {
+    const report = JSON.parse(stdout.slice(stdout.indexOf('{'))) as { errors?: Array<{ text?: string } | string> };
+    return (report.errors ?? [])
+      .map((error) => (typeof error === 'string' ? error : error.text ?? ''))
+      .filter(Boolean)
+      .map((text) => `The page throws when it runs: ${text.slice(0, 300)}`);
+  } catch {
+    return [];
+  }
+}
+
+export interface Snapshot {
+  /** One labelled contact sheet — what the reviewing model is shown. */
+  sheet: string;
+  /** The full-size stills behind it, for the blank check. */
+  frames: string[];
+}
+
+/**
  * Stills of the scene at the given times, as one labelled contact sheet.
  *
  * The sheet rather than the frames because it is what the reviewing model is
  * shown: one image of a couple of hundred kilobytes with the times printed on
  * it, against four full-size PNGs of most of a megabyte each.
  */
-export async function snapshotProject(dir: string, times: number[], outDir: string): Promise<string> {
+export async function snapshotProject(dir: string, times: number[], outDir: string): Promise<Snapshot> {
   const args = ['snapshot', dir, '--at', times.join(','), '--no-end', '-o', outDir, '--json'];
   const result = await runCli(args, dir, 90_000);
   const json = result.stdout.slice(result.stdout.indexOf('{'));
   try {
-    const report = JSON.parse(json) as { ok?: boolean; contactSheets?: string[] };
+    const report = JSON.parse(json) as { ok?: boolean; contactSheets?: string[]; frames?: Array<string | { path?: string }> };
     const sheet = report.contactSheets?.[0];
-    if (report.ok && sheet && existsSync(sheet)) return sheet;
+    const frames = (report.frames ?? [])
+      .map((frame) => (typeof frame === 'string' ? frame : frame.path ?? ''))
+      .filter((path) => path && existsSync(path));
+    if (report.ok && sheet && existsSync(sheet)) return { sheet, frames };
   } catch {
     /* fall through to the error below */
   }
   throw new Error(`hyperframes snapshot failed (${result.code})`);
+}
+
+/** Below this luma spread a picture is one flat colour — the bare ground. */
+const FLAT_SPREAD = 12;
+
+/**
+ * True when every picture sampled from `path` is one flat colour.
+ *
+ * `path` is a still or a clip; a clip is sampled twice a second. The test is
+ * the spread between the darkest and brightest pixel, so it does not care
+ * what colour the ground is — only that nothing is drawn on it.
+ */
+export async function isBlank(path: string): Promise<boolean> {
+  // A still through `fps` comes out as no frames at all, so only clips are thinned.
+  const filter = /\.(png|jpe?g|webp)$/i.test(path) ? 'signalstats,metadata=mode=print' : 'fps=2,signalstats,metadata=mode=print';
+  const { stderr } = await ffmpeg(
+    ['-hide_banner', '-i', path, '-vf', filter, '-an', '-f', 'null', '-'],
+    { timeoutMs: 60_000 },
+  );
+  const mins = [...stderr.matchAll(/lavfi\.signalstats\.YMIN=(\d+)/g)].map((m) => Number(m[1]));
+  const maxs = [...stderr.matchAll(/lavfi\.signalstats\.YMAX=(\d+)/g)].map((m) => Number(m[1]));
+  if (!mins.length || mins.length !== maxs.length) return false;
+  return mins.every((min, i) => maxs[i] - min < FLAT_SPREAD);
+}
+
+/** True when every one of the stills is blank. */
+export async function allBlank(paths: string[]): Promise<boolean> {
+  if (!paths.length) return false;
+  for (const path of paths) if (!(await isBlank(path))) return false;
+  return true;
 }

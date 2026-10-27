@@ -899,7 +899,7 @@ async function composeScenes(ctx: PipelineContext, mapper: TimeMapper): Promise<
   const transcript = ctx.transcript!;
   if (!isSceneComposerConfigured()) return new Set();
 
-  const { clips, costUsd, errors } = await composeSceneClips(edl.scenes, {
+  const { clips, costUsd, errors, notes } = await composeSceneClips(edl.scenes, {
     projectId: ctx.request.projectId,
     workDir: ctx.workDir,
     width: edl.format.width,
@@ -920,6 +920,7 @@ async function composeScenes(ctx: PipelineContext, mapper: TimeMapper): Promise<
 
   if (costUsd > 0) ctx.ledger.add('director', costUsd, 'scene compositions');
   ctx.log.push({ stage: 'assets', status: 'ok', ms: 0, message: `HyperFrames: rendered ${clips.size} scene clip(s)` });
+  for (const note of notes) ctx.log.push({ stage: 'assets', status: 'ok', ms: 0, message: `HyperFrames ${note}` });
   if (errors.length) ctx.degraded.push(`HyperFrames scenes fell back to drawings (${[...new Set(errors)].join('; ').slice(0, 300)})`);
 
   ctx.edl = {

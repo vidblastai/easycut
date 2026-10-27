@@ -13,7 +13,7 @@ import {
 } from '../src/lib/director/hyperframe';
 import { SCENE_LOOKS, type SceneLook } from '../src/lib/edl/types';
 import { run, FFMPEG } from '../src/lib/media/ffmpeg';
-import { lintProject, renderProject, snapshotProject, writeProject } from '../src/lib/render/hyperframes';
+import { allBlank, isBlank, lintProject, renderProject, snapshotProject, validateProject, writeProject } from '../src/lib/render/hyperframes';
 import { styleGuideFor } from '../src/lib/scenes/style-guides';
 
 /**
@@ -138,7 +138,10 @@ async function renderScene(name: string, parts: CompositionParts, look: SceneLoo
   // The same stills the reviewing model is shown, so a fixture run proves the
   // review's half of the loop too.
   const review = await snapshotProject(dir, reviewTimes(seconds), join(dir, 'review'));
-  console.log(`review sheet → ${review}`);
+  console.log(`review sheet → ${review.sheet}${(await allBlank(review.frames)) ? ' (BLANK)' : ''}`);
+  console.log(`clip blank: ${await isBlank(clip)}`);
+  const thrown = await validateProject(dir);
+  console.log(thrown.length ? thrown.join('\n') : 'page runs clean');
 }
 
 main().catch((error) => {

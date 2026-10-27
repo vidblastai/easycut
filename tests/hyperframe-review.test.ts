@@ -16,6 +16,7 @@ vi.mock('@/lib/config/env', () => ({ env: ENV }));
 
 import {
   auditComposition,
+  BLANK_WARNING,
   composerProvider,
   isFatal,
   parseComposition,
@@ -109,6 +110,15 @@ describe('the look-and-fix round', () => {
     const result = await reviewScene(request, parts, sheet);
     expect(result).toMatchObject({ parts: null, approved: false });
     expect(result.error).toBeTruthy();
+  });
+
+  it('says so plainly when every frame is bare ground, and never approves it', async () => {
+    const fetchMock = replyWith(REVIEW_OK);
+    const result = await reviewScene(request, parts, { ...sheet, blank: true });
+    expect(result.approved).toBe(false);
+    expect(result.parts).toBeNull();
+    const body = JSON.parse((fetchMock.mock.calls[0] as unknown as [string, { body: string }])[1].body);
+    expect(body.messages.at(-1).content[0].text.startsWith(BLANK_WARNING)).toBe(true);
   });
 
   it('looks at the scene early, mid-move, late and settled', () => {

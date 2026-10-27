@@ -437,8 +437,11 @@ export function reviewTimes(durationSec: number): number[] {
  * each other, a beat that is just background because a tween landed late, a
  * clock hand swinging round the frame instead of its pin.
  */
-export function reviewInstructions(times: number[], height: number): string {
-  return `Here are frames of the scene you just wrote, rendered exactly as it will ship, at ${times.map((t) => `${t}s`).join(', ')} (labelled on the sheet).
+/** Said first when every frame came back as bare ground — the review's one non-negotiable. */
+export const BLANK_WARNING = `IMPORTANT: every one of these frames is completely empty — nothing but the background colour. Nothing you drew is visible at any point. Something in the markup, the CSS or the script is hiding everything or stopping the timeline being built (an element left at opacity 0, positioned off-frame, sized to zero, or a script error before the tweens are added). Find it and fix it. Do not reply ${REVIEW_OK}.`;
+
+export function reviewInstructions(times: number[], height: number, blank = false): string {
+  return `${blank ? `${BLANK_WARNING}\n\n` : ''}Here are frames of the scene you just wrote, rendered exactly as it will ship, at ${times.map((t) => `${t}s`).join(', ')} (labelled on the sheet).
 
 Look at them the way a motion designer reviewing a colleague's work would, and check:
 
@@ -468,7 +471,7 @@ export interface ReviewResult {
 export async function reviewScene(
   request: CompositionRequest,
   parts: CompositionParts,
-  sheet: { dataUri: string; times: number[] },
+  sheet: { dataUri: string; times: number[]; blank?: boolean },
 ): Promise<ReviewResult> {
   if (!isComposerConfigured()) return { parts: null, approved: false, costUsd: 0, error: 'no motion model configured' };
   try {
@@ -480,14 +483,16 @@ export async function reviewScene(
         {
           role: 'user',
           content: [
-            { type: 'text', text: reviewInstructions(sheet.times, request.height) },
+            { type: 'text', text: reviewInstructions(sheet.times, request.height, sheet.blank) },
             { type: 'image_url', image_url: { url: sheet.dataUri } },
           ],
         },
       ],
       0.4,
     );
+    // A blank scene is never approved, whatever the reply says.
     if (reply.text.trim().toUpperCase().startsWith(REVIEW_OK)) {
+      if (sheet.blank) return { parts: null, approved: false, costUsd: reply.costUsd, error: 'approved a blank scene' };
       return { parts: null, approved: true, costUsd: reply.costUsd };
     }
     const revised = parseComposition(reply.text);
