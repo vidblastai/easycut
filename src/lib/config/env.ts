@@ -7,6 +7,20 @@
  * exactly what is and isn't switched on.
  */
 
+/**
+ * The Anthropic key under whatever name it was given.
+ *
+ * Production names it `Antropic` — capitalised, no "h" — and a variable name
+ * is case-sensitive, so a lookup for the documented name found nothing and
+ * every scene quietly went to the next account. Any variable called
+ * anthropic / antropic, with or without `_API_KEY` or `_KEY`, in any case,
+ * is accepted.
+ */
+function anthropicKeyByAnyName(): string | undefined {
+  const name = Object.keys(process.env).find((key) => /^anth?ropic(_api)?(_key)?$/i.test(key));
+  return name ? str(name) : undefined;
+}
+
 function str(name: string): string | undefined {
   const v = process.env[name];
   return v && v.trim().length > 0 ? v.trim() : undefined;
@@ -109,7 +123,7 @@ export const env = {
       | 'stub',
     // Also read under the spelling the production project uses (no "h"), so
     // the key works whichever way the variable was named.
-    anthropicKey: str('ANTHROPIC_API_KEY') ?? str('ANTROPIC_API_KEY') ?? str('ANTROPIC_KEY') ?? str('ANTROPIC'),
+    anthropicKey: str('ANTHROPIC_API_KEY') ?? anthropicKeyByAnyName(),
     model: str('LLM_MODEL') ?? 'claude-opus-5-5',
     geminiKey: str('GEMINI_API_KEY'),
     geminiModel: str('GEMINI_MODEL') ?? 'gemini-3-flash',
