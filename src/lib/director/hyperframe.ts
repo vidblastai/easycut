@@ -3,7 +3,7 @@ import { createRequire } from 'node:module';
 import { env } from '@/lib/config/env';
 import type { SceneLook } from '@/lib/edl/types';
 import { guideAsPrompt, styleGuideFor } from '@/lib/scenes/style-guides';
-import { wavespeedPriceFor } from './wavespeed';
+import { completionCostUsd, composerProviders as scenesRoute, llmFetch, routedModel, type ChatProvider } from '@/lib/llm/chat';
 
 const require_ = createRequire(import.meta.url);
 
@@ -79,25 +79,17 @@ export interface CompositionResult {
 }
 
 /**
- * The accounts that can serve the composer, in the order they are tried.
- *
- * Kie first when it has a key, unless told otherwise — and the other one
- * behind it, because the first live run showed why one is not enough: Kie
- * refused the key for its Claude endpoint, every scene fell back to a
- * drawing, and the WaveSpeed key sitting right there was never asked.
+ * The accounts that can serve the composer, in the order they are tried —
+ * the same list every other pass uses (see src/lib/llm/chat.ts): Anthropic,
+ * then Kie, then WaveSpeed, whichever have keys.
  */
-export function composerProviders(): Array<'kie' | 'wavespeed'> {
-  const kie = Boolean(env.kie.apiKey && env.kie.chatModel);
-  const wavespeed = Boolean(env.llm.wavespeedKey && env.llm.motionModel);
-  const wanted = env.scenes.composerProvider;
-  if (wanted === 'kie') return kie ? ['kie'] : [];
-  if (wanted === 'wavespeed') return wavespeed ? ['wavespeed'] : [];
-  return [...(kie ? ['kie' as const] : []), ...(wavespeed ? ['wavespeed' as const] : [])];
+export function composerProviders(): ChatProvider[] {
+  return scenesRoute();
 }
 
 /** The account tried first, or null when none is configured. */
-export function composerProvider(): 'kie' | 'wavespeed' | null {
-  return composerProviders()[0] ?? null;
+export function composerProvider(): ChatProvider | null {
+  return scenesRoute()[0] ?? null;
 }
 
 export function isComposerConfigured(): boolean {
@@ -521,135 +513,31 @@ type Content = string | Array<{ type: 'text'; text: string } | { type: 'image_ur
 
 type Message = { role: 'system' | 'user' | 'assistant'; content: Content };
 
+/**
+ * One completion, through the shared router.
+ *
+ * Written in the OpenAI shape every pass speaks; `llmFetch` sends it to
+ * Claude on Anthropic or Kie (or WaveSpeed as written), moving on to the
+ * next account when one refuses and naming each refusal if all of them do.
+ */
 async function complete(messages: Message[], temperature: number): Promise<{ text: string; costUsd: number }> {
-  const failures: string[] = [];
-  for (const provider of composerProviders()) {
-    try {
-      return provider === 'kie'
-        ? await completeWithKie(messages, temperature)
-        : await completeWithWavespeed(messages, temperature);
-    } catch (error) {
-      // Named, so a log line says WHICH account refused rather than leaving
-      // "Unauthorized" to be guessed at.
-      failures.push(`${provider}: ${error instanceof Error ? error.message : String(error)}`);
-    }
-  }
-  throw new Error(failures.join(' · ') || 'no motion model configured');
-}
-
-/**
- * Claude through Kie's Anthropic Messages endpoint.
- *
- * The system prompt moves to the top-level field and an image becomes a
- * base64 `image` block — the OpenAI-shaped `image_url` the rest of this file
- * speaks is translated here rather than written twice.
- */
-/**
- * A Kie refusal that means "not now" rather than "no".
- *
- * The second live run reached Kie with a good key and was told "Resources are
- * tight, please try again later" — capacity, not a fault — and one attempt
- * turned a busy minute into a video with no scenes.
- */
-export function isBusy(status: number, message: string): boolean {
-  return status === 429 || status === 502 || status === 503 || status === 504 ||
-    /try again later|resources are tight|rate limit|overloaded|too many requests/i.test(message);
-}
-
-/** Waits between attempts when Kie is busy. Short enough to fit inside a render. */
-export const KIE_RETRY_DELAYS_MS = [5_000, 15_000, 30_000];
-
-async function completeWithKie(messages: Message[], temperature: number): Promise<{ text: string; costUsd: number }> {
-  for (let attempt = 0; ; attempt++) {
-    try {
-      return await completeWithKieOnce(messages, temperature);
-    } catch (error) {
-      const busy = error instanceof KieError && isBusy(error.status, error.message);
-      if (!busy || attempt >= KIE_RETRY_DELAYS_MS.length) throw error;
-      await new Promise((resolve) => setTimeout(resolve, KIE_RETRY_DELAYS_MS[attempt]));
-    }
-  }
-}
-
-class KieError extends Error {
-  constructor(message: string, readonly status: number) {
-    super(message);
-  }
-}
-
-async function completeWithKieOnce(messages: Message[], temperature: number): Promise<{ text: string; costUsd: number }> {
-  const system = messages.filter((m) => m.role === 'system').map((m) => String(m.content)).join('\n\n');
-  const body = {
-    model: env.kie.chatModel,
-    max_tokens: 20000,
-    temperature,
-    stream: false,
-    ...(system ? { system } : {}),
-    messages: messages
-      .filter((m) => m.role !== 'system')
-      .map((m) => ({
-        role: m.role,
-        content: typeof m.content === 'string'
-          ? m.content
-          : m.content.map((block) => {
-              if (block.type === 'text') return block;
-              const match = block.image_url.url.match(/^data:([^;]+);base64,(.*)$/);
-              return match
-                ? { type: 'image', source: { type: 'base64', media_type: match[1], data: match[2] } }
-                : { type: 'image', source: { type: 'url', url: block.image_url.url } };
-            }),
-      })),
-  };
-
-  const response = await fetch('https://api.kie.ai/claude/v1/messages', {
+  const providers = scenesRoute();
+  const model = routedModel(env.llm.motionModel, providers);
+  const response = await llmFetch(`${API_BASE}/chat/completions`, {
     method: 'POST',
-    headers: { 'content-type': 'application/json', authorization: `Bearer ${env.kie.apiKey!}` },
-    body: JSON.stringify(body),
-  });
-  const json = (await response.json().catch(() => ({}))) as {
-    content?: Array<{ type?: string; text?: string }>;
-    usage?: { input_tokens?: number; output_tokens?: number };
-    credits_consumed?: number;
-    error?: { message?: string } | string;
-    msg?: string;
-  };
-  if (!response.ok || !json.content) {
-    const reason = typeof json.error === 'string' ? json.error : json.error?.message ?? json.msg;
-    throw new KieError(reason ?? `${response.status} ${response.statusText}`, response.status);
-  }
-
-  const text = json.content.filter((block) => block.type === 'text').map((block) => block.text ?? '').join('');
-  // Kie bills in credits and says how many; tokens at the Opus rate otherwise.
-  const pricing = wavespeedPriceFor('anthropic/claude-opus-5.5');
-  const costUsd = typeof json.credits_consumed === 'number'
-    ? json.credits_consumed * env.kie.usdPerCredit
-    : ((json.usage?.input_tokens ?? 0) / 1_000_000) * pricing.inputPerMTok +
-      ((json.usage?.output_tokens ?? 0) / 1_000_000) * pricing.outputPerMTok;
-  return { text, costUsd };
-}
-
-async function completeWithWavespeed(messages: Message[], temperature: number): Promise<{ text: string; costUsd: number }> {
-  const model = env.llm.motionModel;
-  const response = await fetch(`${API_BASE}/chat/completions`, {
-    method: 'POST',
-    headers: { 'content-type': 'application/json', authorization: `Bearer ${env.llm.wavespeedKey!}` },
+    headers: { 'content-type': 'application/json', authorization: `Bearer ${env.llm.wavespeedKey ?? ''}` },
     // A composition with a hundred shapes and its timeline runs well past the
     // drawing's size; one cut off mid-script has no closing tag and is refused.
-    body: JSON.stringify({ model, messages, max_tokens: 20000, temperature }),
-  });
-
-  if (!response.ok) {
-    const body = (await response.json().catch(() => ({}))) as { error?: { message?: string } };
-    throw new Error(body.error?.message ?? `${response.status} ${response.statusText}`);
-  }
-
-  const body = (await response.json()) as {
+    body: JSON.stringify({ model: env.llm.motionModel, messages, max_tokens: 20000, temperature }),
+  }, providers);
+  const body = (await response.json().catch(() => ({}))) as {
     choices?: Array<{ message?: { content?: string } }>;
     usage?: { prompt_tokens?: number; completion_tokens?: number };
+    cost_usd?: number;
+    error?: { message?: string } | string;
   };
-  const pricing = wavespeedPriceFor(model);
-  const costUsd =
-    ((body.usage?.prompt_tokens ?? 0) / 1_000_000) * pricing.inputPerMTok +
-    ((body.usage?.completion_tokens ?? 0) / 1_000_000) * pricing.outputPerMTok;
-  return { text: body.choices?.[0]?.message?.content ?? '', costUsd };
+  if (!response.ok) {
+    throw new Error((typeof body.error === 'string' ? body.error : body.error?.message) ?? `${response.status} ${response.statusText}`);
+  }
+  return { text: body.choices?.[0]?.message?.content ?? '', costUsd: completionCostUsd(body, model) };
 }
