@@ -1225,8 +1225,10 @@ export type Art = z.infer<typeof ArtSchema>;
  *   archive  cinematic amber, film-strip bars, a push-in that never stops
  *   editorial  near-black and violet: heavy type on magenta highlight strips,
  *              huge cropped foreground curves, rim-lit metal objects
+ *   science    flat-vector science explainer: deep space navy, saturated
+ *              rim-lit shapes, layered planes, the camera diving into things
  */
-export const SCENE_LOOKS = ['studio', 'neon', 'gallery', 'archive', 'editorial'] as const;
+export const SCENE_LOOKS = ['studio', 'neon', 'gallery', 'archive', 'editorial', 'science'] as const;
 export type SceneLook = (typeof SCENE_LOOKS)[number];
 
 export const AnimatedSceneSchema = z.object({

@@ -11,7 +11,7 @@ import {
 } from '@/lib/director/hyperframe';
 import { sceneHasText, sceneIsDrawn, type AnimatedScene } from '@/lib/edl/types';
 
-const FIXTURES = ['drafts', 'everywhere', 'hours'];
+const FIXTURES = ['drafts', 'everywhere', 'hours', 'neurons'];
 const read = (name: string) => readFileSync(`tests/fixtures/hyperframes/${name}.txt`, 'utf8');
 const fixture = read('drafts');
 const frame = { width: 1080, height: 1920, durationSec: 4.5, ground: '#FCFCFD', words: [{ text: 'buzzes', atSec: 0.4 }] };

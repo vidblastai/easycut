@@ -12,6 +12,7 @@ const GROUND: Record<SceneLook, string> = {
   gallery: '#EFF0F4',
   archive: '#0B0710',
   editorial: '#030105',
+  science: '#0B1636',
 };
 
 /**

@@ -65,6 +65,18 @@ export const VISUAL_INSPO: readonly VisualInspo[] = [
     figure: 'radial-gradient(ellipse 22% 14% at 50% 52%,#e9e2d4 0 60%,transparent 62%),radial-gradient(ellipse 30% 4% at 50% 60%,rgba(0,0,0,.35) 0 60%,transparent 70%)',
   },
   {
+    id: 'flat-science',
+    name: 'Flat science',
+    blurb: 'Bright flat shapes in deep space, like the big science channels.',
+    look:
+      'A flat vector illustration in the style of a science explainer animation. No outlines, simple rounded ' +
+      'geometric shapes, saturated teal, coral and warm yellow on a deep navy background, a thin lighter rim of light ' +
+      'on every lit edge, soft glows, layered depth with distant stars and a huge planet curve.',
+    sceneLook: 'science',
+    paint: 'radial-gradient(circle at 50% 120%,#2EC4B6 0 34%,#2B3A8C 34.5% 46%,transparent 46.5%),radial-gradient(circle at 20% 18%,#FFF6E0 0 .6%,transparent .9%),radial-gradient(circle at 78% 30%,#FFD166 0 .7%,transparent 1%),radial-gradient(circle at 62% 12%,#FFF6E0 0 .5%,transparent .8%),radial-gradient(ellipse at 50% 30%,#142257 0%,#0B1636 70%)',
+    figure: 'radial-gradient(circle at 46% 40%,#FFF6E0 0 3%,transparent 3.5%),radial-gradient(circle at 50% 44%,#FF5D73 0 15%,#c73a52 15.5% 17%,transparent 17.5%),radial-gradient(circle at 50% 44%,rgba(255,182,39,.35) 0 24%,transparent 34%)',
+  },
+  {
     id: 'cinematic',
     name: 'Cinematic',
     blurb: 'Film stills: anamorphic, moody contrast, teal and amber.',

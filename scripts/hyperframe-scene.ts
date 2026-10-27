@@ -19,7 +19,7 @@ import { styleGuideFor } from '../src/lib/scenes/style-guides';
  * Compose one scene with HyperFrames and render it, to look at.
  *
  *   npx tsx scripts/hyperframe-scene.ts "the line being said" [look] [secs]
- *   npx tsx scripts/hyperframe-scene.ts --fixture[=drafts|everywhere|hours]
+ *   npx tsx scripts/hyperframe-scene.ts --fixture[=drafts|everywhere|hours|neurons]
  *
  * With a WAVESPEED_API_KEY it asks the motion model for the composition; with
  * `--fixture`, or with no key, it renders the hand-written compositions in
@@ -42,6 +42,11 @@ const FIXTURES: Record<string, { look: SceneLook; line: string; seconds: number 
     look: 'neon',
     line: 'Record it once, upload it, and it goes everywhere you post.',
     seconds: 4.5,
+  },
+  neurons: {
+    look: 'science',
+    line: 'Your brain has eighty six billion neurons, and every single thought is a storm of electricity.',
+    seconds: 5.5,
   },
   hours: {
     look: 'archive',
