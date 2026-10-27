@@ -107,7 +107,9 @@ export const env = {
       | 'gemini'
       | 'wavespeed'
       | 'stub',
-    anthropicKey: str('ANTHROPIC_API_KEY'),
+    // Also read under the spelling the production project uses (no "h"), so
+    // the key works whichever way the variable was named.
+    anthropicKey: str('ANTHROPIC_API_KEY') ?? str('ANTROPIC_API_KEY') ?? str('ANTROPIC_KEY') ?? str('ANTROPIC'),
     model: str('LLM_MODEL') ?? 'claude-opus-5-5',
     geminiKey: str('GEMINI_API_KEY'),
     geminiModel: str('GEMINI_MODEL') ?? 'gemini-3-flash',
