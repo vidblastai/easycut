@@ -6,7 +6,7 @@ import { env } from '@/lib/config/env';
 import { selectedProvider } from '@/lib/director';
 import { isScenePassConfigured } from '@/lib/director/scenes';
 import { isAuthEnabled } from '@/lib/auth';
-import { chatProvider, routedModel } from '@/lib/llm/chat';
+import { chatProvider, composerProviders, routedModel } from '@/lib/llm/chat';
 
 export const dynamic = 'force-dynamic';
 
@@ -60,6 +60,14 @@ export async function GET() {
   // Reported because "did the animated scenes run?" was, for two rounds of
   // testing, a question nobody could answer without reading the source.
   checks.scenes = isScenePassConfigured() ? `${chatProvider()}:${routedModel(env.llm.motionModel)}` : 'off (no model key)';
+  // Which accounts the animated scenes can use, and the NAMES (never the
+  // values) of any variable that looks like a model key — so "is the key
+  // there?" is one request away instead of a whole test video.
+  checks.sceneComposer = composerProviders().join(' > ') || 'none';
+  checks.keyVariables = Object.keys(process.env)
+    .filter((name) => /anth|antr|claude|kie|wavespeed/i.test(name))
+    .sort()
+    .join(', ') || 'none';
   checks.auth = isAuthEnabled() ? 'clerk' : 'OPEN — anyone can see any project';
   checks.transcription = env.transcription.deepgramKey || env.transcription.groqKey || env.transcription.assemblyaiKey
     ? 'configured'
