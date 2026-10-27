@@ -108,7 +108,7 @@ export const env = {
       | 'wavespeed'
       | 'stub',
     anthropicKey: str('ANTHROPIC_API_KEY'),
-    model: str('LLM_MODEL') ?? 'claude-opus-5',
+    model: str('LLM_MODEL') ?? 'claude-opus-5-5',
     geminiKey: str('GEMINI_API_KEY'),
     geminiModel: str('GEMINI_MODEL') ?? 'gemini-3-flash',
     /**
@@ -157,7 +157,9 @@ export const env = {
      * panel, panel art, motion, illustrations). `auto` takes Kie's Claude
      * (KIE_CHAT_MODEL) when KIE_API_KEY is set — see src/lib/llm/chat.ts.
      */
-    chatProvider: (str('CHAT_PROVIDER') ?? 'auto') as 'auto' | 'kie' | 'wavespeed',
+    chatProvider: (str('CHAT_PROVIDER') ?? 'auto') as 'auto' | 'anthropic' | 'kie' | 'wavespeed',
+    /** How hard Claude thinks on those passes. Opus 5.5's own default is medium. */
+    chatEffort: (str('CHAT_EFFORT') ?? 'medium') as 'low' | 'medium' | 'high' | 'xhigh' | 'max',
   },
 
   stock: {

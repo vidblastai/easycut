@@ -2,7 +2,13 @@ import { readFileSync } from 'node:fs';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 const ENV = vi.hoisted(() => ({
-  llm: { wavespeedKey: 'test-key' as string | undefined, motionModel: 'anthropic/claude-opus-5.5' },
+  llm: {
+    wavespeedKey: 'test-key' as string | undefined,
+    anthropicKey: undefined as string | undefined,
+    motionModel: 'anthropic/claude-opus-5.5',
+    chatProvider: 'auto' as 'auto' | 'anthropic' | 'kie' | 'wavespeed',
+    chatEffort: 'medium' as const,
+  },
   kie: { apiKey: undefined as string | undefined, chatModel: 'claude-opus-5-5', usdPerCredit: 0.005 },
   scenes: { composerProvider: 'auto' as 'auto' | 'kie' | 'wavespeed' },
 }));
@@ -11,7 +17,6 @@ vi.mock('@/lib/config/env', () => ({ env: ENV }));
 import {
   auditComposition,
   composerProvider,
-  isBusy,
   isFatal,
   parseComposition,
   REVIEW_OK,
@@ -21,6 +26,7 @@ import {
   systemPrompt,
   type CompositionRequest,
 } from '@/lib/director/hyperframe';
+import { isBusy } from '@/lib/llm/chat';
 
 const fixture = readFileSync('tests/fixtures/hyperframes/neurons.txt', 'utf8');
 const parts = parseComposition(fixture)!;
@@ -49,6 +55,7 @@ afterEach(() => {
   vi.unstubAllGlobals();
   ENV.kie.apiKey = undefined;
   ENV.scenes.composerProvider = 'auto';
+  ENV.llm.chatProvider = 'auto';
 });
 
 describe('the concept line', () => {
@@ -159,7 +166,7 @@ describe('through Kie', () => {
     expect(composerProvider()).toBe('wavespeed');
     ENV.kie.apiKey = 'kie-key';
     expect(composerProvider()).toBe('kie');
-    ENV.scenes.composerProvider = 'wavespeed';
+    ENV.llm.chatProvider = 'wavespeed';
     expect(composerProvider()).toBe('wavespeed');
   });
 

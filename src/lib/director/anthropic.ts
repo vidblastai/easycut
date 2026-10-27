@@ -7,6 +7,8 @@ import { DirectorPlanSchema, type DirectorPlan } from './schema';
 
 /** Published per-MTok pricing, used for the pre-flight budget estimate. */
 const MODEL_PRICING: Record<string, { inputPerMTok: number; outputPerMTok: number }> = {
+  'claude-opus-5-5': { inputPerMTok: 4, outputPerMTok: 20 },
+  'claude-sonnet-5-5': { inputPerMTok: 2, outputPerMTok: 10 },
   'claude-opus-5': { inputPerMTok: 5, outputPerMTok: 25 },
   'claude-opus-4-8': { inputPerMTok: 5, outputPerMTok: 25 },
   'claude-sonnet-5': { inputPerMTok: 2, outputPerMTok: 10 },
@@ -26,7 +28,7 @@ export function isAnthropicConfigured(): boolean {
 }
 
 export function priceFor(model: string) {
-  return MODEL_PRICING[model] ?? MODEL_PRICING['claude-opus-5'];
+  return MODEL_PRICING[model] ?? MODEL_PRICING['claude-opus-5-5'];
 }
 
 export async function runAnthropicDirector(brief: DirectorBrief): Promise<DirectorCallResult> {
