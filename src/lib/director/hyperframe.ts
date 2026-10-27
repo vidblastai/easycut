@@ -3,7 +3,7 @@ import { createRequire } from 'node:module';
 import { env } from '@/lib/config/env';
 import type { SceneLook } from '@/lib/edl/types';
 import { guideAsPrompt, styleGuideFor } from '@/lib/scenes/style-guides';
-import { chatProvider, chatProviders, completionCostUsd, isChatConfigured, llmFetch, routedModel, type ChatProvider } from '@/lib/llm/chat';
+import { completionCostUsd, composerProviders as scenesRoute, llmFetch, routedModel, type ChatProvider } from '@/lib/llm/chat';
 
 const require_ = createRequire(import.meta.url);
 
@@ -84,16 +84,16 @@ export interface CompositionResult {
  * then Kie, then WaveSpeed, whichever have keys.
  */
 export function composerProviders(): ChatProvider[] {
-  return chatProviders();
+  return scenesRoute();
 }
 
 /** The account tried first, or null when none is configured. */
 export function composerProvider(): ChatProvider | null {
-  return chatProvider();
+  return scenesRoute()[0] ?? null;
 }
 
 export function isComposerConfigured(): boolean {
-  return isChatConfigured();
+  return composerProvider() !== null;
 }
 
 /**
@@ -521,14 +521,15 @@ type Message = { role: 'system' | 'user' | 'assistant'; content: Content };
  * next account when one refuses and naming each refusal if all of them do.
  */
 async function complete(messages: Message[], temperature: number): Promise<{ text: string; costUsd: number }> {
-  const model = routedModel(env.llm.motionModel);
+  const providers = scenesRoute();
+  const model = routedModel(env.llm.motionModel, providers);
   const response = await llmFetch(`${API_BASE}/chat/completions`, {
     method: 'POST',
     headers: { 'content-type': 'application/json', authorization: `Bearer ${env.llm.wavespeedKey ?? ''}` },
     // A composition with a hundred shapes and its timeline runs well past the
     // drawing's size; one cut off mid-script has no closing tag and is refused.
     body: JSON.stringify({ model: env.llm.motionModel, messages, max_tokens: 20000, temperature }),
-  });
+  }, providers);
   const body = (await response.json().catch(() => ({}))) as {
     choices?: Array<{ message?: { content?: string } }>;
     usage?: { prompt_tokens?: number; completion_tokens?: number };

@@ -53,19 +53,32 @@ describe('provider selection', () => {
     expect(selectedProvider()).toBe('heuristic');
   });
 
-  it('prefers Anthropic on auto when both keys are present', async () => {
-    // A paid key is a deliberate act; a free one is often left over from
-    // something else. Explicit LLM_PROVIDER always overrides this.
+  it('keeps the editor off Anthropic on auto when another key is present', async () => {
+    // The Anthropic key is there for the animated scenes, the one thing that
+    // runs on Opus. LLM_PROVIDER=anthropic still moves the editor over.
     const { selectedProvider } = await import('../src/lib/director');
     configure({ anthropicKey: 'sk-ant-x', geminiKey: 'AIza-x' });
+    expect(selectedProvider()).toBe('gemini');
+    configure({ anthropicKey: 'sk-ant-x', geminiKey: 'AIza-x', provider: 'anthropic' });
     expect(selectedProvider()).toBe('anthropic');
   });
 
-  it('runs the AI director on Kie when a Kie key is the only key', async () => {
+  it('still uses Anthropic on auto when it is the only key', async () => {
+    const { selectedProvider } = await import('../src/lib/director');
+    configure({ anthropicKey: 'sk-ant-x' });
+    expect(selectedProvider()).toBe('anthropic');
+  });
+
+  it('runs the AI director on Kie only when CHAT_PROVIDER says so', async () => {
     const { selectedProvider } = await import('../src/lib/director');
     configure({});
     KIE.apiKey = 'kie-x';
+    // Off by default — the editor stays on the original setup —
+    expect(selectedProvider()).toBe('heuristic');
+    // — and on when CHAT_PROVIDER asks for it.
+    (ENV as unknown as { chatProvider: string }).chatProvider = 'auto';
     expect(selectedProvider()).not.toBe('heuristic');
+    (ENV as unknown as { chatProvider?: string }).chatProvider = undefined;
   });
 
   it('uses Gemini on auto when it is the only key', async () => {

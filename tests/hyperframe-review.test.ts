@@ -166,7 +166,7 @@ describe('through Kie', () => {
     expect(composerProvider()).toBe('wavespeed');
     ENV.kie.apiKey = 'kie-key';
     expect(composerProvider()).toBe('kie');
-    ENV.llm.chatProvider = 'wavespeed';
+    ENV.scenes.composerProvider = 'wavespeed';
     expect(composerProvider()).toBe('wavespeed');
   });
 

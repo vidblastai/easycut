@@ -40,7 +40,7 @@ export function isImageGenConfigured(): boolean {
 export function estimateImageCostUsd(count: number): number {
   if (env.imagegen.replicateToken) return count * REPLICATE_COST_USD;
   if (env.imagegen.falKey) return count * FAL_COST_USD;
-  if (isKieConfigured()) return count * KIE_IMAGE_COST_USD;
+  if (!isWavespeedMediaConfigured() && isKieConfigured()) return count * KIE_IMAGE_COST_USD;
   return count * WAVESPEED_COST_USD;
 }
 
@@ -74,18 +74,18 @@ export async function generateImage(
     const result = await generateWithFal(styled, aspect).catch(() => null);
     if (result) return result;
   }
-  // Kie before WaveSpeed: the same account that makes the B-roll stills and
-  // runs the language model, so one key covers the whole video.
-  if (isKieConfigured()) {
-    const result = await generateWithKie(styled, aspect).catch(() => null);
-    if (result) return result;
-  }
   // Last, and reached by most deployments, because it is the key people
   // already have for the director. A failure here returns null like the
   // others: a missing illustration means the cue falls back to stock or an
   // icon, never that the video fails.
   if (isWavespeedMediaConfigured()) {
-    return generateWithWavespeed(styled, aspect).catch(() => null);
+    const result = await generateWithWavespeed(styled, aspect).catch(() => null);
+    if (result) return result;
+  }
+  // Kie after the original providers: the same account that makes the B-roll
+  // stills, there for when the others are out of credit.
+  if (isKieConfigured()) {
+    return generateWithKie(styled, aspect).catch(() => null);
   }
   return null;
 }

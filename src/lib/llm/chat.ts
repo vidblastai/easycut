@@ -21,12 +21,18 @@ import { wavespeedPriceFor } from '@/lib/director/wavespeed';
  * reply cut back down to its JSON. Without either key it is a plain `fetch`
  * to WaveSpeed, exactly as before.
  *
- * ── Who answers, in order ───────────────────────────────────────────────
+ * ── Who answers ─────────────────────────────────────────────────────────
  *
- * Anthropic, then Kie, then WaveSpeed — whichever have keys, each tried only
- * if the one before it refused. The live runs are why: Kie turned away every
- * request for an hour with "resources are tight", and a video that waits on
- * one reseller's capacity is a video that quietly comes out without its AI.
+ * Two routes, on purpose:
+ *
+ *   - The animated scenes (`composerProviders`) are the one thing written by
+ *     Claude Opus 5.5: Anthropic, then Kie, then WaveSpeed, whichever have
+ *     keys, each tried only if the one before refused. Kie turned away every
+ *     request for an hour on the live runs, which is why there is a list.
+ *   - Everything else (`generalProviders`) stays on the setup it had before —
+ *     WaveSpeed, with the models it always used — unless CHAT_PROVIDER says
+ *     otherwise. The editor, the panel and the scene picker are not where
+ *     Opus is worth paying for.
  *
  * ── The model ───────────────────────────────────────────────────────────
  *
@@ -41,21 +47,39 @@ export const ANTHROPIC_CHAT_MODEL = process.env.ANTHROPIC_CHAT_MODEL ?? 'claude-
 
 export type ChatProvider = 'anthropic' | 'kie' | 'wavespeed';
 
-/** The accounts that can answer, in the order they are tried. */
-export function chatProviders(): ChatProvider[] {
-  const available: Record<ChatProvider, boolean> = {
+function available(): Record<ChatProvider, boolean> {
+  return {
     anthropic: Boolean(env.llm.anthropicKey),
     kie: Boolean(env.kie.apiKey && env.kie.chatModel),
     wavespeed: Boolean(env.llm.wavespeedKey),
   };
-  const wanted = env.llm.chatProvider;
-  if (wanted && wanted !== 'auto') return available[wanted] ? [wanted] : [];
-  return (['anthropic', 'kie', 'wavespeed'] as const).filter((provider) => available[provider]);
 }
 
-/** The account tried first, or null when none has a key. */
+function ordered(wanted: string | undefined, auto: readonly ChatProvider[]): ChatProvider[] {
+  const keys = available();
+  if (wanted && wanted !== 'auto') return keys[wanted as ChatProvider] ? [wanted as ChatProvider] : [];
+  return auto.filter((provider) => keys[provider]);
+}
+
+/**
+ * Who answers the animated scenes: Claude Opus 5.5, from Anthropic first.
+ * `SCENE_COMPOSER_PROVIDER` forces one.
+ */
+export function composerProviders(): ChatProvider[] {
+  return ordered(env.scenes.composerProvider, ['anthropic', 'kie', 'wavespeed']);
+}
+
+/**
+ * Who answers every other pass: the original setup (WaveSpeed) unless
+ * `CHAT_PROVIDER` names another. `auto` means Kie, then WaveSpeed.
+ */
+export function generalProviders(): ChatProvider[] {
+  return ordered(env.llm.chatProvider ?? 'wavespeed', ['kie', 'wavespeed']);
+}
+
+/** The account tried first for the general passes, or null when none has a key. */
 export function chatProvider(): ChatProvider | null {
-  return chatProviders()[0] ?? null;
+  return generalProviders()[0] ?? null;
 }
 
 export function isChatConfigured(): boolean {
@@ -69,8 +93,8 @@ export function isChatConfigured(): boolean {
  * is never sent anywhere, and reporting it would say the video was made by
  * an account it never touched.
  */
-export function routedModel(model: string): string {
-  const first = chatProvider();
+export function routedModel(model: string, providers: ChatProvider[] = generalProviders()): string {
+  const first = providers[0] ?? null;
   if (first === 'anthropic') return ANTHROPIC_CHAT_MODEL;
   if (first === 'kie') return env.kie.chatModel;
   return model;
@@ -115,9 +139,12 @@ export interface OpenAiRequest {
  * completion goes to each configured account in turn until one answers; the
  * error from the last one names every account that refused.
  */
-export async function llmFetch(url: string, init: RequestInit): Promise<Response> {
+export async function llmFetch(
+  url: string,
+  init: RequestInit,
+  providers: ChatProvider[] = generalProviders(),
+): Promise<Response> {
   if (!url.endsWith('/chat/completions') || typeof init.body !== 'string') return fetch(url, init);
-  const providers = chatProviders();
   if (!providers.length || (providers.length === 1 && providers[0] === 'wavespeed')) return fetch(url, init);
 
   const request = JSON.parse(init.body) as OpenAiRequest;

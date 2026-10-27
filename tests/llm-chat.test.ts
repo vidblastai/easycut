@@ -4,11 +4,12 @@ const ENV = vi.hoisted(() => ({
   llm: {
     wavespeedKey: undefined as string | undefined,
     anthropicKey: undefined as string | undefined,
-    chatProvider: 'auto' as 'auto' | 'anthropic' | 'kie' | 'wavespeed',
+    chatProvider: 'wavespeed' as 'auto' | 'anthropic' | 'kie' | 'wavespeed',
     chatEffort: 'medium' as const,
     motionModel: 'anthropic/claude-opus-5.5',
   },
   kie: { apiKey: undefined as string | undefined, chatModel: 'claude-opus-5-5', usdPerCredit: 0.005 },
+  scenes: { composerProvider: 'auto' as 'auto' | 'anthropic' | 'kie' | 'wavespeed' },
 }));
 vi.mock('@/lib/config/env', () => ({ env: ENV }));
 
@@ -42,7 +43,7 @@ vi.mock('@anthropic-ai/sdk', () => {
 });
 
 import Anthropic from '@anthropic-ai/sdk';
-import { chatProvider, chatProviders, extractJson, llmFetch, routedModel, toClaude } from '@/lib/llm/chat';
+import { chatProvider, composerProviders, extractJson, generalProviders, llmFetch, routedModel, toClaude } from '@/lib/llm/chat';
 
 const URL_ = 'https://llm.wavespeed.ai/v1/chat/completions';
 const request = {
@@ -62,31 +63,32 @@ afterEach(() => {
   ENV.kie.apiKey = undefined;
   ENV.llm.wavespeedKey = undefined;
   ENV.llm.anthropicKey = undefined;
-  ENV.llm.chatProvider = 'auto';
+  ENV.llm.chatProvider = 'wavespeed';
+  ENV.scenes.composerProvider = 'auto';
   ANTHROPIC.next = null;
   ANTHROPIC.asked = [];
 });
 
 describe('who answers', () => {
-  it('is Kie whenever it has a key, WaveSpeed only without one', () => {
-    ENV.llm.wavespeedKey = 'ws';
-    expect(chatProvider()).toBe('wavespeed');
-    expect(routedModel('google/gemini-3.6-flash')).toBe('google/gemini-3.6-flash');
-    ENV.kie.apiKey = 'kie';
-    expect(chatProvider()).toBe('kie');
-    expect(routedModel('google/gemini-3.6-flash')).toBe('claude-opus-5-5');
-  });
-});
-
-describe('who answers first', () => {
-  it('is Anthropic, then Kie, then WaveSpeed', () => {
+  it('keeps everything but the scenes on the original setup', () => {
     ENV.llm.wavespeedKey = 'ws';
     ENV.kie.apiKey = 'kie';
     ENV.llm.anthropicKey = 'sk-ant';
-    expect(chatProviders()).toEqual(['anthropic', 'kie', 'wavespeed']);
-    expect(routedModel('google/gemini-3.6-flash')).toBe('claude-opus-5-5');
-    ENV.llm.chatProvider = 'kie';
-    expect(chatProviders()).toEqual(['kie']);
+    expect(generalProviders()).toEqual(['wavespeed']);
+    expect(chatProvider()).toBe('wavespeed');
+    expect(routedModel('google/gemini-3.6-flash')).toBe('google/gemini-3.6-flash');
+    ENV.llm.chatProvider = 'auto';
+    expect(generalProviders()).toEqual(['kie', 'wavespeed']);
+  });
+
+  it('writes the scenes with Opus: Anthropic, then Kie, then WaveSpeed', () => {
+    ENV.llm.wavespeedKey = 'ws';
+    ENV.kie.apiKey = 'kie';
+    ENV.llm.anthropicKey = 'sk-ant';
+    expect(composerProviders()).toEqual(['anthropic', 'kie', 'wavespeed']);
+    expect(routedModel('anthropic/claude-opus-5.5', composerProviders())).toBe('claude-opus-5-5');
+    ENV.scenes.composerProvider = 'kie';
+    expect(composerProviders()).toEqual(['kie']);
   });
 });
 
@@ -116,7 +118,7 @@ describe('the reply, as the callers read it', () => {
       new Response(JSON.stringify({ content: [{ type: 'text', text: '```json\n{"cuts":[]}\n```' }], credits_consumed: 30, stop_reason: 'end_turn' })),
     );
     vi.stubGlobal('fetch', fetchMock);
-    const response = await llmFetch(URL_, { method: 'POST', body: JSON.stringify(request) });
+    const response = await llmFetch(URL_, { method: 'POST', body: JSON.stringify(request) }, ['kie']);
     const body = await response.json();
     expect(response.ok).toBe(true);
     expect(JSON.parse(body.choices[0].message.content)).toEqual({ cuts: [] });
@@ -127,7 +129,7 @@ describe('the reply, as the callers read it', () => {
   it('reports a refusal as a failure, even one Kie sent under a 200', async () => {
     ENV.kie.apiKey = 'kie';
     vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({ code: 402, msg: 'Credits insufficient' }))));
-    const response = await llmFetch(URL_, { method: 'POST', body: JSON.stringify(request) });
+    const response = await llmFetch(URL_, { method: 'POST', body: JSON.stringify(request) }, ['kie']);
     expect(response.ok).toBe(false);
     expect((await response.json()).error.message).toBe('kie: Credits insufficient');
   });
@@ -142,15 +144,17 @@ describe('the reply, as the callers read it', () => {
         ? new Response(JSON.stringify({ msg: 'Resources are tight, please try again later.' }))
         : new Response(JSON.stringify({ content: [{ type: 'text', text: 'ok' }], credits_consumed: 1 }));
     }));
-    const pending = llmFetch(URL_, { method: 'POST', body: JSON.stringify({ ...request, response_format: undefined }) });
+    const pending = llmFetch(URL_, { method: 'POST', body: JSON.stringify({ ...request, response_format: undefined }) }, ['kie']);
     await vi.advanceTimersByTimeAsync(5_000);
     const body = await (await pending).json();
     expect(body.choices[0].message.content).toBe('ok');
     expect(calls).toBe(2);
   });
 
-  it('leaves WaveSpeed calls alone when there is no Kie key', async () => {
+  it('leaves WaveSpeed calls alone on the original setup, whatever other keys exist', async () => {
     ENV.llm.wavespeedKey = 'ws';
+    ENV.kie.apiKey = 'kie';
+    ENV.llm.anthropicKey = 'sk-ant';
     const fetchMock = vi.fn(async () => new Response('{}'));
     vi.stubGlobal('fetch', fetchMock);
     await llmFetch(URL_, { method: 'POST', body: JSON.stringify(request) });
@@ -166,7 +170,7 @@ describe('straight from Anthropic', () => {
       stop_reason: 'end_turn',
       usage: { input_tokens: 1_000_000, output_tokens: 100_000 },
     };
-    const response = await llmFetch(URL_, { method: 'POST', body: JSON.stringify(request) });
+    const response = await llmFetch(URL_, { method: 'POST', body: JSON.stringify(request) }, composerProviders());
     const body = await response.json();
     expect(JSON.parse(body.choices[0].message.content)).toEqual({ cuts: [1] });
     expect(body.cost_usd).toBeCloseTo(6);
@@ -181,11 +185,11 @@ describe('straight from Anthropic', () => {
     vi.stubGlobal('fetch', vi.fn(async () =>
       new Response(JSON.stringify({ content: [{ type: 'text', text: 'from kie' }], credits_consumed: 2 })),
     ));
-    const ok = await (await llmFetch(URL_, { method: 'POST', body: JSON.stringify({ ...request, response_format: undefined }) })).json();
+    const ok = await (await llmFetch(URL_, { method: 'POST', body: JSON.stringify({ ...request, response_format: undefined }) }, composerProviders())).json();
     expect(ok.choices[0].message.content).toBe('from kie');
 
     vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({ code: 402, msg: 'Credits insufficient' }))));
-    const failed = await llmFetch(URL_, { method: 'POST', body: JSON.stringify(request) });
+    const failed = await llmFetch(URL_, { method: 'POST', body: JSON.stringify(request) }, composerProviders());
     expect(failed.ok).toBe(false);
     expect((await failed.json()).error.message).toBe('anthropic: Overloaded · kie: Credits insufficient');
   });

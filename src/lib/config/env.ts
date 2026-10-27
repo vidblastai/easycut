@@ -157,7 +157,7 @@ export const env = {
      * panel, panel art, motion, illustrations). `auto` takes Kie's Claude
      * (KIE_CHAT_MODEL) when KIE_API_KEY is set — see src/lib/llm/chat.ts.
      */
-    chatProvider: (str('CHAT_PROVIDER') ?? 'auto') as 'auto' | 'anthropic' | 'kie' | 'wavespeed',
+    chatProvider: (str('CHAT_PROVIDER') ?? 'wavespeed') as 'auto' | 'anthropic' | 'kie' | 'wavespeed',
     /** How hard Claude thinks on those passes. Opus 5.5's own default is medium. */
     chatEffort: (str('CHAT_EFFORT') ?? 'medium') as 'low' | 'medium' | 'high' | 'xhigh' | 'max',
   },
@@ -406,7 +406,7 @@ export const env = {
      * Who serves the model that writes HyperFrames scenes. `auto` takes Kie
      * when KIE_API_KEY is set, and WaveSpeed's MOTION_MODEL otherwise.
      */
-    composerProvider: (str('SCENE_COMPOSER_PROVIDER') ?? 'auto') as 'auto' | 'kie' | 'wavespeed',
+    composerProvider: (str('SCENE_COMPOSER_PROVIDER') ?? 'auto') as 'auto' | 'anthropic' | 'kie' | 'wavespeed',
   },
 
   features: {

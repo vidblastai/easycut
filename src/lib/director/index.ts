@@ -61,11 +61,12 @@ export function selectedProvider(): DirectorProvider {
   if (provider === 'anthropic') return isAnthropicConfigured() ? 'anthropic' : 'heuristic';
   if (provider === 'gemini') return isGeminiConfigured() ? 'gemini' : 'heuristic';
   if (provider === 'wavespeed') return isWavespeedConfigured() ? 'wavespeed' : 'heuristic';
-  if (isAnthropicConfigured()) return 'anthropic';
   if (isGeminiConfigured()) return 'gemini';
-  // Last of the three because it is the newest, not because it is the worst —
-  // an explicit LLM_PROVIDER always wins over this order anyway.
   if (isWavespeedConfigured()) return 'wavespeed';
+  // Anthropic last on auto: its key is there for the animated scenes, which
+  // are the only thing that runs on Opus. The editor keeps the setup it had
+  // until LLM_PROVIDER=anthropic says otherwise.
+  if (isAnthropicConfigured()) return 'anthropic';
   return 'heuristic';
 }
 
