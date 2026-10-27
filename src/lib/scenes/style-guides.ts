@@ -223,7 +223,7 @@ export const STYLE_GUIDES: Record<SceneLook, StyleGuide> = {
     ground: '#0B1636',
     palette: [
       { role: 'cream highlight, the rim of light on a lit edge', hex: '#FFF6E0' },
-      { role: 'warm yellow, glowing things and stars', hex: '#FFD166' },
+      { role: 'warm yellow, glowing things and the one thing to look at', hex: '#FFD166' },
       { role: 'teal, life and the cool side of an object', hex: '#2EC4B6' },
       { role: 'coral, danger and warmth', hex: '#FF5D73' },
       { role: 'indigo, the shadowed body of an object', hex: '#2B3A8C' },
@@ -233,19 +233,27 @@ export const STYLE_GUIDES: Record<SceneLook, StyleGuide> = {
     rendering:
       'Flat vector illustration with NO outlines. Simple geometric, rounded shapes. Every object has a base colour, ' +
       'a darker shadow side, and a thin lighter crescent rim on its lit edge. Soft radial glows behind glowing things. ' +
-      'Cute and readable — a cell, a planet or a creature is a few clean shapes, not a diagram.',
+      'Cute and readable — whatever the line is about, drawn as a few clean shapes, not a diagram.',
     lighting:
       'Light comes from the upper left. Rims and highlights face it; a soft glow surrounds anything that emits light. ' +
       'No cast shadows on a floor — depth comes from layered planes getting darker and bluer with distance.',
     ground_rule:
-      'Deep navy space with three to five layered planes behind the subject: a scatter of small stars, a huge curved ' +
-      'planet or landscape edge cropped at the bottom, and soft floating particles, each plane darker and less saturated.',
+      'A deep navy field with soft depth behind the subject: a gentle radial pool of lighter blue where the subject ' +
+      'sits, two or three large blurred rounded shapes far behind, and a few small soft floating particles, each ' +
+      'plane darker and less saturated. Abstract only — the backdrop is never a place or an object of its own.',
     motion:
       'Never still: everything drifts, bobs or rotates gently, particles float, glows pulse slowly. Objects pop in with ' +
       'a soft spring overshoot. Between ideas the camera dives INTO an object and that object becomes the next scene — ' +
       'no hard cuts inside a topic.',
     camera: 'A slow continuous push, and a fast zoom-dive into an object to move to the next idea.',
-    never: ['outlines or strokes around shapes', 'photorealism', 'pure black backgrounds', 'muddy gradients', 'thin line art'],
+    never: [
+      'outlines or strokes around shapes',
+      'photorealism',
+      'pure black backgrounds',
+      'muddy gradients',
+      'thin line art',
+      'space, planets, stars or moons unless the line is about them',
+    ],
   },
 };
 
@@ -277,7 +285,7 @@ export function guideAsPrompt(
   }
   if (include.includes('rendering')) lines.push(`Rendering: ${guide.rendering}`);
   if (include.includes('lighting')) lines.push(`Light: ${guide.lighting}`);
-  if (include.includes('ground_rule')) lines.push(`Every beat sits in a place: ${guide.ground_rule}`);
+  if (include.includes('ground_rule')) lines.push(`Behind the subject: ${guide.ground_rule}`);
   if (include.includes('motion')) lines.push(`How things move here: ${guide.motion}`);
   if (include.includes('camera')) lines.push(`Camera: ${guide.camera}`);
 

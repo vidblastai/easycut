@@ -106,13 +106,17 @@ export function systemPrompt(width: number, height: number, durationSec: number)
 
 It plays full-screen on a phone for ${dur} seconds while someone talks over it. It IS the shot — no footage behind it — so it has to carry the frame on its own and it must never sit still.
 
+## Draw what is being said
+
+Every object on screen is something the line is literally about, or a picture a viewer would read instantly as that thing. "Put in your footage and it does everything else" is a phone, video clips dropping into a timeline, cuts and captions snapping into place — not a planet, a rocket or a galaxy. The world below decides HOW things are drawn (shapes, colours, light, motion), never WHAT is drawn: it has no subjects of its own. No decorative props that the line does not mention — no planets, stars, moons, rockets, cells, atoms or creatures unless the words are about them. If you would have to explain why an object is there, it does not belong.
+
 ## Decide the idea first
 
 Before any markup, commit to ONE concept in one sentence and write it as the very first line:
 
 <!-- concept: one sentence -->
 
-A concept is a single visual idea that carries the whole shot, not a list of things to show. Good: "a seed cracks open and its root becomes the line of a growth chart". "A brain, then neurons, then lightning" is a list, not a concept. Everything you build serves that sentence.
+A concept is a single visual idea that carries the whole shot, built from the things being said, not a list of things to show. Good: "a seed cracks open and its root becomes the line of a growth chart" for a line about growth. "A brain, then neurons, then lightning" is a list, not a concept. Everything you build serves that sentence.
 
 ## What you return
 
@@ -136,7 +140,7 @@ The page around them is provided. The frame is ${width}×${height} px. Inside yo
 - Build it from \`<div>\`s and inline \`<svg>\` (path, circle, rect, polygon, line, g, linearGradient, radialGradient). Position things absolutely in px against the ${width}×${height} frame.
 - **One background that fills the whole frame, edge to edge**, and give it something to look at — a floor line, a soft pool of light, a gradient, a grid. It is the only background there is.
 - **Big.** The subject spans at least 70% of the frame's width. Anything at half scale is a postage stamp on a phone.
-- **Three depth planes**: a large cropped foreground shape running off an edge, the focal subject, two to four dim smaller satellites behind. Move them by different amounts when the camera moves — that parallax is what makes it a space instead of a sticker.
+- **Three depth planes**: a large cropped foreground shape running off an edge, the focal subject, two to four dim, smaller related objects behind. Move them by different amounts when the camera moves — that parallax is what makes it a space instead of a sticker.
 - Real detail. A clock has a bezel, a dial, twelve marks, two tapered hands and a cap over the pin. 40 to 120 shapes in all.
 - **No text of any kind.** No letters, numbers, labels or words anywhere — not in an element, not in an SVG. The video's captions are the only words on screen and they are drawn over your shot afterwards.
 - **Keep the band from ${Math.round(height * 0.55)}px to ${Math.round(height * 0.75)}px down clear of anything important** — the captions sit there.
@@ -149,7 +153,7 @@ A sequence, not a picture that moves: two or three beats, each one a thing the v
 - **Land on the word.** Each beat's key move starts at \`at("word", fallback)\` for the word that names it. A move three frames late reads as lag.
 - **Ease by role, in numbers.** Arrivals ease out on a long tail: \`expo.out\` or \`power4.out\`, 0.4–0.8 s — or, where the world below says things pop or spring, \`back.out(1.4)\` to \`back.out(2)\`: a tightly damped spring with a small overshoot, never a wobble. Camera moves ease both ways with \`power2.inOut\` and run at half the speed you would default to, except the dive between beats. Exits accelerate with \`power3.in\` and are 40–50% shorter than their entrance. When content swaps in place, the outgoing piece leaves before the incoming one lands — separate their timing. Never the same ease and duration on everything.
 - **Overlap**: the next element starts when the previous is 30–50% done. Stagger repeats 0.05–0.12 s apart.
-- **Transform, never cut.** Every beat is made out of the previous one. The camera dives INTO the subject until its colour fills the frame and the next beat grows out of that colour; or a shape morphs into the next (a circle becomes a planet, a card grows into the next frame, a line becomes a chart); or the subject shrinks into a detail of something larger. 0.5–0.7 s, accelerating in (\`power3.in\`) and settling out (\`expo.out\`). Never a hard cut between beats, never a fade to an empty frame, never two beats side by side.
+- **Transform, never cut.** Every beat is made out of the previous one. The camera dives INTO the subject until its colour fills the frame and the next beat grows out of that colour; or a shape morphs into the next (a circle becomes a clock face, a card grows into the next frame, a line becomes a chart); or the subject shrinks into a detail of something larger. 0.5–0.7 s, accelerating in (\`power3.in\`) and settling out (\`expo.out\`). Never a hard cut between beats, never a fade to an empty frame, never two beats side by side.
 - **Two or three things per beat ACT after they land**: a bar fills, a needle swings to its mark, a line draws itself (\`strokeDashoffset\`), a tick lands, a counter dial turns. The act is the sentence — pick the ones that show what the voice says.
 - **It never stops**: a slow camera drift on the outermost wrapper from 0 to ${dur} (scale 1 → 1.08, a little x/y, \`ease: "none"\`), so no frame is a photograph. A landed object holds still — no breathing, bobbing or pulsing loops — UNLESS the world below says things drift, bob or pulse; then its motion line wins, gently and with finite repeats.
 - Pivots: set \`transformOrigin\` on anything that rotates — a clock hand turns about its pin, not about the frame.
@@ -453,6 +457,7 @@ Look at them the way a motion designer reviewing a colleague's work would, and c
 6. Beats that look the same — the frames should show the sequence progressing.
 7. Colours outside the palette you were given, or a flat look with no depth.
 8. Whether the frames actually show your concept and what is being said.
+9. Anything that is not something the line is about — a planet, stars, a creature or any decoration the words never mention. Replace it with the thing being talked about.
 
 If it is genuinely good, reply with exactly: ${REVIEW_OK}
 

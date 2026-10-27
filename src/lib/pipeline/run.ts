@@ -915,7 +915,10 @@ async function composeScenes(ctx: PipelineContext, mapper: TimeMapper): Promise<
         .map((word) => ({ text: word.text, out: mapper.toOutput(word.startSec) }))
         .filter((word): word is { text: string; out: number } => word.out !== null)
         .filter((word) => word.out >= scene.outStartSec - 0.15 && word.out < scene.outEndSec)
-        .map((word) => ({ text: word.text, atSec: Math.max(0, word.out - scene.outStartSec) })),
+        .map((word) => ({ text: word.text, atSec: Math.max(0, word.out - scene.outStartSec) }))
+        // A word cut out of the edit maps onto the cut's edge, beside the take
+        // that was kept — the same word twice at the same instant.
+        .filter((word, i, all) => i === 0 || word.text !== all[i - 1].text || word.atSec - all[i - 1].atSec > 0.05),
   });
 
   if (costUsd > 0) ctx.ledger.add('director', costUsd, 'scene compositions');

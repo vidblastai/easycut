@@ -67,13 +67,13 @@ export const VISUAL_INSPO: readonly VisualInspo[] = [
   {
     id: 'flat-science',
     name: 'Flat science',
-    blurb: 'Bright flat shapes in deep space, like the big science channels.',
+    blurb: 'Bright flat shapes with soft glows on deep navy, like the big science channels.',
     look:
       'A flat vector illustration in the style of a science explainer animation. No outlines, simple rounded ' +
       'geometric shapes, saturated teal, coral and warm yellow on a deep navy background, a thin lighter rim of light ' +
-      'on every lit edge, soft glows, layered depth with distant stars and a huge planet curve.',
+      'on every lit edge, soft glows, layered depth from large blurred shapes far behind the subject.',
     sceneLook: 'science',
-    paint: 'radial-gradient(circle at 50% 120%,#2EC4B6 0 34%,#2B3A8C 34.5% 46%,transparent 46.5%),radial-gradient(circle at 20% 18%,#FFF6E0 0 .6%,transparent .9%),radial-gradient(circle at 78% 30%,#FFD166 0 .7%,transparent 1%),radial-gradient(circle at 62% 12%,#FFF6E0 0 .5%,transparent .8%),radial-gradient(ellipse at 50% 30%,#142257 0%,#0B1636 70%)',
+    paint: 'radial-gradient(circle at 18% 78%,rgba(43,58,140,.75) 0 16%,transparent 26%),radial-gradient(circle at 84% 22%,rgba(46,196,182,.22) 0 12%,transparent 22%),radial-gradient(circle at 30% 24%,rgba(255,246,224,.5) 0 .6%,transparent .9%),radial-gradient(circle at 72% 64%,rgba(255,209,102,.5) 0 .7%,transparent 1%),radial-gradient(ellipse at 50% 42%,#1d2f6e 0%,#0B1636 70%)',
     figure: 'radial-gradient(circle at 46% 40%,#FFF6E0 0 3%,transparent 3.5%),radial-gradient(circle at 50% 44%,#FF5D73 0 15%,#c73a52 15.5% 17%,transparent 17.5%),radial-gradient(circle at 50% 44%,rgba(255,182,39,.35) 0 24%,transparent 34%)',
   },
   {
