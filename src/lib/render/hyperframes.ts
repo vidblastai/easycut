@@ -205,27 +205,42 @@ export async function snapshotProject(dir: string, times: number[], outDir: stri
   throw new Error(`hyperframes snapshot failed (${result.code})`);
 }
 
-/** Below this luma spread a picture is one flat colour — the bare ground. */
-const FLAT_SPREAD = 12;
+/**
+ * Edge density below which a picture has nothing drawn on it.
+ *
+ * Measured, at 540px wide: a bare radial-gradient ground scores 0; a single
+ * small subject on that ground scores about 0.7, a busy scene 2–3.
+ */
+const DRAWN_EDGES = 0.15;
 
 /**
- * True when every picture sampled from `path` is one flat colour.
+ * True when no picture sampled from `path` has anything drawn on it.
  *
  * `path` is a still or a clip; a clip is sampled twice a second. The test is
- * the spread between the darkest and brightest pixel, so it does not care
- * what colour the ground is — only that nothing is drawn on it.
+ * edges, not brightness: a ground with a soft pool of light is not flat, and
+ * a check on the spread between darkest and brightest pixel calls an empty
+ * gradient a picture — which is how a broken scene got past it once.
  */
 export async function isBlank(path: string): Promise<boolean> {
   // A still through `fps` comes out as no frames at all, so only clips are thinned.
-  const filter = /\.(png|jpe?g|webp)$/i.test(path) ? 'signalstats,metadata=mode=print' : 'fps=2,signalstats,metadata=mode=print';
+  const thin = /\.(png|jpe?g|webp)$/i.test(path) ? '' : 'fps=2,';
   const { stderr } = await ffmpeg(
-    ['-hide_banner', '-i', path, '-vf', filter, '-an', '-f', 'null', '-'],
+    [
+      '-hide_banner',
+      '-i',
+      path,
+      '-vf',
+      `${thin}scale=540:-2,edgedetect=low=0.08:high=0.2,signalstats,metadata=mode=print`,
+      '-an',
+      '-f',
+      'null',
+      '-',
+    ],
     { timeoutMs: 60_000 },
   );
-  const mins = [...stderr.matchAll(/lavfi\.signalstats\.YMIN=(\d+)/g)].map((m) => Number(m[1]));
-  const maxs = [...stderr.matchAll(/lavfi\.signalstats\.YMAX=(\d+)/g)].map((m) => Number(m[1]));
-  if (!mins.length || mins.length !== maxs.length) return false;
-  return mins.every((min, i) => maxs[i] - min < FLAT_SPREAD);
+  const edges = [...stderr.matchAll(/lavfi\.signalstats\.YAVG=([\d.]+)/g)].map((m) => Number(m[1]));
+  if (!edges.length) return false;
+  return edges.every((density) => density < DRAWN_EDGES);
 }
 
 /** True when every one of the stills is blank. */
