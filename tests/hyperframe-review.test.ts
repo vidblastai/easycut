@@ -11,6 +11,7 @@ vi.mock('@/lib/config/env', () => ({ env: ENV }));
 import {
   auditComposition,
   composerProvider,
+  isBusy,
   isFatal,
   parseComposition,
   REVIEW_OK,
@@ -123,6 +124,33 @@ describe('when one account refuses', () => {
     vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({ msg: 'nope' }), { status: 402 })));
     const failed = await reviewScene(request, parts, sheet);
     expect(failed.error).toMatch(/^kie: .* · wavespeed: /);
+  });
+});
+
+describe('when Kie is busy', () => {
+  it('tells "not now" from "no"', () => {
+    expect(isBusy(200, 'Resources are tight, please try again later.')).toBe(true);
+    expect(isBusy(429, '')).toBe(true);
+    expect(isBusy(401, 'Unauthorized')).toBe(false);
+    expect(isBusy(402, 'Insufficient balance')).toBe(false);
+  });
+
+  it('waits and asks again instead of giving up', async () => {
+    vi.useFakeTimers();
+    ENV.kie.apiKey = 'kie-key';
+    let calls = 0;
+    vi.stubGlobal('fetch', vi.fn(async () => {
+      calls++;
+      return calls === 1
+        ? new Response(JSON.stringify({ msg: 'Resources are tight, please try again later.' }), { status: 200 })
+        : new Response(JSON.stringify({ content: [{ type: 'text', text: REVIEW_OK }], credits_consumed: 4 }));
+    }));
+    const pending = reviewScene(request, parts, sheet);
+    await vi.advanceTimersByTimeAsync(5_000);
+    const result = await pending;
+    vi.useRealTimers();
+    expect(result.approved).toBe(true);
+    expect(calls).toBe(2);
   });
 });
 
