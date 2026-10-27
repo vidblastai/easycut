@@ -6,10 +6,35 @@ import { gallery } from './gallery';
 import { archive } from './archive';
 import { editorial } from './editorial';
 import { science } from './science';
+import { groundedLook } from './grounded';
 
 export type { Look, LookContext, Arrange } from './contract';
 
-export const LOOKS: Record<SceneLook, Look> = { studio, neon, gallery, archive, editorial, science };
+const GROUNDED = [
+  'paper',
+  'ink',
+  'blueprint',
+  'riso',
+  'pixel',
+  'chalk',
+  'scope',
+  'graph',
+  'glass',
+  'clay',
+  'poster',
+  'diorama',
+  'pencil',
+] as const satisfies readonly SceneLook[];
+
+export const LOOKS: Record<SceneLook, Look> = {
+  studio,
+  neon,
+  gallery,
+  archive,
+  editorial,
+  science,
+  ...(Object.fromEntries(GROUNDED.map((id) => [id, groundedLook(id)])) as Record<(typeof GROUNDED)[number], Look>),
+};
 
 /**
  * Looks are resolved by id with a fallback rather than indexed directly,
