@@ -1,3 +1,4 @@
+<!-- concept: twenty ideas glow in the dark, nineteen fall into a drawer that slams shut, and the one left is the only light in the room -->
 <style>
 #pool { position:absolute; left:-460px; top:-300px; width:2000px; height:2000px; border-radius:50%;
   background: radial-gradient(circle, rgba(155,24,244,.85) 0%, rgba(110,16,190,.55) 18%, rgba(22,0,38,.9) 45%, rgba(3,1,5,0) 70%); }

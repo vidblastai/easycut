@@ -68,6 +68,8 @@ export interface CompositionParts {
   style: string;
   markup: string;
   script: string;
+  /** The one-line idea the model committed to before building. Empty if it skipped it. */
+  concept?: string;
 }
 
 export interface CompositionResult {
@@ -90,10 +92,19 @@ export function systemPrompt(width: number, height: number, durationSec: number)
 
 It plays full-screen on a phone for ${dur} seconds while someone talks over it. It IS the shot — no footage behind it — so it has to carry the frame on its own and it must never sit still.
 
+## Decide the idea first
+
+Before any markup, commit to ONE concept in one sentence and write it as the very first line:
+
+<!-- concept: one sentence -->
+
+A concept is a single visual idea that carries the whole shot, not a list of things to show. Good: "a seed cracks open and its root becomes the line of a growth chart". "A brain, then neurons, then lightning" is a list, not a concept. Everything you build serves that sentence.
+
 ## What you return
 
-Exactly three blocks, in this order, and nothing else — no prose, no code fence:
+The concept line, then exactly three blocks, in this order, and nothing else — no prose, no code fence:
 
+<!-- concept: … -->
 <style> … </style>
 <div id="scene"> … </div>
 <script> … </script>
@@ -122,11 +133,11 @@ The page around them is provided. The frame is ${width}×${height} px. Inside yo
 A sequence, not a picture that moves: two or three beats, each one a thing the viewer looks at and then leaves behind, following what the voice says.
 
 - **Land on the word.** Each beat's key move starts at \`at("word", fallback)\` for the word that names it. A move three frames late reads as lag.
-- **Arrivals ease out on a long tail**: \`expo.out\` or \`power4.out\`, 0.4–0.8 s. Camera moves ease both ways: \`power2.inOut\`. Exits accelerate: \`power3.in\`, 40–50% shorter than the entrance. Never the same ease and duration on everything.
+- **Ease by role, in numbers.** Arrivals ease out on a long tail: \`expo.out\` or \`power4.out\`, 0.4–0.8 s — or, where the world below says things pop or spring, \`back.out(1.4)\` to \`back.out(2)\`: a tightly damped spring with a small overshoot, never a wobble. Camera moves ease both ways with \`power2.inOut\` and run at half the speed you would default to, except the dive between beats. Exits accelerate with \`power3.in\` and are 40–50% shorter than their entrance. When content swaps in place, the outgoing piece leaves before the incoming one lands — separate their timing. Never the same ease and duration on everything.
 - **Overlap**: the next element starts when the previous is 30–50% done. Stagger repeats 0.05–0.12 s apart.
-- **Moving between beats**: move a wrapper — the old beat leaves upward or sideways as the camera travels to the next one, 0.5–0.7 s, \`power2.inOut\`. Or the subject becomes the next thing (a card grows into the next frame, a dot becomes a planet). Never a fade to empty.
+- **Transform, never cut.** Every beat is made out of the previous one. The camera dives INTO the subject until its colour fills the frame and the next beat grows out of that colour; or a shape morphs into the next (a circle becomes a planet, a card grows into the next frame, a line becomes a chart); or the subject shrinks into a detail of something larger. 0.5–0.7 s, accelerating in (\`power3.in\`) and settling out (\`expo.out\`). Never a hard cut between beats, never a fade to an empty frame, never two beats side by side.
 - **Two or three things per beat ACT after they land**: a bar fills, a needle swings to its mark, a line draws itself (\`strokeDashoffset\`), a tick lands, a counter dial turns. The act is the sentence — pick the ones that show what the voice says.
-- **It never stops**: a slow camera drift on the outermost wrapper from 0 to ${dur} (scale 1 → 1.08, a little x/y, \`ease: "none"\`), so no frame is a photograph. But a landed object holds still — no breathing, bobbing or pulsing loops.
+- **It never stops**: a slow camera drift on the outermost wrapper from 0 to ${dur} (scale 1 → 1.08, a little x/y, \`ease: "none"\`), so no frame is a photograph. A landed object holds still — no breathing, bobbing or pulsing loops — UNLESS the world below says things drift, bob or pulse; then its motion line wins, gently and with finite repeats.
 - Pivots: set \`transformOrigin\` on anything that rotates — a clock hand turns about its pin, not about the frame.
 - Animate transforms (x, y, scale, rotation), opacity, \`strokeDashoffset\` and SVG \`attr\`. Not \`left\`/\`top\`/\`width\`/\`height\`, never \`display\` or \`visibility\`.
 - The last beat has settled by ${(durationSec - 0.4).toFixed(2)} s and stays on screen to the end; nothing exits at the end — the edit cuts away.
@@ -172,7 +183,8 @@ export function parseComposition(text: string): CompositionParts | null {
   const markup = body.slice(open, end).replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '').trim();
   if (!markup) return null;
 
-  return { style: style.trim(), markup, script: script.trim() };
+  const concept = body.match(/<!--\s*concept:\s*([\s\S]*?)-->/i)?.[1]?.trim() ?? '';
+  return { style: style.trim(), markup, script: script.trim(), concept };
 }
 
 function lastMatch(text: string, pattern: RegExp): string {
@@ -232,6 +244,10 @@ export function auditComposition(parts: CompositionParts): string[] {
   const tweens = parts.script.match(/\btl\s*\.\s*(to|from|fromTo|set)\s*\(/g)?.length ?? 0;
   if (tweens < 8) {
     problems.push(`Only ${tweens} tweens on the timeline — that is a picture fading in, not a sequence. Choreograph two or three beats with their acts.`);
+  }
+
+  if (!parts.concept) {
+    problems.push('No concept line — start with <!-- concept: one sentence --> and build the shot around that one idea.');
   }
 
   const shapes = parts.markup.match(/<(div|path|circle|ellipse|rect|polygon|polyline|line)\b/gi)?.length ?? 0;
@@ -377,6 +393,98 @@ export async function composeScene(
   }
 }
 
+/** The blocks back as the model wrote them, for a conversation that continues from them. */
+export function serialiseComposition(parts: CompositionParts): string {
+  return [
+    parts.concept ? `<!-- concept: ${parts.concept} -->` : '',
+    `<style>\n${parts.style}\n</style>`,
+    parts.markup,
+    `<script>\n${parts.script}\n</script>`,
+  ]
+    .filter(Boolean)
+    .join('\n');
+}
+
+/** What the reviewer says when it would ship the scene as it is. */
+export const REVIEW_OK = 'LOOKS GOOD';
+
+/** When to look: early, the middle of the move, late, and the settled end. */
+export function reviewTimes(durationSec: number): number[] {
+  return [0.2, 0.45, 0.7, 0.93].map((f) => Number((durationSec * f).toFixed(2)));
+}
+
+/**
+ * Asks the model to LOOK at its own scene.
+ *
+ * Everything before this checks the source; this checks the picture. The best
+ * scenes in the reference collection all came out of the same loop — build,
+ * render, look, fix — and the faults it catches are invisible in markup: a
+ * subject at a third of the size it was meant to be, two pieces sitting on
+ * each other, a beat that is just background because a tween landed late, a
+ * clock hand swinging round the frame instead of its pin.
+ */
+export function reviewInstructions(times: number[], height: number): string {
+  return `Here are frames of the scene you just wrote, rendered exactly as it will ship, at ${times.map((t) => `${t}s`).join(', ')} (labelled on the sheet).
+
+Look at them the way a motion designer reviewing a colleague's work would, and check:
+
+1. Any letters, numbers or words visible anywhere — they must not be.
+2. A frame that is mostly empty background, or a subject too small to read on a phone.
+3. Anything important inside the caption band, ${Math.round(height * 0.55)}–${Math.round(height * 0.75)}px down.
+4. Pieces overlapping by accident, cut off by the frame edge unintentionally, or misaligned.
+5. Something rotating about the wrong point, or a shape that looks broken or unfinished.
+6. Beats that look the same — the frames should show the sequence progressing.
+7. Colours outside the palette you were given, or a flat look with no depth.
+8. Whether the frames actually show your concept and what is being said.
+
+If it is genuinely good, reply with exactly: ${REVIEW_OK}
+
+Otherwise fix what is wrong and reply with the concept line and all three blocks again, nothing else. Keep everything that already works.`;
+}
+
+export interface ReviewResult {
+  /** The revision, or null when the scene was approved or the review failed. */
+  parts: CompositionParts | null;
+  approved: boolean;
+  costUsd: number;
+  error?: string;
+}
+
+/** One look-and-fix round. A failed review never costs the scene: the caller keeps what it had. */
+export async function reviewScene(
+  request: CompositionRequest,
+  parts: CompositionParts,
+  sheet: { dataUri: string; times: number[] },
+): Promise<ReviewResult> {
+  if (!isComposerConfigured()) return { parts: null, approved: false, costUsd: 0, error: 'no motion model configured' };
+  try {
+    const reply = await complete(
+      [
+        { role: 'system', content: systemPrompt(request.width, request.height, request.durationSec) },
+        { role: 'user', content: briefFor(request) },
+        { role: 'assistant', content: serialiseComposition(parts) },
+        {
+          role: 'user',
+          content: [
+            { type: 'text', text: reviewInstructions(sheet.times, request.height) },
+            { type: 'image_url', image_url: { url: sheet.dataUri } },
+          ],
+        },
+      ],
+      0.4,
+    );
+    if (reply.text.trim().toUpperCase().startsWith(REVIEW_OK)) {
+      return { parts: null, approved: true, costUsd: reply.costUsd };
+    }
+    const revised = parseComposition(reply.text);
+    return revised
+      ? { parts: { ...revised, concept: revised.concept || parts.concept }, approved: false, costUsd: reply.costUsd }
+      : { parts: null, approved: false, costUsd: reply.costUsd, error: 'review reply had neither a verdict nor blocks' };
+  } catch (error) {
+    return { parts: null, approved: false, costUsd: 0, error: error instanceof Error ? error.message : String(error) };
+  }
+}
+
 /**
  * A fault that ruins the clip rather than weakening it.
  *
@@ -384,11 +492,13 @@ export async function composeScene(
  * a script error or anything non-deterministic does not ship.
  */
 export function isFatal(problem: string): boolean {
-  return !/^Only \d+ (tweens|shapes)/.test(problem);
+  return !/^(Only \d+ (tweens|shapes)|No concept line)/.test(problem);
 }
 
+type Content = string | Array<{ type: 'text'; text: string } | { type: 'image_url'; image_url: { url: string } }>;
+
 async function complete(
-  messages: Array<{ role: 'system' | 'user' | 'assistant'; content: string }>,
+  messages: Array<{ role: 'system' | 'user' | 'assistant'; content: Content }>,
   temperature: number,
 ): Promise<{ text: string; costUsd: number }> {
   const model = env.llm.motionModel;

@@ -1,14 +1,21 @@
+import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
+import { env } from '@/lib/config/env';
 import {
+  auditComposition,
   buildCompositionHtml,
   composeScene,
   isComposerConfigured,
+  isFatal,
+  reviewScene,
+  reviewTimes,
   type CompositionFrame,
   type CompositionParts,
+  type CompositionRequest,
   type WordCue,
 } from '@/lib/director/hyperframe';
 import { photoSlotsFor, type AnimatedScene } from '@/lib/edl/types';
-import { lintProject, renderProject, writeProject } from '@/lib/render/hyperframes';
+import { lintProject, renderProject, snapshotProject, writeProject } from '@/lib/render/hyperframes';
 import { styleGuideFor } from '@/lib/scenes/style-guides';
 import { assetKey, storage } from '@/lib/storage';
 
@@ -59,6 +66,62 @@ function frameFor(scene: AnimatedScene, options: SceneClipOptions): CompositionF
   };
 }
 
+export interface DesignResult {
+  parts: CompositionParts | null;
+  costUsd: number;
+  error?: string;
+  /** What happened in the look-and-fix round, for the log. */
+  review: 'approved' | 'revised' | 'kept' | 'skipped';
+}
+
+/**
+ * Write the scene, check its source, then LOOK at it and fix it.
+ *
+ * The look-and-fix round renders four stills, shows them to the model, and
+ * takes its revision only if the revision passes the same source checks and
+ * is no worse by them — the model looking at its own work can still break
+ * the markup while improving the picture, and a broken page is a blank clip.
+ */
+export async function designScene(
+  request: CompositionRequest,
+  frame: CompositionFrame,
+  dir: string,
+): Promise<DesignResult> {
+  // HyperFrames' own lint runs against the page as it will be rendered, so
+  // its findings go into the repair round with the static audit.
+  const check = async (parts: CompositionParts) => {
+    await writeProject(dir, buildCompositionHtml(parts, frame));
+    return lintProject(dir).catch(() => []);
+  };
+  const faultsOf = async (parts: CompositionParts) => [...auditComposition(parts), ...(await check(parts))];
+
+  const composed = await composeScene(request, check);
+  if (!composed.parts || !env.scenes.review) return { ...composed, review: 'skipped' };
+
+  let costUsd = composed.costUsd;
+  try {
+    await writeProject(dir, buildCompositionHtml(composed.parts, frame));
+    const times = reviewTimes(frame.durationSec);
+    const sheet = await snapshotProject(dir, times, join(dir, 'review'));
+    const dataUri = `data:image/jpeg;base64,${(await readFile(sheet)).toString('base64')}`;
+
+    const review = await reviewScene(request, composed.parts, { dataUri, times });
+    costUsd += review.costUsd;
+    if (review.approved) return { parts: composed.parts, costUsd, review: 'approved' };
+    if (!review.parts) return { parts: composed.parts, costUsd, review: 'kept' };
+
+    const before = await faultsOf(composed.parts);
+    const after = await faultsOf(review.parts);
+    const usable = !after.some(isFatal) && after.length <= before.length;
+    return usable
+      ? { parts: review.parts, costUsd, review: 'revised' }
+      : { parts: composed.parts, costUsd, review: 'kept' };
+  } catch {
+    // A review that cannot run costs nothing but the review.
+    return { parts: composed.parts, costUsd, review: 'kept' };
+  }
+}
+
 export async function composeSceneClips(scenes: AnimatedScene[], options: SceneClipOptions): Promise<SceneClipResult> {
   const clips = new Map<string, string>();
   const errors: string[] = [];
@@ -72,13 +135,7 @@ export async function composeSceneClips(scenes: AnimatedScene[], options: SceneC
     chosen.map(async (scene) => {
       const frame = frameFor(scene, options);
       const dir = join(options.workDir, 'hyperframes', scene.id);
-      // HyperFrames' own lint runs against the page as it will be rendered,
-      // so its findings go into the repair round with the static audit.
-      const check = async (parts: CompositionParts) => {
-        await writeProject(dir, buildCompositionHtml(parts, frame));
-        return lintProject(dir).catch(() => []);
-      };
-      const result = await composeScene(
+      const result = await designScene(
         {
           line: options.lineFor(scene),
           words: frame.words,
@@ -90,7 +147,8 @@ export async function composeSceneClips(scenes: AnimatedScene[], options: SceneC
           height: frame.height,
           durationSec: frame.durationSec,
         },
-        check,
+        frame,
+        dir,
       );
       return { scene, frame, dir, result };
     }),

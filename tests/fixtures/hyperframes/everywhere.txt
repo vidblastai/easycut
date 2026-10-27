@@ -1,3 +1,4 @@
+<!-- concept: a camera drawn in light shrinks into an upload ring that bursts into six lit phones -->
 <style>
 #pool { position:absolute; left:-260px; top:-200px; width:1600px; height:1600px; border-radius:50%;
   background: radial-gradient(circle, rgba(75,91,208,.42) 0%, rgba(26,31,68,.55) 28%, rgba(10,13,34,.6) 48%, rgba(5,6,15,0) 70%); }

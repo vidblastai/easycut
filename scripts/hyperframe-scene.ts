@@ -1,18 +1,19 @@
 import { readFile, mkdir } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 import '../src/lib/config/load-env';
+import { designScene } from '../src/lib/assets/scene-clips';
 import {
   auditComposition,
   buildCompositionHtml,
-  composeScene,
   isComposerConfigured,
+  reviewTimes,
   parseComposition,
   type CompositionParts,
   type WordCue,
 } from '../src/lib/director/hyperframe';
 import { SCENE_LOOKS, type SceneLook } from '../src/lib/edl/types';
 import { run, FFMPEG } from '../src/lib/media/ffmpeg';
-import { lintProject, renderProject, writeProject } from '../src/lib/render/hyperframes';
+import { lintProject, renderProject, snapshotProject, writeProject } from '../src/lib/render/hyperframes';
 import { styleGuideFor } from '../src/lib/scenes/style-guides';
 
 /**
@@ -87,13 +88,20 @@ async function main() {
   const seconds = Number(positional[2] ?? 4.5);
 
   const started = Date.now();
-  const result = await composeScene({
-    line, words: evenWords(line, seconds), headline: '', items: [], kind: 'kinetic-text', look,
-    width: WIDTH, height: HEIGHT, durationSec: seconds,
-  });
-  console.log(`composed in ${((Date.now() - started) / 1000).toFixed(1)}s, $${result.costUsd.toFixed(3)}${result.error ? ` — ${result.error}` : ''}`);
+  const words = evenWords(line, seconds);
+  const name = `${look}-${Date.now()}`;
+  const result = await designScene(
+    { line, words, headline: '', items: [], kind: 'kinetic-text', look, width: WIDTH, height: HEIGHT, durationSec: seconds },
+    { width: WIDTH, height: HEIGHT, durationSec: seconds, ground: styleGuideFor(look).ground, words },
+    resolve(OUT, name),
+  );
+  console.log(
+    `composed in ${((Date.now() - started) / 1000).toFixed(1)}s, $${result.costUsd.toFixed(3)}, review: ${result.review}` +
+      (result.parts?.concept ? `\nconcept: ${result.parts.concept}` : '') +
+      (result.error ? ` — ${result.error}` : ''),
+  );
   if (!result.parts) throw new Error('no composition to render');
-  await renderScene(`${look}-${Date.now()}`, result.parts, look, line, seconds);
+  await renderScene(name, result.parts, look, line, seconds);
 }
 
 const WIDTH = 1080;
@@ -126,6 +134,11 @@ async function renderScene(name: string, parts: CompositionParts, look: SceneLoo
     '-frames:v', '1', sheet,
   ]);
   console.log(`contact sheet → ${sheet}`);
+
+  // The same stills the reviewing model is shown, so a fixture run proves the
+  // review's half of the loop too.
+  const review = await snapshotProject(dir, reviewTimes(seconds), join(dir, 'review'));
+  console.log(`review sheet → ${review}`);
 }
 
 main().catch((error) => {

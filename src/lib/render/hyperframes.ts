@@ -152,3 +152,24 @@ export async function renderProject(dir: string, outPath: string, options: Hyper
     throw new Error(`hyperframes render failed (${result.code}): ${tail.slice(0, 400)}`);
   }
 }
+
+/**
+ * Stills of the scene at the given times, as one labelled contact sheet.
+ *
+ * The sheet rather than the frames because it is what the reviewing model is
+ * shown: one image of a couple of hundred kilobytes with the times printed on
+ * it, against four full-size PNGs of most of a megabyte each.
+ */
+export async function snapshotProject(dir: string, times: number[], outDir: string): Promise<string> {
+  const args = ['snapshot', dir, '--at', times.join(','), '--no-end', '-o', outDir, '--json'];
+  const result = await runCli(args, dir, 90_000);
+  const json = result.stdout.slice(result.stdout.indexOf('{'));
+  try {
+    const report = JSON.parse(json) as { ok?: boolean; contactSheets?: string[] };
+    const sheet = report.contactSheets?.[0];
+    if (report.ok && sheet && existsSync(sheet)) return sheet;
+  } catch {
+    /* fall through to the error below */
+  }
+  throw new Error(`hyperframes snapshot failed (${result.code})`);
+}

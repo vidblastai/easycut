@@ -378,6 +378,12 @@ export const env = {
      * browser rather than two.
      */
     hyperframesBrowserPath: str('HYPERFRAMES_BROWSER_PATH'),
+    /**
+     * Whether the model looks at frames of its own scene and fixes them
+     * before it renders. One extra call and about ten seconds per scene;
+     * worth it, and on by default for that reason.
+     */
+    review: bool('SCENE_REVIEW', true),
   },
 
   features: {

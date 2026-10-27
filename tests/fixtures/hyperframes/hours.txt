@@ -1,3 +1,4 @@
+<!-- concept: a slow hourglass in a dark room loses to a stopwatch that finishes in one sweep -->
 <style>
 #cam { position:absolute; inset:0; }
 #strip { position:absolute; left:0; top:0; width:2160px; height:1920px; }
