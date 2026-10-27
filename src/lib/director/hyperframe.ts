@@ -78,14 +78,26 @@ export interface CompositionResult {
   error?: string;
 }
 
-/** Which account serves the composer: Kie when it has a key, unless told otherwise. */
-export function composerProvider(): 'kie' | 'wavespeed' | null {
+/**
+ * The accounts that can serve the composer, in the order they are tried.
+ *
+ * Kie first when it has a key, unless told otherwise — and the other one
+ * behind it, because the first live run showed why one is not enough: Kie
+ * refused the key for its Claude endpoint, every scene fell back to a
+ * drawing, and the WaveSpeed key sitting right there was never asked.
+ */
+export function composerProviders(): Array<'kie' | 'wavespeed'> {
   const kie = Boolean(env.kie.apiKey && env.kie.chatModel);
   const wavespeed = Boolean(env.llm.wavespeedKey && env.llm.motionModel);
   const wanted = env.scenes.composerProvider;
-  if (wanted === 'kie') return kie ? 'kie' : null;
-  if (wanted === 'wavespeed') return wavespeed ? 'wavespeed' : null;
-  return kie ? 'kie' : wavespeed ? 'wavespeed' : null;
+  if (wanted === 'kie') return kie ? ['kie'] : [];
+  if (wanted === 'wavespeed') return wavespeed ? ['wavespeed'] : [];
+  return [...(kie ? ['kie' as const] : []), ...(wavespeed ? ['wavespeed' as const] : [])];
+}
+
+/** The account tried first, or null when none is configured. */
+export function composerProvider(): 'kie' | 'wavespeed' | null {
+  return composerProviders()[0] ?? null;
 }
 
 export function isComposerConfigured(): boolean {
@@ -510,7 +522,19 @@ type Content = string | Array<{ type: 'text'; text: string } | { type: 'image_ur
 type Message = { role: 'system' | 'user' | 'assistant'; content: Content };
 
 async function complete(messages: Message[], temperature: number): Promise<{ text: string; costUsd: number }> {
-  return composerProvider() === 'kie' ? completeWithKie(messages, temperature) : completeWithWavespeed(messages, temperature);
+  const failures: string[] = [];
+  for (const provider of composerProviders()) {
+    try {
+      return provider === 'kie'
+        ? await completeWithKie(messages, temperature)
+        : await completeWithWavespeed(messages, temperature);
+    } catch (error) {
+      // Named, so a log line says WHICH account refused rather than leaving
+      // "Unauthorized" to be guessed at.
+      failures.push(`${provider}: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  }
+  throw new Error(failures.join(' · ') || 'no motion model configured');
 }
 
 /**
