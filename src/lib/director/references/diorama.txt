@@ -83,7 +83,7 @@ tl.fromTo("#world", { scale: 1.12 }, { scale: 1.2, transformOrigin: "540px 640px
 // Hook: the hill is there and the town pops up behind it in mirrored pairs on "Lisbon".
 const lisbon = Math.min(at("Lisbon", .5), .5) - .4;
 tl.fromTo("#hill", { y: 120, opacity: 0 }, { y: 0, opacity: 1, duration: .45, ease: "power3.out" }, 0);
-tl.fromTo("#arch", { scaleY: 0, transformOrigin: "540px 1000px" }, { scaleY: 1, duration: .6, ease: "power3.out" }, .1);
+tl.fromTo("#arch", { scaleY: 0, svgOrigin: "540 1000" }, { scaleY: 1, duration: .6, ease: "power3.out" }, .1);
 [["#h2", "#h5"], ["#h1", "#h4"], ["#h0", "#h3"]].forEach((pair, i) => {
   tl.fromTo(pair, { y: 520 }, { y: 0, duration: .5, ease: "back.out(1.4)" }, lisbon + .3 + i * .12);
 });

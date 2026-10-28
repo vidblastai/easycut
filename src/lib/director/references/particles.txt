@@ -1,0 +1,112 @@
+<!-- concept: a swarm of glowing particles forms an atom, then a human body, then collapses into a blazing star that explodes, and the debris drifts back together as the body — made of star dust -->
+<style>
+#bg { position:absolute; inset:0; background: radial-gradient(ellipse at 50% 36%, #0C1230 0%, #05060D 65%); }
+#haze { position:absolute; left:190px; top:290px; width:700px; height:700px; border-radius:50%; background: radial-gradient(circle, rgba(92,225,230,.18), rgba(5,6,13,0) 65%); }
+svg.layer { position:absolute; left:0; top:0; overflow:visible; }
+#swarm { filter: drop-shadow(0 0 6px rgba(92,225,230,.9)) drop-shadow(0 0 16px rgba(92,225,230,.35)); }
+</style>
+<div id="scene">
+  <div id="bg"></div>
+  <div id="haze"></div>
+  <svg class="layer" id="world" width="1080" height="1920" viewBox="0 0 1080 1920">
+    <g id="far"></g>
+    <g id="swarm"></g>
+  </svg>
+</div>
+<script>
+// Build the particles. Every position below is a function of rand(), so the scene is the same every render.
+const NS = "http://www.w3.org/2000/svg";
+const N = 360, CX = 540, CY = 640;
+const swarm = document.getElementById("swarm"), far = document.getElementById("far");
+const colors = ["#FFFFFF", "#5CE1E6", "#5CE1E6", "#FFFFFF", "#FFB547"];
+const P = [];
+for (let i = 0; i < N; i++) {
+  const c = document.createElementNS(NS, "circle");
+  const a = rand(i) * Math.PI * 2, d = 500 + rand(i + 1000) * 500;
+  c.setAttribute("cx", (CX + Math.cos(a) * d).toFixed(1));
+  c.setAttribute("cy", (CY + Math.sin(a) * d).toFixed(1));
+  c.setAttribute("r", (2.5 + rand(i + 2000) * 4.5).toFixed(1));
+  c.setAttribute("fill", colors[i % colors.length]);
+  swarm.appendChild(c); P.push(c);
+}
+for (let i = 0; i < 140; i++) {
+  const c = document.createElementNS(NS, "circle");
+  c.setAttribute("cx", (rand(i + 5000) * 1080).toFixed(1));
+  c.setAttribute("cy", (rand(i + 6000) * 1300).toFixed(1));
+  c.setAttribute("r", (1 + rand(i + 7000) * 2.2).toFixed(1));
+  c.setAttribute("fill", "#2B3A67");
+  far.appendChild(c);
+}
+
+// Target shapes, one point per particle.
+const atom = (i) => {
+  if (i < 50) { const a = rand(i + 11) * Math.PI * 2, r = Math.sqrt(rand(i + 12)) * 58; return [CX + Math.cos(a) * r, CY + Math.sin(a) * r]; }
+  const k = (i - 50) % 3, t = ((i - 50) / (N - 50)) * Math.PI * 2 * 3 + k, rot = k * Math.PI / 3;
+  const x = Math.cos(t) * 330, y = Math.sin(t) * 105;
+  return [CX + x * Math.cos(rot) - y * Math.sin(rot), CY + x * Math.sin(rot) + y * Math.cos(rot)];
+};
+const inBody = (x, y) => {
+  const head = (x - 540) ** 2 + (y - 380) ** 2 < 78 ** 2;
+  const torso = x > 440 && x < 640 && y > 480 && y < 790 && !(y < 520 && (x < 470 || x > 610));
+  const armL = y > 500 && y < 760 && x > 380 && x < 440 && x > 440 - (y - 500) * .25 - 40;
+  const armR = y > 500 && y < 760 && x > 640 && x < 700 && x < 640 + (y - 500) * .25 + 40;
+  const legs = y > 780 && y < 1020 && ((x > 455 && x < 530) || (x > 550 && x < 625));
+  return head || torso || armL || armR || legs;
+};
+const body = (i) => {
+  for (let k = 0; k < 60; k++) {
+    const x = 370 + rand(i * 61 + k + 300) * 340, y = 295 + rand(i * 67 + k + 900) * 730;
+    if (inBody(x, y)) return [x, y];
+  }
+  return [CX, CY];
+};
+const STAR = Array.from({ length: 10 }, (_, k) => {
+  const a = -Math.PI / 2 + (k * Math.PI) / 5, r = k % 2 ? 140 : 340;
+  return [CX + Math.cos(a) * r, CY + Math.sin(a) * r];
+});
+const star = (i) => {
+  if (i % 4 === 0) { const a = rand(i + 21) * Math.PI * 2, r = Math.sqrt(rand(i + 22)) * 110; return [CX + Math.cos(a) * r, CY + Math.sin(a) * r]; }
+  const k = i % 10, [x1, y1] = STAR[k], [x2, y2] = STAR[(k + 1) % 10], t = rand(i + 23);
+  return [x1 + (x2 - x1) * t + (rand(i + 24) - .5) * 14, y1 + (y2 - y1) * t + (rand(i + 25) - .5) * 14];
+};
+const burst = (i) => { const a = rand(i + 31) * Math.PI * 2, r = 420 + rand(i + 32) * 380; return [CX + Math.cos(a) * r, CY + Math.sin(a) * r]; };
+
+// Fly the whole swarm to a shape, each particle with its own small delay.
+const flyTo = (shape, t, d, ease, spread) => {
+  P.forEach((c, i) => {
+    const [x, y] = shape(i);
+    tl.to(c, { attr: { cx: x, cy: y }, duration: d, ease: ease }, t + rand(i + 77) * spread);
+  });
+};
+
+// A slow push through the field; far dust drifts slower than the swarm.
+tl.fromTo("#world", { scale: 1.02 }, { scale: 1.12, transformOrigin: "540px 640px", duration: DURATION, ease: "none" }, 0);
+tl.fromTo("#far", { y: 0 }, { y: -60, duration: DURATION, ease: "none" }, 0);
+
+// Hook: the scattered swarm rushes in and forms an atom on "atom", then its orbits spin.
+flyTo(atom, 0, .7, "expo.out", .25);
+tl.to("#swarm", { rotation: 25, svgOrigin: "540 640", duration: 1.1, ease: "power1.inOut" }, .3);
+
+// "your body": the atom dissolves into the outline of a person.
+const bodyT = at("body", 1.26) - .3;
+tl.to("#swarm", { rotation: 0, svgOrigin: "540 640", duration: .6, ease: "power2.inOut" }, bodyT);
+flyTo(body, bodyT, .6, "expo.out", .2);
+
+// "forged inside a star": the body collapses into a blazing five-point star, gold now.
+const starT = at("star", 2.78) - .45;
+flyTo(star, starT, .55, "expo.inOut", .15);
+tl.to(P, { attr: { fill: "#FFB547" }, duration: .3, stagger: { each: .001, from: "random" } }, starT + .2);
+tl.to("#haze", { scale: 1.3, opacity: 1.6, duration: .5, ease: "power2.out" }, starT + .3);
+
+// "exploded": the star blows apart into a shell of sparks.
+const boom = at("exploded", 3.28) + .05;
+tl.to("#swarm", { scale: 1.08, svgOrigin: "540 640", duration: .08, yoyo: true, repeat: 1, ease: "power2.out" }, boom - .1);
+flyTo(burst, boom, .5, "expo.out", .06);
+tl.to("#haze", { scale: 1.8, opacity: .5, duration: .5, ease: "expo.out" }, boom);
+
+// "billions of years ago": the debris drifts back together into the body — made of star dust.
+const back = at("billions", 3.64) + .05;
+flyTo(body, back, 1, "power3.inOut", .3);
+tl.to(P, { attr: { fill: (i) => (i % 3 ? "#5CE1E6" : "#FFB547") }, duration: .6, stagger: { each: .001, from: "random" } }, back + .3);
+tl.to("#haze", { scale: 1, opacity: 1, duration: .8, ease: "power2.out" }, back + .3);
+</script>

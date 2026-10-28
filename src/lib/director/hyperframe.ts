@@ -178,6 +178,7 @@ The world below sets the drawing technique, palette and motion character. Where 
 - **A line drawn on**: give it \`pathLength="1" stroke-dasharray="1" stroke-dashoffset="1"\` and tween \`strokeDashoffset\` to 0. Hide it with \`opacity: 0\` in the CSS and \`tl.set(el, {opacity: 1}, t)\` when it starts — a round line cap still shows as a dot while the line is undrawn.
 - **Things that appear later**: \`fromTo\` paints its FROM state at time 0. For anything that should not be visible yet, hide it in the CSS, \`tl.set\` it visible when it arrives, and pass \`immediateRender: false\` to its \`fromTo\`.
 - **Pivots**: give each SVG element ONE \`transformOrigin\` or \`svgOrigin\` — the same in every tween of it, or once in a \`tl.set\` at 0. Changing it between tweens shifts the element.
+- **SVG pivots are local**: on an element inside an \`<svg>\`, \`transformOrigin: "540px 600px"\` is measured from the element's OWN box, not the frame — to turn or scale about a point in the frame use \`svgOrigin: "540 600"\`.
 - **One job per element**: an element that enters with a \`y\` tween must not also get a looping wobble on \`y\`; put the wobble, the camera drift and the entrance on different wrapper groups.
 - **Keyframes**: \`keyframes: [...]\` eases each step with \`power1.inOut\` by default; pass \`easeEach: "none"\` when the path should move evenly.
 - \`at(word, fallback)\` matches the whole word first, then a word starting with it.
@@ -297,7 +298,9 @@ export function auditComposition(parts: CompositionParts): string[] {
   }
 
   const shapes = parts.markup.match(/<(div|path|circle|ellipse|rect|polygon|polyline|line)\b/gi)?.length ?? 0;
-  if (shapes < 15) problems.push(`Only ${shapes} shapes — too sparse to be an illustration; aim for 20 to 80, the detail inside the one subject.`);
+  // A swarm built in a loop by the script is hundreds of shapes the markup never shows.
+  const generated = /createElementNS\s*\(/.test(parts.script);
+  if (shapes < 15 && !generated) problems.push(`Only ${shapes} shapes — too sparse to be an illustration; aim for 20 to 80, the detail inside the one subject.`);
 
   return problems;
 }

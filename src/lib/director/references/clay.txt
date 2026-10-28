@@ -110,8 +110,8 @@ tl.fromTo("#b2", { x: 0 }, { x: -50, duration: DURATION, ease: "none" }, 0);
 
 // Hook: the mound is there; the seed drops in and squashes on "seed".
 const seed = Math.min(at("seed", .4), .5) - .3;
-tl.fromTo("#mound", { scaleY: .6, transformOrigin: "540px 1012px" }, { scaleY: 1, duration: .5, ease: "back.out(1.8)" }, 0);
-tl.fromTo("#seed", { y: -420, scaleX: .9, scaleY: 1.1, transformOrigin: "540px 812px" }, { y: 0, duration: .38, ease: "power2.in" }, seed);
+tl.fromTo("#mound", { scaleY: .6, svgOrigin: "540 1012" }, { scaleY: 1, duration: .5, ease: "back.out(1.8)" }, 0);
+tl.fromTo("#seed", { y: -420, scaleX: .9, scaleY: 1.1, svgOrigin: "540 812" }, { y: 0, duration: .38, ease: "power2.in" }, seed);
 tl.to("#seed", { scaleX: 1.18, scaleY: .8, duration: .09, ease: "power1.out" }, seed + .38);
 tl.to("#seed", { scaleX: 1, scaleY: 1, duration: .45, ease: "back.out(3)" }, seed + .47);
 tl.to("#mound", { scaleY: .94, duration: .09, yoyo: true, repeat: 1, ease: "power1.out" }, seed + .38);
@@ -128,15 +128,15 @@ tl.to("#seed", { scaleX: 1.12, scaleY: .9, duration: .1, yoyo: true, repeat: 5, 
 
 // "warmth": the clay sun pops in above and glows; the seed swells.
 const warm = at("warmth", 1.8) - .15;
-tl.fromTo("#sunBody", { scale: 0, transformOrigin: "540px 300px" }, { scale: 1, duration: .55, ease: "back.out(2)" }, warm);
-tl.fromTo("#sunGlow", { scale: 0, opacity: 0, transformOrigin: "540px 300px" }, { scale: 1, opacity: 1, duration: .7, ease: "expo.out" }, warm + .05);
+tl.fromTo("#sunBody", { scale: 0, svgOrigin: "540 300" }, { scale: 1, duration: .55, ease: "back.out(2)" }, warm);
+tl.fromTo("#sunGlow", { scale: 0, opacity: 0, svgOrigin: "540 300" }, { scale: 1, opacity: 1, duration: .7, ease: "expo.out" }, warm + .05);
 tl.fromTo(".ray", { scaleY: 0, transformOrigin: "50% 160px" }, { scaleY: 1, duration: .35, stagger: .04, ease: "back.out(2.5)" }, warm + .25);
 tl.to("#rays", { rotation: 40, svgOrigin: "540 300", duration: DURATION - warm, ease: "none" }, warm);
-tl.to("#seed", { scale: 1.12, transformOrigin: "540px 812px", duration: .5, ease: "power2.out" }, warm + .2);
+tl.to("#seed", { scale: 1.12, svgOrigin: "540 812", duration: .5, ease: "power2.out" }, warm + .2);
 
 // "time": the seed trembles and a crack runs down it.
 const time = at("time", 2.36) - .1;
-tl.to("#seed", { rotation: 4, duration: .06, yoyo: true, repeat: 7, ease: "sine.inOut", transformOrigin: "540px 812px" }, time);
+tl.to("#seed", { rotation: 4, duration: .06, yoyo: true, repeat: 7, ease: "sine.inOut", svgOrigin: "540 812" }, time);
 tl.set("#crack", { opacity: 1 }, time + .2);
 tl.to("#crack", { strokeDashoffset: 0, duration: .4, ease: "power2.inOut" }, time + .2);
 
@@ -148,7 +148,7 @@ tl.to("#seedR", { rotation: 32, x: 40, svgOrigin: "540 812", duration: .45, ease
 tl.set("#stem, #stemShine", { opacity: 1 }, push + .05);
 tl.to("#stem", { strokeDashoffset: 0, duration: .7, ease: "power3.out" }, push + .05);
 tl.to("#stemShine", { strokeDashoffset: 0, duration: .7, ease: "power3.out" }, push + .1);
-tl.fromTo("#sprout", { scaleY: .85, transformOrigin: "540px 780px" }, { scaleY: 1, duration: .5, ease: "back.out(2.4)" }, push + .55);
+tl.fromTo("#sprout", { scaleY: .85, svgOrigin: "540 780" }, { scaleY: 1, duration: .5, ease: "back.out(2.4)" }, push + .55);
 tl.to("#mound", { scaleY: 1.06, duration: .12, yoyo: true, repeat: 1, ease: "power1.out" }, push);
 
 // "soil" … "light": the leaves unfold and the sprout leans into the sun, which flares.
@@ -157,7 +157,7 @@ tl.fromTo("#leafL", { scale: 0, rotation: 30, svgOrigin: "546 486" }, { scale: 1
 tl.fromTo("#leafR", { scale: 0, rotation: -30, svgOrigin: "552 474" }, { scale: 1, rotation: 0, duration: .55, ease: "back.out(1.8)" }, leaves + .12);
 const light = at("light", 5.0) - .2;
 tl.to("#sprout", { rotation: -4, svgOrigin: "540 780", duration: .6, ease: "power2.out" }, light);
-tl.to("#sunBody", { scale: 1.18, transformOrigin: "540px 300px", duration: .3, yoyo: true, repeat: 1, ease: "power2.out" }, light);
-tl.to("#sunGlow", { scale: 1.35, transformOrigin: "540px 300px", duration: .5, ease: "expo.out" }, light);
+tl.to("#sunBody", { scale: 1.18, svgOrigin: "540 300", duration: .3, yoyo: true, repeat: 1, ease: "power2.out" }, light);
+tl.to("#sunGlow", { scale: 1.35, svgOrigin: "540 300", duration: .5, ease: "expo.out" }, light);
 tl.to(".ray", { scaleY: 1.4, duration: .3, stagger: .03, ease: "back.out(2)" }, light);
 </script>

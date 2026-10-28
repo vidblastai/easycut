@@ -1,0 +1,116 @@
+<!-- concept: a single chrome drop falls into a pool of liquid metal that pulses out rings on the beat, scatters into a million tiny chrome spheres, and melts into one giant chrome play button -->
+<style>
+#bg { position:absolute; inset:0; background:#0D0B14; }
+#holo { position:absolute; left:40px; top:160px; width:1000px; height:960px; border-radius:50%; background: radial-gradient(circle at 40% 40%, rgba(183,156,255,.55), rgba(127,243,232,.25) 45%, rgba(13,11,20,0) 70%); filter: blur(40px); }
+#holo2 { position:absolute; left:380px; top:520px; width:620px; height:620px; border-radius:50%; background: radial-gradient(circle, rgba(255,138,216,.35), rgba(13,11,20,0) 65%); filter: blur(50px); }
+svg.layer { position:absolute; left:0; top:0; overflow:visible; }
+#pool, #rings, #minis, #play, #spk { opacity:0; }
+</style>
+<div id="scene">
+  <div id="bg"></div>
+  <div id="holo"></div>
+  <div id="holo2"></div>
+  <svg class="layer" id="world" width="1080" height="1920" viewBox="0 0 1080 1920">
+    <defs>
+      <linearGradient id="chrome" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="#FFFFFF"/><stop offset=".16" stop-color="#E6E7EC"/><stop offset=".36" stop-color="#9497A3"/>
+        <stop offset=".5" stop-color="#1E1F26"/><stop offset=".6" stop-color="#5D606C"/><stop offset=".82" stop-color="#D7D8DF"/><stop offset="1" stop-color="#FFFFFF"/>
+      </linearGradient>
+      <linearGradient id="chromeTilt" x1="0" y1="0" x2=".4" y2="1">
+        <stop offset="0" stop-color="#FFFFFF"/><stop offset=".22" stop-color="#C9CBD3"/><stop offset=".44" stop-color="#2A2B33"/>
+        <stop offset=".56" stop-color="#4A4C57"/><stop offset=".78" stop-color="#E3E4EA"/><stop offset="1" stop-color="#B79CFF"/>
+      </linearGradient>
+      <radialGradient id="sphere" cx=".35" cy=".3" r=".75">
+        <stop offset="0" stop-color="#FFFFFF"/><stop offset=".3" stop-color="#C9CBD3"/><stop offset=".55" stop-color="#2A2B33"/><stop offset=".8" stop-color="#8A8D99"/><stop offset="1" stop-color="#B79CFF"/>
+      </radialGradient>
+      <linearGradient id="iri" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#B79CFF"/><stop offset=".5" stop-color="#7FF3E8"/><stop offset="1" stop-color="#FF8AD8"/></linearGradient>
+    </defs>
+
+    <!-- the drop -->
+    <g id="drop"><g transform="translate(540 120) scale(1.8) translate(-540 -120)">
+      <path d="M540 120 C 540 120 476 214 476 262 C 476 300 505 326 540 326 C 575 326 604 300 604 262 C 604 214 540 120 540 120 Z" fill="url(#chrome)" stroke="url(#iri)" stroke-width="4"/>
+      <ellipse cx="518" cy="250" rx="14" ry="26" fill="#FFFFFF" opacity=".9"/>
+    </g></g>
+
+    <!-- the pool of liquid metal it lands in -->
+    <g id="pool">
+      <ellipse cx="540" cy="700" rx="300" ry="290" fill="url(#chromeTilt)" stroke="url(#iri)" stroke-width="6"/>
+      <ellipse cx="450" cy="560" rx="80" ry="40" fill="#FFFFFF" opacity=".85" transform="rotate(-25 450 560)"/>
+      <ellipse cx="640" cy="850" rx="60" ry="18" fill="#FFFFFF" opacity=".35" transform="rotate(-20 640 850)"/>
+    </g>
+
+    <!-- the beat: chrome rings rippling out -->
+    <g id="rings" fill="none" stroke="url(#chrome)">
+      <circle class="ring" cx="540" cy="700" r="330" stroke-width="22"/>
+      <circle class="ring" cx="540" cy="700" r="330" stroke-width="16"/>
+      <circle class="ring" cx="540" cy="700" r="330" stroke-width="10"/>
+    </g>
+
+    <!-- a million: tiny chrome spheres -->
+    <g id="minis">
+      <circle class="mini" cx="540" cy="700" r="34" fill="url(#sphere)"/><circle class="mini" cx="540" cy="700" r="22" fill="url(#sphere)"/><circle class="mini" cx="540" cy="700" r="28" fill="url(#sphere)"/>
+      <circle class="mini" cx="540" cy="700" r="18" fill="url(#sphere)"/><circle class="mini" cx="540" cy="700" r="30" fill="url(#sphere)"/><circle class="mini" cx="540" cy="700" r="20" fill="url(#sphere)"/>
+      <circle class="mini" cx="540" cy="700" r="26" fill="url(#sphere)"/><circle class="mini" cx="540" cy="700" r="16" fill="url(#sphere)"/><circle class="mini" cx="540" cy="700" r="24" fill="url(#sphere)"/>
+      <circle class="mini" cx="540" cy="700" r="32" fill="url(#sphere)"/><circle class="mini" cx="540" cy="700" r="19" fill="url(#sphere)"/><circle class="mini" cx="540" cy="700" r="27" fill="url(#sphere)"/>
+      <circle class="mini" cx="540" cy="700" r="21" fill="url(#sphere)"/><circle class="mini" cx="540" cy="700" r="29" fill="url(#sphere)"/>
+    </g>
+
+    <!-- press play: an inflated chrome play button -->
+    <g id="play">
+      <path d="M430 470 C 430 430 470 410 506 430 L 760 590 C 800 615 800 665 760 690 L 506 850 C 470 870 430 850 430 810 Z" fill="url(#chromeTilt)" stroke="url(#iri)" stroke-width="7"/>
+      <path d="M462 486 C 462 466 482 456 500 466 L 640 552" fill="none" stroke="#FFFFFF" stroke-width="18" stroke-linecap="round" opacity=".9"/>
+      <path d="M470 790 L 600 712" fill="none" stroke="#FFFFFF" stroke-width="8" stroke-linecap="round" opacity=".35"/>
+    </g>
+
+    <!-- sparkles -->
+    <g id="spk" fill="#FFFFFF"><g transform="translate(540 700) scale(1.7) translate(-540 -700)">
+      <path class="sp" d="M300 420 L310 450 L340 460 L310 470 L300 500 L290 470 L260 460 L290 450 Z"/>
+      <path class="sp" d="M820 470 L828 494 L852 502 L828 510 L820 534 L812 510 L788 502 L812 494 Z"/>
+      <path class="sp" d="M800 900 L806 918 L824 924 L806 930 L800 948 L794 930 L776 924 L794 918 Z"/>
+      <path class="sp" d="M270 860 L277 881 L298 888 L277 895 L270 916 L263 895 L242 888 L263 881 Z"/>
+    </g></g>
+  </svg>
+</div>
+<script>
+// A slow drift, as if orbiting a sculpture; the holographic light breathes.
+tl.fromTo("#world", { scale: 1.06, rotation: -1.5 }, { scale: 1.14, rotation: 1.5, transformOrigin: "540px 700px", duration: DURATION, ease: "sine.inOut" }, 0);
+tl.fromTo("#holo", { x: -40, rotation: 0 }, { x: 40, rotation: 25, duration: DURATION, ease: "sine.inOut" }, 0);
+tl.fromTo("#holo2", { x: 30 }, { x: -60, duration: DURATION, ease: "sine.inOut" }, 0);
+
+// Hook: the drop hangs, wobbling, then falls on "single drop".
+tl.fromTo("#drop", { scale: .2, svgOrigin: "540 120" }, { scale: 1, duration: .45, ease: "elastic.out(1, .6)" }, 0);
+tl.to("#drop", { scaleX: 1.08, scaleY: .94, svgOrigin: "540 120", duration: .18, yoyo: true, repeat: 3, ease: "sine.inOut" }, .45);
+const drop = at("drop", 1.56) - .35;
+tl.to("#drop", { y: 260, scaleY: 1.25, scaleX: .85, svgOrigin: "540 120", duration: .32, ease: "power2.in" }, drop);
+tl.set("#drop", { opacity: 0 }, drop + .32);
+// The pool swells up out of the splash.
+tl.set("#pool", { opacity: 1 }, drop + .3);
+tl.fromTo("#pool", { scale: .15, scaleY: .05, svgOrigin: "540 700" }, { scale: 1, scaleY: 1, duration: .7, ease: "elastic.out(1, .6)", immediateRender: false }, drop + .3);
+
+// "the beat hits": the pool thumps and throws chrome rings out on the beat.
+const beat = at("beat", 2.56) - .05;
+tl.set("#rings", { opacity: 1 }, beat);
+document.querySelectorAll(".ring").forEach((r, i) => {
+  tl.fromTo(r, { scale: .85, opacity: 1, transformOrigin: "540px 700px" }, { scale: 1.25 + i * .1, opacity: 0, duration: .7, ease: "power2.out", immediateRender: false }, beat + i * .12);
+});
+tl.to("#pool", { scaleX: 1.1, scaleY: .9, svgOrigin: "540 700", duration: .1, yoyo: true, repeat: 3, ease: "power2.out" }, beat);
+
+// "a million people": the pool spits out a cloud of tiny chrome spheres that orbit it.
+const many = at("million", 3.38) - .15;
+tl.set("#minis", { opacity: 1 }, many);
+document.querySelectorAll(".mini").forEach((m, i) => {
+  const a = (i / 14) * Math.PI * 2 + rand(i) * .4, d = 360 + rand(i + 9) * 150;
+  tl.fromTo(m, { x: 0, y: 0, scale: 0 }, { x: Math.cos(a) * d, y: Math.sin(a) * d * 1.05, scale: 1, duration: .55, ease: "expo.out", immediateRender: false }, many + i * .02);
+});
+tl.to("#minis", { rotation: 30, svgOrigin: "540 700", duration: DURATION - many, ease: "none" }, many);
+
+// "press play": the pool melts and re-forms as a big inflated chrome play button.
+const play = at("press", 3.9) - .05;
+tl.to("#pool", { scale: .6, filter: "blur(6px)", svgOrigin: "540 700", duration: .25, ease: "power3.in" }, play);
+tl.set("#pool", { opacity: 0 }, play + .25);
+tl.set("#play", { opacity: 1 }, play + .2);
+tl.fromTo("#play", { scale: .5, filter: "blur(6px)", svgOrigin: "590 650" }, { scale: 1.15, filter: "blur(0px)", duration: .6, ease: "elastic.out(1, .6)", immediateRender: false }, play + .2);
+tl.set("#spk", { opacity: 1 }, at("play", 4.24));
+tl.fromTo(".sp", { scale: 0, rotation: -45, transformOrigin: "50% 50%" }, { scale: 1, rotation: 0, duration: .3, stagger: .06, ease: "back.out(3)", immediateRender: false }, at("play", 4.24));
+tl.to(".sp", { scale: .4, opacity: .6, duration: .2, yoyo: true, repeat: 3, stagger: .05, ease: "sine.inOut" }, at("play", 4.24) + .35);
+</script>

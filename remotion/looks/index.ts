@@ -24,6 +24,12 @@ const GROUNDED = [
   'poster',
   'diorama',
   'pencil',
+  'morph',
+  'chrome',
+  'mono',
+  'particles',
+  'sticker',
+  'retro',
 ] as const satisfies readonly SceneLook[];
 
 export const LOOKS: Record<SceneLook, Look> = {
