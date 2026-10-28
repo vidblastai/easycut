@@ -589,6 +589,160 @@ export const STYLE_GUIDES: Record<SceneLook, StyleGuide> = {
     camera: 'Soft slow push; a dive follows a pencil line into the next drawing.',
     never: ['clean vector fills', 'glows', 'neon colours', 'dark backgrounds', 'photorealism'],
   },
+  /*
+   * Social looks: the styles editors reach for on TikTok and Reels, from the
+   * motion-graphics half of the same survey — one shape morphing through UI
+   * states, liquid chrome, high-end minimal, particle swarms, cut-out
+   * stickers, retro CRT. Same rule as above: how, never what.
+   */
+
+  morph: {
+    id: 'morph',
+    ground: '#E9E7E3',
+    palette: [
+      { role: 'the shape itself, near-black UI', hex: '#111111' },
+      { role: 'white surfaces and content on the shape', hex: '#FFFFFF' },
+      { role: 'light grey for tracks, empty states and dividers', hex: '#CFCCC6' },
+      { role: 'mid grey for secondary icons', hex: '#8C8A85' },
+    ],
+    accent: '#3D5AFE',
+    rendering:
+      'Crisp product-UI motion design: ONE rounded shape (a pill, a card, a circle) that IS the subject, drawn as clean flat ' +
+      'components — buttons, toggles, sliders, loaders, progress rings, check marks, simple line icons (stroke 6–8px, round ' +
+      'caps). Black and white with the one accent on the active part. A small black arrow cursor with a white outline drives ' +
+      'every change by moving, pressing (scale 0.85) and releasing. Build the morphing shape as an SVG rect and tween ' +
+      'its attr x, y, width, height and rx together so it stays centred. No device frames, no screenshots.',
+    lighting: 'Flat; a single soft shadow under the shape (0 30px 60px at 15%). No glows, no gradients on the UI.',
+    ground_rule: 'A warm light-grey canvas with nothing on it — all attention on the one shape.',
+    motion:
+      'One shape, never cut: every state is the same element morphing its width, height, corner radius and colour ' +
+      '(0.35–0.5 s, back.out(1.2) — a spring with a tiny overshoot), while its content swaps with a quick fade and slight ' +
+      'scale. The cursor arrives just before each change and clicks on the beat. Something changes on every word that names it.',
+    camera: 'Locked and centred; the shape itself grows to fill the frame for its big moment.',
+    never: ['bouncy wobbly easing', 'particle bursts', 'glows', 'gradients on UI elements', 'phone or browser frames'],
+  },
+
+  chrome: {
+    id: 'chrome',
+    ground: '#0D0B14',
+    palette: [
+      { role: 'bright chrome highlight', hex: '#FFFFFF' },
+      { role: 'chrome mid-tone reflection', hex: '#A7A9B4' },
+      { role: 'chrome dark reflection band', hex: '#2A2B33' },
+      { role: 'holographic violet sheen', hex: '#B79CFF' },
+      { role: 'holographic aqua sheen', hex: '#7FF3E8' },
+    ],
+    accent: '#FF8AD8',
+    rendering:
+      'Liquid chrome, Y2K: objects are smooth, bulbous, mirror-polished metal — built from sharp-banded linear and radial ' +
+      'gradients (white, light grey, near-black bands, white again) that read as reflections, with a thin iridescent ' +
+      'violet-to-aqua edge sheen. Shapes are blobby and inflated, like liquid metal or a balloon. A few small four-point ' +
+      'sparkle stars.',
+    lighting: 'Studio reflections: hard white highlight bands across the top of every object, a dark band below the middle, a soft pink rim.',
+    ground_rule:
+      'A near-black ground with one large soft holographic gradient glow (violet into aqua) behind the subject and a faint reflection under it.',
+    motion:
+      'Liquid: objects swell in from a droplet with elastic.out(1, 0.6) on arrival only, then morph into the next shape by ' +
+      'melting (scale squash, blur 2–4px through the change). The reflection bands slide across objects as they turn. ' +
+      'Sparkles twinkle in and out.',
+    camera: 'A slow orbit-like drift with slight scale; a dive goes into the mirror surface of the subject.',
+    never: ['flat matte colours', 'outlines', 'paper or hand-drawn textures', 'pixel art', 'white backgrounds'],
+  },
+
+  mono: {
+    id: 'mono',
+    ground: '#0A0A0A',
+    palette: [
+      { role: 'pure white, the subject', hex: '#FFFFFF' },
+      { role: 'light grey for second planes', hex: '#BDBDBD' },
+      { role: 'dark grey for shapes receding into the ground', hex: '#262626' },
+      { role: 'off-black panels', hex: '#141414' },
+    ],
+    accent: '#C6FF00',
+    rendering:
+      'High-end minimal, like a premium launch film: very few, very clean geometric shapes in white on near-black, thin ' +
+      'precise lines (3–4px) and solid forms, enormous negative space, and exactly ONE electric-lime accent per beat. ' +
+      'Elements are revealed through masks (clipPath rectangles sliding) rather than faded in.',
+    lighting: 'None to speak of — contrast does everything. At most a very faint radial lift behind the subject.',
+    ground_rule: 'Near-black, perfectly flat, nothing else on it.',
+    motion:
+      'Precise and expensive: masked wipes and slides with expo.out (0.5–0.7 s), match cuts where one shape becomes the ' +
+      'next in exactly the same place, a single smooth camera push. Tight rhythm on the words. No bounce at all.',
+    camera: 'One smooth continuous push; transitions are match-cuts inside the frame, never camera shakes.',
+    never: ['glows', 'gradients', 'bouncy easing', 'more than one accent colour', 'textures or grain'],
+  },
+
+  particles: {
+    id: 'particles',
+    ground: '#05060D',
+    palette: [
+      { role: 'bright particle cores', hex: '#FFFFFF' },
+      { role: 'cool cyan particles', hex: '#5CE1E6' },
+      { role: 'warm amber particles', hex: '#FFB547' },
+      { role: 'dim far particles', hex: '#2B3A67' },
+    ],
+    accent: '#5CE1E6',
+    rendering:
+      'Everything is made of particles: hundreds of small glowing dots (3–8px, a soft glow on the brightest) that swarm ' +
+      'together to form each object’s silhouette and outline, denser on edges, sparser inside. No solid shapes — the ' +
+      'subject exists only as a cloud of points.',
+    lighting: 'The particles are the light: a soft bloom (drop-shadow glow) on the cores and a faint haze where they gather.',
+    ground_rule: 'Deep blue-black with a few hundred dim drifting far particles at different depths.',
+    motion:
+      'Swarm: particles start scattered and fly in to their positions on the word with staggered expo.out (each with its ' +
+      'own small delay), hold with a gentle shimmer, then explode outward and re-gather as the next object. Smooth, fluid, ' +
+      'never all moving in lockstep.',
+    camera: 'A slow push through the field so near particles move faster than far ones.',
+    never: ['solid filled shapes', 'outlines drawn as lines', 'flat cartoon style', 'light backgrounds', 'text made of particles'],
+  },
+
+  sticker: {
+    id: 'sticker',
+    ground: '#FFD43B',
+    palette: [
+      { role: 'thick white sticker border around every object', hex: '#FFFFFF' },
+      { role: 'hot pink, the first object colour', hex: '#FF4D8D' },
+      { role: 'electric blue, the second object colour', hex: '#2F6BFF' },
+      { role: 'black for marker doodles and details', hex: '#111111' },
+      { role: 'mint, the third object colour', hex: '#2EE6A6' },
+    ],
+    accent: '#111111',
+    rendering:
+      'Creator-reel stickers: each object is a bold, simple, flat illustration with a THICK white die-cut border (14–20px) ' +
+      'and a hard drop shadow (8px offset, 25% black), like a sticker slapped onto the frame. Around them, black marker ' +
+      'doodles — arrows, circles, underlines, sparkle strokes, squiggles — that draw themselves on.',
+    lighting: 'Flat colour; the only depth is the sticker shadow.',
+    ground_rule: 'A saturated flat colour with a faint grid or halftone dots, and one or two oversized pale blobs behind.',
+    motion:
+      'Punchy and playful: stickers slap on with a quick scale-down from 1.4 and back.out(2.5), a little rotation (±8°) ' +
+      'and a shake on landing; they peel off by flipping. Marker doodles draw on fast (0.2–0.3 s). Things pop exactly on the words.',
+    camera: 'Locked and centred, with quick punch-in zooms (scale 1 → 1.08) on the important beats.',
+    never: ['photorealism', 'soft gradients', 'thin hairlines', 'dark backgrounds', 'objects without the white border'],
+  },
+
+  retro: {
+    id: 'retro',
+    ground: '#14100F',
+    palette: [
+      { role: 'warm phosphor orange, the main colour', hex: '#FF8A3D' },
+      { role: 'teal, the second colour', hex: '#2EC4B6' },
+      { role: 'cream highlights', hex: '#FFE8C2' },
+      { role: 'deep brown shadows', hex: '#3A2418' },
+      { role: 'faded magenta, sparingly', hex: '#E0567A' },
+    ],
+    accent: '#FF8A3D',
+    rendering:
+      'Retro-futurist CRT: chunky rounded shapes from 70s–80s tech (rounded rectangles, sunset stripes, horizon grids) in ' +
+      'warm orange, teal and cream, seen through an old screen — horizontal scanlines over everything, a slight RGB ' +
+      'fringe (red and cyan copies offset 3–4px), animated film grain, and a curved dark vignette.',
+    lighting: 'A warm glow bleeding from bright shapes (soft orange bloom), dark corners like a curved tube.',
+    ground_rule: 'A deep warm brown-black with a perspective grid floor fading into a horizon behind the subject, under the scanlines.',
+    motion:
+      'Analogue: things power on with a quick vertical squash-and-flash like an old TV, the picture rolls or jitters ' +
+      'a couple of pixels on big beats (finite), stripes wipe across, and changes happen with a brief static flicker.',
+    camera: 'A steady push with a tiny occasional jitter; transitions are TV switch-offs and switch-ons.',
+    never: ['clean modern flat UI', 'pure white backgrounds', 'pastel colours', 'smooth glassy surfaces', 'neon pink-cyan cyberpunk'],
+  },
 };
 
 export function styleGuideFor(look: SceneLook): StyleGuide {

@@ -1,0 +1,118 @@
+<!-- concept: one black shape, driven by a cursor, morphs from a sign-up button into a toggle, a loading ring and finally an order card where a little truck is already on its way -->
+<style>
+#bg { position:absolute; inset:0; background: radial-gradient(ellipse at 50% 34%, #F3F1ED 0%, #E9E7E3 60%, #DEDBD5 100%); }
+svg.layer { position:absolute; left:0; top:0; overflow:visible; }
+.st { opacity:0; }
+#shadow { filter: blur(30px); }
+</style>
+<div id="scene">
+  <div id="bg"></div>
+  <svg class="layer" id="world" width="1080" height="1920" viewBox="0 0 1080 1920" style="transform: scale(1.38); transform-origin: 540px 625px">
+    <ellipse id="shadow" cx="540" cy="760" rx="220" ry="34" fill="#000000" opacity=".16"/>
+    <!-- the one shape -->
+    <rect id="shape" x="300" y="550" width="480" height="150" rx="75" fill="#111111"/>
+
+    <!-- state 1: sign-up button — a person with a plus -->
+    <g id="s1" class="st" fill="none" stroke="#FFFFFF" stroke-width="9" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="510" cy="605" r="20"/><path d="M472 660 C 476 634 544 634 548 660"/>
+      <path d="M592 625 L632 625 M612 605 L612 645"/>
+    </g>
+
+    <!-- state 2: the toggle switched on -->
+    <g id="s2" class="st">
+      <circle id="knob" cx="390" cy="625" r="62" fill="#FFFFFF"/>
+      <path id="knobTick" d="M668 625 L688 645 L722 605" fill="none" stroke="#FFFFFF" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" opacity="0"/>
+    </g>
+
+    <!-- state 3: the loading ring -->
+    <g id="s3" class="st">
+      <circle cx="540" cy="625" r="92" fill="none" stroke="#3A3A3A" stroke-width="16"/>
+      <circle id="ring" cx="540" cy="625" r="92" fill="none" stroke="#3D5AFE" stroke-width="16" stroke-linecap="round" pathLength="1" stroke-dasharray="1" stroke-dashoffset="1" transform="rotate(-90 540 625)"/>
+      <path id="ringTick" d="M505 627 L530 652 L578 600" fill="none" stroke="#FFFFFF" stroke-width="13" stroke-linecap="round" stroke-linejoin="round" pathLength="1" stroke-dasharray="1" stroke-dashoffset="1" opacity="0"/>
+    </g>
+
+    <!-- state 4: the order card — a parcel, a three-step track and a truck -->
+    <g id="s4" class="st">
+      <g fill="none" stroke="#FFFFFF" stroke-width="9" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M480 470 L540 440 L600 470 L600 540 L540 570 L480 540 Z"/><path d="M480 470 L540 500 L600 470 M540 500 L540 570"/><path d="M510 455 L570 485" opacity=".6"/>
+      </g>
+      <rect x="330" y="650" width="420" height="14" rx="7" fill="#3A3A3A"/>
+      <rect id="fillBar" x="330" y="650" width="0" height="14" rx="7" fill="#3D5AFE"/>
+      <circle class="dot" cx="340" cy="657" r="20" fill="#3A3A3A"/><circle class="dot" cx="540" cy="657" r="20" fill="#3A3A3A"/><circle class="dot" cx="740" cy="657" r="20" fill="#3A3A3A"/>
+      <g id="truck">
+        <rect x="-46" y="-34" width="56" height="40" rx="6" fill="#FFFFFF"/>
+        <path d="M10 -24 L30 -24 L44 -8 L44 6 L10 6 Z" fill="#FFFFFF"/>
+        <circle cx="-30" cy="10" r="9" fill="#111111" stroke="#FFFFFF" stroke-width="5"/><circle cx="28" cy="10" r="9" fill="#111111" stroke="#FFFFFF" stroke-width="5"/>
+      </g>
+      <g id="badge"><circle cx="760" cy="410" r="44" fill="#3D5AFE"/><path d="M740 410 L754 424 L782 396" fill="none" stroke="#FFFFFF" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/></g>
+    </g>
+
+    <!-- the cursor -->
+    <g id="cursor">
+      <path d="M0 0 L0 64 L16 49 L28 76 L40 70 L28 44 L50 44 Z" fill="#111111" stroke="#FFFFFF" stroke-width="5" stroke-linejoin="round"/>
+    </g>
+    <circle id="ripple" cx="560" cy="635" r="40" fill="none" stroke="#3D5AFE" stroke-width="6" opacity="0"/>
+  </svg>
+</div>
+<script>
+const spring = "back.out(1.2)";
+const morph = (t, w, h, rx, fill, d) => {
+  tl.to("#shape", { attr: { x: 540 - w / 2, y: 625 - h / 2, width: w, height: h, rx: rx }, fill: fill || "#111111", duration: d || .45, ease: spring }, t);
+  tl.to("#shadow", { attr: { rx: w * .46, cy: 625 + h / 2 + 40 }, duration: d || .45, ease: spring }, t);
+};
+const show = (id, t) => { tl.set(id, { opacity: 1 }, t); tl.fromTo(id, { scale: .85, transformOrigin: "50% 50%" }, { scale: 1, duration: .3, ease: spring, immediateRender: false }, t); };
+const hide = (id, t) => tl.to(id, { opacity: 0, scale: .9, transformOrigin: "50% 50%", duration: .12, ease: "power2.in" }, t);
+const click = (t) => {
+  tl.to("#cursor", { scale: .85, transformOrigin: "0px 0px", duration: .08, yoyo: true, repeat: 1, ease: "power2.out" }, t);
+  tl.fromTo("#ripple", { opacity: .8, scale: .4, transformOrigin: "50% 50%" }, { opacity: 0, scale: 2.2, duration: .45, ease: "power2.out", immediateRender: false }, t);
+};
+tl.set("#cursor", { x: 900, y: 1150 }, 0);
+
+// Hook: the button is already there and springs up; the cursor glides in — "one tap".
+tl.fromTo("#shape", { attr: { x: 420, y: 595, width: 240, height: 60, rx: 30 } }, { attr: { x: 300, y: 550, width: 480, height: 150, rx: 75 }, duration: .4, ease: spring }, 0);
+show("#s1", .15);
+tl.to("#cursor", { x: 600, y: 650, duration: .4, ease: "power3.out" }, .05);
+const tap = at("tap", .52);
+click(tap);
+tl.to("#shape", { attr: { x: 312, y: 556, width: 456, height: 138 }, duration: .08, yoyo: true, repeat: 1, ease: "power2.out" }, tap);
+
+// "sign up": the button widens into a toggle and the knob slides across into blue.
+const sign = at("sign", 1.04) - .15;
+hide("#s1", sign);
+morph(sign, 520, 170, 85, "#3D5AFE");
+show("#s2", sign + .1);
+tl.to("#knob", { attr: { cx: 690 }, duration: .35, ease: spring }, sign + .2);
+tl.to("#cursor", { x: 720, y: 660, duration: .3, ease: "power2.inOut" }, sign);
+click(sign + .2);
+
+// "two seconds to load": the toggle closes into a circle and a ring loads round it.
+const load = at("two", 1.52) - .1;
+hide("#s2", load);
+morph(load, 260, 260, 130, "#111111");
+show("#s3", load + .15);
+tl.to("#cursor", { x: 860, y: 900, duration: .4, ease: "power2.inOut" }, load);
+tl.to("#ring", { strokeDashoffset: 0, duration: .95, ease: "power1.inOut" }, load + .2);
+tl.set("#ringTick", { opacity: 1 }, at("load", 2.42) - .1);
+tl.to("#ringTick", { strokeDashoffset: 0, duration: .25, ease: "power2.out" }, at("load", 2.42) - .1);
+tl.to("#ring", { stroke: "#FFFFFF", duration: .15 }, at("load", 2.42) - .1);
+
+// "your first order": the circle opens into a big card — the shape's payoff size.
+const order = at("first", 3.22) - .25;
+hide("#s3", order);
+morph(order, 700, 460, 56, "#111111", .5);
+show("#s4", order + .15);
+tl.set("#truck", { x: 340, y: 610 }, 0);
+tl.to("#cursor", { x: 760, y: 960, duration: .35, ease: "power2.inOut" }, order);
+click(order + .35);
+tl.to(".dot:nth-of-type(1)", { fill: "#3D5AFE", duration: .15 }, order + .4);
+
+// "already on its way": the bar fills, the truck drives along it, each stop lights, and a check lands.
+const way = at("already", 3.94) - .1;
+tl.to("#fillBar", { attr: { width: 420 }, duration: .9, ease: "power1.inOut" }, way);
+tl.to("#truck", { x: 740, duration: .9, ease: "power1.inOut" }, way);
+tl.to("#truck", { y: 604, duration: .1, yoyo: true, repeat: 7, ease: "sine.inOut" }, way);
+tl.to(".dot", { fill: "#3D5AFE", duration: .12, stagger: .42 }, way);
+tl.set("#badge", { scale: 0, svgOrigin: "760 410" }, 0);
+tl.to("#badge", { scale: 1, duration: .4, ease: "back.out(2)" }, at("way", 4.72) - .05);
+tl.to("#shape", { attr: { x: 182, y: 386, width: 716, height: 478 }, duration: .12, yoyo: true, repeat: 1, ease: "power2.out" }, at("way", 4.72));
+</script>

@@ -1248,6 +1248,12 @@ export const SCENE_LOOKS = [
   'poster',
   'diorama',
   'pencil',
+  'morph',
+  'chrome',
+  'mono',
+  'particles',
+  'sticker',
+  'retro',
 ] as const;
 export type SceneLook = (typeof SCENE_LOOKS)[number];
 

@@ -44,6 +44,12 @@ export const REFERENCE_LINES: Partial<Record<SceneLook, string>> = {
   poster: 'Three habits changed everything: wake up early, move your body, and finish one hard task before lunch.',
   diorama: 'In Lisbon, a tiny yellow tram climbs the steepest hill in the city every twelve minutes.',
   pencil: 'Every night the old lighthouse keeper climbs ninety nine steps to switch on the light for the ships.',
+  morph: 'One tap to sign up, two seconds to load, and your first order is already on its way.',
+  chrome: 'It all starts with a single drop, then the beat hits and a million people press play.',
+  mono: 'Cut the noise, keep one idea, and give it room to breathe.',
+  particles: 'Every atom in your body was forged inside a star that exploded billions of years ago.',
+  sticker: 'My morning routine is simple: coffee first, a ten minute walk, and only then I open my emails.',
+  retro: 'In nineteen eighty five, a home computer had less memory than one photo on your phone today.',
 };
 
 export function referencePath(look: SceneLook): string {

@@ -1,0 +1,131 @@
+<!-- concept: a creator's morning as stickers slapped onto the frame — a sun, then a coffee, then a sneaker on a doodled walk, and finally an envelope that opens while the first two get ticked off -->
+<style>
+#bg { position:absolute; inset:0; background:#FFD43B; }
+#dots { position:absolute; inset:0; background-image: radial-gradient(rgba(17,17,17,.10) 3px, transparent 3.5px); background-size: 34px 34px; }
+.blob { position:absolute; border-radius:50%; background:#FFE787; }
+#b1 { left:-260px; top:180px; width:760px; height:760px; }
+#b2 { left:560px; top:660px; width:640px; height:640px; background:#FFC21A; }
+svg.layer { position:absolute; left:0; top:0; overflow:visible; }
+.stk { filter: drop-shadow(10px 12px 0 rgba(0,0,0,.22)); }
+.mk { fill:none; stroke:#111111; stroke-width:11; stroke-linecap:round; stroke-linejoin:round; opacity:0; }
+#coffee, #shoe, #mail, #sun { opacity:0; }
+</style>
+<div id="scene">
+  <div id="bg"></div>
+  <div id="dots"></div>
+  <div class="blob" id="b1"></div>
+  <div class="blob" id="b2"></div>
+  <svg class="layer" id="world" width="1080" height="1920" viewBox="0 0 1080 1920" style="transform: scale(1.12); transform-origin: 540px 660px">
+    <!-- the sun: "morning" -->
+    <g id="sun" class="stk">
+      <g fill="#FFFFFF" stroke="#FFFFFF" stroke-width="40" stroke-linejoin="round"><circle cx="540" cy="640" r="170"/><path d="M540 380 L570 450 L510 450 Z M540 900 L570 830 L510 830 Z M280 640 L350 610 L350 670 Z M800 640 L730 610 L730 670 Z M356 456 L428 486 L386 528 Z M724 456 L652 486 L694 528 Z M356 824 L428 794 L386 752 Z M724 824 L652 794 L694 752 Z"/></g>
+      <g fill="#FF4D8D"><path d="M540 380 L570 450 L510 450 Z M540 900 L570 830 L510 830 Z M280 640 L350 610 L350 670 Z M800 640 L730 610 L730 670 Z M356 456 L428 486 L386 528 Z M724 456 L652 486 L694 528 Z M356 824 L428 794 L386 752 Z M724 824 L652 794 L694 752 Z"/></g>
+      <circle cx="540" cy="640" r="170" fill="#FF8A3D"/>
+      <path d="M470 660 Q 540 720 610 660" fill="none" stroke="#111111" stroke-width="12" stroke-linecap="round"/>
+      <circle cx="485" cy="600" r="14" fill="#111111"/><circle cx="595" cy="600" r="14" fill="#111111"/>
+    </g>
+
+    <!-- the coffee: "coffee first" -->
+    <g id="coffee"><g id="coffeeIn" class="stk">
+      <g fill="#FFFFFF" stroke="#FFFFFF" stroke-width="40" stroke-linejoin="round">
+        <path d="M380 520 L700 520 L670 820 C 666 860 640 880 600 880 L480 880 C 440 880 414 860 410 820 Z"/><path d="M690 580 C 800 570 810 720 680 740" stroke-width="80" fill="none"/><ellipse cx="540" cy="890" rx="250" ry="40"/>
+      </g>
+      <ellipse cx="540" cy="890" rx="250" ry="40" fill="#2F6BFF"/>
+      <path d="M690 580 C 800 570 810 720 680 740" stroke="#FF4D8D" stroke-width="40" fill="none"/>
+      <path d="M380 520 L700 520 L670 820 C 666 860 640 880 600 880 L480 880 C 440 880 414 860 410 820 Z" fill="#FF4D8D"/>
+      <path d="M380 520 L700 520 L696 560 L384 560 Z" fill="#5B2A1A"/>
+      <path d="M440 600 L460 800" stroke="#FFFFFF" stroke-width="16" stroke-linecap="round" opacity=".6"/>
+    </g>
+      <g id="steam"><path class="mk" d="M480 470 C 450 430 510 400 480 350"/><path class="mk" d="M560 470 C 530 420 590 390 560 330"/><path class="mk" d="M640 470 C 610 430 670 400 640 350"/></g>
+    </g>
+
+    <!-- the sneaker: "a ten minute walk" -->
+    <g id="shoe"><g id="shoeIn" class="stk">
+      <g fill="#FFFFFF" stroke="#FFFFFF" stroke-width="40" stroke-linejoin="round">
+        <path d="M290 760 L300 610 C 300 560 360 540 400 560 C 450 600 520 610 560 600 C 640 600 720 640 780 680 C 840 700 850 760 820 790 L300 790 Z"/>
+      </g>
+      <path d="M290 760 L300 610 C 300 560 360 540 400 560 C 450 600 520 610 560 600 C 640 600 720 640 780 680 C 840 700 850 760 820 790 L300 790 Z" fill="#2F6BFF"/>
+      <path d="M285 760 L825 760 C 840 780 830 810 800 810 L300 810 C 280 810 275 780 285 760 Z" fill="#FFFFFF" stroke="#111111" stroke-width="6"/>
+      <path d="M420 600 L470 650 M470 600 L520 650 M520 610 L560 650" stroke="#FFFFFF" stroke-width="12" stroke-linecap="round"/>
+      <path d="M640 700 C 690 690 740 700 790 720" stroke="#2EE6A6" stroke-width="18" stroke-linecap="round" fill="none"/>
+      <circle cx="340" cy="640" r="18" fill="#2EE6A6"/>
+    </g>
+      <path id="trail" class="mk" d="M180 1000 C 300 940 380 1040 500 980 C 620 920 700 1030 880 960" stroke-dasharray="22 26"/>
+    </g>
+
+    <!-- the envelope: "I open my emails" -->
+    <g id="mail"><g id="mailIn" class="stk">
+      <g fill="#FFFFFF" stroke="#FFFFFF" stroke-width="40" stroke-linejoin="round"><rect x="300" y="540" width="480" height="340" rx="26"/></g>
+      <rect x="300" y="540" width="480" height="340" rx="26" fill="#2EE6A6"/>
+      <path d="M300 860 L500 700 M780 860 L580 700" stroke="#1FBF88" stroke-width="12" stroke-linecap="round"/>
+      <g id="letter"><rect x="350" y="580" width="380" height="250" rx="14" fill="#FFFFFF" stroke="#111111" stroke-width="6"/><path d="M390 640 L690 640 M390 690 L640 690 M390 740 L600 740" stroke="#111111" stroke-width="10" stroke-linecap="round" opacity=".5"/></g>
+      <path d="M300 860 L300 560 L540 740 L780 560 L780 860 Z" fill="#2EE6A6"/>
+      <g id="flap"><path d="M300 560 C 300 545 312 540 326 540 L754 540 C 768 540 780 545 780 560 L540 740 Z" fill="#14D094" stroke="#111111" stroke-width="6" stroke-linejoin="round"/></g>
+    </g>
+      <g id="badge" class="stk"><circle cx="760" cy="540" r="54" fill="#FF4D8D" stroke="#FFFFFF" stroke-width="14"/><circle cx="760" cy="540" r="12" fill="#FFFFFF"/></g>
+    </g>
+
+    <!-- marker doodles -->
+    <path id="under" class="mk" d="M330 960 C 450 940 640 945 760 965"/>
+    <path id="ring" class="mk" d="M540 330 C 820 330 880 600 830 760 C 780 940 300 960 250 760 C 200 560 300 340 560 345"/>
+    <path id="arrow" class="mk" d="M140 420 C 200 470 250 520 290 560 M240 560 L292 562 L285 508"/>
+    <path id="tick1" class="mk" d="M220 250 L255 285 L315 210"/>
+    <path id="tick2" class="mk" d="M820 250 L855 285 L915 210"/>
+    <g id="spark" class="mk"><path d="M860 380 L900 350 M870 440 L920 440 M850 320 L870 270"/></g>
+  </svg>
+</div>
+<script>
+const slap = (id, t) => {
+  tl.set(id, { opacity: 1 }, t);
+  tl.fromTo(id, { scale: 1.45, rotation: -10, svgOrigin: "540 700" }, { scale: 1, rotation: 3, svgOrigin: "540 700", duration: .28, ease: "back.out(2.5)", immediateRender: false }, t);
+  tl.to(id, { rotation: -2, svgOrigin: "540 700", duration: .08, yoyo: true, repeat: 1, ease: "sine.inOut" }, t + .28);
+};
+const peel = (id, t) => tl.to(id, { scaleX: 0, rotation: 12, svgOrigin: "540 700", duration: .16, ease: "power3.in" }, t);
+const mark = (sel, t, d) => { tl.set(sel, { opacity: 1 }, t); tl.fromTo(sel, { strokeDashoffset: 1 }, { strokeDashoffset: 0, duration: d || .25, ease: "power2.out", immediateRender: false }, t); };
+document.querySelectorAll(".mk").forEach((m) => { if (!m.getAttribute("stroke-dasharray")) { m.setAttribute("pathLength", "1"); m.setAttribute("stroke-dasharray", "1"); } });
+document.querySelectorAll("#spark path").forEach((m) => { m.setAttribute("pathLength", "1"); m.setAttribute("stroke-dasharray", "1"); });
+
+// Locked, centred; the blobs drift a touch.
+tl.fromTo("#b1", { x: 0 }, { x: 40, duration: DURATION, ease: "none" }, 0);
+tl.fromTo("#b2", { x: 0 }, { x: -40, duration: DURATION, ease: "none" }, 0);
+
+// Hook: a smiling sun sticker slaps on — "my morning routine" — and gets underlined on "simple".
+slap("#sun", 0);
+tl.to("#sun", { rotation: 360, svgOrigin: "540 640", duration: 1.6, ease: "power1.inOut" }, .3);
+mark("#under", at("simple", 1.56) - .25, .25);
+
+// "coffee first": the sun peels off and a coffee sticker slaps on; its steam doodles on.
+const coffee = at("coffee", 1.8) - .15;
+peel("#sun", coffee - .1);
+tl.to("#under", { opacity: 0, duration: .1 }, coffee - .1);
+slap("#coffee", coffee + .05);
+document.querySelectorAll("#steam .mk").forEach((m, i) => mark(m, coffee + .35 + i * .08, .25));
+tl.to("#world", { scale: 1.08, transformOrigin: "540px 700px", duration: .12, yoyo: true, repeat: 1, ease: "power2.out" }, at("first", 2.38) - .05);
+
+// "a ten minute walk": coffee peels, a sneaker slaps on and a dashed trail doodles under it.
+const walk = at("10", 3.24) - .15;
+peel("#coffee", walk - .1);
+slap("#shoe", walk + .05);
+mark("#trail", walk + .3, .6);
+tl.to("#shoeIn", { y: -40, rotation: -6, svgOrigin: "540 790", duration: .15, yoyo: true, repeat: 3, ease: "power2.out" }, at("walk", 3.8) - .1);
+
+// "only then I open my emails": the envelope slaps on, its flap flips open and the letter rises.
+const mail = at("only", 4.6) - .1;
+peel("#shoe", mail - .1);
+slap("#mail", mail + .05);
+mark("#arrow", at("then", 4.78), .25);
+tl.to("#flap", { scaleY: -1, svgOrigin: "540 540", duration: .25, ease: "power3.out" }, at("open", 5.2) - .05);
+tl.to("#letter", { y: -230, duration: .35, ease: "back.out(2)" }, at("open", 5.2) + .1);
+tl.set("#badge", { opacity: 1 }, 0);
+tl.fromTo("#badge", { scale: 0, svgOrigin: "760 540" }, { scale: 1, svgOrigin: "760 540", duration: .3, ease: "back.out(3)" }, at("emails", 5.6) - .1);
+tl.set("#badge", { scale: 0, svgOrigin: "760 540" }, 0);
+
+// Payoff: the coffee and the sneaker come back small and get ticked off, sparks round the mail.
+const done = at("emails", 5.6) + .1;
+tl.set("#coffee, #shoe", { scaleX: 1, rotation: 0, svgOrigin: "540 700" }, done - .01);
+tl.fromTo("#coffee", { scale: 0, x: -300, y: -470, svgOrigin: "540 700" }, { scale: .42, svgOrigin: "540 700", duration: .3, ease: "back.out(2.5)", immediateRender: false }, done);
+tl.fromTo("#shoe", { scale: 0, x: 300, y: -470, svgOrigin: "540 700" }, { scale: .42, svgOrigin: "540 700", duration: .3, ease: "back.out(2.5)", immediateRender: false }, done + .08);
+mark("#tick1", done + .3, .2);
+mark("#tick2", done + .4, .2);
+document.querySelectorAll("#spark path").forEach((m, i) => mark(m, done + .2 + i * .05, .15));
+</script>

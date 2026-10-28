@@ -17,7 +17,7 @@ const WORDS: Record<string, Array<{ text: string; atSec: number }>> = JSON.parse
 
 describe('the per-look references', () => {
   it('cover every look added after the first six, and science', () => {
-    for (const look of ['science', 'paper', 'ink', 'blueprint', 'riso', 'pixel', 'chalk', 'scope', 'graph', 'glass', 'clay', 'poster', 'diorama', 'pencil'] as const) {
+    for (const look of ['science', 'paper', 'ink', 'blueprint', 'riso', 'pixel', 'chalk', 'scope', 'graph', 'glass', 'clay', 'poster', 'diorama', 'pencil', 'morph', 'chrome', 'mono', 'particles', 'sticker', 'retro'] as const) {
       expect(LOOKS).toContain(look);
     }
     for (const look of LOOKS) expect(SCENE_LOOKS).toContain(look);
@@ -26,7 +26,7 @@ describe('the per-look references', () => {
   it.each(LOOKS)('%s parses, has its concept, and passes the audit it is held up as the bar for', (look) => {
     const parts = parseComposition(readFileSync(referencePath(look), 'utf8'));
     expect(parts).not.toBeNull();
-    expect(parts!.concept.length).toBeGreaterThan(20);
+    expect(parts!.concept?.length ?? 0).toBeGreaterThan(20);
     expect(auditComposition(parts!).filter(isFatal)).toEqual([]);
   });
 
