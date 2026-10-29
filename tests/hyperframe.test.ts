@@ -113,6 +113,9 @@ describe('the prompt', () => {
     expect(safeZone(1080, 1920)).toEqual({ left: 60, right: 1020, top: 220, bottom: 1520, notchTop: 1020, notchRight: 900 });
     const prompt = systemPrompt(1080, 1920, 4);
     expect(prompt).toContain('x 60–1020, y 220–1520, and below y 1020 only up to x 900');
+    // A decision, not a quota: no layout is required and the space used is chosen.
+    expect(prompt).toContain('DECIDE the layout');
+    expect(prompt).not.toContain('at least 70%');
     expect(prompt).toContain('**Stack**');
     // A landscape frame has no platform overlay, just a margin.
     expect(safeZone(1920, 1080)).toMatchObject({ left: 115, top: 86, notchRight: 1805 });

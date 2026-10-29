@@ -42,12 +42,17 @@ mention (Flat science once put a planet in a video about editing).
 and below y 1020 only up to x 900 — the platforms put the account row on
 top, the caption, handle and audio ticker at the bottom, and the like /
 comment / share column down the right of the lower half. Nothing that matters
-goes outside it. Inside it, **use all of it** — a composition that lives in
-the top half is the most common failure. The video's own captions sit at
-about y 1056–1440; things may pass behind them, but not the one detail that
-matters at the moment its word is said.
+goes outside it — that is the one hard rule about space. How MUCH of it a
+scene uses is a decision, not a quota: a single striking object can sit in
+the middle at whatever size reads best (the earlier hero scenes are right as
+they are); a list, a journey or a comparison spreads out. The video's own
+captions sit at about y 1056–1440; things may pass behind them, but not the
+one detail that matters at the moment its word is said.
 
-**Pick the layout from the shape of the line** (`suggestLayout`):
+**Decide the layout — whatever makes the most sense for the line.** The app
+suggests one from the line's shape (`suggestLayout`, with the reason, and an
+example scene in that layout); Opus makes the call and names it in the
+concept line. None is the default:
 
 - **Hero** — one striking idea: one big subject that transforms into the next
   (the brain that becomes neurons).

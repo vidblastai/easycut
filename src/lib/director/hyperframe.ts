@@ -4,7 +4,7 @@ import { env } from '@/lib/config/env';
 import type { SceneLook } from '@/lib/edl/types';
 import { guideAsPrompt, styleGuideFor } from '@/lib/scenes/style-guides';
 import { completionCostUsd, composerProviders as scenesRoute, llmFetch, routedModel, type ChatProvider } from '@/lib/llm/chat';
-import { layoutReferenceFor, referenceFor, suggestLayout } from '@/lib/director/reference-scene';
+import { layoutReferenceFor, referenceFor, suggestLayout, type Layout } from '@/lib/director/reference-scene';
 
 const require_ = createRequire(import.meta.url);
 
@@ -152,15 +152,15 @@ Before any markup, commit to ONE concept in one sentence and write it as the ver
 
 A concept is a single visual idea that carries the whole shot, built from the things being said, not a list of unrelated things to show. Good: "a brain, and the camera dives into it until its colour becomes a web of firing neurons" for a line about the brain; "three stickers stack down the screen — coffee, a sneaker, an envelope — and each gets ticked off" for a morning routine. Everything you build serves that sentence.
 
-Then pick the LAYOUT that matches the shape of what is said — this decides how the screen is used:
+Then DECIDE the layout — whichever makes the most sense for this line. None is the default and none is a requirement:
 
-- **Hero** — one idea that transforms: one big subject that turns into the next (the camera dives in, a shape morphs). For a single striking claim.
-- **Stack** — a list or a routine ("coffee, a walk, then emails"; "three habits"): two to four items, one per spoken item, appearing one after another DOWN the screen on their words and staying, joined by a line, arrows or numbers-free markers. Each item is big — a third of the safe height.
-- **Path** — a process, a journey or time passing: a route that winds from the top of the safe area to the bottom, with stops that light up as the voice reaches them.
-- **Split** — a comparison or before/after: the top half against the bottom half (or left against right), the second answering the first.
-- **Grid** — many of something, a collection: a 2×2 or 3×3 of cells filling the safe area, popping in, one or two then acting.
+- **Hero** — one striking idea or object: one subject that transforms into the next (the camera dives in, a shape morphs). It sits in the middle of the safe area at whatever size reads best — big and close for a dramatic object, smaller with room around it for a calm or minimal one.
+- **Stack** — a list or a routine ("coffee, a walk, then emails"; "three habits"): two to four items, one per spoken item, arriving one after another down the screen on their words and staying, linked by a line or arrows.
+- **Path** — a journey or a process over time: a route through the safe area with stops that light up as the voice reaches them.
+- **Split** — a contrast or a before/after: one half against the other, the second answering the first.
+- **Grid** — a share of a crowd or a collection ("nine out of ten"): cells that pop in, then some of them act.
 
-Say the layout in the concept line ("stack:", "path:", …). Vary it: a hero is not the answer to everything.
+Ask what a good motion designer would do with THIS line: how many things does it name, do they happen in order, is it a comparison, is it one big moment? Then use as much of the safe area as that idea needs — a single object does not have to fill the screen, and a list should not be crammed into a corner. Start the concept line with the layout ("stack: …", "hero: …").
 
 ## What you return
 
@@ -183,8 +183,8 @@ The page around them is provided. The frame is ${width}×${height} px. Inside yo
 
 - Build it from \`<div>\`s and inline \`<svg>\` (path, circle, rect, polygon, line, g, linearGradient, radialGradient). Position things absolutely in px against the ${width}×${height} frame.
 - **One background that fills the whole frame, edge to edge**: the world's ground with a soft pool of light behind the subject. It is the only background there is, and it stays quiet.
-- **Use the whole safe area.** Everything that matters sits inside the safe area: x ${z.left}–${z.right}, y ${z.top}–${z.bottom}, and below y ${z.notchTop} only up to x ${z.notchRight} (the platform's like and share buttons sit to the right of that). Outside it is backdrop only — the platform's account row, captions and buttons cover it. Inside it, fill it: the composition spans at least 70% of the safe height by the end of the shot, top AND bottom, not just the upper half. The safe area's centre is (${midX}, ${midY}).
-- **Big and in focus.** A hero is at least ${Math.round(width * 0.6)}px wide. Stack items and grid cells are at least a third of the safe height or width each. The eye always knows where to look: the item being named is the biggest, brightest or moving one; what came before settles back.
+- **The safe area is a hard edge.** Everything that matters sits inside x ${z.left}–${z.right}, y ${z.top}–${z.bottom}, and below y ${z.notchTop} only up to x ${z.notchRight} — the platform's account row, captions and like/share buttons cover the rest, which is backdrop only. The safe area's centre is (${midX}, ${midY}). How much of it you use is your decision from the layout: whatever makes the idea clearest.
+- **Readable on a phone and in focus.** Nothing important smaller than about a fifth of the frame's width. The eye always knows where to look: the thing being named is the biggest, brightest or moving one; what came before settles back.
 - **Few objects, richly drawn.** Space around each item, but each item is richly drawn: base colour, a darker shadow side, a light rim, inner parts (a brain has its folds and a highlight; a film clip has sprocket holes, frames, a sheen). A flat circle with an icon on it is a placeholder, not an illustration. A later beat often multiplies the subject into a system that fills the safe area — one brain becomes a web of seven linked neurons. 20 to 120 shapes in all.
 - **No screens.** No phone frames, monitors, app windows, dashboards, toolbars or interface mock-ups — a full-size device on screen is an empty box with things at its edges. Software is shown by what it does, as an object: a clip, a play button, scissors, a waveform, a check mark.
 - Depth comes from the backdrop: a couple of dim, soft, blurred shapes far behind, moving slower than the subject when the camera moves.
@@ -213,7 +213,7 @@ A sequence, not a picture that moves, cut for a short vertical video where atten
 
 ## When the world and these rules disagree
 
-The world below sets the drawing technique, palette and motion character. Where it suggests anything about layout or framing, the rules above win: the layout you picked, inside the safe area, using all of it.
+The world below sets the drawing technique, palette and motion character. Where it suggests anything about layout or framing, the rules above win: the layout you decided on, inside the safe area.
 
 ## Traps that break a scene
 
@@ -242,13 +242,21 @@ ${reference.scene}`;
  * Shown in the brief rather than the system prompt because it depends on the
  * line. A hero needs no example — the look's own reference is one.
  */
+const LAYOUT_REASONS: Record<Layout, string> = {
+  hero: 'the line reads as one idea or one moment',
+  stack: 'the line names several things in a row',
+  path: 'the line describes something moving from one place or stage to the next',
+  split: 'the line sets one thing against another',
+  grid: 'the line is about a share of many',
+};
+
 export function layoutHint(line: string): string {
   const layout = suggestLayout(line);
   const example = layoutReferenceFor(layout);
-  if (!example) return 'Suggested layout: hero — unless the line is really a list, a journey, a comparison or a crowd.';
-  return `Suggested layout: ${layout} — use it unless another layout clearly fits the line better.
+  if (!example) return `Suggested layout: hero — ${LAYOUT_REASONS.hero}. A suggestion: decide what makes the most sense for this line.`;
+  return `Suggested layout: ${layout} — ${LAYOUT_REASONS[layout]}. A suggestion: decide what makes the most sense for this line; a hero is still right if the line is really one striking moment.
 
-Here is a finished ${layout} scene, written for "${example.line}" in another world. Follow how it uses the screen — the items spread over the whole safe area, arriving on their words and staying — never its subject, objects or palette:
+Here is a finished ${layout} scene, written for "${example.line}" in another world. If you go with ${layout}, follow how it uses the screen — where the items sit, how they arrive on their words and stay — never its subject, objects or palette:
 
 ${example.scene}
 `;
@@ -574,7 +582,7 @@ export function reviewInstructions(times: number[], height: number, blank = fals
 Look at them the way a motion designer reviewing a colleague's work would, and check:
 
 1. Any letters, numbers or words visible anywhere — they must not be.
-2. Anything that matters outside the safe area (x ${z.left}–${z.right}, y ${z.top}–${z.bottom}, and right of x ${z.notchRight} below y ${z.notchTop}); a composition that leaves the lower half of the safe area empty; items too small to read on a phone; plain flat placeholder shapes instead of richly drawn objects.
+2. Anything that matters outside the safe area (x ${z.left}–${z.right}, y ${z.top}–${z.bottom}, and right of x ${z.notchRight} below y ${z.notchTop}); a use of space that does not suit the idea — a list crammed into one corner, or a lone object stranded at the edge; items too small to read on a phone; plain flat placeholder shapes instead of richly drawn objects.
 3. Anything important inside the caption band, ${Math.round(height * 0.55)}–${Math.round(height * 0.75)}px down.
 4. Pieces overlapping by accident, cut off by the frame edge unintentionally, or misaligned.
 5. Something rotating about the wrong point, or a shape that looks broken or unfinished.
