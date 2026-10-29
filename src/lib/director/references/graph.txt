@@ -9,6 +9,7 @@ svg.layer { position:absolute; left:0; top:0; overflow:visible; }
 </style>
 <div id="scene">
   <div id="bg"></div>
+  <div id="frame" style="position:absolute; inset:0; transform: translateY(160px)">
   <svg class="layer" id="world" width="1080" height="1920" viewBox="0 0 1080 1920">
     <defs>
       <linearGradient id="gArea" x1="0" y1="1" x2="0" y2="0"><stop offset="0" stop-color="#58C4DD" stop-opacity=".05"/><stop offset="1" stop-color="#58C4DD" stop-opacity=".32"/></linearGradient>
@@ -36,6 +37,7 @@ svg.layer { position:absolute; left:0; top:0; overflow:visible; }
     <!-- the value riding the curve -->
     <g id="dot"><circle cx="170" cy="1000" r="30" fill="#58C4DD" opacity=".3"/><circle cx="170" cy="1000" r="17" fill="#FFFFFF"/></g>
   </svg>
+  </div>
 </div>
 <script>
 // A calm push towards where the curve is going.

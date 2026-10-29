@@ -32,6 +32,7 @@
   <div id="far"></div>
   <div id="far2"></div>
 
+  <div id="frame" style="position:absolute; inset:0; transform: translateY(160px)">
   <div class="bar" id="bar1"><div class="dot"></div></div>
   <div class="bar" id="bar2"><div class="dot"></div></div>
   <div class="bar" id="bar3"><div class="dot"></div></div>
@@ -53,6 +54,7 @@
 
   <div id="plate"></div>
   <div id="check"><div id="c1"></div><div id="c2"></div></div>
+  </div>
   <div class="conf" id="k1"></div><div class="conf" id="k2"></div><div class="conf" id="k3"></div>
 </div>
 <script>

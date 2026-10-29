@@ -24,6 +24,7 @@ svg.layer { position:absolute; left:0; top:0; overflow:visible; }
   <div class="blob" id="b2"></div>
   <div class="blob" id="b3"></div>
 
+  <div id="frame" style="position:absolute; inset:0; transform: translateY(160px)">
   <div class="glass" id="panel"></div>
   <div id="lock">
     <div id="shackle"></div>
@@ -48,6 +49,7 @@ svg.layer { position:absolute; left:0; top:0; overflow:visible; }
   <svg class="layer" id="tick" width="1080" height="1920" viewBox="0 0 1080 1920">
     <path id="check" d="M832 246 L858 272 L902 220" fill="none" stroke="#FFFFFF" stroke-width="12" stroke-linecap="round" stroke-linejoin="round" pathLength="1" stroke-dasharray="1" stroke-dashoffset="1" opacity="0"/>
   </svg>
+  </div>
 </div>
 <script>
 // The colour behind the glass never stops moving.

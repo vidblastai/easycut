@@ -9,6 +9,7 @@ svg.layer { position:absolute; left:0; top:0; overflow:visible; }
 <div id="scene">
   <div id="bg"></div>
   <div id="speck"></div>
+  <div id="frame" style="position:absolute; inset:0; transform: translateY(160px)">
   <svg class="layer" id="world" width="1080" height="1920" viewBox="0 0 1080 1920">
     <defs>
       <pattern id="dotsBlue" width="18" height="18" patternUnits="userSpaceOnUse"><circle cx="9" cy="9" r="5" fill="#0078BF"/></pattern>
@@ -71,6 +72,7 @@ svg.layer { position:absolute; left:0; top:0; overflow:visible; }
       <path d="M150 330 L190 390 L250 360" stroke-linejoin="round"/>
     </g>
   </svg>
+  </div>
 </div>
 <script>
 // Printed layers slide; a slight push.

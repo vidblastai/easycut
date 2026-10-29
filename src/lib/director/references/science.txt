@@ -8,6 +8,7 @@ svg.layer { position:absolute; left:0; top:0; overflow:visible; }
 </style>
 <div id="scene">
   <div id="bg"></div>
+  <div id="frame" style="position:absolute; inset:0; transform: translateY(160px)">
   <div id="world">
     <svg class="layer" width="1080" height="1920" viewBox="0 0 1080 1920">
       <defs>
@@ -70,6 +71,7 @@ svg.layer { position:absolute; left:0; top:0; overflow:visible; }
       <circle cx="988" cy="628" r="19" fill="#142257" opacity=".45"/>
     </g></g>
     </svg>
+  </div>
   </div>
   <svg class="layer" id="dustfield" width="1080" height="1920" viewBox="0 0 1080 1920"><circle class="dust" cx="652" cy="388" r="9" fill="#9FB3E8" opacity="0.13"/><circle class="dust" cx="692" cy="1334" r="6" fill="#9FB3E8" opacity="0.14"/><circle class="dust" cx="37" cy="987" r="6" fill="#9FB3E8" opacity="0.15"/><circle class="dust" cx="605" cy="1249" r="4" fill="#9FB3E8" opacity="0.10"/><circle class="dust" cx="468" cy="414" r="4" fill="#9FB3E8" opacity="0.12"/><circle class="dust" cx="81" cy="1795" r="4" fill="#9FB3E8" opacity="0.12"/><circle class="dust" cx="265" cy="1878" r="6" fill="#9FB3E8" opacity="0.20"/><circle class="dust" cx="529" cy="1031" r="4" fill="#9FB3E8" opacity="0.16"/><circle class="dust" cx="1054" cy="1368" r="6" fill="#9FB3E8" opacity="0.18"/><circle class="dust" cx="183" cy="771" r="4" fill="#9FB3E8" opacity="0.19"/><circle class="dust" cx="375" cy="1071" r="4" fill="#9FB3E8" opacity="0.12"/><circle class="dust" cx="34" cy="1499" r="4" fill="#9FB3E8" opacity="0.19"/><circle class="dust" cx="171" cy="1445" r="4" fill="#9FB3E8" opacity="0.09"/><circle class="dust" cx="249" cy="1129" r="4" fill="#9FB3E8" opacity="0.13"/><circle class="dust" cx="855" cy="748" r="9" fill="#9FB3E8" opacity="0.10"/><circle class="dust" cx="1079" cy="1653" r="4" fill="#9FB3E8" opacity="0.21"/><circle class="dust" cx="330" cy="736" r="4" fill="#9FB3E8" opacity="0.11"/><circle class="dust" cx="638" cy="1487" r="6" fill="#9FB3E8" opacity="0.15"/><circle class="dust" cx="421" cy="793" r="6" fill="#9FB3E8" opacity="0.15"/><circle class="dust" cx="364" cy="754" r="6" fill="#9FB3E8" opacity="0.19"/><circle class="dust" cx="512" cy="275" r="4" fill="#9FB3E8" opacity="0.08"/><circle class="dust" cx="1035" cy="1328" r="4" fill="#9FB3E8" opacity="0.15"/></svg>
 </div>
