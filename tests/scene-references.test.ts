@@ -4,10 +4,11 @@ import {
   auditComposition,
   buildCompositionHtml,
   isFatal,
+  layoutHint,
   parseComposition,
   systemPrompt,
 } from '@/lib/director/hyperframe';
-import { REFERENCE_LINES, referenceFor, referencePath } from '@/lib/director/reference-scene';
+import { layoutPath, REFERENCE_LINES, referenceFor, referencePath, suggestLayout } from '@/lib/director/reference-scene';
 import { SCENE_LOOKS, type SceneLook } from '@/lib/edl/types';
 
 const LOOKS = Object.keys(REFERENCE_LINES) as SceneLook[];
@@ -65,5 +66,28 @@ describe('the page every scene runs in', () => {
     expect(html).toContain('WORDS.find((w) => clean(w.text) === needle)');
     // The regex survives the template literal it is written in.
     expect(html).toContain("replace(/[^\\p{L}\\p{N}']/gu");
+  });
+});
+
+describe('layouts beyond the one centred subject', () => {
+  it('suggests a layout from the shape of the line', () => {
+    expect(suggestLayout('My morning routine is simple: coffee first, a ten minute walk, and only then I open my emails.')).toBe('stack');
+    expect(suggestLayout('Your parcel leaves the warehouse at night, crosses three cities, and lands on your doorstep by breakfast.')).toBe('path');
+    expect(suggestLayout("Editing used to eat your whole weekend, now it's done before your coffee gets cold.")).toBe('split');
+    expect(suggestLayout('Out of every ten people who try it, nine come back the very next day.')).toBe('grid');
+    expect(suggestLayout('Cloud Code just replaced video editors.')).toBe('hero');
+  });
+
+  it.each(['stack', 'path', 'split', 'grid'] as const)('the %s reference parses and passes the audit', (layout) => {
+    const parts = parseComposition(readFileSync(layoutPath(layout), 'utf8'));
+    expect(parts?.concept?.startsWith(`${layout}:`)).toBe(true);
+    expect(auditComposition(parts!).filter(isFatal)).toEqual([]);
+    expect(WORDS[`layout-${layout}`]?.length).toBeGreaterThan(8);
+  });
+
+  it('puts the matching layout scene in the brief, and nothing extra for a hero', () => {
+    expect(layoutHint('Out of every ten people who try it, nine come back.')).toContain('Suggested layout: grid');
+    expect(layoutHint('Out of every ten people who try it, nine come back.')).toContain('<!-- concept: grid:');
+    expect(layoutHint('Cloud Code just replaced video editors.')).not.toContain('<script>');
   });
 });

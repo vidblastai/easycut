@@ -1,0 +1,113 @@
+<!-- concept: stack: a morning routine as stickers slapped down the screen one after another — coffee, then a sneaker on a doodled walk, then an envelope that opens — each ticked off as the next one lands -->
+<style>
+#bg { position:absolute; inset:0; background:#FFD43B; }
+#dots { position:absolute; inset:0; background-image: radial-gradient(rgba(17,17,17,.10) 3px, transparent 3.5px); background-size: 34px 34px; }
+.blob { position:absolute; border-radius:50%; background:#FFE787; }
+#b1 { left:-300px; top:260px; width:820px; height:820px; }
+#b2 { left:520px; top:900px; width:720px; height:720px; background:#FFC21A; }
+svg.layer { position:absolute; left:0; top:0; overflow:visible; }
+.stk { filter: drop-shadow(10px 12px 0 rgba(0,0,0,.22)); }
+.mk { fill:none; stroke:#111111; stroke-width:11; stroke-linecap:round; stroke-linejoin:round; opacity:0; }
+#coffee, #shoe, #mail { opacity:0; }
+</style>
+<div id="scene">
+  <div id="bg"></div>
+  <div id="dots"></div>
+  <div class="blob" id="b1"></div>
+  <div class="blob" id="b2"></div>
+  <svg class="layer" id="world" width="1080" height="1920" viewBox="0 0 1080 1920">
+    <!-- marker links between the rows, drawn as the routine moves on -->
+    <path id="link1" class="mk" d="M460 780 C 500 820 530 840 560 850 M512 818 L564 852 L508 872"/>
+    <path id="link2" class="mk" d="M640 1060 C 610 1100 580 1120 550 1135 M600 1128 L546 1138 L576 1092"/>
+    <path id="trail" class="mk" d="M440 1030 C 540 990 640 1060 760 1020 C 840 990 900 1030 960 1015" stroke-dasharray="22 26"/>
+    <g id="sun" transform="translate(540 760)"><g class="slap" id="sunS"><g class="stk" transform="scale(1.05) translate(-540 -640)">      <g fill="#FFFFFF" stroke="#FFFFFF" stroke-width="40" stroke-linejoin="round"><circle cx="540" cy="640" r="170"/><path d="M540 380 L570 450 L510 450 Z M540 900 L570 830 L510 830 Z M280 640 L350 610 L350 670 Z M800 640 L730 610 L730 670 Z M356 456 L428 486 L386 528 Z M724 456 L652 486 L694 528 Z M356 824 L428 794 L386 752 Z M724 824 L652 794 L694 752 Z"/></g>
+      <g fill="#FF4D8D"><path d="M540 380 L570 450 L510 450 Z M540 900 L570 830 L510 830 Z M280 640 L350 610 L350 670 Z M800 640 L730 610 L730 670 Z M356 456 L428 486 L386 528 Z M724 456 L652 486 L694 528 Z M356 824 L428 794 L386 752 Z M724 824 L652 794 L694 752 Z"/></g>
+      <circle cx="540" cy="640" r="170" fill="#FF8A3D"/>
+      <path d="M470 660 Q 540 720 610 660" fill="none" stroke="#111111" stroke-width="12" stroke-linecap="round"/>
+      <circle cx="485" cy="600" r="14" fill="#111111"/><circle cx="595" cy="600" r="14" fill="#111111"/>
+    </g></g></g>
+<g id="coffee" transform="translate(320 540)"><g class="slap" id="coffeeS"><g class="stk" transform="scale(.95) translate(-540 -700)">      <g fill="#FFFFFF" stroke="#FFFFFF" stroke-width="40" stroke-linejoin="round">
+        <path d="M380 520 L700 520 L670 820 C 666 860 640 880 600 880 L480 880 C 440 880 414 860 410 820 Z"/><path d="M690 580 C 800 570 810 720 680 740" stroke-width="80" fill="none"/><ellipse cx="540" cy="890" rx="250" ry="40"/>
+      </g>
+      <ellipse cx="540" cy="890" rx="250" ry="40" fill="#2F6BFF"/>
+      <path d="M690 580 C 800 570 810 720 680 740" stroke="#FF4D8D" stroke-width="40" fill="none"/>
+      <path d="M380 520 L700 520 L670 820 C 666 860 640 880 600 880 L480 880 C 440 880 414 860 410 820 Z" fill="#FF4D8D"/>
+      <path d="M380 520 L700 520 L696 560 L384 560 Z" fill="#5B2A1A"/>
+      <path d="M440 600 L460 800" stroke="#FFFFFF" stroke-width="16" stroke-linecap="round" opacity=".6"/>
+    </g><g transform="scale(.95) translate(-540 -700)"><path class="mk st" d="M480 470 C 450 430 510 400 480 350"/><path class="mk st" d="M560 470 C 530 420 590 390 560 330"/><path class="mk st" d="M640 470 C 610 430 670 400 640 350"/></g></g></g>
+<g id="shoe" transform="translate(690 900)"><g class="slap" id="shoeS"><g class="stk" transform="scale(.95) translate(-555 -700)">      <g fill="#FFFFFF" stroke="#FFFFFF" stroke-width="40" stroke-linejoin="round">
+        <path d="M290 760 L300 610 C 300 560 360 540 400 560 C 450 600 520 610 560 600 C 640 600 720 640 780 680 C 840 700 850 760 820 790 L300 790 Z"/>
+      </g>
+      <path d="M290 760 L300 610 C 300 560 360 540 400 560 C 450 600 520 610 560 600 C 640 600 720 640 780 680 C 840 700 850 760 820 790 L300 790 Z" fill="#2F6BFF"/>
+      <path d="M285 760 L825 760 C 840 780 830 810 800 810 L300 810 C 280 810 275 780 285 760 Z" fill="#FFFFFF" stroke="#111111" stroke-width="6"/>
+      <path d="M420 600 L470 650 M470 600 L520 650 M520 610 L560 650" stroke="#FFFFFF" stroke-width="12" stroke-linecap="round"/>
+      <path d="M640 700 C 690 690 740 700 790 720" stroke="#2EE6A6" stroke-width="18" stroke-linecap="round" fill="none"/>
+      <circle cx="340" cy="640" r="18" fill="#2EE6A6"/>
+    </g></g></g>
+<g id="mail" transform="translate(420 1290)"><g class="slap" id="mailS"><g class="stk" transform="scale(.95) translate(-540 -700)">      <g fill="#FFFFFF" stroke="#FFFFFF" stroke-width="40" stroke-linejoin="round"><rect x="300" y="540" width="480" height="340" rx="26"/></g>
+      <rect x="300" y="540" width="480" height="340" rx="26" fill="#2EE6A6"/>
+      <path d="M300 860 L500 700 M780 860 L580 700" stroke="#1FBF88" stroke-width="12" stroke-linecap="round"/>
+      <g id="letter"><rect x="350" y="580" width="380" height="250" rx="14" fill="#FFFFFF" stroke="#111111" stroke-width="6"/><path d="M390 640 L690 640 M390 690 L640 690 M390 740 L600 740" stroke="#111111" stroke-width="10" stroke-linecap="round" opacity=".5"/></g>
+      <path d="M300 860 L300 560 L540 740 L780 560 L780 860 Z" fill="#2EE6A6"/>
+      <g id="flap"><path d="M300 560 C 300 545 312 540 326 540 L754 540 C 768 540 780 545 780 560 L540 740 Z" fill="#14D094" stroke="#111111" stroke-width="6" stroke-linejoin="round"/></g>
+    </g></g></g>
+    <!-- ticks beside the finished rows, a ring and sparks round the last one -->
+    <path id="tick1" class="mk" d="M590 470 L625 505 L690 425"/>
+    <path id="tick2" class="mk" d="M330 870 L365 905 L430 825"/>
+    <path id="ring" class="mk" d="M420 1080 C 690 1080 720 1300 660 1420 C 600 1520 230 1510 170 1400 C 110 1290 170 1090 450 1085"/>
+    <g id="spark"><path class="mk sp" d="M700 1180 L745 1150"/><path class="mk sp" d="M715 1250 L770 1250"/><path class="mk sp" d="M700 1320 L745 1350"/></g>
+    <g id="badge"><circle cx="590" cy="1150" r="50" fill="#FF4D8D" stroke="#FFFFFF" stroke-width="14"/><circle cx="590" cy="1150" r="12" fill="#FFFFFF"/></g>
+  </svg>
+</div>
+<script>
+document.querySelectorAll(".mk").forEach((m) => { if (!m.getAttribute("stroke-dasharray")) { m.setAttribute("pathLength", "1"); m.setAttribute("stroke-dasharray", "1"); m.setAttribute("stroke-dashoffset", "1"); } });
+const slap = (id, t) => {
+  tl.set(id, { opacity: 1 }, t);
+  tl.fromTo(id + "S", { scale: 1.5, rotation: -10, transformOrigin: "50% 50%" }, { scale: 1, rotation: 3, transformOrigin: "50% 50%", duration: .28, ease: "back.out(2.5)", immediateRender: false }, t);
+  tl.to(id + "S", { rotation: -1, transformOrigin: "50% 50%", duration: .08, yoyo: true, repeat: 1, ease: "sine.inOut" }, t + .28);
+};
+const settle = (id, t) => tl.to(id + "S", { scale: .9, transformOrigin: "50% 50%", duration: .3, ease: "power2.out" }, t);
+const mark = (sel, t, d) => {
+  tl.set(sel, { opacity: 1 }, t);
+  if (document.querySelector(sel).getAttribute("stroke-dasharray") === "1") tl.to(sel, { strokeDashoffset: 0, duration: d || .25, ease: "power2.out" }, t);
+};
+tl.set("#badge", { scale: 0, transformOrigin: "50% 50%" }, 0);
+tl.fromTo("#b1", { x: 0 }, { x: 50, duration: DURATION, ease: "none" }, 0);
+tl.fromTo("#b2", { x: 0 }, { x: -50, duration: DURATION, ease: "none" }, 0);
+
+// Hook: a big smiling sun slaps on — "my morning routine" — then flies up to sit small in the corner.
+slap("#sun", 0);
+tl.to("#sunS", { rotation: 360, transformOrigin: "50% 50%", duration: 1.4, ease: "power1.inOut" }, .3);
+const simple = at("simple", 1.56) - .2;
+tl.to("#sun", { attr: { transform: "translate(860 330)" }, duration: .4, ease: "power3.inOut" }, simple);
+tl.to("#sunS", { scale: .38, transformOrigin: "50% 50%", duration: .4, ease: "power3.inOut" }, simple);
+
+// Row one, "coffee first": top left, with its steam doodled on.
+const coffee = at("coffee", 1.8) - .1;
+slap("#coffee", coffee);
+document.querySelectorAll(".st").forEach((m, i) => { tl.set(m, { opacity: 1 }, coffee + .3 + i * .08); tl.to(m, { strokeDashoffset: 0, duration: .25, ease: "power2.out" }, coffee + .3 + i * .08); });
+
+// Row two, "a ten minute walk": a marker arrow leads down to a sneaker on the right, which walks a dashed trail.
+const walk = at("10", 3.24) - .35;
+mark("#link1", walk - .1, .25);
+slap("#shoe", walk + .1);
+settle("#coffee", walk + .1);
+mark("#tick1", walk + .35, .2);
+mark("#trail", at("walk", 3.8) - .15, .5);
+tl.to("#shoeS", { y: -30, rotation: -6, transformOrigin: "50% 100%", duration: .14, yoyo: true, repeat: 3, ease: "power2.out" }, at("walk", 3.8) - .1);
+
+// Row three, "only then I open my emails": the arrow leads down-left to the envelope, which opens.
+const mail = at("only", 4.6) - .3;
+mark("#link2", mail - .1, .25);
+slap("#mail", mail + .1);
+settle("#shoe", mail + .1);
+mark("#tick2", mail + .35, .2);
+tl.to("#flap", { scaleY: -1, svgOrigin: "540 540", duration: .25, ease: "power3.out" }, at("open", 5.2) - .05);
+tl.to("#letter", { y: -230, duration: .35, ease: "back.out(2)" }, at("open", 5.2) + .1);
+
+// Payoff on "emails": the last sticker gets a ring, sparks and a notification dot.
+const done = at("emails", 5.6) - .05;
+mark("#ring", done, .35);
+document.querySelectorAll(".sp").forEach((m, i) => mark("#spark .sp:nth-child(" + (i + 1) + ")", done + .25 + i * .05, .15));
+tl.to("#badge", { scale: 1, transformOrigin: "50% 50%", duration: .3, ease: "back.out(3)" }, done + .2);
+</script>

@@ -5,6 +5,10 @@ description: How EasyCut's faceless animated scenes, icon cards and full-frame c
 
 # Motion graphics that look hand-made
 
+> The Opus-written HyperFrames scenes (full-screen animations, the safe area,
+> layouts, reference scenes and the local preview loop) have their own skill:
+> `.claude/skills/scene-design/SKILL.md`.
+
 A scene takes the frame away from the speaker for two to six seconds and
 replaces it with a made picture. It is the single loudest thing this product
 renders, so it is the thing most worth getting right.

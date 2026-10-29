@@ -6,6 +6,7 @@ import {
   COMPOSITION_ID,
   isFatal,
   parseComposition,
+  safeZone,
   systemPrompt,
   type CompositionParts,
 } from '@/lib/director/hyperframe';
@@ -104,8 +105,17 @@ describe('the page HyperFrames renders', () => {
 
 describe('the prompt', () => {
   it('names the caption band in the frame it is writing for', () => {
-    expect(systemPrompt(1080, 1920, 4)).toContain('1056px to 1440px');
-    expect(systemPrompt(1920, 1080, 4)).toContain('594px to 810px');
+    expect(systemPrompt(1080, 1920, 4)).toContain('y 1056–1440');
+    expect(systemPrompt(1920, 1080, 4)).toContain('y 594–810');
+  });
+
+  it('keeps a vertical shot inside the platforms\' safe area, button column included', () => {
+    expect(safeZone(1080, 1920)).toEqual({ left: 60, right: 1020, top: 220, bottom: 1520, notchTop: 1020, notchRight: 900 });
+    const prompt = systemPrompt(1080, 1920, 4);
+    expect(prompt).toContain('x 60–1020, y 220–1520, and below y 1020 only up to x 900');
+    expect(prompt).toContain('**Stack**');
+    // A landscape frame has no platform overlay, just a margin.
+    expect(safeZone(1920, 1080)).toMatchObject({ left: 115, top: 86, notchRight: 1805 });
   });
 });
 

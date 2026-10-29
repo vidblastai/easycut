@@ -4,7 +4,7 @@ import { env } from '@/lib/config/env';
 import type { SceneLook } from '@/lib/edl/types';
 import { guideAsPrompt, styleGuideFor } from '@/lib/scenes/style-guides';
 import { completionCostUsd, composerProviders as scenesRoute, llmFetch, routedModel, type ChatProvider } from '@/lib/llm/chat';
-import { referenceFor } from '@/lib/director/reference-scene';
+import { layoutReferenceFor, referenceFor, suggestLayout } from '@/lib/director/reference-scene';
 
 const require_ = createRequire(import.meta.url);
 
@@ -98,6 +98,35 @@ export function isComposerConfigured(): boolean {
 }
 
 /**
+ * Where a shot may put anything, in px.
+ *
+ * From the platforms' own overlays on a 9:16 frame (TikTok, Reels, Shorts):
+ * the top 11% holds the account row and search, the bottom 21% the caption,
+ * handle and audio ticker, a thin strip each side is cropped on some phones,
+ * and the like, comment and share column runs down the right edge of the
+ * lower half. A landscape frame has none of that, so it just keeps a margin.
+ */
+export interface SafeZone {
+  left: number;
+  right: number;
+  top: number;
+  bottom: number;
+  /** Below this y, the right edge pulls in to `notchRight` — the button column. */
+  notchTop: number;
+  notchRight: number;
+}
+
+export function safeZone(width: number, height: number): SafeZone {
+  if (height <= width) {
+    const mx = Math.round(width * 0.06), my = Math.round(height * 0.08);
+    return { left: mx, right: width - mx, top: my, bottom: height - my, notchTop: height - my, notchRight: width - mx };
+  }
+  const x = (v: number) => Math.round((v / 1080) * width);
+  const y = (v: number) => Math.round((v / 1920) * height);
+  return { left: x(60), right: x(1020), top: y(220), bottom: y(1520), notchTop: y(1020), notchRight: x(900) };
+}
+
+/**
  * The prompt. Written in numbers wherever there is one, because "smooth" and
  * "punchy" give a different scene every call.
  */
@@ -105,6 +134,8 @@ export function systemPrompt(width: number, height: number, durationSec: number,
   const dur = durationSec.toFixed(2);
   const reference = referenceFor(look);
   const sameWorld = reference.look === look;
+  const z = safeZone(width, height);
+  const midX = Math.round((z.left + z.right) / 2), midY = Math.round((z.top + z.bottom) / 2);
   return `You make one shot of a video as an HTML motion graphic: the picture AND how it moves, beat by beat.
 
 It plays full-screen on a phone for ${dur} seconds while someone talks over it. It IS the shot — no footage behind it — so it has to carry the frame on its own and it must never sit still.
@@ -119,7 +150,17 @@ Before any markup, commit to ONE concept in one sentence and write it as the ver
 
 <!-- concept: one sentence -->
 
-A concept is a single visual idea that carries the whole shot, built from the things being said, not a list of things to show. The simplest image that says the line wins: ONE object that turns into the next. Good: "a brain, and the camera dives into it until its colour becomes a web of firing neurons" for a line about the brain; "a seed cracks open and its root becomes the line of a growth chart" for a line about growth. "A brain, then neurons, then lightning" is a list, not a concept. Everything you build serves that sentence.
+A concept is a single visual idea that carries the whole shot, built from the things being said, not a list of unrelated things to show. Good: "a brain, and the camera dives into it until its colour becomes a web of firing neurons" for a line about the brain; "three stickers stack down the screen — coffee, a sneaker, an envelope — and each gets ticked off" for a morning routine. Everything you build serves that sentence.
+
+Then pick the LAYOUT that matches the shape of what is said — this decides how the screen is used:
+
+- **Hero** — one idea that transforms: one big subject that turns into the next (the camera dives in, a shape morphs). For a single striking claim.
+- **Stack** — a list or a routine ("coffee, a walk, then emails"; "three habits"): two to four items, one per spoken item, appearing one after another DOWN the screen on their words and staying, joined by a line, arrows or numbers-free markers. Each item is big — a third of the safe height.
+- **Path** — a process, a journey or time passing: a route that winds from the top of the safe area to the bottom, with stops that light up as the voice reaches them.
+- **Split** — a comparison or before/after: the top half against the bottom half (or left against right), the second answering the first.
+- **Grid** — many of something, a collection: a 2×2 or 3×3 of cells filling the safe area, popping in, one or two then acting.
+
+Say the layout in the concept line ("stack:", "path:", …). Vary it: a hero is not the answer to everything.
 
 ## What you return
 
@@ -142,12 +183,13 @@ The page around them is provided. The frame is ${width}×${height} px. Inside yo
 
 - Build it from \`<div>\`s and inline \`<svg>\` (path, circle, rect, polygon, line, g, linearGradient, radialGradient). Position things absolutely in px against the ${width}×${height} frame.
 - **One background that fills the whole frame, edge to edge**: the world's ground with a soft pool of light behind the subject. It is the only background there is, and it stays quiet.
-- **One subject, in the centre, in focus, and BIG.** Each beat has ONE hero object, centred horizontally, its middle about ${Math.round(height * 0.36)}px down, at least ${Math.round(width * 0.6)}px wide (60–85% of the frame) — a subject a third of the width is a postage stamp. Everything that matters happens there; the eye never has to search. At most three to six small supporting pieces, close around it and clearly part of it (sparks off a wire, the pieces of a cut clip) — never things parked at the top and bottom of the frame with empty space between.
-- **Minimal means few objects, not plain ones.** Generous empty space around the subject, but the subject itself is richly drawn: base colour, a darker shadow side, a light rim, inner parts (a brain has its folds and a highlight; a film clip has sprocket holes, frames, a sheen). A flat circle with an icon on it is a placeholder, not an illustration. A later beat often multiplies the subject into a small system that fills the centre — one brain becomes a web of seven linked neurons. 20 to 80 shapes in all.
+- **Use the whole safe area.** Everything that matters sits inside the safe area: x ${z.left}–${z.right}, y ${z.top}–${z.bottom}, and below y ${z.notchTop} only up to x ${z.notchRight} (the platform's like and share buttons sit to the right of that). Outside it is backdrop only — the platform's account row, captions and buttons cover it. Inside it, fill it: the composition spans at least 70% of the safe height by the end of the shot, top AND bottom, not just the upper half. The safe area's centre is (${midX}, ${midY}).
+- **Big and in focus.** A hero is at least ${Math.round(width * 0.6)}px wide. Stack items and grid cells are at least a third of the safe height or width each. The eye always knows where to look: the item being named is the biggest, brightest or moving one; what came before settles back.
+- **Few objects, richly drawn.** Space around each item, but each item is richly drawn: base colour, a darker shadow side, a light rim, inner parts (a brain has its folds and a highlight; a film clip has sprocket holes, frames, a sheen). A flat circle with an icon on it is a placeholder, not an illustration. A later beat often multiplies the subject into a system that fills the safe area — one brain becomes a web of seven linked neurons. 20 to 120 shapes in all.
 - **No screens.** No phone frames, monitors, app windows, dashboards, toolbars or interface mock-ups — a full-size device on screen is an empty box with things at its edges. Software is shown by what it does, as an object: a clip, a play button, scissors, a waveform, a check mark.
 - Depth comes from the backdrop: a couple of dim, soft, blurred shapes far behind, moving slower than the subject when the camera moves.
 - **No text of any kind.** No letters, numbers, labels or words anywhere — not in an element, not in an SVG. The video's captions are the only words on screen and they are drawn over your shot afterwards.
-- **The captions sit from ${Math.round(height * 0.55)}px to ${Math.round(height * 0.75)}px down.** Keep the subject above that band; below it is backdrop only — nothing is placed down there.
+- **The video's captions are drawn over your shot at about y ${Math.round(height * 0.55)}–${Math.round(height * 0.75)}.** Things may run behind them, but do not put the one detail that matters right there at the moment its word is said.
 - No \`<img>\`, \`<image>\`, \`<video>\`, \`<audio>\`, \`<iframe>\`, \`<link>\`, \`<text>\`, no \`url(http…)\`, no \`@import\`, no web fonts. Nothing may load from anywhere.
 
 ## The motion
@@ -161,7 +203,7 @@ A sequence, not a picture that moves, cut for a short vertical video where atten
 - **Land on the word.** Each beat's key move starts at \`at("word", fallback)\` for the word that names it. A move three frames late reads as lag.
 - **Ease by role, in numbers.** Arrivals ease out on a long tail: \`expo.out\` or \`power4.out\`, 0.4–0.8 s — or, where the world below says things pop or spring, \`back.out(1.4)\` to \`back.out(2)\`: a tightly damped spring with a small overshoot, never a wobble. Camera moves ease both ways with \`power2.inOut\` and run at half the speed you would default to, except the dive between beats. Exits accelerate with \`power3.in\` and are 40–50% shorter than their entrance. When content swaps in place, the outgoing piece leaves before the incoming one lands — separate their timing. Never the same ease and duration on everything.
 - **Overlap**: the next element starts when the previous is 30–50% done. Stagger repeats 0.05–0.12 s apart.
-- **Transform, never cut.** Every beat is made out of the previous one. The camera dives INTO the subject until its colour fills the frame and the next beat grows out of that colour; or a shape morphs into the next (a circle becomes a clock face, a card grows into the next frame, a line becomes a chart); or the subject shrinks into a detail of something larger. 0.5–0.7 s, accelerating in (\`power3.in\`) and settling out (\`expo.out\`). Never a hard cut between beats, never a fade to an empty frame, never two beats side by side.
+- **Transform, never cut.** In a hero, every beat is made out of the previous one; in a stack, path or grid, earlier items stay and step back while the new one arrives. The camera dives INTO the subject until its colour fills the frame and the next beat grows out of that colour; or a shape morphs into the next (a circle becomes a clock face, a card grows into the next frame, a line becomes a chart); or the subject shrinks into a detail of something larger. 0.5–0.7 s, accelerating in (\`power3.in\`) and settling out (\`expo.out\`). Never a hard cut between beats and never a fade to an empty frame.
 - **Two or three things per beat ACT after they land**: a bar fills, a needle swings to its mark, a line draws itself (\`strokeDashoffset\`), a tick lands, a counter dial turns. The act is the sentence — pick the ones that show what the voice says.
 - **Something visibly changes at least every 0.4 s**, from the first frame to the last — a beat lands, a part acts, a pulse travels, the camera dives. A subject that just sits there for two seconds is a still image with a caption.
 - **It never stops**: a slow camera drift on the outermost wrapper from 0 to ${dur} (scale 1 → 1.08, a little x/y, \`ease: "none"\`), so no frame is a photograph. A landed object holds still — no breathing, bobbing or pulsing loops — UNLESS the world below says things drift, bob or pulse; then its motion line wins, gently and with finite repeats.
@@ -171,7 +213,7 @@ A sequence, not a picture that moves, cut for a short vertical video where atten
 
 ## When the world and these rules disagree
 
-The world below sets the drawing technique, palette and motion character. Where it suggests anything about layout or framing — panning across, things at the frame edges, a split composition — the rules above win: one subject, centred, above the captions.
+The world below sets the drawing technique, palette and motion character. Where it suggests anything about layout or framing, the rules above win: the layout you picked, inside the safe area, using all of it.
 
 ## Traps that break a scene
 
@@ -194,6 +236,24 @@ This is a finished scene that meets the bar, written for the line "${reference.l
 ${reference.scene}`;
 }
 
+/**
+ * The layout the line most likely wants, and a finished scene that uses it.
+ *
+ * Shown in the brief rather than the system prompt because it depends on the
+ * line. A hero needs no example — the look's own reference is one.
+ */
+export function layoutHint(line: string): string {
+  const layout = suggestLayout(line);
+  const example = layoutReferenceFor(layout);
+  if (!example) return 'Suggested layout: hero — unless the line is really a list, a journey, a comparison or a crowd.';
+  return `Suggested layout: ${layout} — use it unless another layout clearly fits the line better.
+
+Here is a finished ${layout} scene, written for "${example.line}" in another world. Follow how it uses the screen — the items spread over the whole safe area, arriving on their words and staying — never its subject, objects or palette:
+
+${example.scene}
+`;
+}
+
 export function briefFor(request: CompositionRequest): string {
   const guide = styleGuideFor(request.look);
   const words = [request.headline, ...request.items].filter(Boolean).join(' · ');
@@ -209,6 +269,7 @@ The world it is drawn in — use exactly this palette:
 ${guideAsPrompt(guide, ['palette', 'rendering', 'lighting', 'ground_rule', 'motion', 'camera'])}
 
 The background of the frame is ${guide.ground}. Shape of the explanation: ${request.kind}.
+${layoutHint(request.line)}
 Return only the three blocks.`;
 }
 
@@ -506,20 +567,21 @@ export function reviewTimes(durationSec: number): number[] {
 /** Said first when every frame came back as bare ground — the review's one non-negotiable. */
 export const BLANK_WARNING = `IMPORTANT: every one of these frames is completely empty — nothing but the background colour. Nothing you drew is visible at any point. Something in the markup, the CSS or the script is hiding everything or stopping the timeline being built (an element left at opacity 0, positioned off-frame, sized to zero, or a script error before the tweens are added). Find it and fix it. Do not reply ${REVIEW_OK}.`;
 
-export function reviewInstructions(times: number[], height: number, blank = false): string {
+export function reviewInstructions(times: number[], height: number, blank = false, width = Math.round((height * 9) / 16)): string {
+  const z = safeZone(width, height);
   return `${blank ? `${BLANK_WARNING}\n\n` : ''}Here are frames of the scene you just wrote, rendered exactly as it will ship, at ${times.map((t) => `${t}s`).join(', ')} (labelled on the sheet).
 
 Look at them the way a motion designer reviewing a colleague's work would, and check:
 
 1. Any letters, numbers or words visible anywhere — they must not be.
-2. A frame whose centre is empty, a subject narrower than 60% of the frame, a plain flat placeholder shape instead of a richly drawn object, or things spread to the top and bottom instead of one subject in the middle.
+2. Anything that matters outside the safe area (x ${z.left}–${z.right}, y ${z.top}–${z.bottom}, and right of x ${z.notchRight} below y ${z.notchTop}); a composition that leaves the lower half of the safe area empty; items too small to read on a phone; plain flat placeholder shapes instead of richly drawn objects.
 3. Anything important inside the caption band, ${Math.round(height * 0.55)}–${Math.round(height * 0.75)}px down.
 4. Pieces overlapping by accident, cut off by the frame edge unintentionally, or misaligned.
 5. Something rotating about the wrong point, or a shape that looks broken or unfinished.
 6. Two frames that look nearly the same — the scene has stalled between them. Every frame should show the sequence clearly progressing.
 7. Colours outside the palette you were given, or a drawing technique that does not match the world you were given (paper looks like paper, chalk like chalk, pixels like pixels).
 8. Whether the frames actually show your concept and what is being said.
-9. Clutter: more than one main object per beat, a screen, phone or app window, or anything that is not something the line is about — a planet, stars, a creature or any decoration the words never mention. Replace it with the thing being talked about.
+9. Clutter: no clear focus on the item being named, a screen, phone or app window, or anything that is not something the line is about — a planet, stars, a creature or any decoration the words never mention. Replace it with the thing being talked about.
 10. A weak ending — the last frame should be the payoff: the biggest, most finished moment, not smaller or emptier than what came before.
 
 If it is genuinely good, reply with exactly: ${REVIEW_OK}
@@ -551,7 +613,7 @@ export async function reviewScene(
         {
           role: 'user',
           content: [
-            { type: 'text', text: reviewInstructions(sheet.times, request.height, sheet.blank) },
+            { type: 'text', text: reviewInstructions(sheet.times, request.height, sheet.blank, request.width) },
             { type: 'image_url', image_url: { url: sheet.dataUri } },
           ],
         },
