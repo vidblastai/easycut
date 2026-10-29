@@ -222,6 +222,9 @@ The world below sets the drawing technique, palette and motion character. Where 
 - **Pivots**: give each SVG element ONE \`transformOrigin\` or \`svgOrigin\` — the same in every tween of it, or once in a \`tl.set\` at 0. Changing it between tweens shifts the element.
 - **SVG pivots are local**: on an element inside an \`<svg>\`, \`transformOrigin: "540px 600px"\` is measured from the element's OWN box, not the frame — to turn or scale about a point in the frame use \`svgOrigin: "540 600"\`.
 - **One job per element**: an element that enters with a \`y\` tween must not also get a looping wobble on \`y\`; put the wobble, the camera drift and the entrance on different wrapper groups.
+- **An SVG \`transform\` attribute is replaced** the moment GSAP tweens x, y, scale or rotation on that element. Put the placement on a wrapper \`<g transform="translate(…)">\` and animate the element inside it.
+- **Don't tween a whole class to flicker or pulse** (\`.beam\`, \`.item\`): it records each element's opacity at that moment — including things still hidden — and keeps forcing it. Target the specific elements that are on screen then.
+- **Don't measure the page** (\`getBBox\`, \`getBoundingClientRect\`, \`offsetWidth\`) to place things: compute positions from your own numbers.
 - **Keyframes**: \`keyframes: [...]\` eases each step with \`power1.inOut\` by default; pass \`easeEach: "none"\` when the path should move evenly.
 - \`at(word, fallback)\` matches the whole word first, then a word starting with it.
 
@@ -318,7 +321,7 @@ const BANNED_SCRIPT: Array<[RegExp, string]> = [
   [/repeat\s*:\s*-\s*1/, 'repeats forever (repeat: -1) — use a finite repeat'],
   [/gsap\.timeline\s*\(/, 'creates its own timeline — add tweens to `tl`'],
   [/\.(play|pause|seek|restart)\s*\(/, 'drives the timeline itself — the renderer seeks it'],
-  [/#root|#stage/, 'touches #root or #stage'],
+  [/#root\b|#stage\b/, 'touches #root or #stage — those are the page\'s own wrappers; anything done to them happens to the whole scene. Name your elements something else'],
 ];
 
 const BANNED_MARKUP: Array<[RegExp, string]> = [
@@ -326,11 +329,13 @@ const BANNED_MARKUP: Array<[RegExp, string]> = [
   [/<script\b/i, 'puts a script inside the markup'],
   [/<text\b|<tspan\b|<foreignObject\b/i, 'contains an SVG text element'],
   [/(src|href)\s*=\s*["']\s*(https?:|\/\/)/i, 'references a URL'],
+  [/\bid\s*=\s*["'](root|stage)["']/i, 'reuses the id "root" or "stage" — the page\'s own wrappers have those ids, so styling or tweening it reaches the whole scene'],
 ];
 
 const BANNED_STYLE: Array<[RegExp, string]> = [
   [/@import|url\(\s*["']?\s*(https?:|\/\/)/i, 'loads a stylesheet or image over the network'],
   [/@font-face/i, 'loads a web font'],
+  [/#root\b|#stage\b/, 'styles #root or #stage — the page\'s own wrappers, so it changes the whole scene'],
   [/(^|[;{\s])(animation|transition)\s*:/i, 'uses a CSS animation or transition — put it on the timeline'],
 ];
 
@@ -358,7 +363,9 @@ export function auditComposition(parts: CompositionParts): string[] {
   }
 
   const tweens = parts.script.match(/\btl\s*\.\s*(to|from|fromTo|set)\s*\(/g)?.length ?? 0;
-  if (tweens < 8) {
+  // Tweens added in a loop are many tweens written once.
+  const looped = /\.forEach\s*\(|\bfor\s*\(/.test(parts.script);
+  if (tweens < 8 && !looped) {
     problems.push(`Only ${tweens} tweens on the timeline — that is a picture fading in, not a sequence. Choreograph two or three beats with their acts.`);
   }
 

@@ -120,12 +120,31 @@ biggest, most finished moment — and holds to the end.
   changing it between tweens shifts the element.
 - **One job per element**: an entrance and a wobble on the same property
   fight; put entrance, wobble and camera drift on different wrapper groups.
+- **An SVG `transform` attribute is replaced** as soon as GSAP tweens x/y/scale/
+  rotation on that element (cells placed with `translate(580 800)` all flew to
+  the corner). Place with a wrapper `<g>`, animate the child.
+- **A class-wide flicker** (`tl.to(".beam", {opacity…})`) records hidden
+  elements' opacity too and keeps them hidden — a whole string never appeared.
+- **Never measure the page** (`getBBox` etc.) for placement — compute it.
+- **Ids `root` and `stage` are the wrapper's own** — a `#stage` platform
+  in one scene hid the entire picture. The audit now rejects them anywhere.
 - **`keyframes`** ease each step with `power1.inOut` unless
   `easeEach: "none"`.
 - **`at(word)`** matches the whole word first ("light" no longer fires on
   "lighthouse"), then a prefix, then a substring.
 - **The review stills** are at 20/45/70/93% of the shot; if they are all bare
   ground the scene is refused, and so is a blank final clip.
+
+## The decision, as practised
+
+Twenty scenes made in one pass (`suggestLayout` first, then the call):
+the suggestion was kept for 15 and overruled for 5 — "more stars than
+grains of sand" (suggested split) became a hero where a galaxy outgrows a
+tiny Earth; "pizza was invented … two hundred years ago" (split, from
+"than") became a hero; "open the app, pick your style, and hit export"
+(stack) became a single morphing UI shape, because it is one object
+changing, not three things. Overrule whenever the line is one moment that
+happens to contain a comma or a "than".
 
 ## Shipping to the live app
 
