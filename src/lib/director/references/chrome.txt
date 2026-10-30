@@ -10,6 +10,7 @@ svg.layer { position:absolute; left:0; top:0; overflow:visible; }
   <div id="bg"></div>
   <div id="holo"></div>
   <div id="holo2"></div>
+  <div id="frame" style="position:absolute; inset:0; transform: translateY(200px)">
   <svg class="layer" id="world" width="1080" height="1920" viewBox="0 0 1080 1920">
     <defs>
       <linearGradient id="chrome" x1="0" y1="0" x2="0" y2="1">
@@ -70,6 +71,7 @@ svg.layer { position:absolute; left:0; top:0; overflow:visible; }
       <path class="sp" d="M270 860 L277 881 L298 888 L277 895 L270 916 L263 895 L242 888 L263 881 Z"/>
     </g></g>
   </svg>
+  </div>
 </div>
 <script>
 // A slow drift, as if orbiting a sculpture; the holographic light breathes.

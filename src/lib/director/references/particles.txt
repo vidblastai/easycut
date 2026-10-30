@@ -8,10 +8,12 @@ svg.layer { position:absolute; left:0; top:0; overflow:visible; }
 <div id="scene">
   <div id="bg"></div>
   <div id="haze"></div>
+  <div id="frame" style="position:absolute; inset:0; transform: translateY(160px)">
   <svg class="layer" id="world" width="1080" height="1920" viewBox="0 0 1080 1920">
     <g id="far"></g>
     <g id="swarm"></g>
   </svg>
+  </div>
 </div>
 <script>
 // Build the particles. Every position below is a function of rand(), so the scene is the same every render.

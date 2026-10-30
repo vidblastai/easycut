@@ -1,0 +1,123 @@
+<!-- concept: path: a paper parcel leaves a warehouse under a night sky and rides a winding paper road down the screen through three little cities, landing on a doorstep as the night sheet slides away and the sun comes up -->
+<style>
+#bg { position:absolute; inset:0; background:#F3E9D8; }
+#grain { position:absolute; inset:0; background-image: radial-gradient(rgba(120,90,60,.07) 1px, transparent 1.4px); background-size: 7px 7px; }
+#night { position:absolute; left:-40px; top:-60px; width:1160px; height:1260px; background:#1F3A5F; border-radius: 0 0 60px 40px; box-shadow: 0 16px 30px rgba(20,20,40,.35); transform: rotate(-2deg); }
+svg.layer { position:absolute; left:0; top:0; overflow:visible; }
+.card { filter: drop-shadow(6px 9px 6px rgba(60,40,20,.28)); }
+#road, #roadDash { opacity:0; }
+.city, #house, #sun { opacity:0; }
+</style>
+<div id="scene">
+  <div id="bg"></div>
+  <div id="night"></div>
+  <div id="grain"></div>
+  <svg class="layer" id="world" width="1080" height="1920" viewBox="0 0 1080 1920">
+    <!-- the night: a paper moon and stars, on the navy sheet -->
+    <g id="moonG" class="card">
+      <circle cx="880" cy="320" r="62" fill="#FFF8EC"/><circle cx="905" cy="300" r="58" fill="#1F3A5F"/>
+      <path d="M720 260 l8 18 l18 8 l-18 8 l-8 18 l-8 -18 l-18 -8 l18 -8 Z" fill="#F2A541"/>
+      <path d="M960 450 l6 13 l13 6 l-13 6 l-6 13 l-6 -13 l-13 -6 l13 -6 Z" fill="#F2A541"/>
+    </g>
+
+    <!-- the road, a paper strip winding down the screen -->
+    <g class="card">
+      <path id="road" d="M250 520 C 250 650 800 560 790 740 C 780 900 250 830 280 1010 C 310 1170 740 1080 720 1250 C 700 1370 420 1320 400 1400" fill="none" stroke="#F2A541" stroke-width="54" stroke-linecap="round" pathLength="1" stroke-dasharray="1" stroke-dashoffset="1"/>
+    </g>
+    <path id="roadDash" d="M250 520 C 250 650 800 560 790 740 C 780 900 250 830 280 1010 C 310 1170 740 1080 720 1250 C 700 1370 420 1320 400 1400" fill="none" stroke="#FFF8EC" stroke-width="6" stroke-dasharray="18 22"/>
+
+    <!-- the warehouse at the top -->
+    <g id="warehouse" class="card">
+      <path d="M110 520 L110 360 L250 290 L390 360 L390 520 Z" fill="#3E7CB1"/>
+      <path d="M96 368 L250 280 L404 368 L404 340 L250 252 L96 340 Z" fill="#E8553D"/>
+      <rect x="190" y="410" width="120" height="110" fill="#1F3A5F"/>
+      <path d="M190 432 L310 432 M190 454 L310 454 M190 476 L310 476 M190 498 L310 498" stroke="#3E7CB1" stroke-width="6"/>
+      <rect x="130" y="380" width="36" height="30" fill="#FFF8EC"/><rect x="334" y="380" width="36" height="30" fill="#FFF8EC"/>
+    </g>
+
+    <!-- three cities along the way -->
+    <g id="city1" class="city card">
+      <rect x="820" y="610" width="70" height="170" fill="#E8553D"/><rect x="890" y="560" width="80" height="220" fill="#3E7CB1"/><rect x="760" y="660" width="60" height="120" fill="#F2A541"/>
+      <g fill="#FFF8EC"><rect x="838" y="630" width="14" height="18"/><rect x="858" y="630" width="14" height="18"/><rect x="908" y="580" width="16" height="20"/><rect x="936" y="580" width="16" height="20"/><rect x="908" y="620" width="16" height="20"/><rect x="936" y="620" width="16" height="20"/></g>
+    </g>
+    <g id="city2" class="city card">
+      <rect x="110" y="900" width="80" height="200" fill="#3E7CB1"/><rect x="190" y="860" width="70" height="240" fill="#F2A541"/><rect x="60" y="960" width="50" height="140" fill="#E8553D"/>
+      <g fill="#FFF8EC"><rect x="128" y="920" width="16" height="20"/><rect x="156" y="920" width="16" height="20"/><rect x="206" y="880" width="14" height="18"/><rect x="230" y="880" width="14" height="18"/><rect x="206" y="920" width="14" height="18"/><rect x="230" y="920" width="14" height="18"/></g>
+    </g>
+    <g id="city3" class="city card">
+      <rect x="770" y="1150" width="60" height="170" fill="#E8553D"/><rect x="830" y="1190" width="60" height="130" fill="#3E7CB1"/><rect x="710" y="1210" width="60" height="110" fill="#F2A541"/>
+      <g fill="#FFF8EC"><rect x="785" y="1170" width="12" height="16"/><rect x="805" y="1170" width="12" height="16"/><rect x="845" y="1210" width="12" height="16"/><rect x="865" y="1210" width="12" height="16"/></g>
+    </g>
+
+    <g id="sun" class="card"><circle cx="300" cy="1300" r="80" fill="#F2A541"/><circle cx="280" cy="1280" r="20" fill="#FFF8EC" opacity=".6"/></g>
+    <!-- the house at the bottom, with a doorstep -->
+    <g id="house" class="card">
+      <path d="M150 1490 L150 1340 L280 1250 L410 1340 L410 1490 Z" fill="#FFF8EC"/>
+      <path d="M130 1350 L280 1236 L430 1350 L430 1320 L280 1206 L130 1320 Z" fill="#E8553D"/>
+      <rect x="250" y="1390" width="70" height="100" rx="6" fill="#3E7CB1"/><circle cx="308" cy="1442" r="5" fill="#F2A541"/>
+      <rect x="180" y="1370" width="44" height="40" fill="#F2A541"/>
+      <rect x="236" y="1488" width="100" height="16" rx="4" fill="#1F3A5F"/>
+    </g>
+
+    <!-- the parcel, drawn around its centre and carried along the road -->
+    <g id="parcel"><g id="parcelIn" class="card">
+      <rect x="-66" y="-56" width="132" height="112" rx="8" fill="#C9874A"/>
+      <path d="M-66 -56 L66 -56 L66 -30 L-66 -30 Z" fill="#B57339"/>
+      <rect x="-12" y="-56" width="24" height="112" fill="#F2A541"/>
+      <rect x="-50" y="10" width="36" height="22" fill="#FFF8EC"/>
+    </g></g>
+  </svg>
+</div>
+<script>
+const road = document.getElementById("road");
+const L = road.getTotalLength();
+const pos = { p: 0 };
+const place = () => {
+  const pt = road.getPointAtLength(pos.p * L), ahead = road.getPointAtLength(Math.min(L, pos.p * L + 4));
+  const tilt = Math.atan2(ahead.y - pt.y, ahead.x - pt.x) * 180 / Math.PI;
+  document.getElementById("parcel").setAttribute("transform", "translate(" + pt.x.toFixed(1) + " " + (pt.y - 40).toFixed(1) + ") rotate(" + (Math.max(-25, Math.min(25, tilt * .3))).toFixed(1) + ")");
+};
+place();
+// Move the parcel to a fraction of the road, drawing the road just ahead of it.
+const ride = (to, t, d, ease) => {
+  tl.to(pos, { p: to, duration: d, ease: ease || "power1.inOut", onUpdate: place }, t);
+  tl.to("#road", { strokeDashoffset: Math.max(0, 1 - to - .08), duration: d, ease: ease || "power1.inOut" }, t - .1);
+};
+tl.fromTo("#world", { scale: 1.02 }, { scale: 1.06, transformOrigin: "540px 880px", duration: DURATION, ease: "none" }, 0);
+
+// Hook: the warehouse pops up under the night sky and the parcel sits at its door — "your parcel".
+tl.fromTo("#warehouse", { scaleY: 0, transformOrigin: "50% 100%" }, { scaleY: 1, duration: .45, ease: "back.out(1.5)" }, 0);
+tl.fromTo("#moonG", { y: -200 }, { y: 0, duration: .5, ease: "back.out(1.4)" }, .1);
+tl.fromTo("#parcelIn", { scale: 0, transformOrigin: "50% 50%" }, { scale: 1, transformOrigin: "50% 50%", duration: .35, ease: "back.out(2.5)" }, at("parcel", .46) - .15);
+tl.set("#road, #roadDash", { opacity: 1 }, .5);
+tl.fromTo("#roadDash", { opacity: 0 }, { opacity: .8, duration: .3, immediateRender: false }, .5);
+
+// "leaves the warehouse at night": it sets off down the road.
+ride(.18, at("leaves", .68), 1.2);
+
+// "crosses three cities": each city folds up as the parcel passes it.
+const cross = at("crosses", 2.12) - .1;
+const stops = [.25, .5, .72];
+["#city1", "#city2", "#city3"].forEach((c, i) => {
+  const t = cross + .1 + i * .45;
+  tl.set(c, { opacity: 1 }, t);
+  tl.fromTo(c, { scaleY: 0, transformOrigin: "50% 100%" }, { scaleY: 1, transformOrigin: "50% 100%", duration: .3, ease: "back.out(1.8)", immediateRender: false }, t);
+});
+ride(.74, cross, 1.5, "none");
+// The night sheet slides up and away as morning comes.
+tl.to("#night", { y: -1300, duration: 1.6, ease: "power2.inOut" }, cross + .6);
+tl.to("#moonG", { y: -900, duration: 1.4, ease: "power2.in" }, cross + .6);
+
+// "lands on your doorstep": the house pops up and the parcel drops onto the step.
+const land = at("lands", 3.72) - .2;
+tl.set("#house", { opacity: 1 }, land - .15);
+tl.fromTo("#house", { scaleY: 0, transformOrigin: "50% 100%" }, { scaleY: 1, transformOrigin: "50% 100%", duration: .4, ease: "back.out(1.6)", immediateRender: false }, land - .15);
+ride(1, land, .55, "power2.out");
+tl.to("#parcelIn", { scaleY: .82, scaleX: 1.12, transformOrigin: "50% 100%", duration: .1, yoyo: true, repeat: 1, ease: "power2.out" }, at("doorstep", 4.34));
+
+// Payoff on "breakfast": the sun pops up beside the house.
+const sun = at("breakfast", 5.02) - .2;
+tl.set("#sun", { opacity: 1 }, sun);
+tl.fromTo("#sun", { y: 120, scale: .6, transformOrigin: "50% 50%" }, { y: -110, scale: 1.2, transformOrigin: "50% 50%", duration: .5, ease: "back.out(1.6)", immediateRender: false }, sun);
+tl.to("#house rect:nth-of-type(2)", { fill: "#F2A541", duration: .2 }, sun + .2);
+</script>

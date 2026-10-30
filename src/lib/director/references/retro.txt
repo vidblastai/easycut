@@ -11,6 +11,7 @@ svg.layer { position:absolute; left:0; top:0; overflow:visible; }
 </style>
 <div id="scene">
   <div id="bg"></div>
+  <div id="frame" style="position:absolute; inset:0; transform: translateY(160px)">
   <svg class="layer" id="world" width="1080" height="1920" viewBox="0 0 1080 1920">
     <defs>
       <clipPath id="sunClip"><rect x="0" y="0" width="1080" height="560"/></clipPath>
@@ -69,6 +70,7 @@ svg.layer { position:absolute; left:0; top:0; overflow:visible; }
     </g>
   </svg>
   <div id="flash"></div>
+  </div>
   <div id="grain"></div>
   <div id="scan"></div>
   <div id="vig"></div>

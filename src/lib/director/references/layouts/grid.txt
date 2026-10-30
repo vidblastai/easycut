@@ -1,0 +1,67 @@
+<!-- concept: grid: ten bold poster people fill the screen, a cobalt bar sweeps across them all as they try it, and nine of them jump back in tangerine with a pink tick while one stays grey -->
+<style>
+#bg { position:absolute; inset:0; background:#F6E4C6; }
+#far { position:absolute; left:-380px; top:520px; width:1100px; height:1100px; border-radius:50%; background:#2B3BFF; opacity:.08; }
+svg.layer { position:absolute; left:0; top:0; overflow:visible; }
+.pp { opacity:0; }
+#bar, #sunDisc { opacity:0; }
+</style>
+<div id="scene">
+  <div id="bg"></div>
+  <div id="far"></div>
+  <svg class="layer" id="world" width="1080" height="1920" viewBox="0 0 1080 1920">
+    <!-- the next day: a big tangerine disc that rises behind the grid at the end -->
+    <circle id="sunDisc" cx="500" cy="840" r="470" fill="#FF5A1F" opacity=".14"/>
+    <!-- trying it: a cobalt bar that sweeps across every row -->
+    <rect id="bar" x="120" y="236" width="0" height="1210" fill="#2B3BFF" opacity=".12"/>
+    <g class="pp" id="p0" transform="translate(330 350) scale(1.3)"><g class="ppIn"><circle cx="0" cy="-58" r="46" fill="#0E0F1F"/><path d="M-78 70 L-78 30 C -78 -6 -46 -12 0 -12 C 46 -12 78 -6 78 30 L78 70 Z" fill="#0E0F1F"/><path class="ck" d="M98 -40 L118 -20 L154 -62" fill="none" stroke="#FF7DC7" stroke-width="16" stroke-linecap="round" stroke-linejoin="round" opacity="0"/></g></g>
+    <g class="pp" id="p1" transform="translate(690 350) scale(1.3)"><g class="ppIn"><circle cx="0" cy="-58" r="46" fill="#0E0F1F"/><path d="M-78 70 L-78 30 C -78 -6 -46 -12 0 -12 C 46 -12 78 -6 78 30 L78 70 Z" fill="#0E0F1F"/><path class="ck" d="M98 -40 L118 -20 L154 -62" fill="none" stroke="#FF7DC7" stroke-width="16" stroke-linecap="round" stroke-linejoin="round" opacity="0"/></g></g>
+    <g class="pp" id="p2" transform="translate(330 590) scale(1.3)"><g class="ppIn"><circle cx="0" cy="-58" r="46" fill="#0E0F1F"/><path d="M-78 70 L-78 30 C -78 -6 -46 -12 0 -12 C 46 -12 78 -6 78 30 L78 70 Z" fill="#0E0F1F"/><path class="ck" d="M98 -40 L118 -20 L154 -62" fill="none" stroke="#FF7DC7" stroke-width="16" stroke-linecap="round" stroke-linejoin="round" opacity="0"/></g></g>
+    <g class="pp" id="p3" transform="translate(690 590) scale(1.3)"><g class="ppIn"><circle cx="0" cy="-58" r="46" fill="#0E0F1F"/><path d="M-78 70 L-78 30 C -78 -6 -46 -12 0 -12 C 46 -12 78 -6 78 30 L78 70 Z" fill="#0E0F1F"/><path class="ck" d="M98 -40 L118 -20 L154 -62" fill="none" stroke="#FF7DC7" stroke-width="16" stroke-linecap="round" stroke-linejoin="round" opacity="0"/></g></g>
+    <g class="pp" id="p4" transform="translate(330 830) scale(1.3)"><g class="ppIn"><circle cx="0" cy="-58" r="46" fill="#0E0F1F"/><path d="M-78 70 L-78 30 C -78 -6 -46 -12 0 -12 C 46 -12 78 -6 78 30 L78 70 Z" fill="#0E0F1F"/><path class="ck" d="M98 -40 L118 -20 L154 -62" fill="none" stroke="#FF7DC7" stroke-width="16" stroke-linecap="round" stroke-linejoin="round" opacity="0"/></g></g>
+    <g class="pp" id="p5" transform="translate(690 830) scale(1.3)"><g class="ppIn"><circle cx="0" cy="-58" r="46" fill="#0E0F1F"/><path d="M-78 70 L-78 30 C -78 -6 -46 -12 0 -12 C 46 -12 78 -6 78 30 L78 70 Z" fill="#0E0F1F"/><path class="ck" d="M98 -40 L118 -20 L154 -62" fill="none" stroke="#FF7DC7" stroke-width="16" stroke-linecap="round" stroke-linejoin="round" opacity="0"/></g></g>
+    <g class="pp" id="p6" transform="translate(300 1070) scale(1.3)"><g class="ppIn"><circle cx="0" cy="-58" r="46" fill="#0E0F1F"/><path d="M-78 70 L-78 30 C -78 -6 -46 -12 0 -12 C 46 -12 78 -6 78 30 L78 70 Z" fill="#0E0F1F"/><path class="ck" d="M98 -40 L118 -20 L154 -62" fill="none" stroke="#FF7DC7" stroke-width="16" stroke-linecap="round" stroke-linejoin="round" opacity="0"/></g></g>
+    <g class="pp lost" id="p7" transform="translate(640 1070) scale(1.3)"><g class="ppIn"><circle cx="0" cy="-58" r="46" fill="#0E0F1F"/><path d="M-78 70 L-78 30 C -78 -6 -46 -12 0 -12 C 46 -12 78 -6 78 30 L78 70 Z" fill="#0E0F1F"/><path class="ck" d="M98 -40 L118 -20 L154 -62" fill="none" stroke="#FF7DC7" stroke-width="16" stroke-linecap="round" stroke-linejoin="round" opacity="0"/></g></g>
+    <g class="pp" id="p8" transform="translate(300 1310) scale(1.3)"><g class="ppIn"><circle cx="0" cy="-58" r="46" fill="#0E0F1F"/><path d="M-78 70 L-78 30 C -78 -6 -46 -12 0 -12 C 46 -12 78 -6 78 30 L78 70 Z" fill="#0E0F1F"/><path class="ck" d="M98 -40 L118 -20 L154 -62" fill="none" stroke="#FF7DC7" stroke-width="16" stroke-linecap="round" stroke-linejoin="round" opacity="0"/></g></g>
+    <g class="pp" id="p9" transform="translate(640 1310) scale(1.3)"><g class="ppIn"><circle cx="0" cy="-58" r="46" fill="#0E0F1F"/><path d="M-78 70 L-78 30 C -78 -6 -46 -12 0 -12 C 46 -12 78 -6 78 30 L78 70 Z" fill="#0E0F1F"/><path class="ck" d="M98 -40 L118 -20 L154 -62" fill="none" stroke="#FF7DC7" stroke-width="16" stroke-linecap="round" stroke-linejoin="round" opacity="0"/></g></g>
+  </svg>
+</div>
+<script>
+// Shapes slam in on the beat; nothing drifts but the backdrop.
+tl.fromTo("#far", { scale: .9, transformOrigin: "50% 50%" }, { scale: 1.05, transformOrigin: "50% 50%", duration: DURATION, ease: "none" }, 0);
+tl.set(".ppIn", { transformOrigin: "50% 100%" }, 0);
+
+// Hook: ten people slam into the grid, row by row — "out of every ten people".
+document.querySelectorAll(".pp").forEach((p, i) => {
+  const t = .05 + i * .09;
+  tl.set(p, { opacity: 1 }, t);
+  tl.fromTo(p.firstElementChild, { scale: 0, rotation: i % 2 ? 90 : -90 }, { scale: 1, rotation: 0, duration: .25, ease: "back.out(2.2)", immediateRender: false }, t);
+});
+
+// "who try it": a cobalt bar sweeps across them all and each head turns cobalt as it passes.
+const tryIt = at("try", 1.7) - .3;
+tl.set("#bar", { opacity: .12 }, tryIt);
+tl.to("#bar", { attr: { width: 820 }, duration: .4, ease: "expo.inOut" }, tryIt);
+tl.to(".pp circle", { fill: "#2B3BFF", duration: .1, stagger: .03 }, tryIt + .1);
+tl.to("#bar", { opacity: 0, duration: .2 }, tryIt + .5);
+
+// "nine come back": nine jump and turn tangerine; the one who didn't goes grey and slides away a little.
+const back = at("come", 2.54) - .15;
+document.querySelectorAll(".pp:not(.lost) .ppIn").forEach((p, i) => {
+  const t = back + i * .05;
+  tl.to(p, { y: -50, duration: .14, ease: "power3.out" }, t);
+  tl.to(p, { y: 0, duration: .16, ease: "power3.in" }, t + .14);
+  tl.to(p.querySelectorAll("path:not(.ck)"), { fill: "#FF5A1F", duration: .08 }, t + .05);
+});
+tl.to(".lost path:not(.ck), .lost circle", { fill: "#CDBFA5", duration: .2 }, back);
+tl.to(".lost", { x: "+=30", opacity: .55, duration: .3, ease: "power3.out" }, back + .1);
+
+// "the very next day": the sun disc rises behind them and every one of the nine gets a pink tick.
+const day = at("next", 3.52) - .2;
+tl.set("#sunDisc", { opacity: .14 }, day);
+tl.fromTo("#sunDisc", { scale: 0, svgOrigin: "500 840" }, { scale: 1, svgOrigin: "500 840", duration: .45, ease: "back.out(1.4)", immediateRender: false }, day);
+document.querySelectorAll(".pp:not(.lost) .ck").forEach((c, i) => {
+  tl.set(c, { opacity: 1 }, day + .15 + i * .04);
+  tl.fromTo(c, { scale: 0, transformOrigin: "0% 100%" }, { scale: 1, duration: .2, ease: "back.out(3)", immediateRender: false }, day + .15 + i * .04);
+});
+</script>
