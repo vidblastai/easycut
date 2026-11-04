@@ -107,6 +107,8 @@ model Project {
   user   User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
 
   title String @default("Untitled")
+  /// The person named the project themselves; the edit must not rename it.
+  titleSetByUser Boolean @default(false)
 
   // Who does the creative AI work. "server" is EasyCut's own models; "client"
   // is a project made through the MCP server, where the person's own Claude

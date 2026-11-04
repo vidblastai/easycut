@@ -151,6 +151,7 @@ export async function createProject(caller: Caller, input: CreateInput, bearer: 
     data: {
       userId: caller.userId,
       title: input.title?.trim() || filename.replace(/\.[^.]+$/, '').replace(/[-_]+/g, ' ') || 'Untitled',
+      titleSetByUser: Boolean(input.title?.trim()),
       mode: 'short',
       styleId: getStyle(input.styleId ?? 'clean').id,
       captionPreset: input.captionPreset ?? null,
@@ -323,7 +324,7 @@ export async function setScenes(caller: Caller, projectId: string, moments: Scen
     // Text-led looks (signal, slate) are long-form cutaways that carry a whole
     // thought — a list, a comparison — so they may run as long as the thought.
     const longest = isTextLook(moment.look ?? project.sceneLook) ? 20 : 8;
-    if (moment.endSec - moment.startSec < 1.5 || moment.endSec - moment.startSec > longest) throw new McpUserError(`Scene ${i + 1} should last 1.5–${longest} seconds${longest === 8 ? ' (up to 20 in the signal and slate looks)' : ''}.`);
+    if (moment.endSec - moment.startSec < 1.5 || moment.endSec - moment.startSec > longest) throw new McpUserError(`Scene ${i + 1} should last 1.5–${longest} seconds${longest === 8 ? ' (up to 20 in the long-form looks)' : ''}.`);
     if (i && moment.startSec < sorted[i - 1].endSec) throw new McpUserError(`Scenes ${i} and ${i + 1} overlap.`);
     if (moment.look && !(SCENE_LOOKS as readonly string[]).includes(moment.look)) throw new McpUserError(`Unknown look "${moment.look}".`);
   }

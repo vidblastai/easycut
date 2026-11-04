@@ -75,6 +75,7 @@ export async function POST(request: Request) {
     data: {
       userId,
       title: input.title?.trim() || stripExtension(input.filename),
+      titleSetByUser: Boolean(input.title?.trim()),
       mode: input.mode,
       styleId: getStyle(input.styleId).id,
       // Validated rather than trusted: an id that no longer exists would make
