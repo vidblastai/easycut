@@ -482,3 +482,23 @@ describe('warm-up before the first line', () => {
     expect(spans.some((s) => s.startSec <= 0.5 && s.endSec >= 3.9)).toBe(true);
   });
 });
+
+describe('warm-up, as speech recognition actually hears it', () => {
+  it('cuts "Hello." "Alright." and a "Let\'s" glued onto the first line after a pause', () => {
+    const list = words([
+      ['Hello.', 1.79, 2.59], ['Alright.', 3.5, 3.9], ["Let's", 7.69, 8.25],
+      ['In', 9.98, 10.22], ['this', 10.22, 10.38], ['video,', 10.38, 10.78], ['I', 10.78, 10.94], ['will', 10.94, 11.02],
+      ['show', 11.02, 11.18], ['you', 11.18, 11.34], ['the', 11.34, 11.5], ['newest', 11.5, 11.9], ['niches.', 11.9, 12.5],
+    ]);
+    const spans = applicableFindings(findCleanupTargets(transcriptOf(list), CLEANUP_PRESETS.raw), CLEANUP_PRESETS.raw);
+    expect(spans.some((s) => s.startSec <= 1.79 && s.endSec >= 9.9 && s.endSec <= 9.98)).toBe(true);
+  });
+
+  it('keeps "Okay, so" running straight into the first line', () => {
+    const list = words([
+      ['Okay,', 0.4, 0.7], ['so', 0.75, 0.9], ['today', 0.95, 1.2], ['we', 1.2, 1.3], ['build', 1.3, 1.6], ['a', 1.6, 1.65], ['shed.', 1.65, 2.0],
+    ]);
+    const spans = applicableFindings(findCleanupTargets(transcriptOf(list), CLEANUP_PRESETS.raw), CLEANUP_PRESETS.raw);
+    expect(spans.some((s) => s.startSec <= 0.4 && s.endSec >= 0.9)).toBe(false);
+  });
+});
