@@ -164,6 +164,24 @@ describe('db queue', () => {
       expect(order).toEqual(['paid edit', 'free export', 'free edit']);
     });
 
+    it('gives back exports a crashed worker was holding, and gives up on one that keeps getting cut off', async () => {
+      const q = await freshQueue();
+      await q.enqueue('rerender', { n: 'export' });
+      await q.enqueue('pipeline', { n: 'edit' });
+      await q.reserve(1000);
+      await q.reserve(1000);
+      // The worker dies here. On the next boot only the export comes back —
+      // full edits are rescued from their job rows instead.
+      expect(await q.reclaimInterrupted!(['rerender'])).toBe(1);
+      const again = await q.reserve(1000);
+      expect((again!.payload as { n: string }).n).toBe('export');
+      await q.reclaimInterrupted!(['rerender']);
+      await q.reserve(1000);
+      await q.reclaimInterrupted!(['rerender']);
+      // Third time cut off: left dead rather than tried again.
+      expect(await db.queueMessage.count({ where: { status: 'dead', type: 'rerender' } })).toBe(1);
+    });
+
     it('defaults to no priority, so nothing overtakes by accident', async () => {
       const q = await freshQueue();
       await q.enqueue('pipeline', { n: 1 });

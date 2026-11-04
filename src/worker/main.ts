@@ -118,6 +118,16 @@ export async function main(): Promise<void> {
   // on a timer — see `startRescuer`.
   await rescueStaleJobs({ boot: true });
 
+  // Exports and scene renders have no job row for the rescue above to find, so
+  // one cut off by a restart would leave its project "processing" forever.
+  // With one worker — the default deployment — anything the queue still calls
+  // running belonged to the process that died. A pool of workers turns this
+  // off (QUEUE_RECLAIM_ON_BOOT=false), since a sibling may still be busy.
+  if (env.queue.reclaimOnBoot) {
+    const back = await queue().reclaimInterrupted?.(['rerender', 'client-scenes', 'proxy']).catch(() => 0);
+    if (back) console.log(`  requeued ${back} interrupted export(s)`);
+  }
+
   const shutdown = async (signal: string) => {
     console.log(`\n${signal} received, finishing current job...`);
     shuttingDown = true;
