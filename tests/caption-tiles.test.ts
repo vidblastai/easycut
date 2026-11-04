@@ -20,7 +20,7 @@ describe('caption tiles', () => {
     for (const preset of CAPTION_PRESETS) {
       const shapes = preset.bestFor === 'both' ? ['short', 'long'] : [preset.bestFor];
       for (const shape of shapes) {
-        const name = `${preset.id}-${shape}.png`;
+        const name = `${preset.id}-${shape}.jpg`;
         if (!files.has(name)) missing.push(name);
       }
     }
@@ -30,8 +30,8 @@ describe('caption tiles', () => {
   it('ships no picture for a preset that no longer exists', () => {
     const ids = new Set(CAPTION_PRESETS.map((p) => p.id));
     const orphans = [...files]
-      .filter((f) => f.endsWith('.png'))
-      .filter((f) => !ids.has(f.replace(/-(short|long)\.png$/, '')));
+      .filter((f) => f.endsWith(".jpg"))
+      .filter((f) => !ids.has(f.replace(/-(short|long)\.jpg$/, '')));
     expect(orphans).toEqual([]);
   });
 });

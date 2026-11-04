@@ -58,6 +58,12 @@ COPY . .
 ARG DB_PROVIDER=postgresql
 RUN if [ "$DB_PROVIDER" = "postgresql" ]; then npm run db:postgres; fi
 
+# The caption typefaces, on disk. Without them every render fetches them from
+# Google, and one slow answer is a customer's captions in a system font
+# (remotion/lib/fonts.ts gives up after 12 s). Best effort: a build without
+# network still ships, it just renders the way it did before.
+RUN npm run fonts || echo "fonts: fetch failed, renders will load them over the network"
+
 RUN npx prisma generate && npm run build
 
 # Remotion downloads its own Chromium on first render. Doing it here means the

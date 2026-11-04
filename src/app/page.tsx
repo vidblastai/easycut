@@ -175,11 +175,11 @@ export default function HomePage() {
         <div className="mx-auto max-w-5xl px-6">
           <div className="max-w-2xl">
             <h2 className="text-3xl font-extrabold tracking-[-0.03em] sm:text-[40px]">
-              The same thirty seconds.
+              The same take.
             </h2>
             <p className="mt-4 text-muted">
-              Drag it. On the left is what came off the camera — the pauses are the
-              red ones. On the right is what you&rsquo;d post.
+              Drag it. On the left is a real take, straight off a phone. On the right is
+              the same moment after one upload — the video you&rsquo;d post.
             </p>
           </div>
 
@@ -189,9 +189,9 @@ export default function HomePage() {
 
           <dl className="mt-8 grid gap-px overflow-hidden rounded-xl border border-line bg-line sm:grid-cols-3">
             {[
-              ['Cuts made', '94', 'Every pause, um and false start.'],
-              ['Time removed', '2:34', 'Out of a 3:42 take.'],
-              ['Your input', '1 upload', 'And two dropdowns.'],
+              ['Cuts made', '6', 'Two false starts, a retake, a stammer and the pauses.'],
+              ['Time removed', '0:08', 'Out of a 0:41 take, straight off a phone.'],
+              ['Your input', '1 upload', 'And one style.'],
             ].map(([label, value, note]) => (
               <div key={label} className="bg-charcoal px-5 py-5">
                 <dt className="text-[11.5px] font-semibold uppercase tracking-[0.14em] text-faint">{label}</dt>

@@ -123,9 +123,8 @@ function TransitionPlate({ type, order }: { type: ClipTransition; order: number 
     <span className="relative block aspect-[4/3] overflow-hidden bg-ink">
       {/* The speaker underneath: a head and shoulders, so the insert has
           something recognisable to cover rather than a flat colour. */}
-      <span className="absolute inset-0 grid place-items-center">
-        <span className="block h-1/3 w-1/4 rounded-t-full bg-line2/70" />
-      </span>
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img src="/layers/tx-speaker.jpg" alt="" loading="lazy" decoding="async" className="absolute inset-0 h-full w-full object-cover" />
 
       <span className={clsx('tx-plate', `tx-${type}`)} aria-hidden="true">
         <span className="tx-bars" />
@@ -157,9 +156,8 @@ const TILE_CSS = `
 /* The insert. Every per-type rule below sets the "animation" shorthand, which
    replaces this one — so a type with no rule simply never appears, which is a
    visible bug rather than a silent one. */
-.tx-plate{position:absolute;inset:0;background:linear-gradient(145deg,#9B7BFF,#6F4FE0);opacity:0}
-.tx-plate .tx-bars{position:absolute;inset:0;
-  background:repeating-linear-gradient(115deg,rgba(255,255,255,.16) 0 6px,transparent 6px 16px)}
+.tx-plate{position:absolute;inset:0;background:#1A1A22 url(/layers/tx-insert.jpg) center/cover no-repeat;opacity:0}
+.tx-plate .tx-bars{display:none}
 .tx-fx{position:absolute;inset:0;pointer-events:none;opacity:0}
 
 @keyframes tx-fade{0%{opacity:0;transform:scale(1.04)}10%{opacity:1;transform:scale(1)}

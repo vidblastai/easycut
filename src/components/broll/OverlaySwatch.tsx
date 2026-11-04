@@ -109,9 +109,7 @@ export function OverlayGrid({
 
 const TILE_CSS = `
 .ov-plate{position:relative;display:block;width:100%;aspect-ratio:4/3;overflow:hidden;background:#0D0D10}
-.ov-shot{position:absolute;inset:0;background:
-  radial-gradient(circle at 30% 78%, #2A2A36 0 22%, transparent 23%),
-  linear-gradient(180deg,#9FC7E8 0%,#D7E6F2 42%,#8C9A74 43%,#5C6B4A 100%)}
+.ov-shot{position:absolute;inset:0;background:#1A1A22 url(/layers/ov-shot.jpg) center/cover no-repeat}
 .ov-fx{position:absolute;inset:0;pointer-events:none}
 
 .ov-none{display:none}
