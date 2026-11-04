@@ -2,7 +2,7 @@ import { AppShell, ShellMain } from '@/components/shell/AppShell';
 import { capabilities } from '@/lib/config/env';
 import { env } from '@/lib/config/env';
 import { selectedProvider } from '@/lib/director';
-import { isAuthEnabled, ownedProjects } from '@/lib/auth';
+import { isAuthEnabled, isOperator, ownedProjects } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { recentsFor } from '@/lib/ui/recents';
 import { clsx } from 'clsx';
@@ -32,6 +32,7 @@ export default async function SettingsPage({
   // between "did that work?" and knowing it did.
   const justPaid = (await searchParams).checkout === 'done';
   const caps = capabilities();
+  const operator = await isOperator();
   const projects = await db.project.findMany({ where: await ownedProjects(), orderBy: { createdAt: 'desc' }, take: 8 }).catch(() => []);
 
   const runtime = [
@@ -48,8 +49,7 @@ export default async function SettingsPage({
         <div className="pt-7">
           <h1 className="text-[28px] font-extrabold">Settings</h1>
           <p className="mt-1.5 max-w-[62ch] text-[13.5px] text-muted">
-            Everything below is set on the server. This page tells you what is on, and what a video
-            loses when something is off.
+            Your plan, and EasyCut inside your own Claude.
           </p>
         </div>
 
@@ -57,7 +57,11 @@ export default async function SettingsPage({
 
         <ClaudePanel mcpUrl={`${await publicOriginFromHeaders()}/api/mcp`} authEnabled={isAuthEnabled()} />
 
-        <h2 className="mt-8 text-[15px] font-bold">Features</h2>
+        {operator ? (
+          <>
+            <h2 className="mt-10 text-[15px] font-bold">
+              Server <span className="ml-1.5 rounded-full border border-line px-2 py-0.5 text-[11px] font-semibold text-muted">only you see this</span>
+            </h2>
         <ul className="mt-3 grid gap-px overflow-hidden rounded-[14px] bg-line-soft">
           {caps.map((cap) => (
             <li key={cap.key} className="bg-charcoal px-4 py-3.5">
@@ -107,6 +111,8 @@ export default async function SettingsPage({
           returns the same thing as JSON, including warnings about settings that quietly lose data
           once there is more than one container.
         </p>
+          </>
+        ) : null}
       </ShellMain>
     </AppShell>
   );

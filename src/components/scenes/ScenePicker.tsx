@@ -12,7 +12,7 @@ import { LoopVideo } from '@/components/media/LoopVideo';
  * pipeline actually made in it. The rest keep the drawn plate.
  */
 const HAS_CLIP = new Set([
-  'archive', 'gallery', 'neon', 'studio',
+  'archive', 'editorial', 'gallery', 'neon', 'studio',
   'blueprint', 'chalk', 'chrome', 'clay', 'diorama', 'glass', 'graph', 'ink', 'mono', 'morph',
   'paper', 'particles', 'pencil', 'pixel', 'poster', 'retro', 'riso', 'science', 'scope', 'sticker',
 ]);

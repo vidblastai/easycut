@@ -33,7 +33,11 @@ export function CaptionTile({
   frame: { w: number; h: number };
   mode: 'short' | 'long';
 }) {
-  const [missing, setMissing] = useState(false);
+  // A look made for the other shape still has a real picture of itself; only
+  // when neither exists does the tile fall back to drawing the band.
+  const sources = [`/captions/${preset}-${mode}.jpg`, `/captions/${preset}-${mode === 'short' ? 'long' : 'short'}.jpg`];
+  const [attempt, setAttempt] = useState(0);
+  const missing = attempt >= sources.length;
 
   if (missing) {
     return (
@@ -52,13 +56,13 @@ export function CaptionTile({
   return (
     /* eslint-disable-next-line @next/next/no-img-element */
     <img
-      src={`/captions/${preset}-${mode}.jpg`}
+      src={sources[attempt]}
       alt=""
       width={640}
       height={480}
       loading="lazy"
       decoding="async"
-      onError={() => setMissing(true)}
+      onError={() => setAttempt((n) => n + 1)}
       className="w-full bg-ink"
       style={{ aspectRatio: '4 / 3' }}
     />
