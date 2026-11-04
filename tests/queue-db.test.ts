@@ -150,7 +150,18 @@ describe('db queue', () => {
     it('carries the priority through to the reserved job', async () => {
       const q = await freshQueue();
       await q.enqueue('pipeline', { n: 1 }, { priority: 1 });
-      expect((await q.reserve(1000))!.priority).toBe(1);
+      // Stored in the plan's band (×2), so quick jobs can sit between bands.
+      expect((await q.reserve(1000))!.priority).toBe(2);
+    });
+
+    it('puts an export ahead of earlier full edits on the same plan, but not ahead of a paid plan', async () => {
+      const q = await freshQueue();
+      await q.enqueue('pipeline', { n: 'free edit' });
+      await q.enqueue('pipeline', { n: 'paid edit' }, { priority: 1 });
+      await q.enqueue('rerender', { n: 'free export' });
+      const order = [];
+      for (let i = 0; i < 3; i++) order.push(((await q.reserve(1000))!.payload as { n: string }).n);
+      expect(order).toEqual(['paid edit', 'free export', 'free edit']);
     });
 
     it('defaults to no priority, so nothing overtakes by accident', async () => {

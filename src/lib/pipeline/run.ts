@@ -124,6 +124,10 @@ export async function runPipeline(
 
     const startedAt = Date.now();
     await report(stage, completedWeight, STAGE_LABELS[stage]);
+    const reachedWeight = completedWeight;
+    context.say = async (label) => {
+      await report(stage, reachedWeight, label, context.log);
+    };
 
     try {
       await handler(context);
@@ -900,6 +904,7 @@ async function composeScenes(ctx: PipelineContext, mapper: TimeMapper): Promise<
   if (!isSceneComposerConfigured()) return new Set();
 
   const { clips, costUsd, errors, notes } = await composeSceneClips(edl.scenes, {
+    onProgress: ctx.say,
     projectId: ctx.request.projectId,
     workDir: ctx.workDir,
     width: edl.format.width,

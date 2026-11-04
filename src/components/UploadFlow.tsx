@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { clsx } from 'clsx';
-import { StylePreview } from '@/components/styles/StylePreview';
+import { StyleExample } from '@/components/styles/StyleExample';
 import { detectFormat, probeInBrowser, type Detected } from '@/lib/styles/detect';
 import type { BrollOverlay, ClipTransition, Layout } from '@/lib/edl/types';
 import { layoutPlan } from '@/lib/styles/layouts';
@@ -524,7 +524,8 @@ export function UploadFlow({
                       : 'border-line bg-charcoal hover:bg-charcoal2',
                   )}
                 >
-                  <StylePreview
+                  <StyleExample
+                    style={s.id}
                     layout={s.layout}
                     aspect={mode === 'short' ? '9:16' : '16:9'}
                     accent={s.accent}

@@ -33,6 +33,23 @@ export interface QueuedJob<T = unknown> {
 
 export type JobHandler<T = any> = (job: QueuedJob<T>) => Promise<void>;
 
+/**
+ * Jobs that take a minute rather than a full edit: an export, the scenes a
+ * person's Claude wrote, a preview proxy. Somebody who pressed Export is
+ * waiting at the screen for it, so it should not queue behind other people's
+ * twelve-minute edits.
+ */
+const QUICK_JOBS = new Set(['rerender', 'client-scenes', 'proxy']);
+
+/**
+ * The stored priority: the plan's band first, then a quick job ahead of a full
+ * edit within it. A paid plan's edit still goes before a free export, so the
+ * plan keeps meaning what it says.
+ */
+export function queuePriority(type: string, planPriority = 0): number {
+  return planPriority * 2 + (QUICK_JOBS.has(type) ? 1 : 0);
+}
+
 export interface EnqueueOptions {
   maxAttempts?: number;
   /** Higher goes first. See `QueuedJob.priority`. */
@@ -64,7 +81,7 @@ class MemoryQueueDriver implements QueueDriver {
       attempts: 0,
       maxAttempts: options.maxAttempts ?? 3,
       enqueuedAt: Date.now(),
-      priority: options.priority ?? 0,
+      priority: queuePriority(type, options.priority ?? 0),
     };
 
     const waiter = this.waiters.shift();
@@ -162,7 +179,7 @@ class RedisQueueDriver implements QueueDriver {
       attempts: 0,
       maxAttempts: options.maxAttempts ?? 3,
       enqueuedAt: Date.now(),
-      priority: options.priority ?? 0,
+      priority: queuePriority(type, options.priority ?? 0),
     };
     await client.lPush(this.listFor(job), JSON.stringify(job));
     return job.id;
@@ -237,7 +254,7 @@ class DbQueueDriver implements QueueDriver {
         type,
         payload: JSON.stringify(payload),
         maxAttempts: options.maxAttempts ?? 3,
-        priority: options.priority ?? 0,
+        priority: queuePriority(type, options.priority ?? 0),
       },
     });
     return row.id;
