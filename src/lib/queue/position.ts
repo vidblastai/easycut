@@ -29,7 +29,19 @@ export async function workerIsBusy(withinMs = 3 * 60_000): Promise<boolean> {
   return recent > 0;
 }
 
-/** What a waiting video's progress line says. */
-export function waitingLabel(ahead: number): string {
-  return ahead === 0 ? 'Next in line — starting shortly' : `Waiting in line — ${ahead} video${ahead === 1 ? '' : 's'} ahead of yours`;
+/** How many queued jobs a worker is busy with right now. */
+export async function videosInProgress(): Promise<number> {
+  return db.queueMessage.count({ where: { status: 'running' } }).catch(() => 0);
+}
+
+/**
+ * What a waiting video's progress line says.
+ *
+ * "Next in line" alone read as stuck once it sat there for ten minutes — which
+ * it does whenever every worker is busy with a long edit. Saying what it is
+ * waiting for keeps a person (or their Claude) from deciding it has stalled.
+ */
+export function waitingLabel(ahead: number, inProgress = 0): string {
+  const busy = inProgress > 0 ? ` — starts when one of the ${inProgress} video${inProgress === 1 ? '' : 's'} being edited now finishes` : ' — starting shortly';
+  return ahead === 0 ? `Next in line${busy}` : `Waiting in line — ${ahead} video${ahead === 1 ? '' : 's'} ahead of yours`;
 }
