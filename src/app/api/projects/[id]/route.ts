@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { stalledJob, stalledProject } from '@/lib/pipeline/stalled';
+import { videosAhead, waitingLabel, workerIsBusy } from '@/lib/queue/position';
 import { db, parseJson } from '@/lib/db';
 import { healEdl } from '@/lib/edl/operations';
 import { readStageLog } from '@/worker/process-project';
@@ -35,6 +36,10 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
 
   const job = project.jobs[0];
   const edl = project.edls[0];
+  // A waiting video shows its place in line, and is only "stalled" when the
+  // worker is not busy with anybody else's either.
+  const waiting = project.status === 'processing' && (!job || job.status === 'queued' || job.status === 'succeeded');
+  const [ahead, busy] = waiting ? await Promise.all([videosAhead(id), workerIsBusy()]) : [null, false];
 
   /*
    * Is there a finished file of the edit as it stands?
@@ -109,13 +114,13 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
           stage: job.stage,
           stageLabel: STAGE_LABELS[job.stage as Stage] ?? job.stage,
           progress: job.progress,
-          progressLabel: job.progressLabel,
+          progressLabel: ahead !== null ? waitingLabel(ahead) : job.progressLabel,
           errorMessage: job.errorMessage,
           startedAt: job.startedAt,
           queuedAt: job.queuedAt,
           // Null unless nothing has moved for long enough to be worth saying.
           // See src/lib/pipeline/stalled.ts for why the thresholds are long.
-          stalled: stalledJob(job),
+          stalled: stalledJob(job, new Date(), busy),
           log: readStageLog(job.log),
         }
       : // No job row at all, but the project says it is working. There is

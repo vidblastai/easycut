@@ -63,6 +63,10 @@ describe('when nothing ever picked it up', () => {
     expect(out?.forSec).toBe(600);
   });
 
+  it('calls a long wait a queue, not a stall, while the worker is busy with other videos', () => {
+    expect(stalledJob(job({ status: 'queued', startedAt: null, queuedAt: ago(40) }), NOW, true)).toBeNull();
+  });
+
   it('reports a job marked running that never actually started', () => {
     // The row says running and there is no start time — a half-written claim.
     const out = stalledJob(job({ startedAt: null, queuedAt: ago(30) }), NOW);

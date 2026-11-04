@@ -37,6 +37,7 @@ import {
 } from '@/lib/director/hyperframe';
 import { wordsBetween, type ClientScene } from './scenes';
 import { cutOperations, type CutRange } from '@/lib/edl/cut-ranges';
+import { videosAhead, waitingLabel } from '@/lib/queue/position';
 export { wordsBetween, type ClientScene } from './scenes';
 import { allBlank, guideSheet, lintProject, snapshotProject, validateProject, writeProject } from '@/lib/render/hyperframes';
 
@@ -211,22 +212,6 @@ function progressOf(
   return { stage: job.stage, label: job.progressLabel, fraction: job.progress, state: job.status };
 }
 
-/** How many queued jobs will be claimed before this project's, or null when it is not waiting. */
-async function videosAhead(projectId: string): Promise<number | null> {
-  const mine = await db.queueMessage.findFirst({
-    where: { status: 'queued', payload: { contains: projectId } },
-    orderBy: { enqueuedAt: 'desc' },
-  });
-  if (!mine) return null;
-  // The same order the worker claims in: higher priority first, then oldest.
-  return db.queueMessage.count({
-    where: {
-      status: 'queued',
-      OR: [{ priority: { gt: mine.priority } }, { priority: mine.priority, enqueuedAt: { lt: mine.enqueuedAt } }],
-    },
-  });
-}
-
 /** What changes when a video moves on — status, stage, or its place in line. */
 async function progressKey(projectId: string): Promise<string> {
   const [project, job, ahead] = await Promise.all([
@@ -269,7 +254,7 @@ export async function getProject(caller: Caller, projectId: string, waitSeconds 
     error: project.errorMessage,
     progress:
       ahead !== null
-        ? { stage: 'queued', label: ahead === 0 ? 'Next in line' : `Waiting in line — ${ahead} video${ahead === 1 ? '' : 's'} ahead`, fraction: 0, state: 'queued' }
+        ? { stage: 'queued', label: waitingLabel(ahead), fraction: 0, state: 'queued' }
         : progressOf(project.status, job),
     durationSec: project.durationSec,
     video: absolute(caller, render?.url ?? project.previewUrl),
