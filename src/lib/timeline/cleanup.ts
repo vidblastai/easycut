@@ -429,8 +429,12 @@ function findWarmUp(sentences: TranscriptSentence[], words: TranscriptWord[]): C
       startSec: sentences[0].startSec,
       endSec: cutTo,
       text: [...sentences.slice(0, n).map((x) => x.text), ...words.slice(keep.wordStart, keep.wordStart + lead).map((w) => w.text)].join(' '),
-      confidence: 0.9,
-      keeps: { startSec: cutTo, endSec: keep.endSec },
+      confidence: 0.92,
+      // No keeper. A warm-up is not one of two takes traded for the other —
+      // it goes whatever happens next. Naming the first line as its keeper
+      // made it hostage to that line: on the real upload the first line was
+      // itself a flubbed take the retake pass removed, and the pair rule then
+      // dropped the warm-up cut too, leaving the mic check in the video.
     },
   ];
 }
