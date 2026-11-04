@@ -112,6 +112,7 @@ export function findCleanupTargets(transcript: Transcript, options: CleanupOptio
   if (options.removeFillers) findings.push(...findFillers(transcript.words, language));
   if (options.removeStammers) findings.push(...findStammers(transcript.words));
   if (options.removeFalseStarts) {
+    findings.push(...findWarmUp(transcript.sentences));
     findings.push(...findFalseStarts(transcript.sentences));
     findings.push(...findTrailingOff(transcript.sentences, transcript.words, language));
   }
@@ -355,6 +356,56 @@ function phraseStammerAt(
  * mean is…". We detect it as a short fragment whose opening words are repeated
  * by the fragment that immediately follows it.
  */
+/**
+ * The warm-up before the first real line.
+ *
+ * People start recording, then start talking: "Hello, hello, hello, all
+ * right. Let's go." — and only then "In this video I'll show you…". None of
+ * that is the video, and none of the other passes see it: it is not a
+ * restart of anything, not a filler inside a sentence, not a retake. Measured
+ * on a real upload: ten seconds of mic check left at the top of the cut, and
+ * the project titled "Hello" after it.
+ *
+ * Deliberately narrow. Only a run of sentences at the very start, every word
+ * of which is warm-up vocabulary, and only when the run carries an
+ * unmistakable cue — a repeated greeting, "let's go", a countdown, "testing",
+ * a lone "alright". "Hello everyone, welcome back" has words a warm-up never
+ * has and is left alone; so is a single "Hey." said to the viewer.
+ */
+const WARMUP_WORDS = new Set([
+  'hello', 'hi', 'hey', 'alright', 'all', 'right', 'ok', 'okay', 'so', 'um', 'uh', 'erm', 'let\'s', 'lets', 'go',
+  'testing', 'test', 'check', 'mic', 'one', 'two', 'three', 'rolling', 'recording', 'action', 'and', 'cool', 'good',
+  'yeah', 'yes', 'here', 'we', 'start', 'starting', 'now',
+  // German
+  'hallo', 'also', 'los', 'geht\'s', 'gehts', 'gut', 'ja', 'eins', 'zwei', 'drei', 'test', 'läuft',
+]);
+const WARMUP_CUE = /\b(let'?s go|here we go|los geht'?s|testing|test test|mic check|one,? two,? three|eins,? zwei,? drei|rolling|action)\b|\b(hello|hi|hey|hallo)\b[\s,.!]+\b(hello|hi|hey|hallo)\b|^\s*(all ?right|alright|okay|ok)[.!]?\s*$/i;
+
+function findWarmUp(sentences: TranscriptSentence[]): CleanupFinding[] {
+  let n = 0;
+  let cued = false;
+  while (n < sentences.length - 1 && n < 6) {
+    const words = tokenize(sentences[n].text);
+    if (words.length === 0 || words.length > 8 || !words.every((w) => WARMUP_WORDS.has(w))) break;
+    if (WARMUP_CUE.test(sentences[n].text)) cued = true;
+    n++;
+  }
+  // Something real has to follow, and the run has to look like a warm-up.
+  if (n === 0 || !cued) return [];
+  const keep = sentences[n];
+  if (tokenize(keep.text).length < 3) return [];
+  return [
+    {
+      kind: 'false-start',
+      startSec: sentences[0].startSec,
+      endSec: keep.startSec,
+      text: sentences.slice(0, n).map((s) => s.text).join(' '),
+      confidence: 0.9,
+      keeps: { startSec: keep.startSec, endSec: keep.endSec },
+    },
+  ];
+}
+
 function findFalseStarts(sentences: TranscriptSentence[]): CleanupFinding[] {
   const out: CleanupFinding[] = [];
 

@@ -205,7 +205,8 @@ export async function processProject(payload: ProcessJobPayload): Promise<void> 
         thumbnailUrl: thumbObject?.url ?? null,
         socialCaption: edl.deliverable.socialCaption,
         hashtags: stringifyJson(edl.deliverable.hashtags),
-        title: edl.deliverable.title || project.title,
+        // A title the person chose stays; otherwise the edit names the video.
+        title: project.titleSetByUser ? project.title : edl.deliverable.title || project.title,
         costUsd: result.costUsd,
         costReport: stringifyJson(result.context.ledger.toJSON()),
       },

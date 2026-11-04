@@ -4,7 +4,7 @@ import { z } from 'zod';
 import { LOOK_LIST } from '@/lib/scenes/looks';
 import { guideAsPrompt, styleGuideFor } from '@/lib/scenes/style-guides';
 import { referenceFor } from '@/lib/director/reference-scene';
-import { SCENE_LOOKS, type SceneLook } from '@/lib/edl/types';
+import { SCENE_LOOKS, TEXT_SCENE_LOOKS, type SceneLook } from '@/lib/edl/types';
 import {
   createProject,
   getProject,
@@ -93,7 +93,7 @@ const TOOLS = {
   },
   set_scenes: {
     description:
-      'Choose which moments of the edited video become full-screen animated scenes, replacing the current choice. 1–4 is typical; each 1.5–8 s (2.5–6 s is best), not overlapping, on moments where a picture explains or sells the line. The text-led looks signal and slate are for long-form: a cutaway carries a whole thought (a figure, a list, a comparison) and may run up to 20 s — in a long-form video put one on most figures, lists and key claims, as often as every 20–40 seconds. Times are from get_transcript.',
+      'Choose which moments of the edited video become full-screen animated scenes, replacing the current choice. 1–4 is typical; each 1.5–8 s (2.5–6 s is best), not overlapping, on moments where a picture explains or sells the line. The long-form looks (' + TEXT_SCENE_LOOKS.join(', ') + ') are cutaways for videos where someone talks: each carries a whole thought (a figure, a list, a comparison, a story beat) and may run up to 20 s — in a long-form video put one on most figures, lists and key claims, as often as every 20–40 seconds. Times are from get_transcript.',
     input: z.object({
       project_id: z.string(),
       scenes: z

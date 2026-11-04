@@ -446,3 +446,39 @@ describe('two passes that disagree about which take to keep', () => {
     expect(cuts.some((c) => c.startSec === 20)).toBe(false);
   });
 });
+
+describe('warm-up before the first line', () => {
+  const real = (t0: number): Array<[string, number, number]> => [
+    ['In', t0, t0 + 0.2], ['this', t0 + 0.2, t0 + 0.4], ['video,', t0 + 0.4, t0 + 0.7], ['I', t0 + 0.8, t0 + 0.9],
+    ['will', t0 + 0.9, t0 + 1.1], ['show', t0 + 1.1, t0 + 1.4], ['you', t0 + 1.4, t0 + 1.5], ['five', t0 + 1.5, t0 + 1.8],
+    ['niches.', t0 + 1.8, t0 + 2.3],
+  ];
+  const cut = (spec: Array<[string, number, number]>) => {
+    const findings = findCleanupTargets(transcriptOf(words(spec)), CLEANUP_PRESETS.raw);
+    return applicableFindings(findings, CLEANUP_PRESETS.raw);
+  };
+
+  it('cuts "Hello, hello, hello, all right. Let\'s go." before the real opening', () => {
+    const spans = cut([
+      ['Hello,', 1.8, 2.2], ['hello,', 2.4, 2.7], ['hello,', 2.9, 3.2], ['all', 3.5, 3.7], ['right.', 3.7, 4.0],
+      ["Let's", 7.7, 8.0], ['go.', 8.0, 8.3],
+      ...real(10),
+    ]);
+    expect(spans.some((s) => s.startSec <= 1.8 && s.endSec >= 9.9 && s.endSec <= 10)).toBe(true);
+  });
+
+  it('keeps a real greeting to the viewer', () => {
+    const spans = cut([['Hello', 0.5, 0.8], ['everyone,', 0.8, 1.2], ['welcome', 1.3, 1.6], ['back.', 1.6, 2.0], ...real(2.4)]);
+    expect(spans.some((s) => s.startSec <= 0.5 && s.endSec >= 2.0)).toBe(false);
+  });
+
+  it('keeps a single "Hey." said to the viewer', () => {
+    const spans = cut([['Hey.', 0.4, 0.7], ...real(1.2)]);
+    expect(spans.some((s) => s.startSec <= 0.4 && s.endSec >= 0.7)).toBe(false);
+  });
+
+  it('cuts a German warm-up too', () => {
+    const spans = cut([['Hallo,', 0.5, 0.8], ['hallo.', 1.0, 1.3], ['Okay,', 2.0, 2.3], ["los", 2.4, 2.6], ["geht's.", 2.6, 3.0], ...real(4)]);
+    expect(spans.some((s) => s.startSec <= 0.5 && s.endSec >= 3.9)).toBe(true);
+  });
+});
