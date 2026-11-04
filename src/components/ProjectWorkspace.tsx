@@ -1,5 +1,8 @@
 'use client';
 
+import { LoopVideo } from '@/components/media/LoopVideo';
+import { styleExample } from '@/content/style-examples';
+
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { clsx } from 'clsx';
 import dynamic from 'next/dynamic';
@@ -108,12 +111,15 @@ export function ProjectWorkspace({
   styles,
   recents,
   canExport4k = false,
+  operator = false,
 }: {
   projectId: string;
   styles: StyleOption[];
   recents: RecentProject[];
   /** Decided on the server from the plan this project was made on. */
   canExport4k?: boolean;
+  /** The person running EasyCut — sees the pipeline's own notes, which are written for them. */
+  operator?: boolean;
 }) {
   const [state, setState] = useState<ProjectState | null>(null);
   const [busy, setBusy] = useState(false);
@@ -1098,18 +1104,16 @@ export function ProjectWorkspace({
 
               {/* -------------------------------------------------- the report */}
               <div className="flex flex-wrap items-center gap-3 border-t border-line-soft pb-3.5 pt-5">
-                <h2 className="text-[19px] font-extrabold tracking-[-.03em]">The report</h2>
+                <h2 className="text-[19px] font-extrabold tracking-[-.03em]">Make it yours</h2>
                 <span className="rounded-full border border-line px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider text-muted">
                   Version {edl?.version ?? 1}
                 </span>
                 <p className="basis-full text-[13px] text-muted">
-                  Every decision the edit made, and everything it put on top.
+                  Try another style, leave a layer out, or open the editor for anything else. Changes are free.
                 </p>
               </div>
 
               <div className="grid items-start gap-3.5">
-                {doc ? <TheCut edl={doc} /> : null}
-                {doc ? <AddedList edl={doc} /> : null}
 
                 {/* The tweaks are one tall card, so they take a column of
                     their own — stacking everything in the left half left the
@@ -1123,6 +1127,7 @@ export function ProjectWorkspace({
                     currentStyle={project.styleId}
                     onPatch={patch}
                     onOpenCaptions={doc ? () => setMode('studio') : undefined}
+                    posterUrl={project.thumbnailUrl}
                   />
 
                   <div className="grid gap-3.5">
@@ -1145,7 +1150,7 @@ export function ProjectWorkspace({
                     </div>
                   ) : null}
 
-                    {doc?.degraded.length ? (
+                    {operator && doc?.degraded.length ? (
                       <div className="card p-4">
                         <h3 className="text-sm font-bold text-warn">Skipped layers</h3>
                         <ul className="mt-2 space-y-1 text-xs text-muted">
@@ -1214,6 +1219,25 @@ export function ProjectWorkspace({
                     </div>
                   </div>
                 </div>
+
+                {/* Every decision the edit made, one click away rather than the
+                    whole page: useful when something looks wrong, noise when it
+                    does not. */}
+                {doc ? (
+                  <details className="card group p-0">
+                    <summary className="flex cursor-pointer list-none items-center gap-3 px-5 py-4 text-sm font-bold [&::-webkit-details-marker]:hidden">
+                      See every decision the edit made
+                      <span className="rounded-full border border-line px-2 py-0.5 text-[11px] font-semibold text-muted">
+                        {doc.segments.length} cuts · {doc.broll.length + doc.graphics.length + doc.sfx.length + doc.captions.length} additions
+                      </span>
+                      <span aria-hidden className="ml-auto text-muted transition-transform group-open:rotate-180">⌄</span>
+                    </summary>
+                    <div className="grid gap-3.5 border-t border-line-soft p-3.5">
+                      <TheCut edl={doc} />
+                      <AddedList edl={doc} />
+                    </div>
+                  </details>
+                ) : null}
               </div>
             </>
           )}
@@ -1738,6 +1762,7 @@ function TweakPanel({
   currentStyle,
   onPatch,
   onOpenCaptions,
+  posterUrl,
 }: {
   disabled: boolean;
   edl: Edl | null;
@@ -1745,6 +1770,8 @@ function TweakPanel({
   currentStyle: string;
   onPatch: (body: Record<string, unknown>) => Promise<void>;
   onOpenCaptions?: () => void;
+  /** A still of this video, to judge the caption look on. */
+  posterUrl?: string | null;
 }) {
   if (!edl) {
     return (
@@ -1775,26 +1802,42 @@ function TweakPanel({
     <div className="space-y-4">
       <div className="card p-5">
         <h3 className="text-sm font-bold">Change the look</h3>
-        <div className="mt-3 grid grid-cols-2 gap-2">
-          {styles.map((style) => (
-            <button
-              key={style.id}
-              type="button"
-              disabled={disabled || style.id === currentStyle}
-              onClick={() => void onPatch({ styleId: style.id })}
-              className={clsx(
-                'rounded-xl border px-3 py-2.5 text-left text-sm transition-colors disabled:opacity-100',
-                style.id === currentStyle
-                  ? 'border-violet bg-violet-dim'
-                  : 'border-line bg-charcoal hover:border-line/80 hover:bg-charcoal2 disabled:opacity-40',
-              )}
-            >
-              <span className="flex items-center gap-2 font-semibold">
-                <span className="h-2 w-2 rounded-full" style={{ background: style.accent }} />
-                {style.name}
-              </span>
-            </button>
-          ))}
+        <p className="mt-1 text-xs text-muted">Re-cuts from what we already know — free, and nothing is uploaded again.</p>
+        <div className="mt-3 grid grid-cols-3 gap-2 sm:grid-cols-4">
+          {styles.map((style) => {
+            const example = styleExample(style.id, 'short');
+            const current = style.id === currentStyle;
+            return (
+              <button
+                key={style.id}
+                type="button"
+                disabled={disabled || current}
+                onClick={() => void onPatch({ styleId: style.id })}
+                title={style.tagline}
+                className={clsx(
+                  'overflow-hidden rounded-xl border text-left text-sm transition-colors disabled:opacity-100',
+                  current
+                    ? 'border-violet ring-1 ring-violet/60'
+                    : 'border-line bg-charcoal hover:border-line2 disabled:opacity-40',
+                )}
+              >
+                <span className="relative block aspect-[9/16] overflow-hidden bg-ink">
+                  {example ? (
+                    <LoopVideo src={example.src} poster={example.poster} />
+                  ) : (
+                    <span className="absolute inset-0" style={{ background: `radial-gradient(120% 90% at 30% 20%, ${style.accent}55, #121218 70%)` }} />
+                  )}
+                  {current ? (
+                    <span className="absolute left-1.5 top-1.5 rounded-full bg-violet px-2 py-0.5 text-[10px] font-bold text-ink">Now</span>
+                  ) : null}
+                </span>
+                <span className="flex items-center gap-1.5 px-2 py-1.5 text-[12px] font-semibold">
+                  <span className="h-1.5 w-1.5 flex-none rounded-full" style={{ background: style.accent }} />
+                  <span className="truncate">{style.name}</span>
+                </span>
+              </button>
+            );
+          })}
         </div>
       </div>
 
@@ -1835,13 +1878,19 @@ function TweakPanel({
           Captions
           <span className="ml-auto text-[12px] font-semibold text-violet">Change</span>
         </h3>
+        {/* The video's own words over the video's own frame — a look is judged
+            on footage, and on the sentence it will actually carry. */}
         <CaptionBand
-          className="mt-3 rounded-[10px] border border-line bg-[#101015]"
+          className="mt-3 overflow-hidden rounded-[10px] border border-line bg-[#101015]"
           style={edl.captionStyle}
-          text="Your captions"
+          text={edl.captions[0]?.words.map((w) => w.text).join(' ') || 'Your captions'}
           frameWidth={edl.format.width}
           frameHeight={edl.format.height}
-          aspect="16 / 5"
+          aspect="16 / 7"
+          backdrop={
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={posterUrl || '/layers/backdrop-short.jpg'} alt="" className="absolute inset-0 h-full w-full object-cover" style={{ objectPosition: 'center 40%' }} aria-hidden />
+          }
         />
         <p className="mt-2.5 text-[11.5px] text-muted">
           {captionPresetFor(edl.captionStyle)?.name ?? 'Custom'} &middot; {edl.captionStyle.fontFamily}

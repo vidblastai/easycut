@@ -64,6 +64,11 @@ RUN if [ "$DB_PROVIDER" = "postgresql" ]; then npm run db:postgres; fi
 # network still ships, it just renders the way it did before.
 RUN npm run fonts || echo "fonts: fetch failed, renders will load them over the network"
 
+# The music beds, synthesised from src/lib/assets/music-beds.ts — no network,
+# about a minute. Without this step production had an empty library and every
+# video shipped with "music (library is empty)" and no score at all.
+RUN npm run music
+
 RUN npx prisma generate && npm run build
 
 # Remotion downloads its own Chromium on first render. Doing it here means the

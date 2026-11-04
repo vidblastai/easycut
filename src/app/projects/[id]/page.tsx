@@ -2,7 +2,7 @@ import { notFound } from 'next/navigation';
 import { ProjectWorkspace } from '@/components/ProjectWorkspace';
 import { db } from '@/lib/db';
 import { STYLE_LIST } from '@/lib/styles/presets';
-import { canAccessProject, ownedProjects } from '@/lib/auth';
+import { canAccessProject, isOperator, ownedProjects } from '@/lib/auth';
 import { recentsFor } from '@/lib/ui/recents';
 import { entitlementsOf } from '@/lib/billing/entitlements';
 import { allowsQuality } from '@/lib/render/quality';
@@ -35,6 +35,7 @@ export default async function ProjectPage({ params }: { params: Promise<{ id: st
       projectId={id}
       recents={recentsFor(recent)}
       canExport4k={canExport4k}
+      operator={await isOperator()}
       styles={STYLE_LIST.map((s) => ({ id: s.id, name: s.name, accent: s.accent, tagline: s.tagline }))}
     />
   );
