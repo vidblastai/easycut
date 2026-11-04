@@ -1,0 +1,136 @@
+<!-- concept: path, 1920×1080: a case board under a desk lamp — a pinned index card types "MARCH", red string runs to a client file where "BIGGEST CLIENT" types out and a red LOST stamp slams down; the camera slides along the string past a tape label "TWO WEEKS LATER" to the founder's file, stamped RESIGNED; then on to a memo whose lines are blacked out one by one until only "WHY?" is left, circled in red marker -->
+<style>
+#wall { position:absolute; inset:0; background:#16120E; }
+#cork { position:absolute; inset:0; opacity:.55; mix-blend-mode:screen;
+  background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='320' height='320'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.55' numOctaves='4' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 .32  0 0 0 0 .22  0 0 0 0 .13  0 0 0 .5 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>"); }
+#lamp { position:absolute; left:-500px; top:-600px; width:2200px; height:1800px; border-radius:50%;
+  background: radial-gradient(closest-side, rgba(255,196,128,.30), rgba(255,170,90,.12) 45%, rgba(0,0,0,0) 100%); }
+#vignette { position:absolute; inset:0; background: radial-gradient(110% 95% at 45% 40%, rgba(0,0,0,0) 40%, rgba(0,0,0,.88) 100%); }
+#grain { position:absolute; inset:0; opacity:.14; mix-blend-mode:overlay;
+  background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='240' height='240'><filter id='g'><feTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/></filter><rect width='100%' height='100%' filter='url(%23g)'/></svg>"); }
+#cam { position:absolute; inset:0; transform-origin:50% 50%; }
+#board { position:absolute; left:0; top:0; width:2700px; height:1080px; }
+
+/* Paper: aged card stock with a soft contact shadow; text is typed in Courier Prime, stamps in Oswald. */
+.card { position:absolute; background:linear-gradient(180deg, #F1EADB 0%, #E7DDC8 100%); border-radius:4px;
+  box-shadow: 0 2px 0 rgba(0,0,0,.2), 0 26px 50px rgba(0,0,0,.55); }
+.card:after { content:''; position:absolute; inset:0; border-radius:4px; opacity:.35; mix-blend-mode:multiply;
+  background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><filter id='p'><feTurbulence type='fractalNoise' baseFrequency='.7' numOctaves='3' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 .55  0 0 0 0 .48  0 0 0 0 .36  0 0 0 .6 0'/></filter><rect width='100%' height='100%' filter='url(%23p)'/></svg>"); }
+.typed { position:absolute; font-family:'Courier Prime'; font-weight:700; color:#1E1A16; white-space:nowrap; }
+.ch { display:none; }
+.stamp { position:absolute; font-family:'Oswald'; font-weight:700; letter-spacing:4px; color:#B8231B; border:7px solid #B8231B; border-radius:8px;
+  padding:0 22px; line-height:1.15; mix-blend-mode:multiply; filter:url(#rough); opacity:0; }
+.pin { position:absolute; width:30px; height:30px; margin:-15px 0 0 -15px; border-radius:50%;
+  background: radial-gradient(circle at 35% 30%, #FF8A7A 0%, #D3261C 35%, #7A0E09 100%); box-shadow: 4px 8px 8px rgba(0,0,0,.5); z-index:3; }
+#c1 { left:250px; top:210px; width:400px; height:260px; transform:rotate(-5deg); }
+#c1 .rules { position:absolute; left:0; right:0; top:70px; bottom:20px; background: repeating-linear-gradient(180deg, transparent 0 38px, rgba(70,110,170,.28) 38px 40px); }
+#c1 .top { position:absolute; left:0; right:0; top:58px; height:3px; background:rgba(190,60,50,.55); }
+#c2, #c3, #c4, .pin { opacity:0; }
+#c2 { left:780px; top:430px; width:540px; height:330px; transform:rotate(3deg); background:linear-gradient(180deg, #E2C48B 0%, #D3B172 100%); }
+#c2 .tab { position:absolute; left:0; top:-36px; width:200px; height:40px; border-radius:6px 6px 0 0; background:#E2C48B; }
+#c2 .sheet { position:absolute; left:26px; top:26px; right:26px; bottom:26px; background:#F1EADB; border-radius:2px; }
+#c3 { left:1430px; top:180px; width:420px; height:560px; transform:rotate(-2deg); }
+#c3 .photo { position:absolute; left:50px; top:50px; width:320px; height:330px; background:linear-gradient(180deg, #4A4540 0%, #34302C 100%); }
+#c4 { left:2080px; top:330px; width:480px; height:470px; transform:rotate(4deg); }
+.bar { position:absolute; left:46px; height:34px; background:#141210; transform-origin:0 50%; }
+#tape { position:absolute; left:1150px; top:300px; padding:10px 24px; background:rgba(233,221,181,.92); transform:rotate(-7deg);
+  font-family:'Courier Prime'; font-weight:700; font-size:30px; color:#2A241C; box-shadow:0 6px 12px rgba(0,0,0,.35); opacity:0; }
+#strings { position:absolute; left:0; top:0; width:2700px; height:1080px; z-index:2; }
+</style>
+<div id="scene">
+  <svg width="0" height="0" style="position:absolute"><filter id="rough"><feTurbulence type="fractalNoise" baseFrequency=".08" numOctaves="2" seed="4" /><feDisplacementMap in="SourceGraphic" scale="5" /></filter></svg>
+  <div id="wall"></div>
+  <div id="cork"></div>
+  <div id="lamp"></div>
+  <div id="cam">
+    <div id="board">
+      <div id="c1" class="card"><div class="top"></div><div class="rules"></div><div class="typed" id="tx1" style="left:40px; top:96px; font-size:84px">MARCH</div></div>
+      <div id="c2" class="card"><div class="tab"></div><div class="sheet"></div>
+        <div class="typed" id="tx2" style="left:60px; top:70px; font-size:50px">BIGGEST CLIENT</div>
+        <div class="stamp" id="s2" style="left:150px; top:150px; font-size:104px">LOST</div></div>
+      <div id="c3" class="card"><div class="photo">
+          <svg viewBox="0 0 320 330" width="320" height="330"><circle cx="160" cy="128" r="66" fill="#6B655E" /><path d="M40 330 Q48 220 160 214 Q272 220 280 330 Z" fill="#6B655E" /></svg></div>
+        <div class="typed" id="tx3" style="left:56px; top:410px; font-size:56px">FOUNDER</div>
+        <div class="stamp" id="s3" style="left:46px; top:200px; font-size:92px">RESIGNED</div></div>
+      <div id="c4" class="card">
+        <div class="bar" id="b1" style="top:70px; width:380px"></div>
+        <div class="bar" id="b2" style="top:130px; width:330px"></div>
+        <div class="bar" id="b3" style="top:190px; width:360px"></div>
+        <div class="typed" id="tx4" style="left:120px; top:280px; font-size:96px">WHY?</div>
+        <svg id="ring" viewBox="0 0 480 470" width="480" height="470" style="position:absolute; left:0; top:0">
+          <path id="circ" d="M118 300 C130 248 300 236 356 270 C404 300 370 382 250 392 C150 400 92 360 104 316 C110 296 140 282 170 276" fill="none" stroke="#C4261D" stroke-width="9" stroke-linecap="round" opacity="0" /></svg>
+      </div>
+      <div id="tape">TWO WEEKS LATER</div>
+      <svg id="strings" viewBox="0 0 2700 1080">
+        <path id="r1" d="M452 228 Q760 420 1040 428" fill="none" stroke="#A9201A" stroke-width="4" />
+        <path id="r2" d="M1040 428 Q1320 520 1636 186" fill="none" stroke="#A9201A" stroke-width="4" />
+        <path id="r3" d="M1636 186 Q2000 420 2316 336" fill="none" stroke="#A9201A" stroke-width="4" />
+      </svg>
+      <div class="pin" id="p1" style="left:452px; top:228px"></div>
+      <div class="pin" id="p2" style="left:1040px; top:428px"></div>
+      <div class="pin" id="p3" style="left:1636px; top:186px"></div>
+      <div class="pin" id="p4" style="left:2316px; top:336px"></div>
+    </div>
+  </div>
+  <div id="vignette"></div>
+  <div id="grain"></div>
+</div>
+<script>
+// Typewriter: one span per letter, each struck with a slightly different weight and baseline, like a real machine.
+function typeOut(id, t, per) {
+  const el = document.getElementById(id);
+  const letters = [...el.textContent];
+  el.innerHTML = letters.map((c, i) => '<span class="ch" style="position:relative; top:' + ((rand(i + id.length * 9) - 0.5) * 3).toFixed(1) + 'px; opacity:' + (0.82 + rand(i + 40) * 0.18).toFixed(2) + '">' + (c === ' ' ? '&nbsp;' : c) + '</span>').join('');
+  [...el.querySelectorAll('.ch')].forEach((s, i) => tl.set(s, { display: 'inline' }, t + i * per));
+  return t + letters.length * per;
+}
+// A stamp slams: big and off-angle to down hard, the card jolts, the camera feels it.
+function slam(id, card, t, rot) {
+  tl.fromTo(id, { opacity: 0, scale: 1.9, rotation: rot - 10 }, { opacity: 0.92, scale: 1, rotation: rot, duration: 0.16, ease: 'power4.in', immediateRender: false }, t);
+  tl.to(card, { y: '+=6', duration: 0.05, yoyo: true, repeat: 1, ease: 'power1.out' }, t + 0.16);
+  tl.to('#cam', { y: 4, duration: 0.05, yoyo: true, repeat: 1 }, t + 0.16);
+}
+const prep = (id) => { const el = document.getElementById(id); el.setAttribute('pathLength', '1'); el.setAttribute('stroke-dasharray', '1'); el.setAttribute('stroke-dashoffset', '1'); };
+['r1', 'r2', 'r3', 'circ'].forEach(prep);
+// The camera slides along the board; whatever it leaves falls slightly out of focus.
+function move(x, t, soften) {
+  tl.to('#board', { x: -x, duration: 1.0, ease: 'power3.inOut' }, t);
+  tl.to('#lamp', { x: x * 0.25, duration: 1.4, ease: 'sine.inOut' }, t);
+  if (soften) tl.to(soften, { filter: 'blur(3px)', opacity: 0.75, duration: 0.8 }, t + 0.2);
+}
+function pinIn(card, pin, t) {
+  tl.fromTo(card, { opacity: 0, y: -50, scale: 1.04 }, { opacity: 1, y: 0, scale: 1, duration: 0.45, ease: 'power3.out', immediateRender: false }, t);
+  tl.fromTo(pin, { opacity: 0, scale: 1.8 }, { opacity: 1, scale: 1, duration: 0.18, ease: 'power3.in', immediateRender: false }, t + 0.3);
+}
+tl.to('#cam', { scale: 1.06, duration: DURATION, ease: 'none' }, 0);
+tl.set(['#b1', '#b2', '#b3'], { scaleX: 0 }, 0);
+
+// "In March" — the date card types out.
+tl.fromTo('#c1', { opacity: 0, y: -30, rotation: -9 }, { opacity: 1, y: 0, rotation: -5, duration: 0.5, ease: 'power3.out', immediateRender: false }, 0);
+tl.fromTo('#p1', { opacity: 0, scale: 1.8 }, { opacity: 1, scale: 1, duration: 0.18, ease: 'power3.in', immediateRender: false }, 0.3);
+typeOut('tx1', at('March', 0.08), 0.07);
+// "the company lost its biggest client" — string runs to the client file; it types; LOST slams down.
+tl.to('#r1', { strokeDashoffset: 0, duration: 0.6, ease: 'power2.inOut' }, at('company', 0.72) + 0.05);
+pinIn('#c2', '#p2', at('company', 0.72) - 0.35);
+typeOut('tx2', at('lost', 1.0) + 0.05, 0.045);
+slam('#s2', '#c2', at('client', 1.86) + 0.1, -12);
+
+// "Two weeks later, the founder resigned" — slide along the string past the tape label to the founder's file.
+const t2 = at('Two', 2.58) - 0.35;
+move(560, t2, '#c1');
+pinIn('#c3', '#p3', t2 + 0.15);
+tl.to('#r2', { strokeDashoffset: 0, duration: 0.8, ease: 'power2.inOut' }, t2 + 0.45);
+tl.fromTo('#tape', { opacity: 0, scale: 1.2 }, { opacity: 1, scale: 1, duration: 0.3, ease: 'back.out(2)', immediateRender: false }, at('weeks', 2.64));
+typeOut('tx3', at('founder', 3.68) - 0.05, 0.05);
+slam('#s3', '#c3', at('resigned', 3.92) + 0.12, 9);
+
+// "and nobody would say why" — on to the memo: its lines black out one by one; only WHY? is left, circled in red.
+const t3 = at('and', 4.42) - 0.25;
+move(1060, t3, ['#c2', '#tape']);
+pinIn('#c4', '#p4', t3 + 0.15);
+tl.to('#r3', { strokeDashoffset: 0, duration: 0.7, ease: 'power2.inOut' }, t3 + 0.45);
+['#b1', '#b2', '#b3'].forEach((b, i) => tl.to(b, { scaleX: 1, duration: 0.22, ease: 'power2.out' }, at('nobody', 4.9) + i * 0.2));
+typeOut('tx4', at('why', 5.76) - 0.2, 0.05);
+tl.set('#circ', { opacity: 0.9 }, at('why', 5.76) + 0.08);
+tl.to('#circ', { strokeDashoffset: 0, duration: 0.45, ease: 'power2.inOut' }, at('why', 5.76) + 0.08);
+</script>

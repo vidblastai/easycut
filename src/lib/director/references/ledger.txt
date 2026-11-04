@@ -1,0 +1,122 @@
+<!-- concept: path, 1920×1080: on cream newsprint, a chart builds like a newspaper graphic — the axis rules in, "2010" sets, a red price line draws itself toward "Today" with a tag riding its tip that counts $12 up to $21; a red bracket measures the climb and "+75%" sets in big serif; then a navy wages line draws in below, the gap between them shades red, and the two figures settle into a labelled pair -->
+<style>
+#paper { position:absolute; inset:0; background: radial-gradient(130% 120% at 40% 30%, #F6F2EA 0%, #EFE9DD 60%, #E6DFD0 100%); }
+#fibre { position:absolute; inset:0; opacity:.35; mix-blend-mode:multiply;
+  background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='300' height='300'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='3' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 .45  0 0 0 0 .4  0 0 0 0 .32  0 0 0 .55 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>"); }
+#cam { position:absolute; inset:0; transform-origin:45% 55%; }
+/* Newspaper typography: a serif headline, sans labels set small and exact. */
+#rule { position:absolute; left:160px; top:96px; width:1600px; height:3px; background:#141414; transform-origin:0 50%; }
+#kicker { position:absolute; left:160px; top:118px; font-family:'Inter'; font-weight:700; font-size:24px; letter-spacing:4px; color:#C8201A; text-transform:uppercase; display:flex; align-items:center; gap:14px; opacity:0; }
+#kicker i { width:16px; height:16px; background:#C8201A; display:inline-block; }
+#head { position:absolute; left:160px; top:156px; font-family:'Playfair Display'; font-weight:700; font-size:74px; letter-spacing:-1px; color:#141414; }
+.w { display:inline-block; opacity:0; }
+#chart { position:absolute; left:0; top:0; width:1920px; height:1080px; }
+.lab { position:absolute; font-family:'Inter'; font-weight:600; font-size:28px; color:#5E574B; opacity:0; }
+.tag { position:absolute; left:0; top:0; padding:8px 16px 9px; background:#141414; color:#FFFFFF; font-family:'Inter'; font-weight:700; font-size:34px; border-radius:4px; white-space:nowrap; opacity:0; }
+.tag:after { content:''; position:absolute; left:50%; bottom:-10px; margin-left:-10px; border:10px solid transparent; border-bottom:0; border-top-color:#141414; }
+.fig { position:absolute; font-family:'Playfair Display'; font-weight:800; letter-spacing:-2px; opacity:0; white-space:nowrap; }
+.fig small { font-family:'Inter'; font-weight:600; font-size:26px; letter-spacing:2px; text-transform:uppercase; display:block; margin-bottom:4px; }
+#f75 { left:1570px; top:440px; font-size:128px; color:#C8201A; transform-origin:0 50%; }
+#f40 { left:1570px; top:560px; font-size:76px; color:#1F4E79; }
+</style>
+<div id="scene">
+  <div id="paper"></div>
+  <div id="cam">
+    <div id="rule"></div>
+    <div id="kicker"><i></i>Pizza</div>
+    <div id="head">A pizza, 2010 to today</div>
+    <svg id="chart" viewBox="0 0 1920 1080">
+      <g id="grid" stroke="#BFB49D" stroke-width="2" stroke-dasharray="2 8">
+        <line x1="260" y1="330" x2="1500" y2="330" /><line x1="260" y1="444" x2="1500" y2="444" />
+        <line x1="260" y1="558" x2="1500" y2="558" /><line x1="260" y1="672" x2="1500" y2="672" /><line x1="260" y1="786" x2="1500" y2="786" />
+      </g>
+      <line id="axis" x1="260" y1="900" x2="1500" y2="900" stroke="#141414" stroke-width="3" />
+      <path id="gap" d="" fill="#C8201A" opacity="0" />
+      <line id="level" x1="260" y1="626" x2="1540" y2="626" stroke="#C8201A" stroke-width="2" stroke-dasharray="6 8" opacity="0" />
+      <path id="wages" d="" fill="none" stroke="#1F4E79" stroke-width="6" stroke-linecap="round" stroke-linejoin="round" />
+      <path id="price" d="" fill="none" stroke="#C8201A" stroke-width="7" stroke-linecap="round" stroke-linejoin="round" />
+      <path id="bracket" d="M1528 626 L1548 626 L1548 421 L1528 421" fill="none" stroke="#C8201A" stroke-width="4" opacity="0" />
+      <circle id="start" cx="260" cy="626" r="11" fill="#C8201A" stroke="#F3EEE4" stroke-width="5" opacity="0" />
+      <circle id="tip" cx="0" cy="0" r="11" fill="#C8201A" stroke="#F3EEE4" stroke-width="5" opacity="0" />
+      <circle id="wtip" cx="1500" cy="517" r="10" fill="#1F4E79" stroke="#F3EEE4" stroke-width="5" opacity="0" />
+    </svg>
+    <div class="lab" id="x0" style="left:224px; top:922px">2010</div>
+    <div class="lab" id="x1" style="left:1452px; top:922px">Today</div>
+    <div class="tag" id="t12">$12</div>
+    <div class="tag" id="ride">$<span id="k">12</span></div>
+    <div class="fig" id="f75"><small>Prices</small>+75%</div>
+    <div class="fig" id="f40"><small>Wages</small>+40%</div>
+  </div>
+  <div id="fibre"></div>
+</div>
+<script>
+// The data: the said values only — $12 in 2010, $21 today, wages up 40% — with a little honest wobble between.
+const X0 = 260, X1 = 1500, Y = (v) => 900 - v * 22.8;
+const series = (from, to, wobble, seed) => {
+  const pts = [];
+  for (let i = 0; i <= 14; i++) {
+    const t = i / 14;
+    const v = from + (to - from) * Math.pow(t, 1.25) + (i === 0 || i === 14 ? 0 : (rand(seed + i) - 0.5) * wobble);
+    pts.push([X0 + (X1 - X0) * t, Y(v)]);
+  }
+  return pts;
+};
+const price = series(12, 21, 1.4, 10), wages = series(12, 16.8, 0.8, 40);
+const toD = (pts) => pts.map((p, i) => (i ? 'L' : 'M') + p[0].toFixed(1) + ' ' + p[1].toFixed(1)).join(' ');
+document.getElementById('price').setAttribute('d', toD(price));
+document.getElementById('wages').setAttribute('d', toD(wages));
+document.getElementById('gap').setAttribute('d', toD(price) + ' ' + wages.slice().reverse().map((p) => 'L' + p[0].toFixed(1) + ' ' + p[1].toFixed(1)).join(' ') + ' Z');
+// Lines draw themselves; the riding dot and its tag follow the same path, segment by segment, at the same pace.
+const prep = (id) => { const el = document.getElementById(id); el.setAttribute('pathLength', '1'); el.setAttribute('stroke-dasharray', '1'); el.setAttribute('stroke-dashoffset', '1'); };
+['price', 'wages'].forEach(prep);
+function ride(pts, t, d) {
+  const seg = pts.slice(1).map((p, i) => Math.hypot(p[0] - pts[i][0], p[1] - pts[i][1]));
+  const total = seg.reduce((a, b) => a + b, 0);
+  tl.set('#tip', { attr: { cx: pts[0][0], cy: pts[0][1] }, opacity: 1 }, t);
+  tl.set('#ride', { x: pts[0][0] - 52, y: pts[0][1] - 84, opacity: 1 }, t);
+  let at0 = t;
+  seg.forEach((len, i) => {
+    const dd = d * len / total, p = pts[i + 1];
+    tl.to('#tip', { attr: { cx: p[0], cy: p[1] }, duration: dd, ease: 'none' }, at0);
+    tl.to('#ride', { x: p[0] - 52, y: p[1] - 84, duration: dd, ease: 'none' }, at0);
+    at0 += dd;
+  });
+}
+const pop = (sel, t) => tl.fromTo(sel, { opacity: 0, y: 14 }, { opacity: 1, y: 0, duration: 0.35, ease: 'power3.out', immediateRender: false }, t);
+
+tl.to('#cam', { scale: 1.04, duration: DURATION, ease: 'none' }, 0);
+// "In 2010" — the rule and axis draw in, the grid fades up, the year sets.
+tl.fromTo('#rule', { scaleX: 0 }, { scaleX: 1, duration: 0.6, ease: 'power3.inOut', immediateRender: false }, 0);
+tl.fromTo('#axis', { attr: { x2: 260 } }, { attr: { x2: 1500 }, duration: 0.7, ease: 'power3.inOut', immediateRender: false }, 0.05);
+tl.fromTo('#grid line', { opacity: 0 }, { opacity: 1, duration: 0.4, stagger: 0.06, immediateRender: false }, 0.2);
+pop('#x0', at('2010', 0.08) + 0.1);
+// "a pizza cost about $12" — kicker and headline set word by word; the start point and its $12 tag.
+pop('#kicker', at('pizza', 1.36) - 0.15);
+const head = document.getElementById('head');
+const words = head.textContent.split(' ');
+head.innerHTML = words.map((w) => '<span class="w">' + w + '</span>').join(' ');
+[...head.querySelectorAll('.w')].forEach((w, i) => tl.fromTo(w, { opacity: 0, y: 18 }, { opacity: 1, y: 0, duration: 0.4, ease: 'power3.out', immediateRender: false }, at('pizza', 1.36) - 0.1 + i * 0.08));
+tl.fromTo('#start', { opacity: 0, attr: { r: 0 } }, { opacity: 1, attr: { r: 11 }, duration: 0.3, ease: 'back.out(2)', immediateRender: false }, at('12', 2.16) - 0.1);
+tl.set('#t12', { x: 260 - 52, y: 626 - 84 }, 0);
+pop('#t12', at('12', 2.16) - 0.05);
+// "Today it costs $21" — the price line draws to Today; the riding tag counts 12 → 21 as it climbs.
+const tDraw = at('12', 2.16) + 0.35, dDraw = at('21', 3.66) - tDraw + 0.05;
+tl.to('#t12', { opacity: 0, duration: 0.2 }, tDraw);
+tl.to('#price', { strokeDashoffset: 0, duration: dDraw, ease: 'none' }, tDraw);
+ride(price, tDraw, dDraw);
+tl.fromTo('#k', { innerText: 12 }, { innerText: 21, snap: { innerText: 1 }, duration: dDraw, ease: 'power1.in', immediateRender: false }, tDraw);
+pop('#x1', at('Today', 3.12) - 0.05);
+// "prices rose 75%" — the start level extends as a dashed guide, a bracket measures the climb, the figure sets.
+const t75 = at('75', 5.12) - 0.45;
+tl.to('#level', { opacity: 1, duration: 0.3 }, t75);
+tl.fromTo('#bracket', { opacity: 0, scaleY: 0, svgOrigin: '1548 626' }, { opacity: 1, scaleY: 1, svgOrigin: '1548 626', duration: 0.45, ease: 'power3.out', immediateRender: false }, t75 + 0.1);
+tl.fromTo('#f75', { opacity: 0, x: -20, filter: 'blur(8px)' }, { opacity: 1, x: 0, filter: 'blur(0px)', duration: 0.45, ease: 'power3.out', immediateRender: false }, at('75', 5.12) - 0.08);
+// "while wages grew only 40" — the wages line draws below; the gap shades red; the figures settle into a pair.
+const tW = at('wages', 6.64) - 0.25, dW = at('40', 7.56) - tW + 0.05;
+tl.to(['#bracket', '#level'], { opacity: 0, duration: 0.3 }, tW);
+tl.to('#f75', { y: -86, scale: 0.6, duration: 0.5, ease: 'power3.inOut' }, tW);
+tl.to('#wages', { strokeDashoffset: 0, duration: dW, ease: 'power1.inOut' }, tW);
+tl.to('#gap', { opacity: 0.13, duration: 0.6 }, tW + dW * 0.6);
+tl.fromTo('#wtip', { opacity: 0, attr: { r: 0 } }, { opacity: 1, attr: { r: 10 }, duration: 0.3, ease: 'back.out(2)', immediateRender: false }, tW + dW);
+tl.fromTo('#f40', { opacity: 0, x: -20, filter: 'blur(8px)' }, { opacity: 1, x: 0, filter: 'blur(0px)', duration: 0.45, ease: 'power3.out', immediateRender: false }, at('40', 7.56) - 0.1);
+</script>

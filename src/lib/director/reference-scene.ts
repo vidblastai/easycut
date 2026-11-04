@@ -52,6 +52,8 @@ export const REFERENCE_LINES: Partial<Record<SceneLook, string>> = {
   retro: 'In nineteen eighty five, a home computer had less memory than one photo on your phone today.',
   signal: 'Three things grew our newsletter to fifty thousand readers: one topic, one email a week, and replying to everyone.',
   slate: 'Most teams plan the whole year in January. The best teams plan one week at a time, and get faster, calmer and clearer.',
+  ledger: 'In 2010, a pizza cost about twelve dollars. Today it costs twenty one. Prices rose seventy five percent, while wages grew only forty.',
+  dossier: 'In March, the company lost its biggest client. Two weeks later, the founder resigned, and nobody would say why.',
   iman: 'Rule number three: protect your mornings. The first hour decides your whole day, so spend it on the one task that matters.',
 };
 
