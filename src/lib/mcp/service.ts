@@ -26,6 +26,7 @@ import {
   auditComposition,
   briefFor,
   buildCompositionHtml,
+  frameGuides,
   isFatal,
   parseComposition,
   reviewTimes,
@@ -36,7 +37,7 @@ import {
 } from '@/lib/director/hyperframe';
 import { wordsBetween, type ClientScene } from './scenes';
 export { wordsBetween, type ClientScene } from './scenes';
-import { allBlank, lintProject, snapshotProject, validateProject, writeProject } from '@/lib/render/hyperframes';
+import { allBlank, guideSheet, lintProject, snapshotProject, validateProject, writeProject } from '@/lib/render/hyperframes';
 
 /**
  * What the MCP server can do on someone's account.
@@ -193,6 +194,22 @@ export async function startEdit(caller: Caller, projectId: string) {
   return { projectId, status: 'processing', jobId: started.jobId, next: 'Call get_project until status is "ready".' };
 }
 
+/**
+ * What the project is doing, in words. The jobs after the first edit (the
+ * scene clips and the final render) do not report stages, so while one runs
+ * the last job still reads "Done" — which is exactly wrong for a caller
+ * polling until it is.
+ */
+function progressOf(
+  status: string,
+  job: { type: string; stage: string; progressLabel: string; progress: number; status: string } | null,
+) {
+  if (!job) return null;
+  const finishing = status === 'processing' && (job.type !== 'pipeline' || job.status === 'succeeded');
+  if (finishing) return { stage: 'render', label: 'Rendering the scenes and the video', fraction: null, state: job.status === 'failed' ? 'failed' : 'running' };
+  return { stage: job.stage, label: job.progressLabel, fraction: job.progress, state: job.status };
+}
+
 export async function getProject(caller: Caller, projectId: string) {
   const project = await ownProject(caller, projectId);
   const job = await db.job.findFirst({ where: { projectId }, orderBy: { queuedAt: 'desc' } });
@@ -204,7 +221,7 @@ export async function getProject(caller: Caller, projectId: string) {
     title: project.title,
     status: project.status,
     error: project.errorMessage,
-    progress: job ? { stage: job.stage, label: job.progressLabel, fraction: job.progress, state: job.status } : null,
+    progress: progressOf(project.status, job),
     durationSec: project.durationSec,
     video: absolute(caller, render?.url ?? project.previewUrl),
     editor: `${caller.origin}/projects/${project.id}`,
@@ -339,9 +356,14 @@ export async function previewScene(caller: Caller, projectId: string, sceneId: s
     const times = reviewTimes(frame.durationSec);
     let image: string | null = null;
     let blank = false;
+    let guided = false;
     if (!thrown.length) {
       const shot = await snapshotProject(dir, times, join(dir, 'review'));
-      image = (await readFile(shot.sheet)).toString('base64');
+      // The frames with the caption band and the safe area drawn on, so the
+      // writer sees what the platform will cover; the plain sheet if that fails.
+      const marked = await guideSheet(shot.frames, frameGuides(frame.width, frame.height), join(dir, 'guides.jpg'));
+      image = (await readFile(marked ?? shot.sheet)).toString('base64');
+      guided = marked !== null;
       blank = await allBlank(shot.frames);
     }
     if (blank) faults.unshift('Every frame is empty — nothing you drew is visible. Check opacity, positions and the script.');
@@ -351,6 +373,7 @@ export async function previewScene(caller: Caller, projectId: string, sceneId: s
       fatal: faults.filter(isFatal),
       ok: !faults.some(isFatal),
       image,
+      guided,
     };
   } finally {
     await rm(dir, { recursive: true, force: true }).catch(() => undefined);

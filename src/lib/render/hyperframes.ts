@@ -260,3 +260,51 @@ export async function allBlank(paths: string[]): Promise<boolean> {
   for (const path of paths) if (!(await isBlank(path))) return false;
   return true;
 }
+
+/** Where the platform covers a vertical frame, as fractions of its width and height. */
+export interface FrameGuides {
+  /** The safe area: x from `left` to `right`, y from `top` to `bottom`. */
+  left: number;
+  right: number;
+  top: number;
+  bottom: number;
+  /** Below `notchTop`, the like/share column covers everything right of `notchRight`. */
+  notchTop: number;
+  notchRight: number;
+  /** The band the captions are drawn in. */
+  captionTop: number;
+  captionBottom: number;
+}
+
+/**
+ * A contact sheet of `frames` with the platform drawn over them: the caption
+ * band tinted red, the safe area outlined, and the like/share corner darkened.
+ *
+ * The preview a person's Claude sees is the only feedback it gets before the
+ * scene is rendered under real captions, and a clean frame hides the one thing
+ * it cannot judge from the pixels: what will be covered. Returns null when
+ * ffmpeg cannot make the sheet, so the caller falls back to the plain one.
+ */
+export async function guideSheet(frames: string[], guides: FrameGuides, out: string): Promise<string | null> {
+  if (!frames.length) return null;
+  const f = (v: number) => v.toFixed(4);
+  const g = guides;
+  const chains = frames.map(
+    (_, i) =>
+      `[${i}:v]scale=360:-2,` +
+      `drawbox=x=0:y=ih*${f(g.captionTop)}:w=iw:h=ih*${f(g.captionBottom - g.captionTop)}:color=0xFF3B30@0.30:t=fill,` +
+      `drawbox=x=iw*${f(g.notchRight)}:y=ih*${f(g.notchTop)}:w=iw*${f(1 - g.notchRight)}:h=ih*${f(1 - g.notchTop)}:color=black@0.35:t=fill,` +
+      `drawbox=x=iw*${f(g.left)}:y=ih*${f(g.top)}:w=iw*${f(g.right - g.left)}:h=ih*${f(g.bottom - g.top)}:color=0x00E5FF@0.9:t=3,` +
+      `pad=iw+10:ih:0:0:color=0x1A1A1A[v${i}]`,
+  );
+  const join_ = frames.length > 1 ? `${frames.map((_, i) => `[v${i}]`).join('')}hstack=inputs=${frames.length}[out]` : '[v0]null[out]';
+  try {
+    await ffmpeg(
+      ['-hide_banner', '-y', ...frames.flatMap((path) => ['-i', path]), '-filter_complex', `${chains.join(';')};${join_}`, '-map', '[out]', '-frames:v', '1', '-q:v', '4', out],
+      { timeoutMs: 30_000 },
+    );
+    return existsSync(out) ? out : null;
+  } catch {
+    return null;
+  }
+}
