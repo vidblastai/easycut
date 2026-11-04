@@ -15,7 +15,11 @@ const HAS_CLIP = new Set([
   'archive', 'editorial', 'gallery', 'neon', 'studio',
   'blueprint', 'chalk', 'chrome', 'clay', 'diorama', 'glass', 'graph', 'ink', 'mono', 'morph',
   'paper', 'particles', 'pencil', 'pixel', 'poster', 'retro', 'riso', 'science', 'scope', 'sticker',
+  'signal', 'slate',
 ]);
+
+/** Looks drawn for widescreen long-form: shown whole, letterboxed, rather than cropped to the tile. */
+const WIDE = new Set(['signal', 'slate']);
 
 /**
  * Choosing the world the animated scenes are drawn in, before they are drawn.
@@ -106,8 +110,8 @@ function Group({
                 )}
               >
                 {HAS_CLIP.has(look.id) ? (
-                  <span className="block aspect-[9/16] overflow-hidden bg-ink">
-                    <LoopVideo src={`/looks/${look.id}.mp4`} poster={`/looks/${look.id}.jpg`} />
+                  <span className="block aspect-[9/16] overflow-hidden bg-ink" style={WIDE.has(look.id) ? { background: STYLE_GUIDES[look.id as keyof typeof STYLE_GUIDES].ground } : undefined}>
+                    <LoopVideo src={`/looks/${look.id}.mp4`} poster={`/looks/${look.id}.jpg`} className={WIDE.has(look.id) ? 'object-contain' : undefined} />
                   </span>
                 ) : (
                   <span className="block aspect-[9/16] overflow-hidden">

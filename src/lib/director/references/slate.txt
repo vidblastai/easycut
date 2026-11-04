@@ -1,0 +1,105 @@
+<!-- concept: hero, 1920×1080: the sentence sits dim and lights up word by word, "whole year" in coral; it glitches out into two cards — the whole-year card stamped with a coral ✕ and pushed aside as a green "one week at a time" card rises in; then three empty pills joined by dotted lines fill with faster, calmer, clearer as each is said -->
+<style>
+#lift { position:absolute; left:50%; top:50%; width:1700px; height:1100px; margin:-550px 0 0 -850px; border-radius:50%;
+  background: radial-gradient(closest-side, rgba(44,44,50,.95), rgba(26,26,30,.6) 60%, rgba(21,21,23,0) 100%); }
+#vignette { position:absolute; inset:0; background: radial-gradient(120% 100% at 50% 50%, rgba(0,0,0,0) 50%, rgba(5,5,7,.85) 100%); }
+#grain { position:absolute; inset:0; opacity:.06; background-image: radial-gradient(rgba(255,255,255,.9) .6px, transparent .9px); background-size: 4px 4px; }
+#cam { position:absolute; inset:0; transform-origin:50% 50%; }
+#line { position:absolute; left:0; top:470px; width:1920px; text-align:center; font-family:'Poppins'; font-weight:500; font-size:78px; letter-spacing:-.5px; }
+#line .w { color:#5E5E66; display:inline-block; margin:0 .14em; }
+.card { position:absolute; top:330px; width:420px; height:420px; border-radius:28px; background:#202024; border:1.5px solid #34343B;
+  box-shadow:0 30px 60px rgba(0,0,0,.45); opacity:0; }
+.card .label { position:absolute; left:0; right:0; bottom:54px; text-align:center; font-family:'Poppins'; font-weight:600; font-size:38px; color:#F2F2F3; }
+#old { left:520px; }
+#new { left:980px; }
+#stamp { position:absolute; left:540px; top:350px; width:380px; height:380px; opacity:0; }
+.pill { position:absolute; top:490px; width:360px; height:118px; border-radius:22px; background:#202024; border:1.5px solid #34343B; opacity:0;
+  font-family:'Poppins'; font-weight:600; font-size:52px; color:#3EE07A; text-align:center; line-height:116px; }
+.pill span { opacity:0; display:inline-block; }
+#p1 { left:250px; } #p2 { left:780px; } #p3 { left:1310px; }
+.dots { position:absolute; top:549px; height:0; border-top:4px dotted #3EE07A; opacity:.8; width:0; }
+#d1 { left:610px; } #d2 { left:1140px; }
+</style>
+<div id="scene">
+  <div id="lift"></div>
+  <div id="cam">
+    <div id="line"><span class="w">Most</span><span class="w">teams</span><span class="w">plan</span><span class="w">the</span><span class="w" id="w-whole">whole</span><span class="w" id="w-year">year</span><span class="w">in</span><span class="w">January.</span></div>
+
+    <div id="old" class="card">
+      <svg viewBox="0 0 420 420" width="420" height="420">
+        <rect x="120" y="96" width="180" height="170" rx="22" fill="#F2775F" />
+        <rect x="120" y="96" width="180" height="46" rx="22" fill="#C95A46" />
+        <rect x="120" y="120" width="180" height="22" fill="#C95A46" />
+        <g fill="#202024"><rect x="146" y="164" width="28" height="24" rx="5"/><rect x="196" y="164" width="28" height="24" rx="5"/><rect x="246" y="164" width="28" height="24" rx="5"/><rect x="146" y="206" width="28" height="24" rx="5"/><rect x="196" y="206" width="28" height="24" rx="5"/><rect x="246" y="206" width="28" height="24" rx="5"/></g>
+        <rect x="156" y="78" width="14" height="40" rx="7" fill="#F2F2F3" /><rect x="250" y="78" width="14" height="40" rx="7" fill="#F2F2F3" />
+      </svg>
+      <div class="label">The whole year</div>
+    </div>
+    <svg id="stamp" viewBox="0 0 380 380"><path d="M70 70 L310 310 M310 70 L70 310" stroke="#151517" stroke-width="54" stroke-linecap="round" /><path d="M70 70 L310 310 M310 70 L70 310" stroke="#F2775F" stroke-width="30" stroke-linecap="round" /></svg>
+
+    <div id="new" class="card">
+      <svg viewBox="0 0 420 420" width="420" height="420">
+        <rect x="120" y="110" width="180" height="150" rx="22" fill="#3EE07A" />
+        <rect x="120" y="110" width="180" height="42" rx="22" fill="#2BB862" />
+        <rect x="120" y="132" width="180" height="20" fill="#2BB862" />
+        <g fill="#202024"><rect x="136" y="176" width="16" height="56" rx="5"/><rect x="160" y="176" width="16" height="56" rx="5"/><rect x="184" y="176" width="16" height="56" rx="5"/><rect x="208" y="176" width="16" height="56" rx="5"/><rect x="232" y="176" width="16" height="56" rx="5"/><rect x="256" y="176" width="16" height="56" rx="5" opacity=".45"/><rect x="280" y="176" width="10" height="56" rx="5" opacity=".45"/></g>
+        <circle cx="362" cy="60" r="34" fill="#16301F" stroke="#3EE07A" stroke-width="4" /><path id="newtick" d="M346 61 L358 73 L380 49" fill="none" stroke="#3EE07A" stroke-width="7" stroke-linecap="round" stroke-linejoin="round" />
+      </svg>
+      <div class="label">One week at a time</div>
+    </div>
+
+    <div id="p1" class="pill"><span>Faster</span></div>
+    <div id="d1" class="dots"></div>
+    <div id="p2" class="pill"><span>Calmer</span></div>
+    <div id="d2" class="dots"></div>
+    <div id="p3" class="pill"><span>Clearer</span></div>
+  </div>
+  <div id="grain"></div>
+  <div id="vignette"></div>
+</div>
+<script>
+const words = [...document.querySelectorAll('#line .w')];
+tl.to('#cam', { scale: 1.04, duration: DURATION, ease: 'none' }, 0);
+tl.to('#lift', { opacity: 0.8, scale: 1.05, duration: DURATION / 2, yoyo: true, repeat: 1, ease: 'sine.inOut' }, 0);
+
+// The sentence is there from the first frame, dim; each word lights up as it is said.
+tl.fromTo('#line', { opacity: 0, y: 14 }, { opacity: 1, y: 0, duration: 0.35, ease: 'power2.out', immediateRender: false }, 0);
+const said = ['Most', 'teams', 'plan', 'the', 'whole', 'year', 'in', 'January'];
+said.forEach((w, i) => {
+  const t = at(w, 0.2 * i);
+  const key = w === 'whole' || w === 'year';
+  tl.to(words[i], { color: key ? '#F2775F' : '#F2F2F3', duration: 0.15, ease: 'none' }, t);
+});
+
+// "The best teams" — the sentence glitches out: slices offset, then gone.
+const out1 = at('best', 2.56) - 0.25;
+tl.to('#line', { x: 18, duration: 0.05, yoyo: true, repeat: 3, ease: 'none' }, out1);
+tl.to('#line', { opacity: 0, filter: 'blur(8px)', duration: 0.22, ease: 'power2.in' }, out1 + 0.08);
+
+// The old way as a card, struck out; the new way rises beside it.
+tl.fromTo('#old', { opacity: 0, y: 24, x: 230 }, { opacity: 1, y: 0, x: 230, duration: 0.4, ease: 'power2.out', immediateRender: false }, out1 + 0.25);
+// The second "plan" — at() finds the first, so time it from the word before.
+const strike = at('best', 2.56) + 0.42;
+tl.set('#stamp', { opacity: 1, x: 230 }, strike);
+tl.fromTo('#stamp', { scale: 1.6 }, { scale: 1, duration: 0.18, ease: 'power3.in', immediateRender: false }, strike);
+tl.to(['#old', '#stamp'], { x: 0, opacity: 0.55, duration: 0.55, ease: 'power3.inOut' }, at('one', 3.38) - 0.1);
+tl.fromTo('#new', { opacity: 0, y: 60 }, { opacity: 1, y: 0, duration: 0.5, ease: 'power3.out', immediateRender: false }, at('week', 3.76) - 0.25);
+const nt = document.getElementById('newtick');
+nt.setAttribute('pathLength', '1'); nt.setAttribute('stroke-dasharray', '1'); nt.setAttribute('stroke-dashoffset', '1');
+tl.to('#newtick', { strokeDashoffset: 0, duration: 0.3, ease: 'power2.out' }, at('time', 4.28));
+tl.to('#new', { borderColor: '#3EE07A', boxShadow: '0 30px 60px rgba(0,0,0,.45), 0 0 40px rgba(62,224,122,.25)', duration: 0.3 }, at('time', 4.28));
+
+// "and get faster, calmer and clearer" — the cards dissolve; empty pills appear, then fill as each word is said.
+const out2 = at('get', 4.9) - 0.25;
+tl.to(['#old', '#stamp', '#new'], { opacity: 0, filter: 'blur(8px)', duration: 0.25, ease: 'power2.in' }, out2);
+['#p1', '#p2', '#p3'].forEach((p, i) => tl.fromTo(p, { opacity: 0, y: 16 }, { opacity: 1, y: 0, duration: 0.3, ease: 'power2.out', immediateRender: false }, out2 + 0.2 + i * 0.06));
+const fill = (pill, dots, t) => {
+  tl.fromTo(pill + ' span', { opacity: 0, y: 10 }, { opacity: 1, y: 0, duration: 0.2, ease: 'power2.out', immediateRender: false }, t);
+  tl.to(pill, { borderColor: '#3EE07A', duration: 0.2 }, t);
+  if (dots) tl.to(dots, { width: 170, duration: 0.3, ease: 'power2.out' }, t + 0.1);
+};
+fill('#p1', '#d1', at('faster', 5.06) - 0.05);
+fill('#p2', '#d2', at('calmer', 5.68) - 0.05);
+fill('#p3', null, at('clearer', 6.16) - 0.05);
+tl.to(['#p1', '#p2', '#p3'], { boxShadow: '0 0 36px rgba(62,224,122,.3)', duration: 0.3 }, at('clearer', 6.16) + 0.25);
+</script>

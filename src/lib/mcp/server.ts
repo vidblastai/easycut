@@ -93,7 +93,7 @@ const TOOLS = {
   },
   set_scenes: {
     description:
-      'Choose which moments of the edited video become full-screen animated scenes, replacing the current choice. 1–4 is typical; each 1.5–8 s (2.5–6 s is best), not overlapping, on moments where a picture explains or sells the line. Times are from get_transcript.',
+      'Choose which moments of the edited video become full-screen animated scenes, replacing the current choice. 1–4 is typical; each 1.5–8 s (2.5–6 s is best), not overlapping, on moments where a picture explains or sells the line. The text-led looks signal and slate are for long-form: a cutaway carries a whole thought (a figure, a list, a comparison) and may run up to 20 s — in a long-form video put one on most figures, lists and key claims, as often as every 20–40 seconds. Times are from get_transcript.',
     input: z.object({
       project_id: z.string(),
       scenes: z
@@ -270,9 +270,11 @@ async function callTool(name: string, rawArgs: unknown, caller: Caller, bearer: 
         const summary = preview.faults.length
           ? `${preview.ok ? 'Renders, with things to improve' : 'NOT ready'}:\n- ${preview.faults.join('\n- ')}`
           : 'Renders cleanly. Check the frames: on topic, inside the safe area, readable on a phone, never stalled, ending on the payoff.';
-        const legend = preview.guided
-          ? ' Drawn over them: the cyan outline is the safe area, the red band is where the captions sit, the dark corner is the like/share buttons. Nothing that matters may sit in the red band when its word is said.'
-          : '';
+        const legend = !preview.guided
+          ? ''
+          : preview.textLook
+            ? ' Drawn over them: the cyan outline is the safe area. The captions are switched off while this scene plays, so your words are the only words on screen.'
+            : ' Drawn over them: the cyan outline is the safe area, the red band is where the captions sit, the dark corner is the like/share buttons. Nothing that matters may sit in the red band when its word is said.';
         const content: Content[] = [text(`${summary}\nFrames at ${preview.times.map((t) => `${t}s`).join(', ')}.${legend}`)];
         if (preview.image) content.push({ type: 'image', data: preview.image, mimeType: 'image/jpeg' });
         return { content };

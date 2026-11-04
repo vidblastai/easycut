@@ -1,3 +1,4 @@
+import { isTextLook } from '@/lib/scenes/style-guides';
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import {
@@ -28,7 +29,7 @@ describe('the per-look references', () => {
     const parts = parseComposition(readFileSync(referencePath(look), 'utf8'));
     expect(parts).not.toBeNull();
     expect(parts!.concept?.length ?? 0).toBeGreaterThan(20);
-    expect(auditComposition(parts!).filter(isFatal)).toEqual([]);
+    expect(auditComposition(parts!, { allowText: isTextLook(look) }).filter(isFatal)).toEqual([]);
   });
 
   it.each(LOOKS.filter((look) => look !== 'science'))('%s keeps the word timings it was checked against', (look) => {

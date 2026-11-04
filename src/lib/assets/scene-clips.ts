@@ -1,4 +1,5 @@
 import { withRenderSlot } from '@/lib/render/slot';
+import { isTextLook } from '@/lib/scenes/style-guides';
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { env } from '@/lib/config/env';
@@ -106,7 +107,7 @@ export async function designScene(
     ]);
     return [...thrown, ...lint];
   };
-  const faultsOf = async (parts: CompositionParts) => [...auditComposition(parts), ...(await check(parts))];
+  const faultsOf = async (parts: CompositionParts) => [...auditComposition(parts, { allowText: isTextLook(request.look) }), ...(await check(parts))];
   const times = reviewTimes(frame.durationSec);
   const look = async (parts: CompositionParts, name: string) => {
     await writeProject(dir, buildCompositionHtml(parts, frame));
