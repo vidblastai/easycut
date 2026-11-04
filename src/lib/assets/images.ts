@@ -1,6 +1,7 @@
 import { env } from '@/lib/config/env';
 import { isWavespeedMediaConfigured, runMediaJob } from './wavespeed-media';
 import { KIE_IMAGE_COST_USD, KIE_IMAGE_MODEL, KIE_IMAGE_TIMEOUT_MS, isKieConfigured, runKieJob } from './kie';
+import { serverAiAllowed } from '@/lib/llm/server-ai';
 
 /**
  * Bespoke illustration, for the rare cue where no stock clip and no icon can
@@ -31,7 +32,7 @@ const POLL_INTERVAL_MS = 700;
 const MAX_POLLS = 60;
 
 export function isImageGenConfigured(): boolean {
-  if (!env.features.generatedImages) return false;
+  if (!env.features.generatedImages || !serverAiAllowed()) return false;
   return Boolean(
     env.imagegen.replicateToken || env.imagegen.falKey || isKieConfigured() || isWavespeedMediaConfigured(),
   );

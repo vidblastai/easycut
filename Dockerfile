@@ -85,6 +85,8 @@ COPY --from=build /app/src ./src
 COPY --from=build /app/remotion ./remotion
 COPY --from=build /app/scripts ./scripts
 COPY --from=build /app/content ./content
+# The scene-design guide, served to Claude by the MCP server as a resource.
+COPY --from=build /app/.claude/skills/scene-design ./.claude/skills/scene-design
 COPY --from=build /app/tsconfig.json ./tsconfig.json
 
 # Sound effects are synthesised, not shipped — a few hundred KB of ffmpeg output

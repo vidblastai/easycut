@@ -5,13 +5,14 @@ import { capabilities } from '@/lib/config/env';
 import { db } from '@/lib/db';
 import { recentsFor } from '@/lib/ui/recents';
 import { brollSourceRates } from '@/lib/assets/ai-broll';
+import { ownedProjects } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
 
 export default async function NewProjectPage() {
   const missing = capabilities().filter((c) => !c.configured && (c.key === 'asr' || c.key === 'llm'));
   const projects = await db.project
-    .findMany({ orderBy: { createdAt: 'desc' }, take: 8 })
+    .findMany({ where: await ownedProjects(), orderBy: { createdAt: 'desc' }, take: 8 })
     .catch(() => []);
 
   return (

@@ -8,12 +8,14 @@ import { formatUsd } from '@/lib/pricing/cost';
 import { getStyle } from '@/lib/styles/presets';
 import { recentsFor } from '@/lib/ui/recents';
 import { relativeTime } from '@/lib/ui/relative-time';
+import { ownedProjects } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
 
 export default async function DashboardPage() {
   const projects = await db.project
     .findMany({
+      where: await ownedProjects(),
       orderBy: { createdAt: 'desc' },
       take: 60,
       include: { jobs: { orderBy: { queuedAt: 'desc' }, take: 1 } },

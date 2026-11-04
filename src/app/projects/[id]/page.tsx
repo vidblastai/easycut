@@ -2,7 +2,7 @@ import { notFound } from 'next/navigation';
 import { ProjectWorkspace } from '@/components/ProjectWorkspace';
 import { db } from '@/lib/db';
 import { STYLE_LIST } from '@/lib/styles/presets';
-import { canAccessProject } from '@/lib/auth';
+import { canAccessProject, ownedProjects } from '@/lib/auth';
 import { recentsFor } from '@/lib/ui/recents';
 import { entitlementsOf } from '@/lib/billing/entitlements';
 import { allowsQuality } from '@/lib/render/quality';
@@ -17,7 +17,7 @@ export default async function ProjectPage({ params }: { params: Promise<{ id: st
   if (!project) notFound();
 
   const recent = await db.project
-    .findMany({ orderBy: { createdAt: 'desc' }, take: 8 })
+    .findMany({ where: await ownedProjects(), orderBy: { createdAt: 'desc' }, take: 8 })
     .catch(() => []);
 
   /*

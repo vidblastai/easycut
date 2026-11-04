@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { auth, currentUser } from '@clerk/nextjs/server';
 import { db } from '@/lib/db';
+import { bearerOf, userForToken } from '@/lib/mcp/tokens';
 
 /**
  * Who is asking.
@@ -24,8 +25,24 @@ export function isAuthEnabled(): boolean {
 /** The Clerk user id for this request, or null when signed out or auth is off. */
 export async function currentUserId(): Promise<string | null> {
   if (!isAuthEnabled()) return null;
+  // An EasyCut access token — Claude Code uploading footage for the MCP
+  // server — is checked first: it is a header, not a session cookie, and a
+  // request that carries one is not from a browser.
+  const tokenUser = await bearerUserId();
+  if (tokenUser) return tokenUser;
   const { userId } = await auth();
   return userId;
+}
+
+async function bearerUserId(): Promise<string | null> {
+  try {
+    const { headers } = await import('next/headers');
+    const secret = bearerOf((await headers()).get('authorization'));
+    return secret ? await userForToken(secret) : null;
+  } catch {
+    // Outside a request (a script, the worker): there is no header to read.
+    return null;
+  }
 }
 
 /**
@@ -87,4 +104,16 @@ export async function guardProject(projectId: string): Promise<NextResponse | nu
 /** Same rule, for a server component that renders a page rather than JSON. */
 export async function canAccessProject(projectId: string): Promise<boolean> {
   return (await guardProject(projectId)) === null;
+}
+
+/**
+ * The filter every page-level project list must use.
+ *
+ * With auth on, a person sees their own projects and nobody else's; signed
+ * out, they see nothing. With auth off it is every project, which is that
+ * mode's whole point. A list that forgets this is a list of strangers' videos.
+ */
+export async function ownedProjects(): Promise<{ userId?: string }> {
+  if (!isAuthEnabled()) return {};
+  return { userId: (await currentUserId()) ?? '__signed-out__' };
 }

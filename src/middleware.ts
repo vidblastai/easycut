@@ -38,6 +38,16 @@ const isPublic = createRouteMatcher([
    * body, which is a stronger check than a session cookie.
    */
   '/api/billing/webhook',
+  /*
+   * The MCP server and the OAuth endpoints Claude uses to sign in to it. They
+   * carry no browser session by design: the MCP endpoint checks a Bearer token
+   * itself, and the OAuth ones are how that token is obtained. The consent
+   * page, /oauth/authorize, stays behind the gate — that is where the person
+   * signs in.
+   */
+  '/api/mcp(.*)',
+  '/api/oauth(.*)',
+  '/.well-known(.*)',
 ]);
 
 const authEnabled = Boolean(process.env.CLERK_SECRET_KEY);

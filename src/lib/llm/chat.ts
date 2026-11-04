@@ -2,6 +2,7 @@ import Anthropic from '@anthropic-ai/sdk';
 import { env } from '@/lib/config/env';
 import { priceFor } from '@/lib/director/anthropic';
 import { wavespeedPriceFor } from '@/lib/director/wavespeed';
+import { serverAiAllowed } from '@/lib/llm/server-ai';
 
 /**
  * Every language-model call in the pipeline, routed to Claude.
@@ -48,6 +49,8 @@ export const ANTHROPIC_CHAT_MODEL = process.env.ANTHROPIC_CHAT_MODEL ?? 'claude-
 export type ChatProvider = 'anthropic' | 'kie' | 'wavespeed';
 
 function available(): Record<ChatProvider, boolean> {
+  // A client-AI project makes no model calls on EasyCut's account.
+  if (!serverAiAllowed()) return { anthropic: false, kie: false, wavespeed: false };
   return {
     anthropic: Boolean(env.llm.anthropicKey),
     kie: Boolean(env.kie.apiKey && env.kie.chatModel),

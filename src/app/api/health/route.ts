@@ -69,6 +69,8 @@ export async function GET() {
     .sort()
     .join(', ') || 'none';
   checks.auth = isAuthEnabled() ? 'clerk' : 'OPEN — anyone can see any project';
+  // Claude connects at /api/mcp; with sign-in on it needs a token (OAuth or Settings).
+  checks.mcp = isAuthEnabled() ? 'on — token or OAuth sign-in' : 'on — open (no sign-in)';
   checks.transcription = env.transcription.deepgramKey || env.transcription.groqKey || env.transcription.assemblyaiKey
     ? 'configured'
     : 'none — silence-only edits, no captions';

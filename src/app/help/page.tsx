@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { AppShell, ShellMain } from '@/components/shell/AppShell';
 import { db } from '@/lib/db';
 import { recentsFor } from '@/lib/ui/recents';
+import { ownedProjects } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
 
@@ -20,7 +21,7 @@ export const metadata = {
  * that oversells is how a good result still feels like a failure.
  */
 export default async function HelpPage() {
-  const projects = await db.project.findMany({ orderBy: { createdAt: 'desc' }, take: 8 }).catch(() => []);
+  const projects = await db.project.findMany({ where: await ownedProjects(), orderBy: { createdAt: 'desc' }, take: 8 }).catch(() => []);
 
   return (
     <AppShell recents={recentsFor(projects)}>

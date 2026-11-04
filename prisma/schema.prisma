@@ -51,6 +51,54 @@ model User {
   // there is no cron to forget and no clock skew between two workers.
   periodStart DateTime @default(now())
   minutesUsed Float    @default(0)
+
+  apiTokens ApiToken[]
+}
+
+/// A credential that lets a person's Claude act on their EasyCut account.
+///
+/// Made two ways, both landing here: by hand on the account page (pasted into
+/// Claude Code or Claude Desktop as a Bearer header), or by the OAuth flow a
+/// claude.ai connector runs. Only a SHA-256 of the secret is stored; the
+/// secret itself is shown once and never again.
+model ApiToken {
+  id         String    @id @default(uuid())
+  userId     String
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name       String
+  // The first characters of the secret, so a list can tell two tokens apart.
+  prefix     String
+  hash       String    @unique
+  // "manual" | "oauth"
+  source     String    @default("manual")
+  // The OAuth client it was issued to, when it came from the OAuth flow.
+  clientId   String?
+  createdAt  DateTime  @default(now())
+  lastUsedAt DateTime?
+  expiresAt  DateTime?
+  revokedAt  DateTime?
+
+  @@index([userId])
+}
+
+/// A client that registered itself for OAuth (RFC 7591), e.g. claude.ai.
+model OAuthClient {
+  id           String   @id
+  name         String
+  redirectUris String   // JSON array
+  createdAt    DateTime @default(now())
+}
+
+/// A one-time authorisation code, swapped for a token at the token endpoint.
+model OAuthCode {
+  code          String   @id
+  clientId      String
+  userId        String
+  redirectUri   String
+  codeChallenge String
+  scope         String?
+  expiresAt     DateTime
+  usedAt        DateTime?
 }
 
 model Project {
@@ -59,6 +107,17 @@ model Project {
   user   User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
 
   title String @default("Untitled")
+
+  // Who does the creative AI work. "server" is EasyCut's own models; "client"
+  // is a project made through the MCP server, where the person's own Claude
+  // writes the scenes and the pipeline runs with no paid model calls — see
+  // src/lib/llm/server-ai.ts.
+  aiMode String @default("server")
+
+  // Scenes the person's Claude wrote through the MCP server, keyed by scene
+  // id: { [sceneId]: { html, look, layout, concept, submittedAt } }. Rendered
+  // to clips and laid into the edit when the video is finished.
+  clientScenesJson String?
 
   // What the user chose on upload — the only three decisions they make.
   mode      String // "short" | "long"

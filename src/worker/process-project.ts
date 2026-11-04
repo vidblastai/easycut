@@ -13,6 +13,7 @@ import { env } from '@/lib/config/env';
 import { db, parseJson, stringifyJson } from '@/lib/db';
 import { EdlSchema, type Edl } from '@/lib/edl/types';
 import { cleanupWorkDir, runPipeline } from '@/lib/pipeline/run';
+import { isClientAi, withServerAi } from '@/lib/llm/server-ai';
 import { STAGE_LABELS, type Stage } from '@/lib/pipeline/types';
 import { renderVideo, renderWorkDir } from '@/lib/render';
 import { assetKey, storage } from '@/lib/storage';
@@ -54,7 +55,8 @@ export async function processProject(payload: ProcessJobPayload): Promise<void> 
   try {
     /* ------------------------------ pipeline ------------------------------ */
 
-    const result = await runPipeline(
+    // A project made through Claude runs with no paid model calls of ours.
+    const result = await withServerAi(!isClientAi(project.aiMode), () => runPipeline(
       {
         projectId,
         mode: project.mode as 'short' | 'long',
@@ -84,7 +86,7 @@ export async function processProject(payload: ProcessJobPayload): Promise<void> 
           },
         });
       },
-    );
+    ));
 
     const edl = EdlSchema.parse(result.edl);
 

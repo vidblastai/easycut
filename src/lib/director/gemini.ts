@@ -3,6 +3,7 @@ import { buildDirectorPrompt, SYSTEM_PROMPT, type DirectorBrief } from './prompt
 import { DirectorPlanSchema, type DirectorPlan } from './schema';
 import { directorJsonSchema } from './wire';
 import type { DirectorCallResult } from './anthropic';
+import { serverAiAllowed } from '@/lib/llm/server-ai';
 
 /**
  * The director, on Gemini.
@@ -43,7 +44,7 @@ const MODEL_PRICING: Record<string, { inputPerMTok: number; outputPerMTok: numbe
 };
 
 export function isGeminiConfigured(): boolean {
-  return Boolean(env.llm.geminiKey);
+  return serverAiAllowed() && Boolean(env.llm.geminiKey);
 }
 
 export function geminiPriceFor(model: string) {

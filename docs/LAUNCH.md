@@ -1,5 +1,26 @@
 # What is left before launch
 
+## Launch checklist (current state)
+
+Checked against the live `/api/health` after the MCP work.
+
+**Done in code:**
+- Every project route and every page-level project list is scoped to its owner. The edit-document route and the dashboard, new, captions, help, settings and project-page lists used to show every account's projects once sign-in was on.
+- Scenes never ship blank.
+- The MCP server and its sign-in ([MCP.md](MCP.md)) are in.
+
+**Only you can set these (Railway → Variables).** The live health check flags the first two:
+
+| What | Variables | Why it blocks launch |
+|---|---|---|
+| Sign-in | `CLERK_SECRET_KEY`, `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` | Without it the app is open: anyone with a project link can see it, and there are no accounts or plans |
+| Object storage (Cloudflare R2 or S3) | `STORAGE_DRIVER=s3`, `S3_BUCKET`, `S3_ENDPOINT`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY`, `S3_PUBLIC_BASE_URL` | Uploads and renders currently live on the container and vanish on redeploy unless a volume is mounted |
+| Payments | `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_PRICE_*` | No upgrades without them |
+| AI credit | Credit on the Anthropic account behind `Antropic`; WaveSpeed balance | Scenes and the AI editor fall back to rule-based work without it. Videos made from Claude through the MCP server don't need it. |
+| Public address | `APP_URL=https://<your domain>` | Links in emails; the MCP server reads the address from the request otherwise |
+
+---
+
 Written after the plan, retention, email and privacy work landed. Everything
 below is either not built, or built but waiting on a decision or a key that only
 you can supply.

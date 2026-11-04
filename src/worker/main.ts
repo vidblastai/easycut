@@ -6,6 +6,7 @@ import { db } from '@/lib/db';
 import { sweepExpired } from './sweep';
 import { queue } from '@/lib/queue';
 import { makeProjectProxy, processProject, rerenderProject, type ProcessJobPayload } from './process-project';
+import { finishClientScenes } from './client-scenes';
 import { selectedProvider } from '@/lib/director';
 import { reportError } from '@/lib/errors/report';
 import { chatProvider, routedModel } from '@/lib/llm/chat';
@@ -47,6 +48,12 @@ async function loop(workerId: number): Promise<void> {
           // `readQuality` never guesses upwards, so an old job enqueued before
           // 4K existed renders HD rather than quadrupling somebody's wait.
           await rerenderProject(projectId, edlId, readQuality(quality));
+          break;
+        }
+        case 'client-scenes': {
+          // A video edited from Claude: its scenes become clips, then it renders.
+          const { projectId, quality } = job.payload as { projectId: string; quality?: string };
+          await finishClientScenes(projectId, readQuality(quality));
           break;
         }
         case 'proxy': {
