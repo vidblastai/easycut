@@ -1,4 +1,5 @@
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { createRequire } from 'node:module';
 import { env } from '@/lib/config/env';
 import type { SceneLook } from '@/lib/edl/types';
@@ -406,10 +407,28 @@ const DASH_PLUGIN = `gsap.registerPlugin({
   render(ratio, data) { data.t.style.strokeDashoffset = String(data.s + (data.e - data.s) * ratio); },
 });`;
 
+/**
+ * A file inside an installed package, on disk.
+ *
+ * \`require.resolve\` is right in the worker and wrong inside the Next server,
+ * whose bundler hands back a module id like "(rsc)/./node_modules/…" rather
+ * than a path — the MCP server's scene preview runs there. node_modules under
+ * the working directory is where both find it.
+ */
+function resolvePackageFile(spec: 'gsap/dist/gsap.min.js'): string {
+  try {
+    const resolved = require_.resolve('gsap/dist/gsap.min.js');
+    if (existsSync(resolved)) return resolved;
+  } catch {
+    /* fall through */
+  }
+  return join(process.cwd(), 'node_modules', spec);
+}
+
 let gsapSource: string | null = null;
 function gsapScript(): string {
   if (gsapSource === null) {
-    gsapSource = readFileSync(require_.resolve('gsap/dist/gsap.min.js'), 'utf8');
+    gsapSource = readFileSync(resolvePackageFile('gsap/dist/gsap.min.js'), 'utf8');
   }
   return gsapSource;
 }

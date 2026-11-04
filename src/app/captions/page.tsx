@@ -2,6 +2,7 @@ import { AppShell, ShellMain } from '@/components/shell/AppShell';
 import { CaptionGallery } from '@/components/captions/CaptionGallery';
 import { db } from '@/lib/db';
 import { recentsFor } from '@/lib/ui/recents';
+import { ownedProjects } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
 
@@ -12,7 +13,7 @@ export const metadata = {
 
 export default async function CaptionsPage() {
   const projects = await db.project
-    .findMany({ orderBy: { createdAt: 'desc' }, take: 8 })
+    .findMany({ where: await ownedProjects(), orderBy: { createdAt: 'desc' }, take: 8 })
     .catch(() => []);
 
   return (

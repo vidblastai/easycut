@@ -1,4 +1,5 @@
 import { env } from '@/lib/config/env';
+import { serverAiAllowed } from '@/lib/llm/server-ai';
 
 /**
  * WaveSpeed's media API: one submit, then poll.
@@ -36,7 +37,7 @@ export interface MediaResult {
 }
 
 export function isWavespeedMediaConfigured(): boolean {
-  return Boolean(env.llm.wavespeedKey);
+  return serverAiAllowed() && Boolean(env.llm.wavespeedKey);
 }
 
 /**

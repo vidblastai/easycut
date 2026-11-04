@@ -18,9 +18,20 @@ import { FFMPEG, FFPROBE, ffmpeg } from '@/lib/media/ffmpeg';
 
 const require_ = createRequire(import.meta.url);
 
+/** An installed package's directory — see resolvePackageFile in director/hyperframe.ts for why. */
+function packageDir(name: string): string {
+  try {
+    const resolved = dirname(require_.resolve(`${name}/package.json`));
+    if (existsSync(resolved)) return resolved;
+  } catch {
+    /* fall through */
+  }
+  return join(process.cwd(), 'node_modules', name);
+}
+
 /** The CLI entry, run with this Node rather than through npx. */
 function cliPath(): string {
-  return join(dirname(require_.resolve('hyperframes/package.json')), 'bin', 'hyperframes.mjs');
+  return join(packageDir('hyperframes'), 'bin', 'hyperframes.mjs');
 }
 
 /**

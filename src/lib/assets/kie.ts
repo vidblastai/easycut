@@ -1,4 +1,5 @@
 import { env } from '@/lib/config/env';
+import { serverAiAllowed } from '@/lib/llm/server-ai';
 
 /**
  * Kie's job API: one createTask, then poll recordInfo.
@@ -46,7 +47,7 @@ export interface KieResult {
 }
 
 export function isKieConfigured(): boolean {
-  return Boolean(env.kie.apiKey);
+  return serverAiAllowed() && Boolean(env.kie.apiKey);
 }
 
 /**

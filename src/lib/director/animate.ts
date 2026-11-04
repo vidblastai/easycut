@@ -1,6 +1,7 @@
 import { env } from '@/lib/config/env';
 import type { SceneLook } from '@/lib/edl/types';
 import { guideAsPrompt, styleGuideFor } from '@/lib/scenes/style-guides';
+import { serverAiAllowed } from '@/lib/llm/server-ai';
 
 /**
  * Turning a drawn beat into footage, with Seedance.
@@ -87,7 +88,7 @@ export interface AnimateResult {
 }
 
 export function isAnimatorConfigured(): boolean {
-  return Boolean(env.llm.wavespeedKey);
+  return serverAiAllowed() && Boolean(env.llm.wavespeedKey);
 }
 
 /**

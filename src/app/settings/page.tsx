@@ -2,11 +2,13 @@ import { AppShell, ShellMain } from '@/components/shell/AppShell';
 import { capabilities } from '@/lib/config/env';
 import { env } from '@/lib/config/env';
 import { selectedProvider } from '@/lib/director';
-import { isAuthEnabled } from '@/lib/auth';
+import { isAuthEnabled, ownedProjects } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { recentsFor } from '@/lib/ui/recents';
 import { clsx } from 'clsx';
 import { BillingPanel } from '@/components/billing/BillingPanel';
+import { ClaudePanel } from '@/components/claude/ClaudePanel';
+import { publicOriginFromHeaders } from '@/lib/mcp/oauth';
 
 export const dynamic = 'force-dynamic';
 
@@ -30,7 +32,7 @@ export default async function SettingsPage({
   // between "did that work?" and knowing it did.
   const justPaid = (await searchParams).checkout === 'done';
   const caps = capabilities();
-  const projects = await db.project.findMany({ orderBy: { createdAt: 'desc' }, take: 8 }).catch(() => []);
+  const projects = await db.project.findMany({ where: await ownedProjects(), orderBy: { createdAt: 'desc' }, take: 8 }).catch(() => []);
 
   const runtime = [
     { label: 'AI director', value: selectedProvider() },
@@ -52,6 +54,8 @@ export default async function SettingsPage({
         </div>
 
         <BillingPanel justPaid={justPaid} />
+
+        <ClaudePanel mcpUrl={`${await publicOriginFromHeaders()}/api/mcp`} authEnabled={isAuthEnabled()} />
 
         <h2 className="mt-8 text-[15px] font-bold">Features</h2>
         <ul className="mt-3 grid gap-px overflow-hidden rounded-[14px] bg-line-soft">

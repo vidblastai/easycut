@@ -11,6 +11,7 @@ import {
 import { runHeuristicDirector } from './heuristic';
 import type { DirectorBrief } from './prompt';
 import { mergePlans, type DirectorPlan } from './schema';
+import { serverAiAllowed } from '@/lib/llm/server-ai';
 
 export * from './schema';
 export type { DirectorBrief } from './prompt';
@@ -57,7 +58,7 @@ export interface DirectorResult {
  */
 export function selectedProvider(): DirectorProvider {
   const { provider } = env.llm;
-  if (provider === 'stub') return 'heuristic';
+  if (provider === 'stub' || !serverAiAllowed()) return 'heuristic';
   if (provider === 'anthropic') return isAnthropicConfigured() ? 'anthropic' : 'heuristic';
   if (provider === 'gemini') return isGeminiConfigured() ? 'gemini' : 'heuristic';
   if (provider === 'wavespeed') return isWavespeedConfigured() ? 'wavespeed' : 'heuristic';

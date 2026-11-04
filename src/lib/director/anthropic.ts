@@ -4,6 +4,7 @@ import { env } from '@/lib/config/env';
 import { buildDirectorPrompt, SYSTEM_PROMPT, type DirectorBrief } from './prompt';
 import { DirectorWireSchema } from './wire';
 import { DirectorPlanSchema, type DirectorPlan } from './schema';
+import { serverAiAllowed } from '@/lib/llm/server-ai';
 
 /** Published per-MTok pricing, used for the pre-flight budget estimate. */
 const MODEL_PRICING: Record<string, { inputPerMTok: number; outputPerMTok: number }> = {
@@ -24,7 +25,7 @@ export interface DirectorCallResult {
 }
 
 export function isAnthropicConfigured(): boolean {
-  return Boolean(env.llm.anthropicKey);
+  return serverAiAllowed() && Boolean(env.llm.anthropicKey);
 }
 
 export function priceFor(model: string) {
