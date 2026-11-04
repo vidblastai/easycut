@@ -394,6 +394,21 @@ async function stageCleanup(ctx: PipelineContext): Promise<void> {
       `${summary.falseStarts.count} false starts, ${summary.retakes.count} retakes` +
       (unread ? ` — ${unread} possible reword${unread === 1 ? '' : 's'} left in for review` : ''),
   });
+
+  // The opening is where a warm-up hides. Say what was done with it, so a
+  // mic check left in the video is visible in the report rather than found
+  // by watching.
+  const first = ctx.transcript.words.slice(0, 10);
+  const opener = first.map((w) => w.text).join(' ');
+  const cutOpening = ctx.cleanupRemovals.some((r) => first[0] && r.startSec <= first[0].startSec + 0.05 && r.endSec > first[0].endSec);
+  if (first.length && /^(hello|hi|hey|hallo|alright|all right|okay|ok|um|uh|let'?s)\b/i.test(opener)) {
+    ctx.log.push({
+      stage: 'cleanup',
+      status: 'ok',
+      ms: 0,
+      message: cutOpening ? `Warm-up cut from the top: "${opener.slice(0, 80)}…"` : `Opening kept as spoken: "${opener.slice(0, 80)}…"`,
+    });
+  }
 }
 
 /* -------------------------------------------------------------- 5. direct */

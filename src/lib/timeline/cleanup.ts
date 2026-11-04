@@ -112,7 +112,7 @@ export function findCleanupTargets(transcript: Transcript, options: CleanupOptio
   if (options.removeFillers) findings.push(...findFillers(transcript.words, language));
   if (options.removeStammers) findings.push(...findStammers(transcript.words));
   if (options.removeFalseStarts) {
-    findings.push(...findWarmUp(transcript.sentences, transcript.words));
+    findings.push(...findWarmUp(transcript.words));
     findings.push(...findFalseStarts(transcript.sentences));
     findings.push(...findTrailingOff(transcript.sentences, transcript.words, language));
   }
@@ -373,68 +373,48 @@ function phraseStammerAt(
  * has and is left alone; so is a single "Hey." said to the viewer.
  */
 const WARMUP_WORDS = new Set([
-  'hello', 'hi', 'hey', 'alright', 'all', 'right', 'ok', 'okay', 'so', 'um', 'uh', 'erm', 'let\'s', 'lets', 'go',
-  'testing', 'test', 'check', 'mic', 'one', 'two', 'three', 'rolling', 'recording', 'action', 'and', 'cool', 'good',
-  'yeah', 'yes', 'here', 'we', 'start', 'starting', 'now',
+  // Only words a warm-up is made of and a real opening line rarely starts a
+  // run of: "So now we start…" must not read as a mic check.
+  'hello', 'hi', 'hey', 'alright', 'all', 'right', 'ok', 'okay', 'um', 'uh', 'erm', 'mm', 'mhm', 'hmm', 'ah', 'oh',
+  'let\'s', 'lets', 'go', 'testing', 'test', 'check', 'mic', 'one', 'two', 'three', 'rolling', 'recording', 'action',
   // German
-  'hallo', 'also', 'los', 'geht\'s', 'gehts', 'gut', 'ja', 'eins', 'zwei', 'drei', 'test', 'läuft',
+  'hallo', 'los', 'geht\'s', 'gehts', 'eins', 'zwei', 'drei', 'läuft',
 ]);
-const WARMUP_CUE = /\b(let'?s go|here we go|los geht'?s|testing|test test|mic check|one,? two,? three|eins,? zwei,? drei|rolling|action)\b|\b(hello|hi|hey|hallo)\b[\s,.!]+\b(hello|hi|hey|hallo)\b|^\s*(all ?right|alright|okay|ok)[.!]?\s*$/i;
+const WARMUP_CUE = /\b(let'?s go|here we go|los geht'?s|testing|test test|mic check|one,? two,? three|eins,? zwei,? drei|rolling|action)\b|\b(hello|hi|hey|hallo)\b[\s,.!]+\b(hello|hi|hey|hallo)\b|\b(all ?right|alright|okay)[.!]/i;
 
-function findWarmUp(sentences: TranscriptSentence[], words: TranscriptWord[]): CleanupFinding[] {
+function findWarmUp(words: TranscriptWord[]): CleanupFinding[] {
   /*
-   * What the speaker said and what the transcript holds are not the same
-   * thing here, and the transcript is all we get. "Hello, hello, hello, all
-   * right… Let's go." came back from speech recognition as "Hello."
-   * "Alright." "Let's" — the repeats collapsed into one word, the "go"
-   * dropped, and "Let's" glued onto the first real sentence. A rule that
-   * waits for the cue words never fires on that.
+   * Word by word, not sentence by sentence. How a provider groups a mumbled
+   * warm-up into sentences is the least reliable thing about a transcript —
+   * on the real upload "Hello, hello, hello, all right… Let's go" came back
+   * as fragments with punctuation in odd places and the first real line glued
+   * on — and a detector that depends on the grouping missed it run after run.
+   * The words themselves are dependable: read from the very first one while
+   * each is warm-up vocabulary, and stop at the first word that is not.
    *
-   * So a run of warm-up-only sentences at the top counts when it is clearly
-   * not the opening line: there is more than one of them, or a pause follows
-   * before the speaker starts for real, or a cue word is there. A single
-   * "Hey." said straight into the first line is none of those, and stays.
+   * The run is a warm-up, not the opening line, when it carries a cue, when
+   * it is three words or more, or when the speaker pauses before going on.
+   * "Hello everyone", "Hi, I'm Ben", "So today we…" and "Let's start with…"
+   * all stop on their second word without any of those, and stay.
    */
-  let n = 0;
-  let cued = false;
-  while (n < sentences.length - 1 && n < 6) {
-    const ws = tokenize(sentences[n].text);
-    if (ws.length === 0 || ws.length > 8 || !ws.every((w) => WARMUP_WORDS.has(w))) break;
-    if (WARMUP_CUE.test(sentences[n].text)) cued = true;
-    n++;
-  }
-  if (n === 0) return [];
-  const keep = sentences[n];
-
-  // Warm-up words stuck to the front of the first real sentence ("Let's …
-  // In this video"), cut when a pause separates them from what follows.
-  let cutTo = keep.startSec;
-  let lead = 0;
-  for (let i = keep.wordStart; i < keep.wordEnd - 1 && lead < 3; i++) {
-    const w = normalizeWord(words[i]?.text ?? '');
-    if (!WARMUP_WORDS.has(w)) break;
-    const gap = words[i + 1].startSec - words[i].endSec;
-    if (gap < 0.8) break;
-    lead = i - keep.wordStart + 1;
-    cutTo = words[i + 1].startSec;
-  }
-  const rest = words.slice(keep.wordStart + lead, keep.wordEnd);
-  if (rest.length < 3) return [];
-
-  const pauseAfter = cutTo - sentences[n - 1].endSec;
-  if (!(cued || n >= 2 || pauseAfter >= 1.0)) return [];
+  let k = 0;
+  while (k < words.length && k < 24 && WARMUP_WORDS.has(normalizeWord(words[k].text))) k++;
+  if (k === 0 || words.length - k < 3) return [];
+  const run = words.slice(0, k).map((w) => w.text).join(' ');
+  const pause = words[k].startSec - words[k - 1].endSec;
+  if (!(WARMUP_CUE.test(run) || k >= 3 || pause >= 1.0)) return [];
   return [
     {
       kind: 'false-start',
-      startSec: sentences[0].startSec,
-      endSec: cutTo,
-      text: [...sentences.slice(0, n).map((x) => x.text), ...words.slice(keep.wordStart, keep.wordStart + lead).map((w) => w.text)].join(' '),
+      startSec: words[0].startSec,
+      endSec: words[k].startSec,
+      text: run,
       confidence: 0.92,
       // No keeper. A warm-up is not one of two takes traded for the other —
       // it goes whatever happens next. Naming the first line as its keeper
       // made it hostage to that line: on the real upload the first line was
       // itself a flubbed take the retake pass removed, and the pair rule then
-      // dropped the warm-up cut too, leaving the mic check in the video.
+      // dropped the warm-up cut too.
     },
   ];
 }
