@@ -8,6 +8,7 @@ import { currentUserId, ensureUser, isAuthEnabled } from '@/lib/auth';
 import { LAYER_NAMES, type LayerName } from '@/lib/edl/layers';
 import { SCENE_LOOKS } from '@/lib/edl/types';
 import { CreateProjectSchema } from './schema';
+import { cleanSpellings } from '@/lib/transcribe/spellings';
 import { sanitiseInspo } from '@/lib/assets/visual-inspo';
 
 export const runtime = 'nodejs';
@@ -95,6 +96,7 @@ export async function POST(request: Request) {
       visualInspo: inspo.length ? JSON.stringify(inspo) : null,
       inputMode: input.inputMode,
       userNote: input.userNote,
+      spellings: input.spellings?.length ? JSON.stringify(cleanSpellings(input.spellings)) : null,
       status: 'draft',
     },
   });

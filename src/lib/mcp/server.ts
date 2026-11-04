@@ -39,7 +39,7 @@ export const INSTRUCTIONS = `EasyCut turns raw talking-head footage into a finis
 
 The usual flow:
 1. list_styles (once) to see edit styles, scene looks and caption looks.
-2. create_project with a public video_url (or upload, then start_edit). Call get_project until status is "ready" — it waits for the next step itself, so there is no need to pause between calls.
+2. create_project with a public video_url (pass spell_right with any product, brand or person names in the video) (or upload, then start_edit). Call get_project until status is "ready" — it waits for the next step itself, so there is no need to pause between calls.
 3. get_transcript, then set_scenes: pick 1–4 moments (2.5–6 s each) where an animation explains or sells what is said better than the face does.
 4. For each scene: get_scene_brief (it holds the full rules, the look's reference scene and the timed words), write the scene, preview_scene and LOOK at the frames, fix, then submit_scene.
 5. update_edit for captions or style changes if wanted, then render_video and poll get_project until "video" has a link.
@@ -71,6 +71,7 @@ const TOOLS = {
       caption_look: z.string().optional().describe('Caption look id from list_styles.'),
       footage: z.enum(['raw', 'roughcut']).optional().describe('"raw" (default): retakes and silences are cut. "roughcut": already edited, keep it tight.'),
       note: z.string().max(500).optional().describe('Anything EasyCut should know about the video.'),
+      spell_right: z.array(z.string().max(60)).max(30).optional().describe('Names and words the captions must spell exactly so — a product, brand or person, e.g. ["Claude Code", "EasyCut"]. Speech recognition gets these wrong most often.'),
     }),
     annotations: { title: 'Create project' },
   },
@@ -235,6 +236,7 @@ async function callTool(name: string, rawArgs: unknown, caller: Caller, bearer: 
               captionPreset: args.caption_look,
               inputMode: args.footage,
               note: args.note,
+              spellRight: args.spell_right as unknown as string[] | undefined,
             },
             bearer,
           ),

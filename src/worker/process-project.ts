@@ -69,6 +69,7 @@ export async function processProject(payload: ProcessJobPayload): Promise<void> 
         visualInspo: parseInspo(project.visualInspo),
         inputMode: project.inputMode as 'raw' | 'roughcut',
         userNote: project.userNote ?? undefined,
+        spellings: parseJson<string[]>(project.spellings, []),
         layersOff: parseLayersOff(project.layersOff),
         sourceKey: source.storageKey,
         resumeFrom: payload.resumeFrom,

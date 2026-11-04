@@ -96,6 +96,8 @@ export interface PipelineRequest {
    */
   language?: string | null;
   userNote?: string;
+  /** Names and words to spell the creator's way in the transcript. */
+  spellings?: string[];
   /**
    * Layers the person declined at upload.
    *

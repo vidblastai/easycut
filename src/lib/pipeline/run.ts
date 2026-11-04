@@ -52,6 +52,7 @@ import {
 import { layoutSegments, TimeMapper } from '@/lib/timeline/time-mapper';
 import { transcribeAudio } from '@/lib/transcribe';
 import { resolveAssets } from './assets';
+import { applySpellings } from '@/lib/transcribe/spellings';
 import { STAGE_LABELS, STAGE_WEIGHTS, STAGES, type PipelineContext, type PipelineRequest, type ProgressReporter, type Stage } from './types';
 
 /**
@@ -248,9 +249,11 @@ async function stageTranscribe(ctx: PipelineContext): Promise<void> {
     // assume English. Naming the wrong model is the one failure that cannot
     // be recovered from downstream.
     languageHint: ctx.request.language ?? undefined,
+    keyterms: ctx.request.spellings,
   });
 
-  ctx.transcript = result.transcript;
+  // The creator's spellings, whatever the provider made of them.
+  ctx.transcript = applySpellings(result.transcript, ctx.request.spellings);
   ctx.ledger.add('transcription', result.costUsd, result.transcript.provider);
 
   if (result.transcript.degraded || !result.transcript.words.length) {

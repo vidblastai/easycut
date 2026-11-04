@@ -160,6 +160,10 @@ model Project {
   // Optional free-text steer, e.g. "focus on the pricing section".
   userNote String?
 
+  // Names and words the creator spelled out, as a JSON array — the transcript
+  // is corrected to them (src/lib/transcribe/spellings.ts).
+  spellings String?
+
   // Layers the person declined before anything was made, as a JSON array of
   // names. Only the refusals are stored: everything is on unless it was
   // switched off, and a record spelling out six `true`s says nothing the

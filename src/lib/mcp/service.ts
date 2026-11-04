@@ -37,6 +37,7 @@ import {
 } from '@/lib/director/hyperframe';
 import { wordsBetween, type ClientScene } from './scenes';
 import { cutOperations, type CutRange } from '@/lib/edl/cut-ranges';
+import { cleanSpellings } from '@/lib/transcribe/spellings';
 import { videosAhead, videosInProgress, waitingLabel } from '@/lib/queue/position';
 export { wordsBetween, type ClientScene } from './scenes';
 import { allBlank, guideSheet, lintProject, snapshotProject, validateProject, writeProject } from '@/lib/render/hyperframes';
@@ -133,6 +134,8 @@ export interface CreateInput {
   captionPreset?: string;
   inputMode?: 'raw' | 'roughcut';
   note?: string;
+  /** Names and words the captions must spell this way. */
+  spellRight?: string[];
 }
 
 export async function createProject(caller: Caller, input: CreateInput, bearer: string | null) {
@@ -153,6 +156,7 @@ export async function createProject(caller: Caller, input: CreateInput, bearer: 
       sceneLook: input.sceneLook ?? null,
       inputMode: input.inputMode ?? 'raw',
       userNote: input.note,
+      spellings: input.spellRight?.length ? JSON.stringify(cleanSpellings(input.spellRight)) : null,
       aiMode: 'client',
       status: 'draft',
       layersOff: '[]',
