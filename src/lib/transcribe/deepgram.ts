@@ -69,14 +69,25 @@ export class DeepgramProvider implements TranscriptionProvider {
 
     const audio = await readFile(audioPath);
 
-    const response = await fetch(`${ENDPOINT}?${params}`, {
-      method: 'POST',
-      headers: {
-        Authorization: `Token ${key}`,
-        'Content-Type': 'audio/wav',
-      },
-      body: new Uint8Array(audio),
-    });
+    // Names the creator spelled out, for Nova-3's keyterm prompting. The
+    // transcript is corrected to them afterwards either way (spellings.ts),
+    // so a request that refuses them simply goes again without.
+    const keyterms = (options.keyterms ?? []).filter(Boolean).slice(0, 50);
+    const send = (withTerms: boolean) => {
+      const query = new URLSearchParams(params);
+      if (withTerms) for (const term of keyterms) query.append('keyterm', term);
+      return fetch(`${ENDPOINT}?${query}`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Token ${key}`,
+          'Content-Type': 'audio/wav',
+        },
+        body: new Uint8Array(audio),
+      });
+    };
+
+    let response = await send(keyterms.length > 0);
+    if (!response.ok && keyterms.length && response.status === 400) response = await send(false);
 
     if (!response.ok) {
       const body = await response.text().catch(() => '');

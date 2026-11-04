@@ -53,6 +53,8 @@ export interface TranscribeOptions {
   languageHint?: string;
   /** Talking-head content is usually one person; diarisation costs time. */
   diarize?: boolean;
+  /** Names to listen for. Providers that support it are told; the rest are corrected afterwards. */
+  keyterms?: string[];
 }
 
 export interface TranscriptionProvider {

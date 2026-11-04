@@ -47,6 +47,8 @@ export const CreateProjectSchema = z.object({
    */
   layers: z.record(z.string(), z.boolean()).optional(),
   userNote: z.string().max(500).optional(),
+  /** Names and words to spell right in the captions, e.g. a product or a person. */
+  spellings: z.array(z.string().max(60)).max(30).optional(),
   filename: z.string().min(1).max(300),
   contentType: z.string().default('video/mp4'),
   sizeBytes: z.number().int().nonnegative().default(0),

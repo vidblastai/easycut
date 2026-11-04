@@ -207,6 +207,8 @@ export function UploadFlow({
   }, []);
 
   const [note, setNote] = useState('');
+  /** Names to spell right, comma-separated as typed. */
+  const [spellings, setSpellings] = useState('');
 
   const [phase, setPhase] = useState<Phase>('choose');
   const [progress, setProgress] = useState(0);
@@ -380,6 +382,7 @@ export function UploadFlow({
           // request that spells out six `true`s says nothing the absence did not.
           layers: Object.fromEntries(Object.entries(layers).filter(([, on]) => !on)),
           userNote: note.trim() || undefined,
+          spellings: spellings.split(',').map((term) => term.trim()).filter(Boolean),
           filename: file.name,
           contentType: file.type || 'video/mp4',
           sizeBytes: file.size,
@@ -676,6 +679,22 @@ export function UploadFlow({
                 placeholder="e.g. keep the bit about pricing, skip the intro small talk"
                 className="mt-2 w-full rounded-xl border border-line bg-charcoal px-4 py-3 text-sm outline-none transition-colors placeholder:text-muted/60 focus:border-violet"
               />
+            </div>
+
+            <div className="mt-4">
+              <label htmlFor="upload-spellings" className="label">
+                Names to spell right <span className="text-faint">Optional</span>
+              </label>
+              <input
+                id="upload-spellings"
+                type="text"
+                value={spellings}
+                maxLength={400}
+                onChange={(e) => setSpellings(e.target.value)}
+                placeholder="e.g. Claude Code, EasyCut, Priya"
+                className="mt-2 w-full rounded-xl border border-line bg-charcoal px-4 py-3 text-sm outline-none transition-colors placeholder:text-muted/60 focus:border-violet"
+              />
+              <p className="mt-1.5 text-[12px] text-faint">Product, brand and people names — so the captions never say &ldquo;Cloud Code&rdquo; for &ldquo;Claude Code&rdquo;.</p>
             </div>
           </Ask>
         ) : null}
