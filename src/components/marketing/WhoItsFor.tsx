@@ -16,6 +16,7 @@ const AUDIENCES = [
       'One take, straight off a phone, into something that looks like you paid for it. ' +
       'The ums and the false starts come out; you do not have to do a second take.',
     proof: 'Clean · Punchy · Bulletin',
+    examples: ['clean', 'punchy', 'news'],
   },
   {
     title: 'Podcasters',
@@ -24,6 +25,7 @@ const AUDIENCES = [
       'screen and the dead air gone. Filmed a vertical clip for the feed as well? That ' +
       'goes through as its own short.',
     proof: 'Podcast · Essay · Commentary',
+    examples: ['commentary'],
   },
   {
     title: 'Course creators and teachers',
@@ -31,6 +33,7 @@ const AUDIENCES = [
       'Walkthroughs where the screen is the lesson and you narrate from the corner, ' +
       'with the steps numbered on screen so nobody has to scrub back.',
     proof: 'Screencast · Explainer',
+    examples: ['tutorial', 'explainer'],
   },
   {
     title: 'Agencies and social teams',
@@ -39,6 +42,7 @@ const AUDIENCES = [
       'formats in one place — the YouTube cut and the vertical clips, without two ' +
       'tools and two subscriptions.',
     proof: 'Every style, 10 at a time',
+    examples: ['split', 'stacked', 'vlog'],
   },
 ] as const;
 
@@ -62,6 +66,19 @@ export function WhoItsFor() {
               <p className="mt-4 text-[12px] font-semibold uppercase tracking-[0.12em] text-violet">
                 {a.proof}
               </p>
+              {/* Real edits in those styles, from the same phone take. */}
+              <div className="mt-4 flex gap-2">
+                {a.examples.map((id) => (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    key={id}
+                    src={`/styles/${id}-short.jpg`}
+                    alt=""
+                    loading="lazy"
+                    className="h-[120px] w-[68px] rounded-lg border border-line object-cover"
+                  />
+                ))}
+              </div>
             </div>
           ))}
         </div>
