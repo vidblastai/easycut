@@ -30,7 +30,10 @@ export function StyleExample({
   chapterCards?: boolean;
 }) {
   const format: ExampleFormat = aspect === '9:16' ? 'short' : 'long';
-  const example = styleExample(style, format);
+  // A style made only for one shape still has a real example in that shape;
+  // cropped to the tile, the middle of the frame — where the speaker is —
+  // shows better than a drawing.
+  const example = styleExample(style, format) ?? styleExample(style, format === 'short' ? 'long' : 'short');
   const ref = useRef<HTMLVideoElement | null>(null);
 
   useEffect(() => {
