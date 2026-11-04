@@ -1,105 +1,147 @@
-<!-- concept: hero, 1920×1080: the sentence sits dim and lights up word by word, "whole year" in coral; it glitches out into two cards — the whole-year card stamped with a coral ✕ and pushed aside as a green "one week at a time" card rises in; then three empty pills joined by dotted lines fill with faster, calmer, clearer as each is said -->
+<!-- concept: hero, 1920×1080: on a blue-black dot grid, the sentence rises in word by word behind a coral quote mark, "whole year" in coral; it lifts away and a dashed card "The whole year" rises out of a blur — a coral ✕ badge pops onto its icon, it slides aside and a green "One week at a time" card rises beside it; then three pills rise one per spoken word, joined by dotted green connectors that draw between them -->
 <style>
-#lift { position:absolute; left:50%; top:50%; width:1700px; height:1100px; margin:-550px 0 0 -850px; border-radius:50%;
-  background: radial-gradient(closest-side, rgba(44,44,50,.95), rgba(26,26,30,.6) 60%, rgba(21,21,23,0) 100%); }
-#vignette { position:absolute; inset:0; background: radial-gradient(120% 100% at 50% 50%, rgba(0,0,0,0) 50%, rgba(5,5,7,.85) 100%); }
-#grain { position:absolute; inset:0; opacity:.06; background-image: radial-gradient(rgba(255,255,255,.9) .6px, transparent .9px); background-size: 4px 4px; }
+#lift { position:absolute; left:-300px; top:-420px; width:1700px; height:1200px; border-radius:50%;
+  background: radial-gradient(closest-side, rgba(70,78,96,.32), rgba(40,44,56,.12) 60%, rgba(15,17,21,0) 100%); }
+#grid { position:absolute; inset:0; background-image: radial-gradient(rgba(255,255,255,.11) 1.3px, transparent 1.8px); background-size: 30px 30px;
+  -webkit-mask-image: radial-gradient(90% 85% at 45% 40%, #000 30%, transparent 100%); mask-image: radial-gradient(90% 85% at 45% 40%, #000 30%, transparent 100%); }
+#vignette { position:absolute; inset:0; background: radial-gradient(120% 105% at 50% 45%, rgba(0,0,0,0) 50%, rgba(3,4,7,.8) 100%); }
+#grain { position:absolute; inset:0; opacity:.08; mix-blend-mode:overlay;
+  background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='240' height='240'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>"); }
 #cam { position:absolute; inset:0; transform-origin:50% 50%; }
-#line { position:absolute; left:0; top:470px; width:1920px; text-align:center; font-family:'Poppins'; font-weight:500; font-size:78px; letter-spacing:-.5px; }
-#line .w { color:#5E5E66; display:inline-block; margin:0 .14em; }
-.card { position:absolute; top:330px; width:420px; height:420px; border-radius:28px; background:#202024; border:1.5px solid #34343B;
-  box-shadow:0 30px 60px rgba(0,0,0,.45); opacity:0; }
-.card .label { position:absolute; left:0; right:0; bottom:54px; text-align:center; font-family:'Poppins'; font-weight:600; font-size:38px; color:#F2F2F3; }
-#old { left:520px; }
-#new { left:980px; }
-#stamp { position:absolute; left:540px; top:350px; width:380px; height:380px; opacity:0; }
-.pill { position:absolute; top:490px; width:360px; height:118px; border-radius:22px; background:#202024; border:1.5px solid #34343B; opacity:0;
-  font-family:'Poppins'; font-weight:600; font-size:52px; color:#3EE07A; text-align:center; line-height:116px; }
-.pill span { opacity:0; display:inline-block; }
-#p1 { left:250px; } #p2 { left:780px; } #p3 { left:1310px; }
-.dots { position:absolute; top:549px; height:0; border-top:4px dotted #3EE07A; opacity:.8; width:0; }
-#d1 { left:610px; } #d2 { left:1140px; }
+
+/* Type: Poppins, calm and small — white when said, the key term coral. */
+#quote { position:absolute; left:540px; top:410px; width:1000px; text-align:left; font-family:'Poppins'; font-weight:500; font-size:62px; line-height:1.3; color:#F1F1F3; letter-spacing:-.5px; }
+#qmark { position:absolute; left:440px; top:392px; font-family:'Poppins'; font-weight:600; font-size:150px; line-height:1; color:#F2775F; opacity:0; }
+.w { display:inline-block; opacity:0; }
+.coral { color:#F2775F; }
+
+/* Cards: near-black, a dashed hairline border, a gradient-filled icon with a faint glow of its own colour behind it. */
+.card { position:absolute; top:330px; width:380px; height:400px; border-radius:26px; background:linear-gradient(180deg, #1A1B20 0%, #141519 100%);
+  border:2px dashed rgba(255,255,255,.14); box-shadow: 0 30px 70px rgba(0,0,0,.45); opacity:0; }
+.card .halo { position:absolute; left:40px; top:20px; width:300px; height:260px; border-radius:50%; }
+.card .label { position:absolute; left:0; right:0; top:286px; text-align:center; font-family:'Poppins'; font-weight:500; font-size:36px; line-height:1.25; color:#EDEDF0; }
+#old { left:770px; } #old .halo { background: radial-gradient(closest-side, rgba(242,119,95,.20), rgba(242,119,95,0)); }
+#new { left:1020px; } #new .halo { background: radial-gradient(closest-side, rgba(62,224,122,.20), rgba(62,224,122,0)); }
+#stamp { position:absolute; left:893px; top:418px; width:134px; height:134px; opacity:0; }
+#badge { position:absolute; left:1340px; top:312px; width:54px; height:54px; opacity:0; }
+
+.pill { position:absolute; top:488px; width:300px; height:104px; border-radius:52px; background:linear-gradient(180deg, #1B1C21, #15161A);
+  border:1.5px solid rgba(255,255,255,.12); box-shadow:0 20px 50px rgba(0,0,0,.4); opacity:0;
+  font-family:'Poppins'; font-weight:500; font-size:44px; line-height:101px; text-align:center; color:#F1F1F3; }
+#p1 { left:330px; } #p2 { left:810px; } #p3 { left:1290px; }
+.dots { position:absolute; top:538px; height:0; width:0; border-top:4px dotted #3EE07A; opacity:.9; }
+#d1 { left:645px; } #d2 { left:1125px; }
 </style>
 <div id="scene">
   <div id="lift"></div>
+  <div id="grid"></div>
   <div id="cam">
-    <div id="line"><span class="w">Most</span><span class="w">teams</span><span class="w">plan</span><span class="w">the</span><span class="w" id="w-whole">whole</span><span class="w" id="w-year">year</span><span class="w">in</span><span class="w">January.</span></div>
+    <div id="qmark">“</div>
+    <div id="quote">Most teams plan the<br><span class="coral">whole year</span> in January.</div>
 
     <div id="old" class="card">
-      <svg viewBox="0 0 420 420" width="420" height="420">
-        <rect x="120" y="96" width="180" height="170" rx="22" fill="#F2775F" />
-        <rect x="120" y="96" width="180" height="46" rx="22" fill="#C95A46" />
-        <rect x="120" y="120" width="180" height="22" fill="#C95A46" />
-        <g fill="#202024"><rect x="146" y="164" width="28" height="24" rx="5"/><rect x="196" y="164" width="28" height="24" rx="5"/><rect x="246" y="164" width="28" height="24" rx="5"/><rect x="146" y="206" width="28" height="24" rx="5"/><rect x="196" y="206" width="28" height="24" rx="5"/><rect x="246" y="206" width="28" height="24" rx="5"/></g>
-        <rect x="156" y="78" width="14" height="40" rx="7" fill="#F2F2F3" /><rect x="250" y="78" width="14" height="40" rx="7" fill="#F2F2F3" />
+      <div class="halo"></div>
+      <svg viewBox="0 0 380 280" width="380" height="280" style="position:absolute; left:0; top:0">
+        <defs><linearGradient id="gc" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#F7A285" /><stop offset="1" stop-color="#E0654B" /></linearGradient></defs>
+        <rect x="110" y="70" width="160" height="150" rx="24" fill="url(#gc)" />
+        <rect x="110" y="70" width="160" height="44" rx="22" fill="#C9553F" />
+        <rect x="110" y="96" width="160" height="18" fill="#C9553F" />
+        <rect x="142" y="54" width="14" height="38" rx="7" fill="#F2D4CB" /><rect x="224" y="54" width="14" height="38" rx="7" fill="#F2D4CB" />
+        <g fill="#1A1B20" opacity=".55"><rect x="132" y="132" width="26" height="22" rx="6"/><rect x="177" y="132" width="26" height="22" rx="6"/><rect x="222" y="132" width="26" height="22" rx="6"/><rect x="132" y="170" width="26" height="22" rx="6"/><rect x="177" y="170" width="26" height="22" rx="6"/><rect x="222" y="170" width="26" height="22" rx="6"/></g>
       </svg>
       <div class="label">The whole year</div>
     </div>
-    <svg id="stamp" viewBox="0 0 380 380"><path d="M70 70 L310 310 M310 70 L70 310" stroke="#151517" stroke-width="54" stroke-linecap="round" /><path d="M70 70 L310 310 M310 70 L70 310" stroke="#F2775F" stroke-width="30" stroke-linecap="round" /></svg>
+    <svg id="stamp" viewBox="0 0 134 134">
+      <defs><linearGradient id="gs" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#F0705C" /><stop offset="1" stop-color="#D9473A" /></linearGradient></defs>
+      <rect x="4" y="4" width="126" height="126" rx="24" fill="url(#gs)" />
+      <path d="M44 44 L90 90 M90 44 L44 90" stroke="#FFFFFF" stroke-width="9" stroke-linecap="round" />
+    </svg>
 
     <div id="new" class="card">
-      <svg viewBox="0 0 420 420" width="420" height="420">
-        <rect x="120" y="110" width="180" height="150" rx="22" fill="#3EE07A" />
-        <rect x="120" y="110" width="180" height="42" rx="22" fill="#2BB862" />
-        <rect x="120" y="132" width="180" height="20" fill="#2BB862" />
-        <g fill="#202024"><rect x="136" y="176" width="16" height="56" rx="5"/><rect x="160" y="176" width="16" height="56" rx="5"/><rect x="184" y="176" width="16" height="56" rx="5"/><rect x="208" y="176" width="16" height="56" rx="5"/><rect x="232" y="176" width="16" height="56" rx="5"/><rect x="256" y="176" width="16" height="56" rx="5" opacity=".45"/><rect x="280" y="176" width="10" height="56" rx="5" opacity=".45"/></g>
-        <circle cx="362" cy="60" r="34" fill="#16301F" stroke="#3EE07A" stroke-width="4" /><path id="newtick" d="M346 61 L358 73 L380 49" fill="none" stroke="#3EE07A" stroke-width="7" stroke-linecap="round" stroke-linejoin="round" />
+      <div class="halo"></div>
+      <svg viewBox="0 0 380 280" width="380" height="280" style="position:absolute; left:0; top:0">
+        <defs><linearGradient id="gn" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#7DF2A2" /><stop offset="1" stop-color="#2FBF5C" /></linearGradient></defs>
+        <rect x="100" y="78" width="180" height="136" rx="24" fill="url(#gn)" />
+        <rect x="100" y="78" width="180" height="40" rx="22" fill="#27A04F" />
+        <rect x="100" y="100" width="180" height="18" fill="#27A04F" />
+        <g fill="#14361F"><rect x="116" y="136" width="16" height="58" rx="5"/><rect x="138" y="136" width="16" height="58" rx="5"/><rect x="160" y="136" width="16" height="58" rx="5"/><rect x="182" y="136" width="16" height="58" rx="5"/><rect x="204" y="136" width="16" height="58" rx="5"/><rect x="226" y="136" width="16" height="58" rx="5" opacity=".45"/><rect x="248" y="136" width="16" height="58" rx="5" opacity=".45"/></g>
       </svg>
       <div class="label">One week at a time</div>
     </div>
+    <svg id="badge" viewBox="0 0 54 54"><circle cx="27" cy="27" r="25" fill="#16301F" stroke="#3EE07A" stroke-width="3" /><path id="tick" d="M16 28 L24 36 L39 19" fill="none" stroke="#3EE07A" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" /></svg>
 
-    <div id="p1" class="pill"><span>Faster</span></div>
+    <div id="p1" class="pill">Faster</div>
     <div id="d1" class="dots"></div>
-    <div id="p2" class="pill"><span>Calmer</span></div>
+    <div id="p2" class="pill">Calmer</div>
     <div id="d2" class="dots"></div>
-    <div id="p3" class="pill"><span>Clearer</span></div>
+    <div id="p3" class="pill">Clearer</div>
   </div>
-  <div id="grain"></div>
   <div id="vignette"></div>
+  <div id="grain"></div>
 </div>
 <script>
-const words = [...document.querySelectorAll('#line .w')];
-tl.to('#cam', { scale: 1.04, duration: DURATION, ease: 'none' }, 0);
-tl.to('#lift', { opacity: 0.8, scale: 1.05, duration: DURATION / 2, yoyo: true, repeat: 1, ease: 'sine.inOut' }, 0);
+// One span per word (inside the coral span too), so each word can arrive on its own timing.
+function splitWords(el) {
+  const out = [];
+  const walk = (node) => {
+    [...node.childNodes].forEach((child) => {
+      if (child.nodeType !== 3) return walk(child);
+      const frag = document.createDocumentFragment();
+      child.textContent.split(/(\s+)/).forEach((part) => {
+        if (!part) return;
+        if (/^\s+$/.test(part)) return frag.appendChild(document.createTextNode(' '));
+        const s = document.createElement('span'); s.className = 'w'; s.textContent = part; frag.appendChild(s); out.push(s);
+      });
+      node.replaceChild(frag, child);
+    });
+  };
+  walk(el);
+  return out;
+}
+// Calm arrivals: a short rise out of a soft blur, no overshoot.
+function rise(sel, t, d, dist) {
+  tl.fromTo(sel, { opacity: 0, y: dist || 40, filter: 'blur(14px)' }, { opacity: 1, y: 0, filter: 'blur(0px)', duration: d || 0.6, ease: 'power3.out', immediateRender: false }, t);
+}
+function leave(sel, t) {
+  tl.to(sel, { opacity: 0, y: -30, filter: 'blur(12px)', duration: 0.35, ease: 'power2.in' }, t);
+}
 
-// The sentence is there from the first frame, dim; each word lights up as it is said.
-tl.fromTo('#line', { opacity: 0, y: 14 }, { opacity: 1, y: 0, duration: 0.35, ease: 'power2.out', immediateRender: false }, 0);
+tl.to('#cam', { scale: 1.03, duration: DURATION, ease: 'none' }, 0);
+tl.to('#lift', { x: 260, y: 80, duration: DURATION, ease: 'sine.inOut' }, 0);
+
+// "Most teams plan the whole year in January." — the quote mark first, then each word as it is said.
+rise('#qmark', 0, 0.5, 20);
 const said = ['Most', 'teams', 'plan', 'the', 'whole', 'year', 'in', 'January'];
-said.forEach((w, i) => {
-  const t = at(w, 0.2 * i);
-  const key = w === 'whole' || w === 'year';
-  tl.to(words[i], { color: key ? '#F2775F' : '#F2F2F3', duration: 0.15, ease: 'none' }, t);
+splitWords(document.getElementById('quote')).forEach((w, i) => {
+  tl.fromTo(w, { opacity: 0, y: '0.3em', filter: 'blur(6px)' }, { opacity: 1, y: 0, filter: 'blur(0px)', duration: 0.35, ease: 'power3.out', immediateRender: false }, at(said[i], 0.2 * i) - 0.04);
 });
+const out1 = at('best', 2.56) - 0.3;
+leave(['#quote', '#qmark'], out1);
 
-// "The best teams" — the sentence glitches out: slices offset, then gone.
-const out1 = at('best', 2.56) - 0.25;
-tl.to('#line', { x: 18, duration: 0.05, yoyo: true, repeat: 3, ease: 'none' }, out1);
-tl.to('#line', { opacity: 0, filter: 'blur(8px)', duration: 0.22, ease: 'power2.in' }, out1 + 0.08);
-
-// The old way as a card, struck out; the new way rises beside it.
-tl.fromTo('#old', { opacity: 0, y: 24, x: 230 }, { opacity: 1, y: 0, x: 230, duration: 0.4, ease: 'power2.out', immediateRender: false }, out1 + 0.25);
-// The second "plan" — at() finds the first, so time it from the word before.
+// "The best teams plan…" — the old way as a card; a ✕ badge pops onto its icon on the second "plan" (timed from "best").
+rise('#old', out1 + 0.2, 0.6, 50);
 const strike = at('best', 2.56) + 0.42;
-tl.set('#stamp', { opacity: 1, x: 230 }, strike);
-tl.fromTo('#stamp', { scale: 1.6 }, { scale: 1, duration: 0.18, ease: 'power3.in', immediateRender: false }, strike);
-tl.to(['#old', '#stamp'], { x: 0, opacity: 0.55, duration: 0.55, ease: 'power3.inOut' }, at('one', 3.38) - 0.1);
-tl.fromTo('#new', { opacity: 0, y: 60 }, { opacity: 1, y: 0, duration: 0.5, ease: 'power3.out', immediateRender: false }, at('week', 3.76) - 0.25);
-const nt = document.getElementById('newtick');
-nt.setAttribute('pathLength', '1'); nt.setAttribute('stroke-dasharray', '1'); nt.setAttribute('stroke-dashoffset', '1');
-tl.to('#newtick', { strokeDashoffset: 0, duration: 0.3, ease: 'power2.out' }, at('time', 4.28));
-tl.to('#new', { borderColor: '#3EE07A', boxShadow: '0 30px 60px rgba(0,0,0,.45), 0 0 40px rgba(62,224,122,.25)', duration: 0.3 }, at('time', 4.28));
+tl.fromTo('#stamp', { opacity: 0, scale: 0.3, rotation: -12 }, { opacity: 1, scale: 1, rotation: 0, duration: 0.4, ease: 'back.out(2.2)', immediateRender: false }, strike);
+// "one week at a time" — the old card slides aside and settles back; the new one rises beside it out of the blur.
+const swap = at('one', 3.38) - 0.1;
+tl.to(['#old', '#stamp'], { x: -250, opacity: 0.5, duration: 0.7, ease: 'power3.inOut' }, swap);
+tl.fromTo('#new', { opacity: 0, x: 0, y: 140, filter: 'blur(18px)' }, { opacity: 1, y: 0, filter: 'blur(0px)', duration: 0.75, ease: 'power3.out', immediateRender: false }, at('week', 3.76) - 0.35);
+const tk = document.getElementById('tick');
+tk.setAttribute('pathLength', '1'); tk.setAttribute('stroke-dasharray', '1'); tk.setAttribute('stroke-dashoffset', '1');
+tl.fromTo('#badge', { opacity: 0, scale: 0.4 }, { opacity: 1, scale: 1, duration: 0.35, ease: 'back.out(2)', immediateRender: false }, at('time', 4.28) - 0.05);
+tl.to('#tick', { strokeDashoffset: 0, duration: 0.3, ease: 'power2.out' }, at('time', 4.28) + 0.08);
+tl.to('#new', { borderColor: 'rgba(62,224,122,.55)', boxShadow: '0 30px 70px rgba(0,0,0,.45), 0 0 50px rgba(62,224,122,.14)', duration: 0.4 }, at('time', 4.28));
 
-// "and get faster, calmer and clearer" — the cards dissolve; empty pills appear, then fill as each word is said.
-const out2 = at('get', 4.9) - 0.25;
-tl.to(['#old', '#stamp', '#new'], { opacity: 0, filter: 'blur(8px)', duration: 0.25, ease: 'power2.in' }, out2);
-['#p1', '#p2', '#p3'].forEach((p, i) => tl.fromTo(p, { opacity: 0, y: 16 }, { opacity: 1, y: 0, duration: 0.3, ease: 'power2.out', immediateRender: false }, out2 + 0.2 + i * 0.06));
-const fill = (pill, dots, t) => {
-  tl.fromTo(pill + ' span', { opacity: 0, y: 10 }, { opacity: 1, y: 0, duration: 0.2, ease: 'power2.out', immediateRender: false }, t);
-  tl.to(pill, { borderColor: '#3EE07A', duration: 0.2 }, t);
-  if (dots) tl.to(dots, { width: 170, duration: 0.3, ease: 'power2.out' }, t + 0.1);
-};
-fill('#p1', '#d1', at('faster', 5.06) - 0.05);
-fill('#p2', '#d2', at('calmer', 5.68) - 0.05);
-fill('#p3', null, at('clearer', 6.16) - 0.05);
-tl.to(['#p1', '#p2', '#p3'], { boxShadow: '0 0 36px rgba(62,224,122,.3)', duration: 0.3 }, at('clearer', 6.16) + 0.25);
+// "and get faster, calmer and clearer" — the cards lift away; one pill per spoken word, a dotted connector drawing on to the next.
+const out2 = at('get', 4.9) - 0.3;
+leave(['#old', '#stamp', '#new', '#badge'], out2);
+const pills = [['#p1', '#d1', at('faster', 5.06)], ['#p2', '#d2', at('calmer', 5.68)], ['#p3', null, at('clearer', 6.16)]];
+pills.forEach(([pill, dots, t], i) => {
+  rise(pill, t - 0.22, 0.5, 30);
+  tl.to(pill, { borderColor: 'rgba(62,224,122,.7)', color: '#3EE07A', boxShadow: '0 20px 50px rgba(0,0,0,.4), 0 0 36px rgba(62,224,122,.22)', duration: 0.25 }, t);
+  if (i > 0) tl.to(pills[i - 1][0], { borderColor: 'rgba(255,255,255,.12)', color: '#F1F1F3', boxShadow: '0 20px 50px rgba(0,0,0,.4)', duration: 0.3 }, t);
+  if (dots) tl.to(dots, { width: 150, duration: 0.35, ease: 'power2.out' }, t + 0.12);
+});
+// The chain is complete: every pill carries a faint green rim.
+tl.to(['#p1', '#p2'], { borderColor: 'rgba(62,224,122,.4)', duration: 0.4 }, at('clearer', 6.16) + 0.3);
 </script>

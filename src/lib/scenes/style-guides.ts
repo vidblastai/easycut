@@ -685,107 +685,117 @@ export const STYLE_GUIDES: Record<SceneLook, StyleGuide> = {
 
   signal: {
     id: 'signal',
-    ground: '#020A04',
+    ground: '#010702',
     palette: [
-      { role: 'signal green — the key figure or word, glowing lines, list numbers', hex: '#3DFF6E' },
-      { role: 'mint white — headline type and icon strokes', hex: '#E8FFEC' },
-      { role: 'mid green — secondary type, borders, dim icons', hex: '#1FAE45' },
-      { role: 'deep green glass — cards, windows and app tiles', hex: '#0B2410' },
-      { role: 'the glow pool behind the subject', hex: '#0E5C1C' },
-      { role: 'near-black green at the edges of the frame', hex: '#010603' },
+      { role: 'signal green — the key figure or word (as a gradient #9DFF96 → #3BE043), window dots, ticks', hex: '#46F04A' },
+      { role: 'silver white — headline type (as a gradient #FFFFFF → #BFCDC2), icon strokes', hex: '#F2FFF3' },
+      { role: 'soft sage — labels and secondary type', hex: '#B7C9BA' },
+      { role: 'dark green glass — windows, cards and app tiles, at about 80% opacity', hex: '#142418' },
+      { role: 'the pool of green light that fills the frame', hex: '#2EB234' },
+      { role: 'near-black green at the corners', hex: '#010702' },
     ],
-    accent: '#3DFF6E',
+    accent: '#46F04A',
     rendering:
-      'Glowing type and simple interface pieces floating in a dark green void. The words carry the beat — one big figure, ' +
-      'a short phrase, a numbered list, a section title — and a few simple objects support them: rounded app tiles of dark ' +
-      'green glass with a 1–2px mid-green border and a mint line icon (a cloud, a person, a chart, an envelope, a lock — ' +
-      'whatever the line names) with a tiny label under it; dark glass windows with three dots in the corner and text being ' +
-      'typed inside; a search bar; plain person silhouettes; thin glowing lines (3–4px) that draw on to connect things, form ' +
-      'a triangle, or rise as a graph. Everything bright carries a soft green glow (filter drop-shadow 0 0 18–30px of the ' +
-      'glow colour). Flat pieces with glow, never detailed illustration.',
+      'Premium product-video finish: type and a few clean interface pieces floating in a big pool of green light. The pieces: ' +
+      'dark glass windows (rounded 20–24px, a vertical gradient of dark translucent green, a thin 1.5px light rim at about ' +
+      '25% white, an inset top highlight, a deep soft shadow 0 40px 100px rgba(0,0,0,.5), and three small glowing green dots in ' +
+      'the top-left corner); rounded app tiles of the same glass with a white line icon (an envelope, a person, a chart, a ' +
+      'lock — whatever the line names) and a small sage label; chat bubbles (a green gradient bubble with a tail for a ' +
+      'question, a light-grey gradient bubble with dark text for the answer); check rows; a search bar. Text on screen is set ' +
+      'with gradient fills (background-clip:text), never flat white, and the bright pieces carry a soft bloom (filter: ' +
+      'drop-shadow 0 0 24–30px at 20–35% opacity) — gentle, never a hard neon outline. A layer of fine film grain over ' +
+      'everything (an feTurbulence noise image, mix-blend-mode overlay, ~10% opacity).',
     lighting:
-      'One soft radial pool of green behind the subject, falling to near-black at every edge — a heavy vignette is the look. ' +
-      'Nothing is lit from a side; brightness comes from the type and the lines glowing.',
+      'One very large, bright pool of green light (a radial gradient about 2200×1600px, saturated green #2EB234 in the ' +
+      'middle falling through deep green to near-black) fills most of the frame and drifts slowly — it moves the opposite way ' +
+      'to the camera and breathes in scale. A strong vignette darkens the corners.',
     ground_rule:
-      'Near-black green, a radial glow pool (~60% of the frame wide) behind wherever the subject is, and a dark vignette. ' +
-      'Optionally a few out-of-focus tiles or lines far behind, blurred 10px+, at low opacity.',
+      'Near-black green ground, the big drifting light pool, a vignette, film grain on top. A few out-of-focus glass tiles ' +
+      'far behind (blur 14px, ~35% opacity) that move slower than the foreground.',
     motion:
-      'Everything arrives on the word that names it. Figures and phrases TYPE in, letter by letter (about 30 ms a letter) with ' +
-      'a thin blinking cursor while typing, or count up to their value; list lines appear one per spoken item, number first. ' +
-      'Objects come out of the depth: from scale 0.55, filter blur(16px) and opacity 0 to sharp and full size in 0.5–0.7 s ' +
-      '(power3.out). Lines draw on with strokeDashoffset. Leaving, things fly past the camera — scale up to 1.6 with blur ' +
-      'and fade in 0.35 s — or drift out of frame as the camera moves on. A key word can glitch-decode in: its letters cycle ' +
-      'through random characters for 0.3 s before settling. Nothing pops with a bounce; nothing cuts.',
+      'Everything arrives on the word that names it. Words POP in one by one as they are said: each word rises from about ' +
+      '0.45em below its baseline, out of a 10px blur, to sharp, with a small settle (0.5 s, back.out(1.6)). Figures count up ' +
+      'to their value (snap to whole numbers) while they are said. Windows and tiles come out of the depth (scale 0.6 → 1, ' +
+      'blur 16px → 0, 0.65 s, power3.out). Ticks and lines draw themselves (strokeDashoffset). Rows of a list arrive one per ' +
+      'spoken item; earlier rows settle to half opacity. The key moment lights up: a rim turns green, a glow swells.',
     camera:
-      'One continuous virtual camera over a canvas bigger than the frame: a slow constant push (scale 1 → 1.06 across the ' +
-      'scene) and, when the line moves to its next idea, a smooth pan (0.8–1.1 s, power2.inOut) down or across to the next ' +
-      'group of elements, which were waiting just out of frame. Elements nearest the camera sit slightly blurred (depth of field).',
+      'One continuous camera over a world wider than the frame: a slow push (scale 1 → 1.05 across the scene), and when the ' +
+      'line moves to its next idea, the camera SLIDES SIDEWAYS (0.9 s, power3.inOut) to the next window, which was waiting off ' +
+      'to the side, its edge already peeking into frame. During the slide the world smears horizontally: an SVG filter ' +
+      '(feGaussianBlur stdDeviation "28 0" at the middle of the move, "0 0" at rest). A title can lift up to become a small ' +
+      'header that stays while the windows slide beneath it.',
     never: [
       'photographs or detailed illustration',
-      'warm colours or any second hue family beyond the greens and mint white',
-      'a flat background without the glow pool and vignette',
+      'warm colours or any second hue family beyond the greens, silver white and sage',
+      'a flat or dim background without the big light pool, vignette and grain',
+      'flat white type, heavy black-weight type, or hard neon outlines around text',
       'more than about 12 words on screen at once, or any paragraph',
       'hard cuts inside the scene',
-      'bouncy or elastic easing',
       'emoji',
     ],
     typography:
-      'Type is the subject. Headlines and figures: Montserrat 800 (or Poppins 700), mint white, with the ONE key figure or ' +
-      'word in signal green, 110–200px in a 1920-wide frame (scale by frame width), letter-spacing −1px, a soft glow ' +
-      '(text-shadow 0 0 28px rgba(61,255,110,.45)). Section titles may be italic. Small labels and list lines: Poppins ' +
-      '500–600, 36–48px, mint white at 85%, numbers in signal green. Only words that are actually said in the line, or the ' +
-      'figure the line states — never invented copy — and never more than about 12 words visible at once.',
+      'Type is the subject. Figtree throughout. Titles and phrases: Figtree 600, 110–170px in a 1920-wide frame (scale by ' +
+      'frame width), letter-spacing about −2px, filled with the silver gradient, the ONE key figure or word filled with the ' +
+      'green gradient. Figures: Figtree 700, 130–160px, green gradient with a green bloom. Window text, list rows and ' +
+      'labels: Figtree 500, 44–56px in the silver gradient; small labels 24–28px in sage. Every word is its own span so it ' +
+      'can pop in on its own timing. Only words that are actually said in the line, or the figure the line states — never ' +
+      'invented copy — and never more than about 12 words visible at once.',
   },
 
   slate: {
     id: 'slate',
-    ground: '#151517',
+    ground: '#0F1115',
     palette: [
-      { role: 'bright text — words once they are spoken', hex: '#F2F2F3' },
-      { role: 'dim text — words not yet spoken, placeholders', hex: '#5E5E66' },
-      { role: 'coral — the negative, the old way, the problem, the key term', hex: '#F2775F' },
-      { role: 'green — the positive, the new way, list bullets and ticks', hex: '#3EE07A' },
-      { role: 'card surface', hex: '#202024' },
-      { role: 'card and pill borders, dotted connectors', hex: '#34343B' },
+      { role: 'white — words once they are spoken, labels', hex: '#F1F1F3' },
+      { role: 'muted grey — secondary labels, settled items', hex: '#8A8D96' },
+      { role: 'coral — the negative, the old way, the problem, the key term (icons as a gradient #F7A285 → #E0654B)', hex: '#F2775F' },
+      { role: 'green — the positive, the new way, connectors and ticks (icons as a gradient #7DF2A2 → #2FBF5C)', hex: '#3EE07A' },
+      { role: 'card surface (a gradient #1A1B20 → #141519)', hex: '#17181C' },
+      { role: 'hairline borders — dashed on cards, solid on pills (white at 12–14%)', hex: '#2A2C33' },
     ],
     accent: '#F2775F',
     rendering:
-      'Clean product-interface typography on charcoal: a sentence that lights up word by word, bullet lists with small green ' +
-      'play-triangle bullets, rows of rounded pill boxes joined by dotted connector lines, icon cards (a 160–220px rounded ' +
-      'square card with a simple solid icon and a two-line label under it), quote marks in coral around a short quote, and ' +
-      'small UI mockups the line describes — chat bubbles, a pricing card with a button and a cursor that clicks it, a ' +
-      'counter, a toggle, a progress bar. Flat, crisp, generous spacing; cards have 1px borders, 14–20px corners and a soft ' +
-      'shadow (0 20px 40px rgba(0,0,0,.35)). Coral marks the problem or the key term, green marks the answer. A struck ' +
-      'option gets a red-coral ✕ stamped over it.',
+      'Quiet, expensive product-interface design on blue-black. Elements are SMALL with a lot of empty space around them — ' +
+      'one card, one row of pills, one short quote — never big slabs. The pieces: cards of about 380×400px (in a 1920 frame) ' +
+      'with a 2px DASHED hairline border at 14% white, 24–28px corners, a near-black gradient and a deep soft shadow; inside, ' +
+      'one solid gradient-filled icon (people, a calendar, a document, a robot, a chart — whatever the line names) with a ' +
+      'faint glow of its own colour behind it, and a short label under it; pills (fully rounded, solid hairline border) ' +
+      'joined by dotted green connectors; a coral quote mark beside a quote; list panels whose rows are darker rounded ' +
+      'strips with a small coral icon and a label; small UI pieces the line describes (a counter, a pricing card with a ' +
+      'cursor, a chat). A struck option gets a coral gradient rounded-square badge with a white ✕ popped onto its icon; the ' +
+      'answer gets a small green check badge on its corner. Fine film grain over everything.',
     lighting:
-      'A soft lift in the middle of the charcoal and a dark vignette at the edges; no coloured light, no glow except a faint ' +
-      'one on green or coral elements.',
-    ground_rule: 'Charcoal with a gentle radial lift behind the subject and a vignette, plus very faint film grain. Never flat black.',
+      'A soft cool lift of light in the upper left that drifts slowly across, a dark vignette at the edges. No coloured ' +
+      'light except a faint halo of coral or green behind an icon or an active pill.',
+    ground_rule:
+      'Blue-black (#0F1115) with a faint dot grid (1.3px dots every 30px at about 10% white) that fades out towards the ' +
+      'edges, the drifting lift, a vignette and film grain. Never flat black, never charcoal grey.',
     motion:
-      'Words light up the moment they are spoken: a sentence or list line is laid out in dim text first (or appears word by ' +
-      'word), and each word goes from dim to bright white on its own timing (0.15 s), so the screen reads along with the ' +
-      'voice. List lines and pills fill in one per spoken item; a dotted connector draws between pills as the next one ' +
-      'fills. Cards rise 16px while fading in (0.4 s, power2.out). Comparisons are swaps: the old card is stamped with ✕ ' +
-      'and slides aside as the new one rises in. Exits are a quick dissolve with a 0.2 s glitch (horizontal slice offsets) ' +
-      'or a blur-out. Calm and exact — no bounce.',
+      'Calm and exact. Words arrive as they are spoken: each rises about 0.3em out of a 6px blur (0.35 s, power3.out), the ' +
+      'key term in coral or green. Cards, panels and pills rise out of a soft blur (y 40–140px → 0, blur 14–18px → 0, ' +
+      '0.6–0.75 s, power3.out). Badges pop (scale 0.3 → 1 with a slight back.out overshoot, 0.35–0.4 s) — the only thing ' +
+      'that overshoots. A comparison is a swap: the old card gets the ✕ badge, slides aside (0.7 s, power3.inOut) and dims ' +
+      'to half while the new card rises in beside it. Pills fill in one per spoken word, the current one with a green rim ' +
+      'and green text, and a dotted connector draws on to the next. When the line moves on, the group lifts away (y −30, ' +
+      'blur, fade in 0.35 s).',
     camera:
-      'Locked, with a very slow push (scale 1 → 1.04 across the scene). When the line moves on, the old group dissolves and ' +
-      'the next builds in the same place; no big camera moves.',
+      'Locked, with a very slow push (scale 1 → 1.03 across the scene). The next group builds in the same place; no big ' +
+      'camera moves.',
     never: [
       'photographs or detailed illustration',
-      'bright or white backgrounds',
+      'bright or white backgrounds, or flat grey ones',
+      'big cards or big type filling the frame — keep it small and spacious',
       'more than two accent colours (coral and green) in one scene',
       'more than about 12 words on screen at once, or any paragraph',
       'neon glow on everything',
-      'bouncy or elastic easing',
       'emoji',
     ],
     typography:
-      'Type is the subject. Poppins (500 for text, 600 for emphasis) — sentence case, never all caps except a short label. ' +
-      'Sentences and quotes 56–80px in a 1920-wide frame (scale by frame width); list lines and labels 32–44px; one hero ' +
-      'figure can go to 140px. Dim words #5E5E66, spoken words #F2F2F3, the key term in coral or green. Only words that ' +
-      'are actually said in the line, or the figure it states — never invented copy — and never more than about 12 words ' +
-      'visible at once.',
+      'Type is the subject, set small and calm. Poppins: 500 for text, 400 for secondary labels — sentence case. Quotes and ' +
+      'sentences 56–64px in a 1920-wide frame (scale by frame width), left-aligned beside a coral quote mark, broken into ' +
+      'two deliberate lines; card labels and pills 34–46px; one hero figure can go to 120px. White #F1F1F3, secondary ' +
+      '#8A8D96, the key term in coral or green. Only words that are actually said in the line, or the figure it states — ' +
+      'never invented copy — and never more than about 12 words visible at once.',
   },
 
   particles: {

@@ -512,7 +512,8 @@ export interface CompositionFrame {
  */
 const SCENE_FONTS: Record<string, { dir: string; weights: number[] }> = {
   Inter: { dir: 'inter', weights: [500, 600, 700, 900] },
-  Poppins: { dir: 'poppins', weights: [500, 600, 700, 800] },
+  Poppins: { dir: 'poppins', weights: [400, 500, 600, 700, 800] },
+  Figtree: { dir: 'figtree', weights: [400, 500, 600, 700, 900] },
   Montserrat: { dir: 'montserrat', weights: [600, 700, 800, 900] },
 };
 const fontCache = new Map<string, string>();

@@ -63,7 +63,7 @@ export const CAPTION_FONTS: CaptionFont[] = [
   {
     id: 'Poppins',
     module: 'Poppins',
-    weights: ['500', '600', '700', '800'],
+    weights: ['400', '500', '600', '700', '800'],
     vibe: 'Perfect circles, friendly. The default look of a lot of good short-form.',
     group: 'geometric',
   },
@@ -84,7 +84,7 @@ export const CAPTION_FONTS: CaptionFont[] = [
   {
     id: 'Figtree',
     module: 'Figtree',
-    weights: ['500', '600', '700', '900'],
+    weights: ['400', '500', '600', '700', '900'],
     vibe: 'Humanist and warm. Sounds like a person talking rather than a brand.',
     group: 'grotesque',
   },
