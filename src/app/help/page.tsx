@@ -38,10 +38,18 @@ export default async function HelpPage() {
                 <span className="grid h-7 w-7 flex-none place-items-center rounded-full bg-violet-dim text-[12px] font-bold tabular-nums text-violet">
                   {i + 1}
                 </span>
-                <div className="min-w-0">
+                <div className="min-w-0 flex-1">
                   <h2 className="text-[15px] font-bold">{step.title}</h2>
                   <p className="mt-1 text-[13.5px] leading-relaxed text-muted">{step.body}</p>
                 </div>
+                {/* A real frame of that step, from one phone take run through EasyCut. */}
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={step.image}
+                  alt=""
+                  loading="lazy"
+                  className="hidden h-[120px] w-[96px] flex-none rounded-xl border border-line object-cover sm:block"
+                />
               </li>
             ))}
           </ol>
@@ -71,31 +79,37 @@ export default async function HelpPage() {
 const STEPS = [
   {
     title: 'You drop in one file',
+    image: '/layers/backdrop-short.jpg',
     body:
       'Straight off your phone or camera is fine. We ask three things: where it is going, whether you already trimmed it, and which look you want. Everything else — resolution, frame rate, where the cuts go — we work out.',
   },
   {
     title: 'We listen to it',
+    image: '/layers/sfx.jpg',
     body:
       'The whole thing gets transcribed word by word, with the exact moment each word starts and ends. That transcript is what makes the rest possible: the captions come from it, and so does knowing where you paused, restarted, or said "um".',
   },
   {
     title: 'We cut it',
+    image: '/layers/transition.jpg',
     body:
       'If you said your footage was raw, the dead air comes out, along with filler words and the takes you abandoned halfway through. If you said it was already trimmed, we leave your cut alone and only add layers on top.',
   },
   {
     title: 'We build the edit',
+    image: '/layers/broll.jpg',
     body:
       'Captions timed to your voice, B-roll over the parts that are describing something, icons and text where you make a point, punch-ins on the lines that matter, transitions, sound effects and a music bed under it all.',
   },
   {
     title: 'You fine-tune it',
+    image: '/captions/impact-short.jpg',
     body:
       'Step three of the pipeline is yours. Change the caption look, drop a B-roll clip you do not like, trim a moment, move a cut. Every one of those replays the cheap half of the process — none of them costs anything or takes minutes.',
   },
   {
     title: 'You post it',
+    image: '/marketing/before-after-after.jpg',
     body:
       'Download the file, or export the same edit in another shape — a 1:1 for the feed, a 16:9 for YouTube — without re-uploading or re-analysing anything.',
   },
