@@ -798,6 +798,61 @@ export const STYLE_GUIDES: Record<SceneLook, StyleGuide> = {
       'never invented copy — and never more than about 12 words visible at once.',
   },
 
+  iman: {
+    id: 'iman',
+    ground: '#0B0B0D',
+    palette: [
+      { role: 'royal blue — the hero, the good path, light whips, a whole blue set', hex: '#1F4FE0' },
+      { role: 'signal red — suits, the warning, the finish line, the active compass segment', hex: '#E0281E' },
+      { role: 'silver white — titles and labels (as a gradient #FFFFFF → #9A9AA2), white objects', hex: '#F1F1F3' },
+      { role: 'deep purple — a second compass segment or accent', hex: '#9B1FE8' },
+      { role: 'antique gold — the compass bezel, coins, trophies, spotlight cones', hex: '#B39556' },
+      { role: 'warm skin tone for flat characters', hex: '#F2B48C' },
+    ],
+    accent: '#1F4FE0',
+    rendering:
+      'Flat vector editorial illustration with cinematic staging. Characters are simple flat people (a suit, a hoodie, ' +
+      'sportswear) built from solid shapes with ONE darker shade on one side, no outlines, minimal or no facial features, ' +
+      'about a third to half of the frame tall, standing on a soft floor shadow. Objects are flat and bold: chess pieces, ' +
+      'an alarm clock, coins and stacks, a trophy, a flag, a briefcase, a phone, a car, a skyline. Sets are simple 2.5D ' +
+      'stages: a checkerboard floor in perspective, a running track receding to a banner, a ring, a horizon. For a ' +
+      'numbered rule or step, use the signature PRINCIPLE COMPASS: a big half compass rising from the bottom edge — a ' +
+      'cream face with a gold bezel, a compass rose and a black needle — inside a dark ring of numbered segments (dotted ' +
+      'dividers, a thin white outer rim); finished rules are filled segments (blue, purple…), the current one wipes in red ' +
+      'and carries the rule\'s name. Short labels point at things with a small white ▼ under them. Film grain over everything.',
+    lighting:
+      'Dark and contrasty: the doodle wall is near-black, subjects are lit flat in saturated colour. A soft spotlight cone ' +
+      '(gold at low opacity) can pick out one subject; the rest of a set can drop to greyscale so only the subject keeps ' +
+      'its colour. A vignette at the edges.',
+    ground_rule:
+      'Near-black (#0B0B0D) wall covered in faint hand-drawn doodle or contour lines (white at 6–8%, 5px, smooth and ' +
+      'rounded), a vignette and film grain. For a whole scene the wall may instead be royal blue with darker blue doodles.',
+    motion:
+      'Punchy and cinematic, every move eased. Titles slam in: from scale 1.3 and a 12px blur to sharp in 0.5–0.6 s ' +
+      '(power3.out). Objects and characters pop or slide in on the word that names them (back.out for objects, ' +
+      'power3.out for people walking in from the side). Between beats a BLUE LIGHT WHIP sweeps across the frame — a huge ' +
+      'blurred bright-blue blob with screen blending, 0.5 s — and the next beat is swapped in under its brightest moment. ' +
+      'The compass ring turns to the new number with a settle (back.out), the needle swings with overshoot, and the new ' +
+      'segment wipes in colour along the ring. Hits ring out with expanding outline ripples. Clock hands spin, coins ' +
+      'stack, a curve draws itself.',
+    camera:
+      'Always moving: a push in on the subject, a pull back that reveals a longer set (the track behind the finish), a ' +
+      'sideways truck that reveals a second subject (the pawn beside the king). Never static for more than about a second.',
+    never: [
+      'photographs or realistic rendering',
+      'outlined cartoon style, detailed faces or gradient-mesh 3D',
+      'pastel or washed-out colours',
+      'more than about 8 words on screen at once, or any paragraph',
+      'emoji',
+    ],
+    typography:
+      'Montserrat 800, UPPERCASE, filled with a silver gradient (#FFFFFF → #F1F1F3 → #9A9AA2) and a soft drop shadow. ' +
+      'Titles 100–140px in a 1920-wide frame (scale by frame width), one to four words; labels 48–64px with a small white ' +
+      '▼ pointing at their subject; compass segment names in two weights — the first word 800, the rest 600, smaller. ' +
+      'Numbers Montserrat 800. Only words that are actually said in the line, or the number it states — never invented ' +
+      'copy — and never more than about 8 words visible at once.',
+  },
+
   particles: {
     id: 'particles',
     ground: '#05060D',

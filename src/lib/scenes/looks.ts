@@ -270,6 +270,14 @@ const NAMED: Record<SceneLook, Omit<LookMeta, 'swatch' | 'tone'>> = {
     bestFor: 'Product and strategy talk — clean type on charcoal, each word lighting up as it is said, coral and green accents, UI cards.',
     entry: 'cut',
   },
+  iman: {
+    id: 'iman',
+    name: 'Iman',
+    ink: '#F1F1F3',
+    dim: '#9A9AA2',
+    bestFor: 'Self-improvement, money and business storytelling — flat vector characters acting out the line on a black doodle wall, silver titles, and a compass that counts off numbered rules.',
+    entry: 'cut',
+  },
   archive: {
     id: 'archive',
     name: 'Archive',
