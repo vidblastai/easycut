@@ -22,7 +22,7 @@ const example = (style: string, format: ExampleFormat): StyleExample => ({
 
 /** Which styles have a real example, per format. */
 const AVAILABLE: Record<ExampleFormat, string[]> = {
-  short: [],
+  short: ['breakdown', 'clean', 'commentary', 'documentary', 'news', 'punchy', 'reaction', 'split', 'stacked', 'tutorial', 'vlog'],
   long: [],
 };
 
