@@ -163,7 +163,7 @@ This is a text-led look: the shot puts the line on screen the way a well-edited 
 - a chain of qualities ("better, faster, smarter") becomes pills joined by dotted lines that fill in word by word;
 - a quote or a strong sentence becomes the sentence itself, each word lighting up on its own timing;
 - a named thing (an email, a price, a search, a tool) becomes one simple interface piece doing exactly that — the email typing itself, the price card with a cursor clicking it.
-Use only words that are in the line (shortened, never invented) and the figures it states. Never more than about 12 words visible at once; when the line moves on, the old words leave and the next idea arrives. Topic-free: the look decides how it is set and how it moves, the line decides what it says.
+Use only words that are in the line (shortened, never invented) and the figures it states. Never more than about 12 words visible at once; when the line moves on, the old words leave and the next idea arrives. Words never sit on top of other words: before a new card or line lands where one already stands, the old one moves aside, shrinks back or leaves — check the frames where two beats meet. Topic-free: the look decides how it is set and how it moves, the line decides what it says.
 
 `;
 
@@ -307,9 +307,11 @@ ${example.scene}
 
 /** For the text-led looks: how to place the beats, instead of a drawn layout example. */
 function textLayoutHint(width: number, height: number): string {
+  const z = safeZone(width, height);
+  const midY = Math.round((z.top + z.bottom) / 2);
   return width >= height
     ? `Layout: widescreen. Pick the beats from what the line contains — a figure, a list, a comparison, a chain of qualities, a sentence, a named thing — usually two or three in a row. Each beat fills the middle of the frame with generous margins; the next one arrives as the camera moves on (Signal) or as the last one dissolves (Slate). Type sizes are given for a 1920-wide frame.`
-    : `Layout: portrait. Pick the beats from what the line contains — a figure, a list, a comparison, a chain of qualities, a sentence, a named thing — usually two or three in a row. Stack them: a figure or sentence across the width, lists and pill chains top to bottom, comparison cards one above the other. Size type against a ${width}-wide frame (the sizes given are for 1920 wide — scale them by about ${(width / 1920 * 1.6).toFixed(2)} so they stay big on a phone), and keep everything inside the safe area. Centre each beat's group vertically: its middle sits near the middle of the frame, so the lower half is never left empty while the top is crowded.`;
+    : `Layout: portrait. Pick the beats from what the line contains — a figure, a list, a comparison, a chain of qualities, a sentence, a named thing — usually two or three in a row. Stack them: a figure or sentence across the width, lists and pill chains top to bottom, comparison cards one above the other. Size type against a ${width}-wide frame (the sizes given are for 1920 wide — scale them by about ${(width / 1920 * 1.6).toFixed(2)} so they stay big on a phone), and keep everything inside the safe area. Centre each beat's group on the safe area: its middle sits near y ${midY}, so the bottom of the safe area is never left empty while the top is crowded.`;
 }
 
 export function briefFor(request: CompositionRequest): string {
