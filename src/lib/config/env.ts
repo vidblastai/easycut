@@ -256,6 +256,8 @@ export const env = {
      * present, capped so a large build machine does not open sixteen.
      */
     concurrency: num('RENDER_CONCURRENCY', Math.max(1, Math.min(4, coreCount() - 1))),
+    /** Browser renders (videos, scene clips) allowed at once in one process. See src/lib/render/slot.ts. */
+    slots: num('RENDER_SLOTS', 1),
     /**
      * Which OpenGL backend the headless browser uses, or none.
      *

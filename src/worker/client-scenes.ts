@@ -1,3 +1,4 @@
+import { withRenderSlot } from '@/lib/render/slot';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { rm } from 'node:fs/promises';
@@ -46,7 +47,7 @@ export async function finishClientScenes(projectId: string, quality: RenderQuali
     try {
       await writeProject(dir, buildCompositionHtml(parts, frame));
       const out = join(dir, 'scene.mp4');
-      await renderProject(dir, out, { fps: edl.format.fps });
+      await withRenderSlot(() => renderProject(dir, out, { fps: edl.format.fps }));
       if (await isBlank(out).catch(() => false)) {
         failures.push(`${scene.id}: rendered blank`);
         scenes.push(scene);

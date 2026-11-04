@@ -1,3 +1,4 @@
+import { withRenderSlot } from '@/lib/render/slot';
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { env } from '@/lib/config/env';
@@ -212,7 +213,7 @@ export async function composeSceneClips(scenes: AnimatedScene[], options: SceneC
         .put(assetKey(options.projectId, 'scenes', `${scene.id}.html`), Buffer.from(html), 'text/plain; charset=utf-8')
         .catch(() => undefined);
       const out = join(dir, 'scene.mp4');
-      await renderProject(dir, out, { fps: options.fps });
+      await withRenderSlot(() => renderProject(dir, out, { fps: options.fps }));
       // The last gate: a clip of bare ground is worse than the drawing.
       if (await isBlank(out).catch(() => false)) {
         errors.push('scene clip rendered blank');
