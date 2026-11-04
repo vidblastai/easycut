@@ -1,0 +1,167 @@
+<!-- concept: path, 1920×1080: on candle-lit parchment, ink writes "1453" over a timeline and a red wax seal presses down on it; the page dissolves to an engraved city wall with towers while 53 tally marks are scratched beside "53 days"; a crack runs through the wall and its middle collapses in a cloud of stippled dust under a scroll banner reading "Constantinople"; then a red ribbon of a thousand years stretches along the timeline to the seal — and burns away to ash -->
+<style>
+#paper { position:absolute; inset:0; background: radial-gradient(110% 100% at 50% 45%, #F0DFB6 0%, #E4CD98 55%, #C9A86C 85%, #8A6234 100%); }
+#stain { position:absolute; inset:0; opacity:.5; mix-blend-mode:multiply;
+  background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='600' height='600'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.012' numOctaves='3' seed='7'/><feColorMatrix values='0 0 0 0 .55  0 0 0 0 .4  0 0 0 0 .2  0 0 0 -1.6 1.1'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>"); background-size: 1200px 1200px; }
+#fibre { position:absolute; inset:0; opacity:.35; mix-blend-mode:multiply;
+  background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='300' height='300'><filter id='f'><feTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 .45  0 0 0 0 .32  0 0 0 0 .16  0 0 0 .6 0'/></filter><rect width='100%' height='100%' filter='url(%23f)'/></svg>"); }
+#burn { position:absolute; inset:0; background: radial-gradient(105% 95% at 50% 48%, rgba(0,0,0,0) 62%, rgba(70,38,12,.55) 85%, rgba(30,14,4,.92) 100%); }
+#candle { position:absolute; inset:0; background: radial-gradient(60% 55% at 35% 30%, rgba(255,214,140,.22), rgba(255,214,140,0)); mix-blend-mode:screen; }
+#cam { position:absolute; inset:0; transform-origin:50% 50%; }
+.beat { position:absolute; inset:0; }
+#b2, #b3 { opacity:0; }
+/* Ink type: Playfair Display, set like a chronicle — dark iron-gall ink, never pure black. */
+.ink { position:absolute; font-family:'Playfair Display'; color:#2B1A0E; white-space:nowrap; }
+#year { left:0; width:1920px; top:300px; text-align:center; font-weight:800; font-size:230px; letter-spacing:6px; clip-path: inset(0 100% 0 0); }
+#days { left:250px; top:170px; font-weight:700; font-size:96px; opacity:0; }
+#banner { position:absolute; left:610px; top:360px; width:700px; height:150px; opacity:0; }
+#banner .ink { left:0; width:700px; top:30px; text-align:center; font-weight:700; font-style:italic; font-size:62px; }
+#span { left:0; width:1920px; top:390px; text-align:center; font-weight:800; font-size:110px; opacity:0; }
+</style>
+<div id="scene">
+  <div id="paper"></div>
+  <div id="stain"></div>
+  <div id="cam">
+    <svg width="0" height="0" style="position:absolute"><defs>
+      <pattern id="hatch" width="9" height="9" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="9" stroke="#3A2614" stroke-width="2.4" /></pattern>
+      <pattern id="hatchRed" width="10" height="10" patternUnits="userSpaceOnUse" patternTransform="rotate(-35)"><line x1="0" y1="0" x2="0" y2="10" stroke="#7E1F14" stroke-width="3" /></pattern>
+      <radialGradient id="wax" cx=".4" cy=".35" r=".7"><stop offset="0" stop-color="#D23A2A" /><stop offset=".7" stop-color="#9E1B12" /><stop offset="1" stop-color="#6E0F09" /></radialGradient>
+    </defs></svg>
+
+    <div id="b1" class="beat">
+      <svg viewBox="0 0 1920 1080" width="1920" height="1080" style="position:absolute; left:0; top:0">
+        <line id="line1" x1="200" y1="760" x2="1720" y2="760" stroke="#3A2614" stroke-width="4" />
+        <g id="ticks1"></g>
+        <g transform="translate(1300 760)"><g id="seal">
+          <path d="M-62 -6 C -70 -48 -30 -72 6 -66 C 50 -70 74 -36 66 4 C 72 44 36 70 -4 66 C -46 70 -70 34 -62 -6 Z" fill="url(#wax)" />
+          <circle r="40" fill="none" stroke="#6E0F09" stroke-width="5" opacity=".7" />
+          <path d="M0 -26 L7 -8 L26 -8 L11 4 L17 23 L0 12 L-17 23 L-11 4 L-26 -8 L-7 -8 Z" fill="#6E0F09" opacity=".75" />
+          <path d="M-36 -30 A 48 48 0 0 1 10 -50" fill="none" stroke="#FFFFFF" stroke-width="6" stroke-linecap="round" opacity=".3" />
+        </g></g>
+      </svg>
+      <div id="year" class="ink">1453</div>
+    </div>
+
+    <div id="b2" class="beat">
+      <div id="days" class="ink">53 days</div>
+      <svg viewBox="0 0 1920 1080" width="1920" height="1080" style="position:absolute; left:0; top:0">
+        <g id="tally" stroke="#2B1A0E" stroke-width="7" stroke-linecap="round"></g>
+        <line x1="160" y1="880" x2="1760" y2="880" stroke="#3A2614" stroke-width="4" />
+        <g id="ground" stroke="#3A2614" stroke-width="2" opacity=".6"></g>
+        <g id="wall"></g>
+        <path id="crack" d="M960 600 L 930 650 L 975 690 L 920 745 L 990 790 L 940 840 L 965 880" fill="none" stroke="#1C1008" stroke-width="7" stroke-linejoin="round" stroke-linecap="round" />
+        <g id="dust"></g>
+      </svg>
+      <div id="banner">
+        <svg viewBox="0 0 700 150" width="700" height="150" style="position:absolute; left:0; top:0">
+          <path d="M40 40 L 0 30 L 30 75 L 0 120 L 70 110 Z" fill="#D9C08A" stroke="#3A2614" stroke-width="4" stroke-linejoin="round" />
+          <path d="M660 40 L 700 30 L 670 75 L 700 120 L 630 110 Z" fill="#D9C08A" stroke="#3A2614" stroke-width="4" stroke-linejoin="round" />
+          <path d="M60 22 Q 350 0 640 22 L 640 118 Q 350 96 60 118 Z" fill="#EEDCB0" stroke="#3A2614" stroke-width="4" />
+        </svg>
+        <div class="ink">Constantinople</div>
+      </div>
+    </div>
+
+    <div id="b3" class="beat">
+      <div id="span" class="ink">1,000 years</div>
+      <svg viewBox="0 0 1920 1080" width="1920" height="1080" style="position:absolute; left:0; top:0">
+        <line x1="200" y1="700" x2="1720" y2="700" stroke="#3A2614" stroke-width="4" />
+        <g id="ticks3"></g>
+        <rect id="bar" x="300" y="560" width="1160" height="110" fill="url(#hatchRed)" stroke="#7E1F14" stroke-width="4" />
+        <rect id="ash" x="300" y="560" width="1160" height="110" fill="#5B4A3A" opacity="0" />
+        <g transform="translate(1460 700)"><g id="seal3">
+          <path d="M-50 -5 C -56 -40 -24 -58 5 -53 C 40 -56 59 -29 53 3 C 58 35 29 56 -3 53 C -37 56 -56 27 -50 -5 Z" fill="url(#wax)" />
+          <circle r="32" fill="none" stroke="#6E0F09" stroke-width="4" opacity=".7" />
+        </g></g>
+        <g id="embers"></g>
+      </svg>
+    </div>
+  </div>
+  <div id="fibre"></div>
+  <div id="candle"></div>
+  <div id="burn"></div>
+</div>
+<script>
+const NS = 'http://www.w3.org/2000/svg';
+const el = (tag, attrs, parent) => { const e = document.createElementNS(NS, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); parent.appendChild(e); return e; };
+const ticks = (id, y) => { const g = document.getElementById(id); for (let x = 200; x <= 1720; x += 76) el('line', { x1: x, y1: y - 12, x2: x, y2: y + 12, stroke: '#3A2614', 'stroke-width': x % 380 === 200 ? 4 : 2 }, g); };
+ticks('ticks1', 760); ticks('ticks3', 700);
+// The candle flickers; the camera drifts across the page like a documentary over an old book.
+tl.to('#candle', { opacity: 0.75, duration: 0.18, yoyo: true, repeat: 19, ease: 'sine.inOut' }, 0);
+tl.fromTo('#cam', { scale: 1.08, x: 30 }, { scale: 1.0, x: -20, duration: DURATION, ease: 'none', immediateRender: false }, 0);
+
+// "In 1453" — the timeline draws, the year is written in ink, the seal presses down on its place.
+tl.fromTo('#line1', { attr: { x2: 200 } }, { attr: { x2: 1720 }, duration: 0.8, ease: 'power2.inOut', immediateRender: false }, 0);
+tl.fromTo('#ticks1 line', { opacity: 0 }, { opacity: 1, duration: 0.2, stagger: 0.03, immediateRender: false }, 0.1);
+tl.to('#year', { clipPath: 'inset(0 0% 0 0)', duration: 1.1, ease: 'power1.inOut' }, at('1453', 0.06) + 0.05);
+tl.fromTo('#seal', { opacity: 0, scale: 1.8, rotation: -25 }, { opacity: 1, scale: 1, rotation: 0, duration: 0.22, ease: 'power4.in', svgOrigin: '0 0', immediateRender: false }, 1.1);
+tl.to('#seal', { scaleY: 0.9, scaleX: 1.08, duration: 0.08, yoyo: true, repeat: 1, svgOrigin: '0 0' }, 1.32);
+
+// "after 53 days of siege" — dissolve to the engraved wall; 53 tally marks are scratched in beside the count.
+const t2 = at('after', 1.94) - 0.3;
+tl.to('#b1', { opacity: 0, duration: 0.5 }, t2);
+tl.to('#b2', { opacity: 1, duration: 0.5 }, t2);
+// The wall: stone courses with staggered joints, two taller towers, crenellations, hatched shade on the right faces.
+const wall = document.getElementById('wall');
+const fall = [];
+const block = (x, y, w, h, falling) => {
+  const r = el('rect', { x, y, width: w, height: h, fill: '#E7D3A6', stroke: '#3A2614', 'stroke-width': 2.4 }, wall);
+  if (rand(x * 0.1 + y) > 0.72) el('rect', { x: x + w * 0.55, y, width: w * 0.45, height: h, fill: 'url(#hatch)', opacity: 0.45 }, wall);
+  if (falling) fall.push(r);
+};
+for (let row = 0; row < 6; row++) {
+  const y = 580 + row * 50, off = row % 2 ? 40 : 0;
+  for (let x = 520 + off - 40; x < 1400; x += 80) {
+    const x0 = Math.max(520, x), x1 = Math.min(1400, x + 80);
+    if (x1 - x0 > 8) block(x0, y, x1 - x0, 50, x0 > 780 && x1 < 1150 && row < 5);
+  }
+}
+for (let m = 0; m < 7; m++) block(540 + m * 124, 540, 64, 40, 540 + m * 124 > 780 && 540 + m * 124 < 1100);
+[[360, 160], [1400, 160]].forEach(([tx, tw]) => {
+  for (let row = 0; row < 9; row++) for (let c = 0; c < 2; c++) block(tx + c * 80 - (row % 2 ? 0 : 0), 430 + row * 50, 80, 50, false);
+  for (let m = 0; m < 3; m++) block(tx + m * 58, 394, 44, 36, false);
+  el('rect', { x: tx + tw - 50, y: 430, width: 50, height: 450, fill: 'url(#hatch)', opacity: 0.5 }, wall);
+});
+el('path', { d: 'M890 880 L890 790 A 70 70 0 0 1 1030 790 L1030 880 Z', fill: 'url(#hatch)', stroke: '#3A2614', 'stroke-width': 3 }, wall);
+tl.fromTo('#wall', { y: 40, opacity: 0 }, { y: 0, opacity: 1, duration: 0.7, ease: 'power3.out', immediateRender: false }, t2 + 0.2);
+tl.fromTo('#days', { opacity: 0, y: 14 }, { opacity: 1, y: 0, duration: 0.4, ease: 'power3.out', immediateRender: false }, at('53', 2.24) - 0.1);
+const tally = document.getElementById('tally');
+const tStart = at('53', 2.24) + 0.15, per = 0.022;
+for (let i = 0; i < 53; i++) {
+  const grp = Math.floor(i / 5), k = i % 5, gx = 760 + grp * 84, gy = 190;
+  const ln = k < 4 ? el('line', { x1: gx + k * 14, y1: gy, x2: gx + k * 14 + 3, y2: gy + 84 }, tally)
+                   : el('line', { x1: gx - 8, y1: gy + 70, x2: gx + 58, y2: gy + 12 }, tally);
+  ln.setAttribute('pathLength', '1'); ln.setAttribute('stroke-dasharray', '1'); ln.setAttribute('stroke-dashoffset', '1');
+  tl.to(ln, { strokeDashoffset: 0, duration: 0.06, ease: 'none' }, tStart + i * per);
+}
+// "the walls of Constantinople finally fell" — the banner unfurls, a crack runs down, the middle collapses in dust.
+tl.fromTo('#banner', { opacity: 0, scaleX: 0.2 }, { opacity: 1, scaleX: 1, duration: 0.45, ease: 'back.out(1.6)', immediateRender: false }, at('Constantinople', 4.48) - 0.15);
+const crack = document.getElementById('crack');
+crack.setAttribute('pathLength', '1'); crack.setAttribute('stroke-dasharray', '1'); crack.setAttribute('stroke-dashoffset', '1');
+tl.to('#crack', { strokeDashoffset: 0, duration: 0.5, ease: 'power2.in' }, at('finally', 4.92));
+const tFell = at('fell', 5.68) - 0.08;
+tl.to('#crack', { opacity: 0, duration: 0.1 }, tFell + 0.1);
+fall.forEach((r, i) => tl.to(r, { y: 360 + rand(i) * 120, rotation: (rand(i + 9) - 0.5) * 70, opacity: 0, duration: 0.7 + rand(i + 3) * 0.3, ease: 'power2.in', transformOrigin: '50% 50%' }, tFell + rand(i + 5) * 0.18));
+const dust = document.getElementById('dust');
+for (let i = 0; i < 26; i++) {
+  const c = el('circle', { cx: 800 + rand(i + 60) * 330, cy: 860 - rand(i + 90) * 60, r: 2 + rand(i + 30) * 3, fill: '#3A2614', opacity: 0 }, dust);
+  tl.fromTo(c, { opacity: 0.8 }, { opacity: 0, attr: { cx: 800 + rand(i + 60) * 330 + (rand(i + 7) - 0.5) * 260, cy: 860 - 120 - rand(i + 11) * 160 }, duration: 1.0, ease: 'power2.out', immediateRender: false }, tFell + 0.15 + rand(i) * 0.25);
+}
+tl.to('#cam', { y: 6, duration: 0.05, yoyo: true, repeat: 3 }, tFell + 0.1);
+
+// "an empire that had lasted a thousand years was gone" — a red ribbon of a thousand years runs to the seal, then burns to ash.
+const t3 = at('empire', 6.68) - 0.45;
+tl.to('#b2', { opacity: 0, duration: 0.5 }, t3);
+tl.to('#b3', { opacity: 1, duration: 0.5 }, t3);
+tl.fromTo('#bar', { attr: { width: 0 } }, { attr: { width: 1160 }, duration: at('years', 8.46) - t3 - 0.2, ease: 'power1.inOut', immediateRender: false }, t3 + 0.3);
+tl.fromTo('#seal3', { opacity: 0, scale: 1.8 }, { opacity: 1, scale: 1, duration: 0.2, ease: 'power4.in', svgOrigin: '0 0', immediateRender: false }, t3 + 0.2);
+tl.fromTo('#span', { opacity: 0, y: 14 }, { opacity: 1, y: 0, duration: 0.4, ease: 'power3.out', immediateRender: false }, at('thousand', 8.12) - 0.1);
+const tGone = at('gone', 9.0) - 0.25;
+tl.to('#ash', { opacity: 1, duration: 0.45 }, tGone);
+tl.to(['#bar', '#ash'], { attr: { height: 0, y: 615 }, opacity: 0.2, duration: 0.6, ease: 'power2.in' }, tGone + 0.3);
+const embers = document.getElementById('embers');
+for (let i = 0; i < 18; i++) {
+  const c = el('circle', { cx: 320 + rand(i + 200) * 1120, cy: 615, r: 3 + rand(i + 230) * 4, fill: i % 3 ? '#E8742A' : '#FFC24A', opacity: 0 }, embers);
+  tl.fromTo(c, { opacity: 1 }, { opacity: 0, attr: { cy: 615 - 120 - rand(i + 260) * 200 }, duration: 0.8, ease: 'power1.out', immediateRender: false }, tGone + 0.2 + rand(i) * 0.3);
+}
+</script>

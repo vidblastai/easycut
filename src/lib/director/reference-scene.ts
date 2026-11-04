@@ -54,6 +54,9 @@ export const REFERENCE_LINES: Partial<Record<SceneLook, string>> = {
   slate: 'Most teams plan the whole year in January. The best teams plan one week at a time, and get faster, calmer and clearer.',
   ledger: 'In 2010, a pizza cost about twelve dollars. Today it costs twenty one. Prices rose seventy five percent, while wages grew only forty.',
   dossier: 'In March, the company lost its biggest client. Two weeks later, the founder resigned, and nobody would say why.',
+  cosmos: 'Every second, your body makes about two million new red blood cells. Each one lives about four months, then gets recycled in your spleen.',
+  chronicle: 'In 1453, after fifty three days of siege, the walls of Constantinople finally fell, and an empire that had lasted a thousand years was gone.',
+  boardroom: 'Every dollar a customer spends goes three ways: fifty cents to suppliers, thirty to staff, and only twenty ends up as profit.',
   iman: 'Rule number three: protect your mornings. The first hour decides your whole day, so spend it on the one task that matters.',
 };
 

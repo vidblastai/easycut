@@ -35,6 +35,9 @@ const GROUNDED = [
   'iman',
   'ledger',
   'dossier',
+  'cosmos',
+  'chronicle',
+  'boardroom',
 ] as const satisfies readonly SceneLook[];
 
 export const LOOKS: Record<SceneLook, Look> = {

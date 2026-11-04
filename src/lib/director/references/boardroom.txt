@@ -1,0 +1,118 @@
+<!-- concept: path, 1920×1080: a business-channel money-flow diagram on a navy broadcast grid — a gold $1 coin arcs from a customer tile into the business; "3 ways" sets above it; three streams pour out to the right, sized fifty, thirty and twenty, each landing on a card as its share is said, with coins running along them; then everything dims but the thin green profit stream, whose card lifts and pulses -->
+<style>
+#ground { position:absolute; inset:0; background: radial-gradient(100% 90% at 45% 30%, #16264A 0%, #0D1830 55%, #070E1E 100%); }
+#grid { position:absolute; inset:0; opacity:.9;
+  background-image: linear-gradient(rgba(120,150,210,.07) 1px, transparent 1px), linear-gradient(90deg, rgba(120,150,210,.07) 1px, transparent 1px);
+  background-size: 60px 60px; -webkit-mask-image: radial-gradient(90% 85% at 50% 45%, #000 40%, transparent 100%); mask-image: radial-gradient(90% 85% at 50% 45%, #000 40%, transparent 100%); }
+#vignette { position:absolute; inset:0; background: radial-gradient(120% 110% at 50% 50%, rgba(0,0,0,0) 55%, rgba(2,5,12,.75) 100%); }
+#cam { position:absolute; inset:0; transform-origin:50% 50%; }
+/* Broadcast furniture: glassy navy tiles with a thin cool rim, Inter type, one colour per stream. */
+.tile { position:absolute; border-radius:28px; background: linear-gradient(180deg, #1A2B4D 0%, #111D36 100%); border:2px solid #2C4170;
+  box-shadow: 0 30px 60px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.08); opacity:0; }
+.cap { position:absolute; left:0; right:0; text-align:center; font-family:'Inter'; font-weight:600; font-size:30px; color:#9FB3D9; }
+#cust { left:160px; top:420px; width:240px; height:240px; }
+#biz { left:640px; top:380px; width:240px; height:320px; box-shadow: 0 30px 60px rgba(0,0,0,.45), 0 0 50px rgba(59,201,255,.18), inset 0 1px 0 rgba(255,255,255,.08); }
+#ways { position:absolute; left:560px; top:250px; width:400px; text-align:center; font-family:'Inter'; font-weight:800; font-size:64px; color:#FFFFFF; opacity:0; }
+#ways i { display:block; width:90px; height:5px; border-radius:3px; background:#3BC9FF; margin:12px auto 0; }
+.card { position:absolute; left:1400px; width:380px; height:116px; border-radius:20px; background: linear-gradient(180deg, #1A2B4D 0%, #111D36 100%);
+  border:2px solid #2C4170; box-shadow: 0 20px 40px rgba(0,0,0,.4); opacity:0; display:flex; align-items:center; justify-content:space-between; padding:0 30px; box-sizing:border-box; }
+.card b { font-family:'Inter'; font-weight:600; font-size:34px; color:#FFFFFF; }
+.card span { font-family:'Inter'; font-weight:800; font-size:56px; }
+#c1 { top:242px; } #c1 span { color:#3BC9FF; }
+#c2 { top:502px; } #c2 span { color:#8C9BFF; }
+#c3 { top:762px; } #c3 span { color:#2ED67A; }
+#coin { position:absolute; left:0; top:0; width:92px; height:92px; margin:-46px 0 0 -46px; border-radius:50%; opacity:0;
+  background: radial-gradient(circle at 35% 30%, #FFE7A0 0%, #F5C043 45%, #C98F12 100%); box-shadow: 0 10px 20px rgba(0,0,0,.4), inset 0 -4px 0 rgba(0,0,0,.15);
+  font-family:'Inter'; font-weight:800; font-size:34px; color:#7A5308; display:flex; align-items:center; justify-content:center; }
+</style>
+<div id="scene">
+  <div id="ground"></div>
+  <div id="grid"></div>
+  <div id="cam">
+    <svg viewBox="0 0 1920 1080" width="1920" height="1080" style="position:absolute; left:0; top:0">
+      <defs>
+        <linearGradient id="g1" x1="0" x2="1"><stop offset="0" stop-color="#3BC9FF" stop-opacity=".25" /><stop offset="1" stop-color="#3BC9FF" stop-opacity=".75" /></linearGradient>
+        <linearGradient id="g2" x1="0" x2="1"><stop offset="0" stop-color="#8C9BFF" stop-opacity=".25" /><stop offset="1" stop-color="#8C9BFF" stop-opacity=".75" /></linearGradient>
+        <linearGradient id="g3" x1="0" x2="1"><stop offset="0" stop-color="#2ED67A" stop-opacity=".25" /><stop offset="1" stop-color="#2ED67A" stop-opacity=".85" /></linearGradient>
+        <clipPath id="k1"><rect id="r1" x="880" y="0" width="0" height="1080" /></clipPath>
+        <clipPath id="k2"><rect id="r2" x="880" y="0" width="0" height="1080" /></clipPath>
+        <clipPath id="k3"><rect id="r3" x="880" y="0" width="0" height="1080" /></clipPath>
+      </defs>
+      <path id="s1" clip-path="url(#k1)" d="" fill="url(#g1)" />
+      <path id="s2" clip-path="url(#k2)" d="" fill="url(#g2)" />
+      <path id="s3" clip-path="url(#k3)" d="" fill="url(#g3)" />
+      <path id="m1" d="" fill="none" /><path id="m2" d="" fill="none" /><path id="m3" d="" fill="none" />
+      <path id="arc" d="M280 540 Q 520 300 760 540" fill="none" />
+      <g id="dots"></g>
+    </svg>
+    <div id="cust" class="tile">
+      <svg viewBox="0 0 240 240" width="240" height="240" style="position:absolute; left:0; top:0"><circle cx="120" cy="92" r="38" fill="#E8EEFA" /><path d="M52 190 Q 60 134 120 132 Q 180 134 188 190 Z" fill="#E8EEFA" /></svg>
+      <div class="cap" style="top:256px">Customer</div>
+    </div>
+    <div id="biz" class="tile">
+      <svg viewBox="0 0 240 320" width="240" height="320" style="position:absolute; left:0; top:0">
+        <path d="M50 120 L120 70 L190 120 Z" fill="#E8EEFA" />
+        <g fill="#E8EEFA"><rect x="62" y="132" width="20" height="100" rx="4" /><rect x="96" y="132" width="20" height="100" rx="4" /><rect x="128" y="132" width="20" height="100" rx="4" /><rect x="162" y="132" width="20" height="100" rx="4" /></g>
+        <rect x="46" y="240" width="148" height="18" rx="4" fill="#E8EEFA" />
+      </svg>
+    </div>
+    <div id="ways"><span>3 ways</span><i></i></div>
+    <div id="c1" class="card"><b>Suppliers</b><span>50¢</span></div>
+    <div id="c2" class="card"><b>Staff</b><span>30¢</span></div>
+    <div id="c3" class="card"><b>Profit</b><span>20¢</span></div>
+    <div id="coin">$1</div>
+  </div>
+  <div id="vignette"></div>
+</div>
+<script>
+// The streams: widths are the shares said (50 / 30 / 20 of a 300px trunk), each landing on its card.
+const X0 = 880, X1 = 1400;
+const band = (y0, y1, t0, t1) => `M${X0} ${y0} C ${X0 + 260} ${y0}, ${X1 - 260} ${t0}, ${X1} ${t0} L ${X1} ${t1} C ${X1 - 260} ${t1}, ${X0 + 260} ${y1}, ${X0} ${y1} Z`;
+const mid = (y0, y1, t0, t1) => { const a = (y0 + y1) / 2, b = (t0 + t1) / 2; return `M${X0} ${a} C ${X0 + 260} ${a}, ${X1 - 260} ${b}, ${X1} ${b}`; };
+const S = [[390, 540, 225, 375], [540, 630, 515, 605], [630, 690, 790, 850]];
+S.forEach((v, i) => { document.getElementById('s' + (i + 1)).setAttribute('d', band(...v)); document.getElementById('m' + (i + 1)).setAttribute('d', mid(...v)); });
+const NS = 'http://www.w3.org/2000/svg';
+// Coins run along each stream once it is open — more on the wide ones.
+function runDots(i, t, count, colour) {
+  const path = document.getElementById('m' + i), L = path.getTotalLength();
+  for (let k = 0; k < count; k++) {
+    const c = document.createElementNS(NS, 'circle'); c.setAttribute('r', 7); c.setAttribute('fill', colour); c.setAttribute('opacity', 0);
+    document.getElementById('dots').appendChild(c);
+    const start = t + k * (1.6 / count);
+    for (let s = 0; s <= 10; s++) {
+      const p = path.getPointAtLength(L * s / 10);
+      if (s === 0) tl.set(c, { attr: { cx: p.x, cy: p.y }, opacity: 0.95 }, start);
+      else tl.to(c, { attr: { cx: p.x, cy: p.y }, duration: 0.07, ease: 'none' }, start + (s - 1) * 0.07);
+    }
+    tl.to(c, { opacity: 0, duration: 0.1 }, start + 0.7);
+  }
+}
+const open = (i, t, card) => {
+  tl.to('#r' + i, { attr: { width: 520 }, duration: 0.7, ease: 'power2.inOut' }, t);
+  tl.fromTo(card, { opacity: 0, x: 40 }, { opacity: 1, x: 0, duration: 0.45, ease: 'power3.out', immediateRender: false }, t + 0.45);
+};
+tl.to('#cam', { scale: 1.05, x: -40, duration: DURATION, ease: 'none' }, 0);
+
+// "Every dollar a customer spends" — the customer and the business arrive; a $1 coin arcs from one to the other.
+tl.fromTo('#cust', { opacity: 0, y: 30 }, { opacity: 1, y: 0, duration: 0.45, ease: 'power3.out', immediateRender: false }, 0.05);
+tl.fromTo('#biz', { opacity: 0, y: 30 }, { opacity: 1, y: 0, duration: 0.45, ease: 'power3.out', immediateRender: false }, 0.25);
+const arc = document.getElementById('arc'), AL = arc.getTotalLength();
+const tCoin = at('customer', 0.64) - 0.1;
+tl.set('#coin', { x: 280, y: 540, opacity: 1, scale: 0.6 }, tCoin);
+tl.to('#coin', { scale: 1, duration: 0.2, ease: 'back.out(2)' }, tCoin);
+for (let s = 1; s <= 12; s++) { const p = arc.getPointAtLength(AL * s / 12); tl.to('#coin', { x: p.x, y: p.y, duration: 0.06, ease: 'none' }, tCoin + 0.2 + (s - 1) * 0.06); }
+tl.to('#coin', { scale: 0.3, opacity: 0, duration: 0.18, ease: 'power2.in' }, tCoin + 0.92);
+tl.to('#biz', { scale: 1.06, duration: 0.12, yoyo: true, repeat: 1 }, tCoin + 0.92);
+
+// "goes three ways" — the count sets above the business.
+tl.fromTo('#ways', { opacity: 0, y: 16 }, { opacity: 1, y: 0, duration: 0.4, ease: 'back.out(2)', immediateRender: false }, at('3', 1.66) - 0.1);
+// "fifty cents to suppliers, thirty to staff, and only twenty…" — each stream opens on its share.
+open(1, at('50', 2.52) - 0.3, '#c1'); runDots(1, at('50', 2.52) + 0.3, 6, '#BDEBFF');
+open(2, at('30', 4.04) - 0.3, '#c2'); runDots(2, at('30', 4.04) + 0.3, 4, '#D2D8FF');
+open(3, at('20', 5.26) - 0.3, '#c3'); runDots(3, at('20', 5.26) + 0.3, 3, '#B6F5D2');
+// "…ends up as profit" — everything else steps back; the thin green stream and its card take the light.
+const tP = at('ends', 5.58);
+tl.to(['#s1', '#s2', '#c1', '#c2'], { opacity: 0.28, duration: 0.4 }, tP);
+tl.to('#c3', { scale: 1.08, borderColor: '#2ED67A', boxShadow: '0 20px 40px rgba(0,0,0,.4), 0 0 46px rgba(46,214,122,.35)', duration: 0.4, ease: 'back.out(1.6)' }, tP + 0.1);
+tl.to('#c3', { boxShadow: '0 20px 40px rgba(0,0,0,.4), 0 0 80px rgba(46,214,122,.55)', duration: 0.3, yoyo: true, repeat: 1 }, at('profit', 6.36));
+</script>

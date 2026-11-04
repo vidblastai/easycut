@@ -15,11 +15,11 @@ const HAS_CLIP = new Set([
   'archive', 'editorial', 'gallery', 'neon', 'studio',
   'blueprint', 'chalk', 'chrome', 'clay', 'diorama', 'glass', 'graph', 'ink', 'mono', 'morph',
   'paper', 'particles', 'pencil', 'pixel', 'poster', 'retro', 'riso', 'science', 'scope', 'sticker',
-  'signal', 'slate', 'iman', 'ledger', 'dossier',
+  'signal', 'slate', 'iman', 'ledger', 'dossier', 'cosmos', 'chronicle', 'boardroom',
 ]);
 
 /** Looks drawn for widescreen long-form: shown whole, letterboxed, rather than cropped to the tile. */
-const WIDE = new Set(['signal', 'slate', 'iman', 'ledger', 'dossier']);
+const WIDE = new Set(['signal', 'slate', 'iman', 'ledger', 'dossier', 'cosmos', 'chronicle', 'boardroom']);
 
 /**
  * Choosing the world the animated scenes are drawn in, before they are drawn.
