@@ -39,7 +39,7 @@ export const INSTRUCTIONS = `EasyCut turns raw talking-head footage into a finis
 
 The usual flow:
 1. list_styles (once) to see edit styles, scene looks and caption looks.
-2. create_project with a public video_url (or upload, then start_edit). Poll get_project every 20–30 s until status is "ready".
+2. create_project with a public video_url (or upload, then start_edit). Call get_project until status is "ready" — it waits for the next step itself, so there is no need to pause between calls.
 3. get_transcript, then set_scenes: pick 1–4 moments (2.5–6 s each) where an animation explains or sells what is said better than the face does.
 4. For each scene: get_scene_brief (it holds the full rules, the look's reference scene and the timed words), write the scene, preview_scene and LOOK at the frames, fix, then submit_scene.
 5. update_edit for captions or style changes if wanted, then render_video and poll get_project until "video" has a link.
@@ -81,7 +81,7 @@ const TOOLS = {
   },
   get_project: {
     description:
-      'Status, progress, the scene slots (with the line spoken over each and whether you have written it), and the finished video link once rendered.',
+      'Status, progress (including its place in line), the scene slots (with the line spoken over each and whether you have written it), and the finished video link once rendered. While the video is processing this waits up to 20 s for the next step before answering, so call it again straight away — no need to pause between calls.',
     input: z.object({ project_id: z.string() }),
     annotations: { readOnlyHint: true, title: 'Get project' },
   },
@@ -242,7 +242,7 @@ async function callTool(name: string, rawArgs: unknown, caller: Caller, bearer: 
       case 'start_edit':
         return result(await startEdit(caller, args.project_id));
       case 'get_project':
-        return result(await getProject(caller, args.project_id));
+        return result(await getProject(caller, args.project_id, 20));
       case 'get_transcript':
         return result(await getTranscript(caller, args.project_id));
       case 'set_scenes': {

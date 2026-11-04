@@ -166,7 +166,7 @@ export async function createProject(caller: Caller, input: CreateInput, bearer: 
     return {
       projectId: project.id,
       status: 'processing',
-      next: 'Call get_project every 20–30 seconds until status is "ready" (usually 1–3 minutes).',
+      next: 'Call get_project until status is "ready" (usually 1–3 minutes once it starts). It waits for the next step itself, so call it again straight away.',
       link: `${caller.origin}/projects/${project.id}`,
     };
   }
@@ -211,9 +211,54 @@ function progressOf(
   return { stage: job.stage, label: job.progressLabel, fraction: job.progress, state: job.status };
 }
 
-export async function getProject(caller: Caller, projectId: string) {
-  const project = await ownProject(caller, projectId);
+/** How many queued jobs will be claimed before this project's, or null when it is not waiting. */
+async function videosAhead(projectId: string): Promise<number | null> {
+  const mine = await db.queueMessage.findFirst({
+    where: { status: 'queued', payload: { contains: projectId } },
+    orderBy: { enqueuedAt: 'desc' },
+  });
+  if (!mine) return null;
+  // The same order the worker claims in: higher priority first, then oldest.
+  return db.queueMessage.count({
+    where: {
+      status: 'queued',
+      OR: [{ priority: { gt: mine.priority } }, { priority: mine.priority, enqueuedAt: { lt: mine.enqueuedAt } }],
+    },
+  });
+}
+
+/** What changes when a video moves on — status, stage, or its place in line. */
+async function progressKey(projectId: string): Promise<string> {
+  const [project, job, ahead] = await Promise.all([
+    db.project.findUnique({ where: { id: projectId }, select: { status: true } }),
+    db.job.findFirst({ where: { projectId }, orderBy: { queuedAt: 'desc' }, select: { stage: true, status: true } }),
+    videosAhead(projectId),
+  ]);
+  return `${project?.status}|${job?.stage}|${job?.status}|${ahead}`;
+}
+
+/**
+ * Waits, up to `seconds`, for a processing video to move on before answering.
+ *
+ * A person's Claude in claude.ai has no way to pause between checks, so a
+ * "call again in 30 seconds" turns into a call every second. Holding the
+ * answer until something changes makes each call worth one step.
+ */
+async function waitForChange(projectId: string, seconds: number): Promise<void> {
+  const deadline = Date.now() + seconds * 1000;
+  const before = await progressKey(projectId);
+  while (Date.now() < deadline) {
+    await new Promise((resolve) => setTimeout(resolve, 2000));
+    if ((await progressKey(projectId)) !== before) return;
+  }
+}
+
+export async function getProject(caller: Caller, projectId: string, waitSeconds = 0) {
+  const owned = await ownProject(caller, projectId);
+  if (waitSeconds > 0 && owned.status === 'processing') await waitForChange(projectId, waitSeconds);
+  const project = waitSeconds > 0 ? await ownProject(caller, projectId) : owned;
   const job = await db.job.findFirst({ where: { projectId }, orderBy: { queuedAt: 'desc' } });
+  const ahead = project.status === 'processing' ? await videosAhead(projectId) : null;
   const render = await db.render.findFirst({ where: { projectId, status: 'done' }, orderBy: { createdAt: 'desc' } });
   const latest = await latestEdl(projectId);
   const submitted = clientScenesOf(project.clientScenesJson);
@@ -222,7 +267,10 @@ export async function getProject(caller: Caller, projectId: string) {
     title: project.title,
     status: project.status,
     error: project.errorMessage,
-    progress: progressOf(project.status, job),
+    progress:
+      ahead !== null
+        ? { stage: 'queued', label: ahead === 0 ? 'Next in line' : `Waiting in line — ${ahead} video${ahead === 1 ? '' : 's'} ahead`, fraction: 0, state: 'queued' }
+        : progressOf(project.status, job),
     durationSec: project.durationSec,
     video: absolute(caller, render?.url ?? project.previewUrl),
     editor: `${caller.origin}/projects/${project.id}`,
@@ -429,7 +477,7 @@ export async function renderVideo(caller: Caller, projectId: string, quality: Re
   return {
     status: 'rendering',
     claudeScenes: pending.length,
-    next: `Call get_project every 30 seconds; "video" holds the link once status is "ready". Scenes take about 30 s each to render, then the video renders.`,
+    next: `Call get_project until status is "ready"; "video" holds the link then. It waits for the next step itself. Scenes take about 30 s each to render, then the video renders.`,
   };
 }
 
