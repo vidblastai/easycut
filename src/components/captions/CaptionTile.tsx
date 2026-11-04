@@ -52,7 +52,7 @@ export function CaptionTile({
   return (
     /* eslint-disable-next-line @next/next/no-img-element */
     <img
-      src={`/captions/${preset}-${mode}.png`}
+      src={`/captions/${preset}-${mode}.jpg`}
       alt=""
       width={640}
       height={480}

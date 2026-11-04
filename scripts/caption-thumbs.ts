@@ -38,6 +38,18 @@ const SHAPES: Shape[] = [
   { id: 'long', width: 1920, height: 1080 },
 ];
 
+/**
+ * Real footage behind the captions, when given — the same still behind every
+ * tile, so the look is still the only thing that varies, but somebody sees
+ * captions on a person rather than on a black card.
+ *   CAPTION_THUMB_SHORT=raw-vertical.mp4 CAPTION_THUMB_LONG=raw-wide.mp4 CAPTION_THUMB_AT=8
+ */
+const FOOTAGE: Partial<Record<Shape['id'], string>> = {
+  short: process.env.CAPTION_THUMB_SHORT,
+  long: process.env.CAPTION_THUMB_LONG,
+};
+const AT = Number(process.env.CAPTION_THUMB_AT ?? 0);
+
 function edlFor(presetId: string, shape: Shape, source: string) {
   const preset = CAPTION_PRESETS.find((p) => p.id === presetId)!;
   const words = SAMPLE.slice(0, Math.max(2, preset.style.maxWordsPerCue));
@@ -47,8 +59,15 @@ function edlFor(presetId: string, shape: Shape, source: string) {
     ...SAMPLE_EDL,
     projectId: `thumb-${presetId}`,
     format: { ...SAMPLE_EDL.format, aspect: shape.id === 'short' ? '9:16' : '16:9', width: shape.width, height: shape.height, fps: 30, durationSec: 2 },
-    source: { ...SAMPLE_EDL.source, url: source, durationSec: 2 },
-    segments: [{ ...SAMPLE_EDL.segments[0], sourceStartSec: 0, sourceEndSec: 2, outStartSec: 0, outEndSec: 2 }],
+    // The footage's real shape: told it was landscape, the renderer crops a
+    // vertical clip down to a sliver of face.
+    source: {
+      ...SAMPLE_EDL.source,
+      url: source,
+      durationSec: FOOTAGE[shape.id] ? AT + 4 : 2,
+      ...(FOOTAGE[shape.id] ? { width: shape.id === 'short' ? 1080 : 1920, height: shape.id === 'short' ? 1920 : 1080 } : {}),
+    },
+    segments: [{ ...SAMPLE_EDL.segments[0], sourceStartSec: FOOTAGE[shape.id] ? AT : 0, sourceEndSec: (FOOTAGE[shape.id] ? AT : 0) + 2, outStartSec: 0, outEndSec: 2 }],
     captions: [
       {
         id: 'cue-0',
@@ -86,10 +105,16 @@ function edlFor(presetId: string, shape: Shape, source: string) {
 async function crop(input: string, output: string, shape: Shape): Promise<void> {
   const filter =
     shape.id === 'short'
-      ? // Centred on the caption, which is at the middle of the frame.
-        `crop=${shape.width}:${Math.round(shape.width * 0.75)}:0:${Math.round((shape.height - shape.width * 0.75) / 2)},scale=640:480`
-      : `scale=640:360,pad=640:480:0:60:color=${PLATE}`;
-  await ffmpeg(['-y', '-i', input, '-vf', filter, output]);
+      ? // Over footage, the window sits a little higher so the face is in it
+        // and the caption lands in its lower half; on the plate, centred.
+        `crop=${shape.width}:${Math.round(shape.width * 0.75)}:0:${FOOTAGE.short ? Math.round(shape.height * 0.25) : Math.round((shape.height - shape.width * 0.75) / 2)},scale=640:480`
+      : FOOTAGE.long
+        ? // Widescreen captions are sized for a 1920 frame; shrunk whole into a
+          // tile they are unreadable. The middle of the frame, where the face
+          // and the caption are, at the tile's own shape.
+          `crop=960:720:480:180,scale=640:480`
+        : `scale=640:360,pad=640:480:0:60:color=${PLATE}`;
+  await ffmpeg(['-y', '-i', input, '-vf', filter, '-q:v', '4', output]);
 }
 
 async function main() {
@@ -120,19 +145,20 @@ async function main() {
 
   for (const preset of CAPTION_PRESETS) {
     const shapes = SHAPES.filter(
-      (s) => preset.bestFor === 'both' || preset.bestFor === s.id,
+      (s) => (preset.bestFor === 'both' || preset.bestFor === s.id) && (!process.env.CAPTION_THUMB_ONLY || process.env.CAPTION_THUMB_ONLY === s.id),
     );
     for (const shape of shapes) {
-      const name = `${preset.id}-${shape.id}.png`;
+      const name = `${preset.id}-${shape.id}.jpg`;
       process.stdout.write(`  ${name.padEnd(28)}`);
       try {
-        const inputProps = { edl: edlFor(preset.id, shape, source), previewAudio: false };
+        const footage = FOOTAGE[shape.id];
+        const inputProps = { edl: edlFor(preset.id, shape, footage ? assets.urlFor(footage)! : source), previewAudio: false };
         const composition = await selectComposition({
           serveUrl, id: 'EasyCutVideo', inputProps,
           browserExecutable: env.render.browserExecutable,
           chromiumOptions: { ignoreCertificateErrors: env.render.ignoreCertificateErrors },
         });
-        const full = join(process.cwd(), 'out', `full-${name}`);
+        const full = join(process.cwd(), 'out', `full-${preset.id}-${shape.id}.png`);
         await renderStill({
           composition,
           serveUrl,

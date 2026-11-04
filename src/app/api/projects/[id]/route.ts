@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { stalledJob, stalledProject } from '@/lib/pipeline/stalled';
-import { videosAhead, waitingLabel, workerIsBusy } from '@/lib/queue/position';
+import { videosAhead, videosInProgress, waitingLabel, workerIsBusy } from '@/lib/queue/position';
 import { db, parseJson } from '@/lib/db';
 import { healEdl } from '@/lib/edl/operations';
 import { readStageLog } from '@/worker/process-project';
@@ -114,7 +114,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
           stage: job.stage,
           stageLabel: STAGE_LABELS[job.stage as Stage] ?? job.stage,
           progress: job.progress,
-          progressLabel: ahead !== null ? waitingLabel(ahead) : job.progressLabel,
+          progressLabel: ahead !== null ? waitingLabel(ahead, ahead === 0 ? await videosInProgress() : 0) : job.progressLabel,
           errorMessage: job.errorMessage,
           startedAt: job.startedAt,
           queuedAt: job.queuedAt,

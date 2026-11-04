@@ -132,6 +132,12 @@ export async function main(): Promise<void> {
         data: { status: 'failed', errorMessage: 'Interrupted by a restart — exporting again', finishedAt: new Date() },
       })
       .catch(() => undefined);
+    // A full edit cut off by the restart was just requeued fresh by
+    // `rescueStaleJobs`; its old queue entry would otherwise read "running" for
+    // good and count as a video being edited in everybody's place-in-line text.
+    await db.queueMessage
+      .updateMany({ where: { status: 'running', type: 'pipeline' }, data: { status: 'dead', lastError: 'requeued after a restart' } })
+      .catch(() => undefined);
     const back = await queue().reclaimInterrupted?.(['rerender', 'client-scenes', 'proxy']).catch(() => 0);
     if (back) console.log(`  requeued ${back} interrupted export(s)`);
   }

@@ -4,6 +4,18 @@ import React from 'react';
 import { clsx } from 'clsx';
 import { LOOK_LIST, type LookMeta } from '@/lib/scenes/looks';
 import { STYLE_GUIDES } from '@/lib/scenes/style-guides';
+import { LoopVideo } from '@/components/media/LoopVideo';
+
+/**
+ * Looks with a real clip in public/looks/: the hand-written reference scene for
+ * that look, rendered — or, for the looks without one, an animated scene the
+ * pipeline actually made in it. The rest keep the drawn plate.
+ */
+const HAS_CLIP = new Set([
+  'archive', 'gallery', 'neon', 'studio',
+  'blueprint', 'chalk', 'chrome', 'clay', 'diorama', 'glass', 'graph', 'ink', 'mono', 'morph',
+  'paper', 'particles', 'pencil', 'pixel', 'poster', 'retro', 'riso', 'science', 'scope', 'sticker',
+]);
 
 /**
  * Choosing the world the animated scenes are drawn in, before they are drawn.
@@ -79,7 +91,7 @@ function Group({
   return (
     <>
       <p className="mt-3.5 text-[11px] font-bold uppercase tracking-[0.12em] text-faint">{label}</p>
-      <ul className="mt-2 grid grid-cols-2 gap-2.5 sm:grid-cols-3">
+      <ul className="mt-2 grid grid-cols-3 gap-2.5 sm:grid-cols-4 lg:grid-cols-5">
         {looks.map((look) => {
           const on = value === look.id;
           return (
@@ -93,10 +105,21 @@ function Group({
                   on ? 'border-violet ring-1 ring-violet/60' : 'border-line hover:border-line2',
                 )}
               >
-                <LookPlate look={look.id} />
-                <span className="block px-3 py-2.5">
-                  <span className="block text-[13px] font-bold">{look.name}</span>
-                  <span className="mt-0.5 block text-[11.5px] leading-snug text-muted">{look.bestFor}</span>
+                {HAS_CLIP.has(look.id) ? (
+                  <span className="block aspect-[9/16] overflow-hidden bg-ink">
+                    <LoopVideo src={`/looks/${look.id}.mp4`} poster={`/looks/${look.id}.jpg`} />
+                  </span>
+                ) : (
+                  <span className="block aspect-[9/16] overflow-hidden">
+                    <LookPlate look={look.id} />
+                  </span>
+                )}
+                <span className="block px-2.5 py-2" title={look.bestFor}>
+                  <span className="flex items-center justify-between gap-1">
+                    <span className="truncate text-[12.5px] font-bold">{look.name}</span>
+                    {on ? <span aria-hidden className="text-[11px] text-violet">✓</span> : null}
+                  </span>
+                  <span className="mt-0.5 line-clamp-2 block text-[11px] leading-snug text-muted">{look.bestFor.split(' — ')[0]}</span>
                 </span>
               </button>
             </li>
@@ -124,7 +147,7 @@ function LookPlate({ look }: { look: string }) {
   const surface = hex(3, '#E8E8EE');
 
   return (
-    <svg viewBox="0 0 160 110" className="block w-full" role="presentation">
+    <svg viewBox="0 0 160 110" preserveAspectRatio="xMidYMid slice" className="block h-full w-full" role="presentation">
       <rect width="160" height="110" fill={guide.ground} />
 
       {/* The full-bleed backdrop every drawing is told to carry, so nothing floats. */}

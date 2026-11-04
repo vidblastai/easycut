@@ -1,7 +1,6 @@
 'use client';
 
 import { useState } from 'react';
-import { BrollArt, Shot } from './Shot';
 
 /**
  * The same thirty seconds, before and after — dragged, not described.
@@ -21,45 +20,25 @@ import { BrollArt, Shot } from './Shot';
  */
 
 export function BeforeAfter() {
-  const [split, setSplit] = useState(38);
+  const [split, setSplit] = useState(50);
 
   return (
     <div className="ba">
       {/* BEFORE — the take as it came off the camera. */}
       <div className="ba-layer ba-before">
-        <Shot />
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/marketing/before-after-before.jpg" alt="The raw take, straight off a phone" className="absolute inset-0 h-full w-full object-cover" draggable={false} />
         <span className="ba-badge ba-badge-before">Straight off the camera</span>
-        <div className="ba-deadair" aria-hidden>
-          <span /><span /><span /><span /><span /><span /><span /><span />
-        </div>
       </div>
 
       {/* AFTER — clipped to the split, so it is revealed rather than faded. */}
       <div className="ba-layer ba-after" style={{ clipPath: `inset(0 0 0 ${split}%)` }}>
-        <Shot graded />
-
-        <div className="ba-broll" aria-hidden>
-          <BrollArt />
-        </div>
-
-        <div className="ba-stat" aria-hidden>
-          <b>41%</b>
-          <span>watched to the end</span>
-        </div>
-
-        <p className="ba-caption" aria-hidden>
-          <span>so</span> <span>nobody</span> <em>finished</em> <span>it</span>
-        </p>
+        {/* The same moment out of EasyCut: the punchy style's cut of that take. */}
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/marketing/before-after-after.jpg" alt="The same moment, edited: captions, a badge and a punch-in" className="absolute inset-0 h-full w-full object-cover" draggable={false} />
 
         <span className="ba-badge ba-badge-after">Cut, captioned, scored</span>
 
-        <div className="ba-music" aria-hidden>
-          <i style={{ animationDelay: '0ms' }} />
-          <i style={{ animationDelay: '120ms' }} />
-          <i style={{ animationDelay: '240ms' }} />
-          <i style={{ animationDelay: '80ms' }} />
-          <i style={{ animationDelay: '300ms' }} />
-        </div>
       </div>
 
       {/* The seam and its handle, positioned from the same one number. */}

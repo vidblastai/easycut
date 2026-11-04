@@ -18,6 +18,12 @@ import { BrollSourcePicker } from '@/components/broll/BrollSourcePicker';
 import { brollShapeFor, priceBrollRate, waitForBrollRate, type BrollSourceRate } from '@/lib/assets/ai-broll';
 import { OverlayPicker } from '@/components/broll/OverlayPicker';
 import { InspoPicker } from '@/components/broll/InspoPicker';
+import { LayerGrid, SettingRow, Thumb, type LayerTile } from '@/components/upload/EditPanel';
+import { OVERLAY_COPY } from '@/lib/edl/overlay-copy';
+import { TRANSITION_COPY } from '@/lib/edl/transition-copy';
+import { STYLE_PRESETS, type StyleId } from '@/lib/styles/presets';
+import { CAPTION_PRESETS } from '@/lib/captions/presets';
+import { LOOK_LIST } from '@/lib/scenes/looks';
 import type { BrollSource } from '@/lib/assets/ai-broll';
 
 /**
@@ -73,15 +79,15 @@ interface FormatOption {
  * to watch a video get scored and then unscore it.
  */
 const LAYERS = [
-  { key: 'captions', label: 'Captions', body: 'Word by word, timed to the syllable.' },
-  { key: 'broll', label: 'B-roll', body: 'Real footage cut in where you name something concrete.' },
-  { key: 'graphics', label: 'Graphics', body: 'Stat cards, lists and icons for the numbers you say.' },
-  { key: 'icons', label: 'Icon cards', body: 'When you name a thing — a deadline, a phone, a banana — a small illustrated icon of it slides up on the word and fades.' },
-  { key: 'scenes', label: 'Animated scenes', body: 'Where you explain something with a shape — steps, a before and after, a figure — the picture becomes a full-screen animation of it.' },
-  { key: 'sfx', label: 'Sound effects', body: 'Whooshes on the cuts, pops on the graphics.' },
-  { key: 'punchIns', label: 'Punch-ins', body: 'A second camera that pushes in on your point.' },
-  { key: 'annotations', label: 'Notes beside you', body: 'Lists you say out loud, ticked off next to your head while you keep talking.' },
-  { key: 'music', label: 'Music', body: 'A bed that ducks under your voice and lifts between lines.' },
+  { key: 'captions', label: 'Captions', body: 'Word by word, timed to the syllable.', image: '/layers/captions.jpg' },
+  { key: 'broll', label: 'B-roll', body: 'Real footage where you name something.', image: '/layers/broll.jpg' },
+  { key: 'graphics', label: 'Graphics', body: 'Cards for the numbers and claims you say.', image: '/layers/graphics.jpg' },
+  { key: 'icons', label: 'Icon cards', body: 'A small icon pops up when you name a thing.' },
+  { key: 'scenes', label: 'Animated scenes', body: 'Full-screen animations of what you explain.', image: '/layers/scenes.jpg' },
+  { key: 'sfx', label: 'Sound effects', body: 'Whooshes on the cuts, pops on the graphics.', image: '/layers/sfx.jpg' },
+  { key: 'punchIns', label: 'Punch-ins', body: 'The camera pushes in on your point.', image: '/layers/punchIns.jpg' },
+  { key: 'annotations', label: 'Notes beside you', body: 'Lists you say, ticked off beside you.', image: '/layers/annotations.jpg' },
+  { key: 'music', label: 'Music', body: 'A bed that ducks under your voice.', image: '/layers/music.jpg' },
 ] as const;
 
 type LayerKey = (typeof LAYERS)[number]['key'];
@@ -223,6 +229,22 @@ export function UploadFlow({
   // the first — what "let the style choose" opens on.
   const declared = choices.find((s) => s.id === chosen)?.brollOverlay ?? 'none';
   const styleOverlay: BrollOverlay = Array.isArray(declared) ? (declared[0] ?? 'none') : declared;
+
+  /*
+   * What the summary rows say: the style's own pick until somebody changes
+   * it, by name, so "Change" is never a guess about what you are getting now.
+   */
+  const [openRow, setOpenRow] = useState<string | null>(null);
+  const chosenStyle = styles.find((s) => s.id === chosen);
+  const stylePreset = STYLE_PRESETS[chosen as StyleId];
+  const captionThumbId = captionPreset ?? stylePreset?.captionPreset ?? 'bold-pop';
+  const captionName = CAPTION_PRESETS.find((p) => p.id === captionThumbId)?.name ?? 'Captions';
+  const lookId = sceneLook ?? stylePreset?.sceneLook ?? 'studio';
+  const lookName = LOOK_LIST.find((l) => l.id === lookId)?.name ?? lookId;
+  const transitionNames =
+    (transitions.length ? transitions : stylePreset?.clipTransitions ?? [])
+      .map((t) => TRANSITION_COPY[t]?.label ?? t)
+      .join(', ') || 'Straight cuts';
 
   /*
    * What the inserts will cost, for THIS file and THIS style.
@@ -550,82 +572,74 @@ export function UploadFlow({
         {question === 'edits' ? (
           <Ask
             title="What goes in it"
-            sub="Everything is on by default. Turn off anything you do not want and it is never made — you are not paying for a layer you then delete."
+            sub="Everything is on. Tap a layer to leave it out — it is never made, so you never pay for it."
           >
-            <div className="grid gap-2 sm:grid-cols-2">
-              {LAYERS.map((layer) => (
-                <button
-                  key={layer.key}
-                  type="button"
-                  data-layer={layer.key}
-                  aria-pressed={layers[layer.key]}
-                  onClick={() => setLayers((now) => ({ ...now, [layer.key]: !now[layer.key] }))}
-                  className={clsx(
-                    'flex items-start gap-3 rounded-xl border px-3.5 py-3 text-left transition-colors',
-                    layers[layer.key]
-                      ? 'border-violet/50 bg-violet-dim'
-                      : 'border-line bg-charcoal text-muted hover:bg-charcoal2',
-                  )}
+            <LayerGrid
+              layers={LAYERS as unknown as LayerTile[]}
+              on={layers}
+              onToggle={(key) => setLayers((now) => ({ ...now, [key]: !now[key as LayerKey] }))}
+            />
+
+            <h3 className="mt-8 text-[13px] font-bold">How it looks</h3>
+            <p className="mt-1 text-[12.5px] text-muted">
+              {chosenStyle?.name ?? 'The style'} picks all of this for you. Change anything you like.
+            </p>
+            <div className="mt-3 grid gap-2.5">
+              {layers.captions ? (
+                <SettingRow
+                  label="Captions"
+                  value={captionName}
+                  hint={captionPreset ? 'Your pick' : `${chosenStyle?.name ?? 'The style'}'s pick`}
+                  thumb={<Thumb src={`/captions/${captionThumbId}-${mode}.jpg`} />}
+                  open={openRow === 'captions'}
+                  onToggle={() => setOpenRow(openRow === 'captions' ? null : 'captions')}
                 >
-                  <span
-                    className={clsx(
-                      'mt-0.5 grid h-4 w-4 flex-none place-items-center rounded-[5px] border transition-colors',
-                      layers[layer.key] ? 'border-violet bg-violet text-ink' : 'border-line',
-                    )}
-                  >
-                    {layers[layer.key] ? <IconCheck className="h-2.5 w-2.5" /> : null}
-                  </span>
-                  <span className="min-w-0">
-                    <span className="block text-[13.5px] font-bold">{layer.label}</span>
-                    <span className="mt-0.5 block text-[12px] leading-snug text-muted">{layer.body}</span>
-                  </span>
-                </button>
-              ))}
+                  <CaptionPicker value={captionPreset} onChange={setCaptionPreset} mode={mode} className="mt-3" />
+                </SettingRow>
+              ) : null}
+
+              {layers.scenes ? (
+                <SettingRow
+                  label="Animated scenes"
+                  value={lookName}
+                  hint={sceneLook ? 'Your pick' : `${chosenStyle?.name ?? 'The style'}'s pick`}
+                  thumb={<Thumb src={`/looks/${lookId}.jpg`} />}
+                  open={openRow === 'scenes'}
+                  onToggle={() => setOpenRow(openRow === 'scenes' ? null : 'scenes')}
+                >
+                  <ScenePicker value={sceneLook} onChange={setSceneLook} className="mt-3" />
+                </SettingRow>
+              ) : null}
+
+              {layers.broll ? (
+                <SettingRow
+                  label="B-roll"
+                  value={brollOffers.find((o) => o.source === brollSource)?.label ?? 'Stock footage'}
+                  hint={`Finish: ${OVERLAY_COPY[brollOverlay ?? styleOverlay]?.label ?? 'None'}`}
+                  thumb={<Thumb src="/layers/broll.jpg" />}
+                  open={openRow === 'broll'}
+                  onToggle={() => setOpenRow(openRow === 'broll' ? null : 'broll')}
+                >
+                  <BrollSourcePicker offers={brollOffers} value={brollSource} onChange={setBrollSource} className="mt-3" />
+                  <OverlayPicker value={brollOverlay} onChange={setBrollOverlay} styleDefault={styleOverlay} className="mt-6" />
+                </SettingRow>
+              ) : null}
+
+              {/* Transitions belong to whatever takes the whole frame, so they
+                  are only a question while B-roll or scenes are going in. */}
+              {layers.broll || layers.scenes ? (
+                <SettingRow
+                  label="Transitions"
+                  value={transitionNames}
+                  hint={transitions.length ? 'Your pick, in this order' : `${chosenStyle?.name ?? 'The style'}'s pick`}
+                  thumb={<Thumb src="/layers/transition.jpg" />}
+                  open={openRow === 'transitions'}
+                  onToggle={() => setOpenRow(openRow === 'transitions' ? null : 'transitions')}
+                >
+                  <TransitionPicker value={transitions} onChange={setTransitions} className="mt-3" />
+                </SettingRow>
+              ) : null}
             </div>
-
-            {/* Only when captions are actually going in. Offering a look for a
-                layer somebody has just switched off is offering a decision
-                that cannot matter. */}
-            {layers.captions ? (
-              <CaptionPicker
-                value={captionPreset}
-                onChange={setCaptionPreset}
-                mode={mode}
-                className="mt-7"
-              />
-            ) : null}
-
-            {/* Same rule: only where the layer is actually going in. */}
-            {layers.scenes ? (
-              <ScenePicker value={sceneLook} onChange={setSceneLook} className="mt-7" />
-            ) : null}
-
-            {/* Only where inserts are actually going in. Offering a source
-                for a layer somebody has just switched off is offering a
-                decision that cannot matter. */}
-            {layers.broll ? (
-              <>
-                <BrollSourcePicker
-                  offers={brollOffers}
-                  value={brollSource}
-                  onChange={setBrollSource}
-                  className="mt-7"
-                />
-                <OverlayPicker
-                  value={brollOverlay}
-                  onChange={setBrollOverlay}
-                  styleDefault={styleOverlay}
-                  className="mt-7"
-                />
-              </>
-            ) : null}
-
-            {/* Transitions belong to whatever takes the whole frame, and both
-                layers that do are optional — so the question only makes sense
-                while at least one of them is still switched on. */}
-            {layers.broll || layers.scenes ? (
-              <TransitionPicker value={transitions} onChange={setTransitions} className="mt-7" />
-            ) : null}
 
             {brollWarning ? (
               <p className="mt-3 rounded-xl border border-warn/40 bg-warn/10 px-3.5 py-2.5 text-[12.5px] leading-relaxed text-chalk/90">
@@ -633,19 +647,19 @@ export function UploadFlow({
               </p>
             ) : null}
 
-            <h3 className="mt-7 text-[13px] font-bold">How finished is the footage?</h3>
+            <h3 className="mt-8 text-[13px] font-bold">How finished is the footage?</h3>
             <div className="mt-2 grid gap-3 sm:grid-cols-2">
               <Choice
                 selected={inputMode === 'raw'}
                 onClick={() => setInputMode('raw')}
                 title="Completely raw"
-                body="Straight off the camera. We'll cut the pauses, the ums, the false starts and the takes you redid."
+                body="Straight off the camera. We cut the pauses, ums, false starts and retakes."
               />
               <Choice
                 selected={inputMode === 'roughcut'}
                 onClick={() => setInputMode('roughcut')}
                 title="Already trimmed"
-                body="You cut your own mistakes. We'll respect your edit and only add the layers on top."
+                body="You cut it yourself. We keep your edit and only add the layers."
               />
             </div>
 

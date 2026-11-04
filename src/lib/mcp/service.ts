@@ -37,7 +37,7 @@ import {
 } from '@/lib/director/hyperframe';
 import { wordsBetween, type ClientScene } from './scenes';
 import { cutOperations, type CutRange } from '@/lib/edl/cut-ranges';
-import { videosAhead, waitingLabel } from '@/lib/queue/position';
+import { videosAhead, videosInProgress, waitingLabel } from '@/lib/queue/position';
 export { wordsBetween, type ClientScene } from './scenes';
 import { allBlank, guideSheet, lintProject, snapshotProject, validateProject, writeProject } from '@/lib/render/hyperframes';
 
@@ -254,7 +254,7 @@ export async function getProject(caller: Caller, projectId: string, waitSeconds 
     error: project.errorMessage,
     progress:
       ahead !== null
-        ? { stage: 'queued', label: waitingLabel(ahead), fraction: 0, state: 'queued' }
+        ? { stage: 'queued', label: waitingLabel(ahead, ahead === 0 ? await videosInProgress() : 0), fraction: 0, state: 'queued' }
         : progressOf(project.status, job),
     durationSec: project.durationSec,
     video: absolute(caller, render?.url ?? project.previewUrl),
