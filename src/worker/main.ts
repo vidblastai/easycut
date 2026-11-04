@@ -124,6 +124,14 @@ export async function main(): Promise<void> {
   // running belonged to the process that died. A pool of workers turns this
   // off (QUEUE_RECLAIM_ON_BOOT=false), since a sibling may still be busy.
   if (env.queue.reclaimOnBoot) {
+    // The file those exports were writing is gone with the old process; the
+    // row would otherwise show a progress bar that never moves again.
+    await db.render
+      .updateMany({
+        where: { status: 'running' },
+        data: { status: 'failed', errorMessage: 'Interrupted by a restart — exporting again', finishedAt: new Date() },
+      })
+      .catch(() => undefined);
     const back = await queue().reclaimInterrupted?.(['rerender', 'client-scenes', 'proxy']).catch(() => 0);
     if (back) console.log(`  requeued ${back} interrupted export(s)`);
   }
