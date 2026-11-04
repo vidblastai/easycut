@@ -52,6 +52,39 @@ const STEPS = [
   },
 ];
 
+/**
+ * The real thing above each step: a raw take going in, three styles to pick
+ * from, and a finished edit coming out — every picture an actual EasyCut
+ * export of the same phone recording.
+ */
+function StepMedia({ step }: { step: string }) {
+  const frame = 'relative h-[168px] overflow-hidden rounded-xl border border-line bg-ink';
+  if (step === '01') {
+    return (
+      <div className={frame}>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/marketing/before-after-before.jpg" alt="A raw talking-head take, straight off a phone" className="h-full w-full object-cover" loading="lazy" />
+        <span className="absolute bottom-2 left-2 rounded-full bg-black/60 px-2.5 py-1 text-[11px] font-semibold text-white">IMG_4836.MOV · 0:41</span>
+      </div>
+    );
+  }
+  if (step === '02') {
+    return (
+      <div className={`${frame} grid grid-cols-3 gap-1.5 p-1.5`}>
+        {['news', 'documentary', 'vlog'].map((id) => (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img key={id} src={`/styles/${id}-short.jpg`} alt={`The ${id} style`} className="h-full w-full rounded-lg object-cover" loading="lazy" />
+        ))}
+      </div>
+    );
+  }
+  return (
+    <div className={frame}>
+      <video src="/styles/clean-short.mp4" poster="/styles/clean-short.jpg" autoPlay muted loop playsInline preload="none" className="h-full w-full object-cover" aria-label="A finished EasyCut edit" />
+    </div>
+  );
+}
+
 export default function HomePage() {
   return (
     <main className="relative overflow-hidden">
@@ -144,8 +177,9 @@ export default function HomePage() {
           </h2>
           <div className="mt-10 grid gap-4 sm:grid-cols-3">
             {STEPS.map((step) => (
-              <div key={step.number} className="card p-6">
-                <div className="text-xs font-bold tracking-[0.18em] text-violet">{step.number}</div>
+              <div key={step.number} className="card overflow-hidden p-6">
+                <StepMedia step={step.number} />
+                <div className="mt-5 text-xs font-bold tracking-[0.18em] text-violet">{step.number}</div>
                 <h3 className="mt-3 text-lg font-bold tracking-[-0.02em]">{step.title}</h3>
                 <p className="mt-2 text-sm leading-relaxed text-muted">{step.body}</p>
               </div>
