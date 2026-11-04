@@ -292,7 +292,8 @@ export async function guideSheet(frames: string[], guides: FrameGuides, out: str
   const chains = frames.map(
     (_, i) =>
       `[${i}:v]scale=360:-2,` +
-      `drawbox=x=0:y=ih*${f(g.captionTop)}:w=iw:h=ih*${f(g.captionBottom - g.captionTop)}:color=0xFF3B30@0.30:t=fill,` +
+      // No caption band for a scene the captions step aside for (the text-led looks).
+      (g.captionBottom > g.captionTop ? `drawbox=x=0:y=ih*${f(g.captionTop)}:w=iw:h=ih*${f(g.captionBottom - g.captionTop)}:color=0xFF3B30@0.30:t=fill,` : '') +
       `drawbox=x=iw*${f(g.notchRight)}:y=ih*${f(g.notchTop)}:w=iw*${f(1 - g.notchRight)}:h=ih*${f(1 - g.notchTop)}:color=black@0.35:t=fill,` +
       `drawbox=x=iw*${f(g.left)}:y=ih*${f(g.top)}:w=iw*${f(g.right - g.left)}:h=ih*${f(g.bottom - g.top)}:color=0x00E5FF@0.9:t=3,` +
       `pad=iw+10:ih:0:0:color=0x1A1A1A[v${i}]`,

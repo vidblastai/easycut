@@ -33,7 +33,11 @@ export function StyleExample({
   // A style made only for one shape still has a real example in that shape;
   // cropped to the tile, the middle of the frame — where the speaker is —
   // shows better than a drawing.
-  const example = styleExample(style, format) ?? styleExample(style, format === 'short' ? 'long' : 'short');
+  const own = styleExample(style, format);
+  const example = own ?? styleExample(style, format === 'short' ? 'long' : 'short');
+  // A widescreen example in a portrait tile is shown whole rather than cropped,
+  // so its words are not cut off at the sides.
+  const letterbox = !own && format === 'short';
   const ref = useRef<HTMLVideoElement | null>(null);
 
   useEffect(() => {
@@ -66,7 +70,7 @@ export function StyleExample({
         playsInline
         preload="none"
         aria-hidden
-        className="absolute inset-0 h-full w-full object-cover"
+        className={clsx('absolute inset-0 h-full w-full', letterbox ? 'object-contain' : 'object-cover')}
       />
     </div>
   );

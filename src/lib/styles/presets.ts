@@ -25,6 +25,8 @@ const PUNCH_SHORT: PunchMove[] = ['speed-ramp', 'snap', 'push', 'bounce'];
  */
 
 export type StyleId =
+  | 'signal'
+  | 'slate'
   | 'breakdown'
   | 'clean'
   | 'punchy'
@@ -770,6 +772,96 @@ const RAW_PRESETS: Record<StyleId, Omit<StylePreset, 'captionStyle'>> = {
     directorNotes:
       'Let moments land. Keep pauses that carry emotion. B-roll should be atmospheric and wide, ' +
       'not literal stock-photo illustration. Almost no on-screen graphics.',
+  },
+
+  signal: {
+    id: 'signal',
+    sceneLook: 'signal',
+    name: 'Signal',
+    tagline: 'Your figures and lists, glowing on screen.',
+    bestFor: 'Long-form business, growth and how-I-did-it videos — every figure, list and framework cuts away to glowing green type.',
+    accent: '#3DFF6E',
+    layout: 'full',
+    formats: ['long', 'short'],
+    captionPreset: 'bold-pop',
+    transitions: ['cut', 'zoom-punch'],
+    clipTransitions: ['zoom', 'fade'],
+    brollOverlay: 'none',
+    musicMood: 'focused electronic',
+    musicGainDb: -26,
+    silencePreset: 'balanced',
+    short: {
+      punchInEverySec: [6, 10],
+      punchInScale: [1.08, 1.16],
+      punchMoves: PUNCH_SHORT,
+      brollEverySec: 20,
+      brollDurationSec: [1.5, 2.5],
+      graphicEverySec: 9,
+      graphicDurationSec: 3,
+      transitionDensity: 0.3,
+      sfxDensity: 0.4,
+    },
+    long: {
+      punchInEverySec: [18, 28],
+      punchInScale: [1.06, 1.12],
+      punchMoves: PUNCH_LONG,
+      brollEverySec: 45,
+      brollDurationSec: [3, 5],
+      graphicEverySec: 30,
+      graphicDurationSec: 4,
+      transitionDensity: 0.2,
+      sfxDensity: 0.25,
+    },
+    overlays: { progressBar: false, lowerThird: false, grain: false, vignette: false },
+    directorNotes:
+      'Cut away to a full-screen text scene for every figure, list, framework, comparison and key claim — in long form ' +
+      'roughly every 20–40 seconds, each one carrying the whole thought (5–15 s). Between them, stay on the speaker. ' +
+      'B-roll only where something concrete is named and no text scene is running.',
+  },
+
+  slate: {
+    id: 'slate',
+    sceneLook: 'slate',
+    name: 'Slate',
+    tagline: 'Clean type that reads along with you.',
+    bestFor: 'Product, strategy and AI talk — sentences, lists and before-and-after comparisons built in clean type on charcoal.',
+    accent: '#F2775F',
+    layout: 'full',
+    formats: ['long', 'short'],
+    captionPreset: 'soft',
+    transitions: ['cut', 'dissolve'],
+    clipTransitions: ['fade', 'zoom'],
+    brollOverlay: 'none',
+    musicMood: 'calm minimal',
+    musicGainDb: -26,
+    silencePreset: 'balanced',
+    short: {
+      punchInEverySec: [6, 10],
+      punchInScale: [1.06, 1.14],
+      punchMoves: PUNCH_SHORT,
+      brollEverySec: 20,
+      brollDurationSec: [1.5, 2.5],
+      graphicEverySec: 9,
+      graphicDurationSec: 3,
+      transitionDensity: 0.25,
+      sfxDensity: 0.35,
+    },
+    long: {
+      punchInEverySec: [18, 28],
+      punchInScale: [1.05, 1.1],
+      punchMoves: PUNCH_LONG,
+      brollEverySec: 45,
+      brollDurationSec: [3, 5],
+      graphicEverySec: 30,
+      graphicDurationSec: 4,
+      transitionDensity: 0.2,
+      sfxDensity: 0.2,
+    },
+    overlays: { progressBar: false, lowerThird: false, grain: false, vignette: false },
+    directorNotes:
+      'Cut away to a full-screen text scene for every key sentence, list, comparison (old way vs new way) and named ' +
+      'product or price — in long form roughly every 20–40 seconds, each one carrying the whole thought (5–15 s). ' +
+      'Between them, stay on the speaker. Calm pacing; B-roll only where something concrete is named.',
   },
 
   explainer: {

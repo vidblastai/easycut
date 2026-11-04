@@ -57,6 +57,17 @@ export interface StyleGuide {
   camera: string;
   /** What this world never contains. Fed to both prompts as negatives. */
   never: string[];
+  /**
+   * Set for the text-led looks, where the type IS the picture: what faces,
+   * sizes and reveals the words get. A look with this set may put words on
+   * screen, and the video's captions step aside while its scene plays.
+   */
+  typography?: string;
+}
+
+/** Looks where words are the picture rather than something to keep off it. */
+export function isTextLook(look: string | null | undefined): boolean {
+  return Boolean(look && STYLE_GUIDES[look as SceneLook]?.typography);
 }
 
 export const STYLE_GUIDES: Record<SceneLook, StyleGuide> = {
@@ -670,6 +681,111 @@ export const STYLE_GUIDES: Record<SceneLook, StyleGuide> = {
       'next in exactly the same place, a single smooth camera push. Tight rhythm on the words. No bounce at all.',
     camera: 'One smooth continuous push; transitions are match-cuts inside the frame, never camera shakes.',
     never: ['glows', 'gradients', 'bouncy easing', 'more than one accent colour', 'textures or grain'],
+  },
+
+  signal: {
+    id: 'signal',
+    ground: '#020A04',
+    palette: [
+      { role: 'signal green — the key figure or word, glowing lines, list numbers', hex: '#3DFF6E' },
+      { role: 'mint white — headline type and icon strokes', hex: '#E8FFEC' },
+      { role: 'mid green — secondary type, borders, dim icons', hex: '#1FAE45' },
+      { role: 'deep green glass — cards, windows and app tiles', hex: '#0B2410' },
+      { role: 'the glow pool behind the subject', hex: '#0E5C1C' },
+      { role: 'near-black green at the edges of the frame', hex: '#010603' },
+    ],
+    accent: '#3DFF6E',
+    rendering:
+      'Glowing type and simple interface pieces floating in a dark green void. The words carry the beat — one big figure, ' +
+      'a short phrase, a numbered list, a section title — and a few simple objects support them: rounded app tiles of dark ' +
+      'green glass with a 1–2px mid-green border and a mint line icon (a cloud, a person, a chart, an envelope, a lock — ' +
+      'whatever the line names) with a tiny label under it; dark glass windows with three dots in the corner and text being ' +
+      'typed inside; a search bar; plain person silhouettes; thin glowing lines (3–4px) that draw on to connect things, form ' +
+      'a triangle, or rise as a graph. Everything bright carries a soft green glow (filter drop-shadow 0 0 18–30px of the ' +
+      'glow colour). Flat pieces with glow, never detailed illustration.',
+    lighting:
+      'One soft radial pool of green behind the subject, falling to near-black at every edge — a heavy vignette is the look. ' +
+      'Nothing is lit from a side; brightness comes from the type and the lines glowing.',
+    ground_rule:
+      'Near-black green, a radial glow pool (~60% of the frame wide) behind wherever the subject is, and a dark vignette. ' +
+      'Optionally a few out-of-focus tiles or lines far behind, blurred 10px+, at low opacity.',
+    motion:
+      'Everything arrives on the word that names it. Figures and phrases TYPE in, letter by letter (about 30 ms a letter) with ' +
+      'a thin blinking cursor while typing, or count up to their value; list lines appear one per spoken item, number first. ' +
+      'Objects come out of the depth: from scale 0.55, filter blur(16px) and opacity 0 to sharp and full size in 0.5–0.7 s ' +
+      '(power3.out). Lines draw on with strokeDashoffset. Leaving, things fly past the camera — scale up to 1.6 with blur ' +
+      'and fade in 0.35 s — or drift out of frame as the camera moves on. A key word can glitch-decode in: its letters cycle ' +
+      'through random characters for 0.3 s before settling. Nothing pops with a bounce; nothing cuts.',
+    camera:
+      'One continuous virtual camera over a canvas bigger than the frame: a slow constant push (scale 1 → 1.06 across the ' +
+      'scene) and, when the line moves to its next idea, a smooth pan (0.8–1.1 s, power2.inOut) down or across to the next ' +
+      'group of elements, which were waiting just out of frame. Elements nearest the camera sit slightly blurred (depth of field).',
+    never: [
+      'photographs or detailed illustration',
+      'warm colours or any second hue family beyond the greens and mint white',
+      'a flat background without the glow pool and vignette',
+      'more than about 12 words on screen at once, or any paragraph',
+      'hard cuts inside the scene',
+      'bouncy or elastic easing',
+      'emoji',
+    ],
+    typography:
+      'Type is the subject. Headlines and figures: Montserrat 800 (or Poppins 700), mint white, with the ONE key figure or ' +
+      'word in signal green, 110–200px in a 1920-wide frame (scale by frame width), letter-spacing −1px, a soft glow ' +
+      '(text-shadow 0 0 28px rgba(61,255,110,.45)). Section titles may be italic. Small labels and list lines: Poppins ' +
+      '500–600, 36–48px, mint white at 85%, numbers in signal green. Only words that are actually said in the line, or the ' +
+      'figure the line states — never invented copy — and never more than about 12 words visible at once.',
+  },
+
+  slate: {
+    id: 'slate',
+    ground: '#151517',
+    palette: [
+      { role: 'bright text — words once they are spoken', hex: '#F2F2F3' },
+      { role: 'dim text — words not yet spoken, placeholders', hex: '#5E5E66' },
+      { role: 'coral — the negative, the old way, the problem, the key term', hex: '#F2775F' },
+      { role: 'green — the positive, the new way, list bullets and ticks', hex: '#3EE07A' },
+      { role: 'card surface', hex: '#202024' },
+      { role: 'card and pill borders, dotted connectors', hex: '#34343B' },
+    ],
+    accent: '#F2775F',
+    rendering:
+      'Clean product-interface typography on charcoal: a sentence that lights up word by word, bullet lists with small green ' +
+      'play-triangle bullets, rows of rounded pill boxes joined by dotted connector lines, icon cards (a 160–220px rounded ' +
+      'square card with a simple solid icon and a two-line label under it), quote marks in coral around a short quote, and ' +
+      'small UI mockups the line describes — chat bubbles, a pricing card with a button and a cursor that clicks it, a ' +
+      'counter, a toggle, a progress bar. Flat, crisp, generous spacing; cards have 1px borders, 14–20px corners and a soft ' +
+      'shadow (0 20px 40px rgba(0,0,0,.35)). Coral marks the problem or the key term, green marks the answer. A struck ' +
+      'option gets a red-coral ✕ stamped over it.',
+    lighting:
+      'A soft lift in the middle of the charcoal and a dark vignette at the edges; no coloured light, no glow except a faint ' +
+      'one on green or coral elements.',
+    ground_rule: 'Charcoal with a gentle radial lift behind the subject and a vignette, plus very faint film grain. Never flat black.',
+    motion:
+      'Words light up the moment they are spoken: a sentence or list line is laid out in dim text first (or appears word by ' +
+      'word), and each word goes from dim to bright white on its own timing (0.15 s), so the screen reads along with the ' +
+      'voice. List lines and pills fill in one per spoken item; a dotted connector draws between pills as the next one ' +
+      'fills. Cards rise 16px while fading in (0.4 s, power2.out). Comparisons are swaps: the old card is stamped with ✕ ' +
+      'and slides aside as the new one rises in. Exits are a quick dissolve with a 0.2 s glitch (horizontal slice offsets) ' +
+      'or a blur-out. Calm and exact — no bounce.',
+    camera:
+      'Locked, with a very slow push (scale 1 → 1.04 across the scene). When the line moves on, the old group dissolves and ' +
+      'the next builds in the same place; no big camera moves.',
+    never: [
+      'photographs or detailed illustration',
+      'bright or white backgrounds',
+      'more than two accent colours (coral and green) in one scene',
+      'more than about 12 words on screen at once, or any paragraph',
+      'neon glow on everything',
+      'bouncy or elastic easing',
+      'emoji',
+    ],
+    typography:
+      'Type is the subject. Poppins (500 for text, 600 for emphasis) — sentence case, never all caps except a short label. ' +
+      'Sentences and quotes 56–80px in a 1920-wide frame (scale by frame width); list lines and labels 32–44px; one hero ' +
+      'figure can go to 140px. Dim words #5E5E66, spoken words #F2F2F3, the key term in coral or green. Only words that ' +
+      'are actually said in the line, or the figure it states — never invented copy — and never more than about 12 words ' +
+      'visible at once.',
   },
 
   particles: {

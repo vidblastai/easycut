@@ -38,6 +38,7 @@ import {
 import { wordsBetween, type ClientScene } from './scenes';
 import { cutOperations, type CutRange } from '@/lib/edl/cut-ranges';
 import { cleanSpellings } from '@/lib/transcribe/spellings';
+import { isTextLook } from '@/lib/scenes/style-guides';
 import { videosAhead, videosInProgress, waitingLabel } from '@/lib/queue/position';
 export { wordsBetween, type ClientScene } from './scenes';
 import { allBlank, guideSheet, lintProject, snapshotProject, validateProject, writeProject } from '@/lib/render/hyperframes';
@@ -319,7 +320,10 @@ export async function setScenes(caller: Caller, projectId: string, moments: Scen
   for (const [i, moment] of sorted.entries()) {
     if (!(moment.endSec > moment.startSec)) throw new McpUserError(`Scene ${i + 1}: endSec must be after startSec.`);
     if (moment.startSec < 0 || moment.endSec > duration + 0.05) throw new McpUserError(`Scene ${i + 1} is outside the video (0–${duration.toFixed(1)} s).`);
-    if (moment.endSec - moment.startSec < 1.5 || moment.endSec - moment.startSec > 8) throw new McpUserError(`Scene ${i + 1} should last 1.5–8 seconds.`);
+    // Text-led looks (signal, slate) are long-form cutaways that carry a whole
+    // thought — a list, a comparison — so they may run as long as the thought.
+    const longest = isTextLook(moment.look ?? project.sceneLook) ? 20 : 8;
+    if (moment.endSec - moment.startSec < 1.5 || moment.endSec - moment.startSec > longest) throw new McpUserError(`Scene ${i + 1} should last 1.5–${longest} seconds${longest === 8 ? ' (up to 20 in the signal and slate looks)' : ''}.`);
     if (i && moment.startSec < sorted[i - 1].endSec) throw new McpUserError(`Scenes ${i} and ${i + 1} overlap.`);
     if (moment.look && !(SCENE_LOOKS as readonly string[]).includes(moment.look)) throw new McpUserError(`Unknown look "${moment.look}".`);
   }
@@ -394,13 +398,13 @@ function compositionOf(text: string) {
 
 /** Renders four stills of a scene and runs every check the pipeline runs. */
 export async function previewScene(caller: Caller, projectId: string, sceneId: string, composition: string, look?: string) {
-  const { frame } = await sceneContext(caller, projectId, sceneId, look);
+  const { frame, request } = await sceneContext(caller, projectId, sceneId, look);
   const parts = compositionOf(composition);
   const dir = join(tmpdir(), 'easycut-mcp', `${projectId}-${sceneId}-${randomUUID().slice(0, 8)}`);
   try {
     await writeProject(dir, buildCompositionHtml(parts, frame));
     const [lint, thrown] = await Promise.all([lintProject(dir).catch(() => []), validateProject(dir).catch(() => [])]);
-    const faults = [...auditComposition(parts), ...thrown, ...lint];
+    const faults = [...auditComposition(parts, { allowText: isTextLook(request.look) }), ...thrown, ...lint];
     const times = reviewTimes(frame.durationSec);
     let image: string | null = null;
     let blank = false;
@@ -409,7 +413,9 @@ export async function previewScene(caller: Caller, projectId: string, sceneId: s
       const shot = await snapshotProject(dir, times, join(dir, 'review'));
       // The frames with the caption band and the safe area drawn on, so the
       // writer sees what the platform will cover; the plain sheet if that fails.
-      const marked = await guideSheet(shot.frames, frameGuides(frame.width, frame.height), join(dir, 'guides.jpg'));
+      const base = frameGuides(frame.width, frame.height);
+      const guides = isTextLook(request.look) ? { ...base, captionBottom: base.captionTop as number } : base;
+      const marked = await guideSheet(shot.frames, guides, join(dir, 'guides.jpg'));
       image = (await readFile(marked ?? shot.sheet)).toString('base64');
       guided = marked !== null;
       blank = await allBlank(shot.frames);
@@ -422,6 +428,7 @@ export async function previewScene(caller: Caller, projectId: string, sceneId: s
       ok: !faults.some(isFatal),
       image,
       guided,
+      textLook: isTextLook(request.look),
     };
   } finally {
     await rm(dir, { recursive: true, force: true }).catch(() => undefined);
@@ -432,7 +439,7 @@ export async function previewScene(caller: Caller, projectId: string, sceneId: s
 export async function submitScene(caller: Caller, projectId: string, sceneId: string, composition: string, look?: string) {
   const { project, request } = await sceneContext(caller, projectId, sceneId, look);
   const parts = compositionOf(composition);
-  const fatal = auditComposition(parts).filter(isFatal);
+  const fatal = auditComposition(parts, { allowText: isTextLook(request.look) }).filter(isFatal);
   if (fatal.length) throw new McpUserError(`Not saved — fix these first:\n- ${fatal.join('\n- ')}`);
   const stored = clientScenesOf(project.clientScenesJson);
   stored[sceneId] = { html: composition, look: request.look, concept: parts.concept ?? '', submittedAt: new Date().toISOString() };

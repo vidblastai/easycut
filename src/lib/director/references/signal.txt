@@ -1,0 +1,123 @@
+<!-- concept: path, 1920×1080: the camera travels down one tall canvas — "3 things" types in big; it pans down to a mail tile rising out of the depth beside "50,000 readers"; it pans again to a numbered list that builds one line per spoken item, the last one lighting up on "everyone" -->
+<style>
+#glow { position:absolute; left:50%; top:50%; width:1500px; height:1100px; margin:-550px 0 0 -750px; border-radius:50%;
+  background: radial-gradient(closest-side, rgba(14,92,28,.95), rgba(8,44,15,.6) 55%, rgba(2,10,4,0) 100%); }
+#vignette { position:absolute; inset:0; background: radial-gradient(120% 100% at 50% 50%, rgba(0,0,0,0) 45%, rgba(1,6,3,.92) 100%); }
+#cam { position:absolute; inset:0; transform-origin: 50% 50%; }
+#world, #far { position:absolute; left:0; top:0; width:1920px; height:3240px; }
+.far { position:absolute; width:150px; height:150px; border-radius:30px; background:#0B2410; border:2px solid #1FAE45; opacity:.22; filter: blur(12px); }
+.big { position:absolute; left:0; width:1920px; text-align:center; font-family:'Montserrat'; font-weight:800; letter-spacing:-2px;
+  color:#E8FFEC; text-shadow: 0 0 28px rgba(61,255,110,.45); }
+.green { color:#3DFF6E; }
+.ch { opacity:0; }
+.cursor { display:inline-block; width:10px; height:.8em; margin-left:10px; background:#3DFF6E; vertical-align:-.05em; opacity:0; box-shadow:0 0 18px #3DFF6E; }
+#tile { position:absolute; left:470px; top:1340px; width:300px; height:300px; border-radius:64px; background:#0B2410; border:3px solid #1FAE45;
+  box-shadow: 0 0 60px rgba(61,255,110,.35), inset 0 0 40px rgba(61,255,110,.12); opacity:0; }
+#tilelabel { position:absolute; left:470px; top:1662px; width:300px; text-align:center; font-family:'Poppins'; font-weight:500; font-size:30px; color:#E8FFEC; opacity:0; }
+#count { position:absolute; left:860px; top:1360px; font-family:'Montserrat'; font-weight:800; font-size:200px; letter-spacing:-4px; color:#3DFF6E; text-shadow:0 0 34px rgba(61,255,110,.55); }
+#readers { position:absolute; left:870px; top:1600px; font-family:'Poppins'; font-weight:600; font-size:72px; color:#E8FFEC; opacity:0; }
+.row { position:absolute; left:470px; font-family:'Poppins'; font-weight:600; font-size:86px; color:#E8FFEC; opacity:0; white-space:nowrap; }
+.row b { font-family:'Montserrat'; font-weight:800; color:#3DFF6E; margin-right:44px; text-shadow:0 0 22px rgba(61,255,110,.5); }
+#tick { position:absolute; left:1530px; top:2760px; width:92px; height:92px; opacity:0; }
+</style>
+<div id="scene">
+  <div id="glow"></div>
+  <div id="cam">
+    <div id="far">
+      <div class="far" style="left:180px; top:200px"></div>
+      <div class="far" style="left:1610px; top:720px"></div>
+      <div class="far" style="left:260px; top:1900px"></div>
+      <div class="far" style="left:1580px; top:2350px"></div>
+    </div>
+    <div id="world">
+      <div id="title" class="big" style="top:370px; font-size:240px;"><span class="green">3</span> things</div>
+      <div id="tile">
+        <svg viewBox="0 0 300 300" width="300" height="300">
+          <rect x="62" y="92" width="176" height="122" rx="16" fill="none" stroke="#E8FFEC" stroke-width="12" />
+          <path d="M66 100 L150 168 L234 100" fill="none" stroke="#E8FFEC" stroke-width="12" stroke-linejoin="round" stroke-linecap="round" />
+          <circle cx="232" cy="92" r="26" fill="#3DFF6E" />
+        </svg>
+      </div>
+      <div id="tilelabel">Newsletter</div>
+      <div id="count">50,000</div>
+      <div id="readers">readers</div>
+      <div id="r1" class="row" style="top:2460px"><b>1</b>One topic</div>
+      <div id="r2" class="row" style="top:2620px"><b>2</b>One email a week</div>
+      <div id="r3" class="row" style="top:2780px"><b>3</b>Replying to everyone</div>
+      <svg id="tick" viewBox="0 0 92 92"><circle cx="46" cy="46" r="40" fill="none" stroke="#3DFF6E" stroke-width="8"/><path id="tickpath" d="M27 47 L41 61 L66 33" fill="none" stroke="#3DFF6E" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </div>
+  </div>
+  <div id="vignette"></div>
+</div>
+<script>
+// Split a line into one span per letter so it can type in; the green part keeps its colour.
+function lettersOf(el) {
+  const out = [];
+  const walk = (node) => {
+    [...node.childNodes].forEach((child) => {
+      if (child.nodeType === 3) {
+        const frag = document.createDocumentFragment();
+        [...child.textContent].forEach((c) => { const s = document.createElement('span'); s.className = 'ch'; s.textContent = c; frag.appendChild(s); out.push(s); });
+        node.replaceChild(frag, child);
+      } else walk(child);
+    });
+  };
+  walk(el);
+  return out;
+}
+function typeIn(el, t, per) {
+  const letters = lettersOf(el);
+  letters.forEach((s, i) => tl.set(s, { opacity: 1 }, t + i * per));
+  return t + letters.length * per;
+}
+// Something that comes out of the depth: small, blurred and dark to sharp.
+function fromDepth(sel, t, d) {
+  tl.fromTo(sel, { opacity: 0, scale: 0.55, filter: 'blur(16px)' }, { opacity: 1, scale: 1, filter: 'blur(0px)', duration: d || 0.6, ease: 'power3.out', immediateRender: false }, t);
+}
+// The camera: a slow constant push, and pans down the canvas as the line moves on.
+tl.to('#cam', { scale: 1.05, duration: DURATION, ease: 'none' }, 0);
+tl.to('#glow', { scale: 1.08, opacity: 0.9, duration: DURATION / 2, yoyo: true, repeat: 1, ease: 'sine.inOut' }, 0);
+const pan = (y, t) => {
+  tl.to('#world', { y: -y, duration: 0.95, ease: 'power2.inOut' }, t);
+  tl.to('#far', { y: -y * 0.5, duration: 0.95, ease: 'power2.inOut' }, t);
+};
+
+// "Three things" — the title types in, with a cursor while it types.
+const title = document.getElementById('title');
+const cursor = document.createElement('span'); cursor.className = 'cursor';
+const end1 = typeIn(title, 0.05, 0.05);
+title.appendChild(cursor);
+tl.set(cursor, { opacity: 1 }, 0.05);
+tl.to(cursor, { opacity: 0, duration: 0.08, repeat: 3, yoyo: true }, end1);
+tl.to('#title', { scale: 1.04, duration: 0.5, ease: 'power2.out' }, end1);
+
+// "grew our newsletter" — pan down; the mail tile rises out of the depth.
+pan(1080, at('grew', 0.46) - 0.05);
+fromDepth('#tile', at('newsletter', 1.08) - 0.25, 0.65);
+tl.to('#tilelabel', { opacity: 0.85, duration: 0.3 }, at('newsletter', 1.08) + 0.2);
+tl.to('#tile', { boxShadow: '0 0 90px rgba(61,255,110,.55), inset 0 0 40px rgba(61,255,110,.2)', duration: 0.4, yoyo: true, repeat: 1 }, at('50', 1.82));
+
+// "to fifty thousand readers" — the figure types in, then the word under it.
+typeIn(document.getElementById('count'), at('50', 1.82) - 0.1, 0.07);
+tl.fromTo('#readers', { opacity: 0, y: 20 }, { opacity: 1, y: 0, duration: 0.4, ease: 'power2.out', immediateRender: false }, at('readers', 2.58) - 0.05);
+
+// "one topic, one email a week, and replying to everyone" — pan down; one line per item.
+pan(2160, at('readers', 2.58) + 0.35);
+const row = (sel, t) => {
+  tl.fromTo(sel, { opacity: 0, x: -40, filter: 'blur(10px)' }, { opacity: 1, x: 0, filter: 'blur(0px)', duration: 0.45, ease: 'power3.out', immediateRender: false }, t);
+};
+row('#r1', at('topic', 3.4) - 0.2);
+row('#r2', at('email', 4.26) - 0.15);
+row('#r3', at('replying', 5.4) - 0.1);
+// The earlier lines settle back as each new one arrives.
+tl.to('#r1', { opacity: 0.45, duration: 0.3 }, at('email', 4.26));
+tl.to('#r2', { opacity: 0.45, duration: 0.3 }, at('replying', 5.4));
+// "everyone" — the last line lights up and a check draws beside it.
+const tp = document.getElementById('tickpath');
+tp.setAttribute('pathLength', '1'); tp.setAttribute('stroke-dasharray', '1'); tp.setAttribute('stroke-dashoffset', '1');
+tl.set('#tick', { opacity: 1 }, at('everyone', 6.0) - 0.05);
+tl.fromTo('#tick', { scale: 0.6 }, { scale: 1, duration: 0.35, ease: 'power3.out', immediateRender: false }, at('everyone', 6.0) - 0.05);
+tl.to('#tickpath', { strokeDashoffset: 0, duration: 0.3, ease: 'power2.out' }, at('everyone', 6.0) + 0.05);
+tl.to('#r3', { color: '#3DFF6E', textShadow: '0 0 30px rgba(61,255,110,.6)', duration: 0.35 }, at('everyone', 6.0));
+tl.to(['#r1', '#r2'], { opacity: 0.85, duration: 0.4 }, at('everyone', 6.0) + 0.2);
+</script>

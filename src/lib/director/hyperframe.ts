@@ -3,7 +3,7 @@ import { join } from 'node:path';
 import { createRequire } from 'node:module';
 import { env } from '@/lib/config/env';
 import type { SceneLook } from '@/lib/edl/types';
-import { guideAsPrompt, styleGuideFor } from '@/lib/scenes/style-guides';
+import { guideAsPrompt, isTextLook, styleGuideFor } from '@/lib/scenes/style-guides';
 import { completionCostUsd, composerProviders as scenesRoute, llmFetch, routedModel, type ChatProvider } from '@/lib/llm/chat';
 import { layoutReferenceFor, referenceFor, suggestLayout, type Layout } from '@/lib/director/reference-scene';
 
@@ -149,17 +149,37 @@ export function safeZone(width: number, height: number): SafeZone {
  * The prompt. Written in numbers wherever there is one, because "smooth" and
  * "punchy" give a different scene every call.
  */
+/**
+ * What changes for the text-led looks (see `typography` in style-guides.ts):
+ * the line is SHOWN in words and simple interface pieces, the way a good
+ * long-form explainer cuts away to its figures, lists and comparisons.
+ */
+const TEXT_LOOK_PRINCIPLE = `## Show what is being said — in words
+
+This is a text-led look: the shot puts the line on screen the way a well-edited long-form video cuts away to it. Take what the sentence actually contains and set it as type that arrives exactly as it is spoken:
+- a figure ("$35 million", "3x cheaper", "2 hours") becomes one huge number that types or counts in;
+- a list ("how you build, how you price, how many people you hire") becomes lines that appear one per spoken item;
+- a comparison or shift ("not for humans — for agents") becomes two cards: the old one struck out, the new one rising in;
+- a chain of qualities ("better, faster, smarter") becomes pills joined by dotted lines that fill in word by word;
+- a quote or a strong sentence becomes the sentence itself, each word lighting up on its own timing;
+- a named thing (an email, a price, a search, a tool) becomes one simple interface piece doing exactly that — the email typing itself, the price card with a cursor clicking it.
+Use only words that are in the line (shortened, never invented) and the figures it states. Never more than about 12 words visible at once; when the line moves on, the old words leave and the next idea arrives. Topic-free: the look decides how it is set and how it moves, the line decides what it says.
+
+`;
+
 export function systemPrompt(width: number, height: number, durationSec: number, look: SceneLook = 'science'): string {
   const dur = durationSec.toFixed(2);
   const reference = referenceFor(look);
   const sameWorld = reference.look === look;
   const z = safeZone(width, height);
   const midX = Math.round((z.left + z.right) / 2), midY = Math.round((z.top + z.bottom) / 2);
+  const textLook = isTextLook(look);
+  const guide = styleGuideFor(look);
   return `You make one shot of a video as an HTML motion graphic: the picture AND how it moves, beat by beat.
 
-It plays full-screen on a phone for ${dur} seconds while someone talks over it. It IS the shot — no footage behind it — so it has to carry the frame on its own and it must never sit still.
+It plays full-screen on ${height > width ? 'a phone' : 'a screen, inside a long-form video'} for ${dur} seconds while someone talks over it. It IS the shot — no footage behind it — so it has to carry the frame on its own and it must never sit still.
 
-## Draw what is being said
+${textLook ? TEXT_LOOK_PRINCIPLE : ''}## ${textLook ? 'The objects beside the words' : 'Draw what is being said'}
 
 Every object on screen is something the line is literally about, or a picture a viewer would read instantly as that thing. "Put in your footage and it does everything else" is one film clip that gets snipped into pieces that snap into a neat strip and light up — not a planet, a rocket or a galaxy. The world below decides HOW things are drawn (shapes, colours, light, motion), never WHAT is drawn: it has no subjects of its own. No decorative props that the line does not mention — no planets, stars, moons, rockets, cells, atoms or creatures unless the words are about them. If you would have to explain why an object is there, it does not belong.
 
@@ -204,12 +224,13 @@ The page around them is provided. The frame is ${width}×${height} px. Inside yo
 - **One background that fills the whole frame, edge to edge**: the world's ground with a soft pool of light behind the subject. It is the only background there is, and it stays quiet.
 - **The safe area is a hard edge.** Everything that matters sits inside x ${z.left}–${z.right}, y ${z.top}–${z.bottom}, and below y ${z.notchTop} only up to x ${z.notchRight} — the platform's account row, captions and like/share buttons cover the rest, which is backdrop only. The safe area's centre is (${midX}, ${midY}). How much of it you use is your decision from the layout: whatever makes the idea clearest.
 - **Readable on a phone and in focus.** Nothing important smaller than about a fifth of the frame's width. The eye always knows where to look: the thing being named is the biggest, brightest or moving one; what came before settles back.
-- **Few objects, richly drawn.** Space around each item, but each item is richly drawn: base colour, a darker shadow side, a light rim, inner parts (a brain has its folds and a highlight; a film clip has sprocket holes, frames, a sheen). A flat circle with an icon on it is a placeholder, not an illustration. A later beat often multiplies the subject into a system that fills the safe area — one brain becomes a web of seven linked neurons. 20 to 120 shapes in all.
-- **No screens.** No phone frames, monitors, app windows, dashboards, toolbars or interface mock-ups — a full-size device on screen is an empty box with things at its edges. Software is shown by what it does, as an object: a clip, a play button, scissors, a waveform, a check mark.
+${textLook ? `- **Few elements, crisp.** One idea per beat: the words, and at most three or four simple pieces that support them. Generous space; nothing decorative.` : `- **Few objects, richly drawn.** Space around each item, but each item is richly drawn: base colour, a darker shadow side, a light rim, inner parts (a brain has its folds and a highlight; a film clip has sprocket holes, frames, a sheen). A flat circle with an icon on it is a placeholder, not an illustration. A later beat often multiplies the subject into a system that fills the safe area — one brain becomes a web of seven linked neurons. 20 to 120 shapes in all.`}
+${textLook ? `- **Simple interface pieces are part of this world** — a dark card, a window with three dots, a chat bubble, a pricing card, a search bar, a toggle — drawn flat and simple, holding the words the line says. Never a full device frame or a busy dashboard.` : `- **No screens.** No phone frames, monitors, app windows, dashboards, toolbars or interface mock-ups — a full-size device on screen is an empty box with things at its edges. Software is shown by what it does, as an object: a clip, a play button, scissors, a waveform, a check mark.`}
 - Depth comes from the backdrop: a couple of dim, soft, blurred shapes far behind, moving slower than the subject when the camera moves.
-- **No text of any kind.** No letters, numbers, labels or words anywhere — not in an element, not in an SVG. The video's captions are the only words on screen and they are drawn over your shot afterwards.
-- **The video's captions are drawn over your shot at about y ${Math.round(height * SCENE_CAPTION_BAND.top)}–${Math.round(height * SCENE_CAPTION_BAND.bottom)}.** Things may run behind them, but do not put the one detail that matters right there at the moment its word is said.
-- No \`<img>\`, \`<image>\`, \`<video>\`, \`<audio>\`, \`<iframe>\`, \`<link>\`, \`<text>\`, no \`url(http…)\`, no \`@import\`, no web fonts. Nothing may load from anywhere.
+${textLook ? `- **Words are the picture here.** ${guide.typography ?? ''}
+- Text lives in HTML elements (div, span) — never SVG \`<text>\`. Typing and word-by-word reveals are built from one \`<span>\` per word or per letter, revealed on the word's time from \`at()\`.` : `- **No text of any kind.** No letters, numbers, labels or words anywhere — not in an element, not in an SVG. The video's captions are the only words on screen and they are drawn over your shot afterwards.`}
+${textLook ? `- **The video's captions are switched off while this shot plays** — your words are the only words on screen, so they must carry the line on their own.` : `- **The video's captions are drawn over your shot at about y ${Math.round(height * SCENE_CAPTION_BAND.top)}–${Math.round(height * SCENE_CAPTION_BAND.bottom)}.** Things may run behind them, but do not put the one detail that matters right there at the moment its word is said.`}
+- No \`<img>\`, \`<image>\`, \`<video>\`, \`<audio>\`, \`<iframe>\`, \`<link>\`, \`<text>\`, no \`url(http…)\`, no \`@import\`, no web fonts. Nothing may load from anywhere.${textLook ? ' For type, name the family in CSS — Montserrat, Poppins or Inter — and it is provided for you.' : ''}
 
 ## The motion
 
@@ -253,7 +274,7 @@ No \`Math.random\`, \`Date\`, \`setTimeout\`, \`setInterval\`, \`requestAnimatio
 
 ## The bar
 
-This is a finished scene that meets the bar, written for the line "${reference.line}"${sameWorld ? ' in the same world you are drawing in. Match its technique and its craft' : ' in another world. Match its craft'}: one big, richly drawn subject in the middle landing on its word, the next beat made out of the last one, a payoff at the end, and something alive in every frame. Never copy its subject or its layout — yours come from your line.
+This is a finished scene that meets the bar, written for the line "${reference.line}"${sameWorld ? ' in the same world you are drawing in. Match its technique and its craft' : ' in another world. Match its craft'}: ${textLook ? 'the line set as type that arrives exactly on its words, one idea per beat, the camera or a clean dissolve carrying you from one beat to the next, a payoff on the last word, and something alive in every frame' : 'one big, richly drawn subject in the middle landing on its word, the next beat made out of the last one, a payoff at the end, and something alive in every frame'}. Never copy its subject or its layout — yours come from your line.${textLook && width < height ? ' It is drawn for a 1920×1080 frame; yours is ' + width + '×' + height + ', so stack its beats vertically and size the type against your frame width.' : ''}
 
 ${reference.scene}`;
 }
@@ -284,22 +305,31 @@ ${example.scene}
 `;
 }
 
+/** For the text-led looks: how to place the beats, instead of a drawn layout example. */
+function textLayoutHint(width: number, height: number): string {
+  return width >= height
+    ? `Layout: widescreen. Pick the beats from what the line contains — a figure, a list, a comparison, a chain of qualities, a sentence, a named thing — usually two or three in a row. Each beat fills the middle of the frame with generous margins; the next one arrives as the camera moves on (Signal) or as the last one dissolves (Slate). Type sizes are given for a 1920-wide frame.`
+    : `Layout: portrait. Pick the beats from what the line contains — a figure, a list, a comparison, a chain of qualities, a sentence, a named thing — usually two or three in a row. Stack them: a figure or sentence across the width, lists and pill chains top to bottom, comparison cards one above the other. Size type against a ${width}-wide frame (the sizes given are for 1920 wide — scale them by about ${(width / 1920 * 1.6).toFixed(2)} so they stay big on a phone), and keep everything inside the safe area.`;
+}
+
 export function briefFor(request: CompositionRequest): string {
   const guide = styleGuideFor(request.look);
+  const text = isTextLook(request.look);
   const words = [request.headline, ...request.items].filter(Boolean).join(' · ');
   const timed = request.words.map((word) => `${word.atSec.toFixed(2)}s ${word.text}`).join('\n');
 
   return `Being said over this shot: "${request.line}"
 
-${words ? `What it is about, for your understanding only — do NOT put these words on screen: ${words}\n` : ''}
+${words ? (text ? `The key words, which you may set on screen: ${words}\n` : `What it is about, for your understanding only — do NOT put these words on screen: ${words}\n`) : ''}
 The words, timed from the start of the shot:
 ${timed || '(no timings — spread the beats across the shot)'}
 
 The world it is drawn in — use exactly this palette:
 ${guideAsPrompt(guide, ['palette', 'rendering', 'lighting', 'ground_rule', 'motion', 'camera'])}
 
+${text ? `Typography: ${guide.typography}\n` : ''}
 The background of the frame is ${guide.ground}. Shape of the explanation: ${request.kind}.
-${layoutHint(request.line)}
+${text ? textLayoutHint(request.width, request.height) : layoutHint(request.line)}
 Return only the three blocks.`;
 }
 
@@ -365,7 +395,7 @@ const BANNED_STYLE: Array<[RegExp, string]> = [
  * the failures that blank a render or put words on screen are visible in the
  * source, and a fault list is what the repair round is fed.
  */
-export function auditComposition(parts: CompositionParts): string[] {
+export function auditComposition(parts: CompositionParts, options: { allowText?: boolean } = {}): string[] {
   const problems: string[] = [];
   for (const [pattern, message] of BANNED_SCRIPT) if (pattern.test(parts.script)) problems.push(`The script ${message}.`);
   for (const [pattern, message] of BANNED_MARKUP) if (pattern.test(parts.markup)) problems.push(`The markup ${message}.`);
@@ -377,7 +407,7 @@ export function auditComposition(parts: CompositionParts): string[] {
     .replace(/<[^>]+>/g, ' ')
     .replace(/&[a-z#0-9]+;/gi, ' ')
     .trim();
-  if (/[\p{L}\p{N}]/u.test(visible)) {
+  if (!options.allowText && /[\p{L}\p{N}]/u.test(visible)) {
     problems.push(`The markup puts words on screen ("${visible.slice(0, 40)}") — remove every piece of text; the captions are the only words.`);
   }
 
@@ -468,6 +498,39 @@ export interface CompositionFrame {
  * timeline to the scene's length, so a choreography that settles early still
  * yields a clip exactly as long as the scene.
  */
+/**
+ * The typefaces a scene names, embedded in the page.
+ *
+ * A scene is rendered in a headless browser on a server whose only font is a
+ * plain system sans, so "font-family: Poppins" silently became Liberation
+ * Sans — fine for a drawing, wrong for the text-led looks where the type IS
+ * the picture. The faces the caption renderer already keeps on disk
+ * (public/fonts, fetched at build) are inlined, and only the families the
+ * scene actually mentions, so a scene without type costs nothing.
+ */
+const SCENE_FONTS: Record<string, { dir: string; weights: number[] }> = {
+  Inter: { dir: 'inter', weights: [500, 600, 700, 900] },
+  Poppins: { dir: 'poppins', weights: [500, 600, 700, 800] },
+  Montserrat: { dir: 'montserrat', weights: [600, 700, 800, 900] },
+};
+const fontCache = new Map<string, string>();
+
+function embeddedFonts(source: string): string {
+  const rules: string[] = [];
+  for (const [family, { dir, weights }] of Object.entries(SCENE_FONTS)) {
+    if (!source.includes(family)) continue;
+    for (const weight of weights) {
+      const file = join(process.cwd(), 'public', 'fonts', dir, `${weight}-latin.woff2`);
+      const key = file;
+      if (!fontCache.has(key)) fontCache.set(key, existsSync(file) ? readFileSync(file).toString('base64') : '');
+      const data = fontCache.get(key);
+      if (!data) continue;
+      rules.push(`@font-face{font-family:'${family}';font-weight:${weight};font-style:normal;src:url(data:font/woff2;base64,${data}) format('woff2');}`);
+    }
+  }
+  return rules.join('\n');
+}
+
 export function buildCompositionHtml(parts: CompositionParts, frame: CompositionFrame): string {
   const { width, height, durationSec, ground } = frame;
   const dur = Number(durationSec.toFixed(3));
@@ -480,6 +543,7 @@ export function buildCompositionHtml(parts: CompositionParts, frame: Composition
     <meta name="viewport" content="width=${width}, height=${height}" />
     <script>${gsapScript()}</script>
     <script>${DASH_PLUGIN}</script>
+    <style>${embeddedFonts(parts.style + parts.markup + parts.script)}</style>
     <style>
       * { margin: 0; padding: 0; box-sizing: border-box; }
       html, body { width: ${width}px; height: ${height}px; overflow: hidden; background: ${ground}; }
@@ -543,7 +607,7 @@ export async function composeScene(
 
   const system = systemPrompt(request.width, request.height, request.durationSec, request.look);
   const brief = briefFor(request);
-  const faultsOf = async (parts: CompositionParts) => [...auditComposition(parts), ...(check ? await check(parts) : [])];
+  const faultsOf = async (parts: CompositionParts) => [...auditComposition(parts, { allowText: isTextLook(request.look) }), ...(check ? await check(parts) : [])];
 
   try {
     const first = await complete([{ role: 'system', content: system }, { role: 'user', content: brief }], 0.7);

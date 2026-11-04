@@ -254,6 +254,22 @@ const NAMED: Record<SceneLook, Omit<LookMeta, 'swatch' | 'tone'>> = {
     bestFor: 'Nostalgia and tech history — warm 80s shapes through an old screen, grain and scanlines.',
     entry: 'cut',
   },
+  signal: {
+    id: 'signal',
+    name: 'Signal',
+    ink: '#E8FFEC',
+    dim: '#1FAE45',
+    bestFor: 'Long-form explainers and business talk — glowing green type, numbers and app tiles drifting out of a dark green void.',
+    entry: 'cut',
+  },
+  slate: {
+    id: 'slate',
+    name: 'Slate',
+    ink: '#F2F2F3',
+    dim: '#5E5E66',
+    bestFor: 'Product and strategy talk — clean type on charcoal, each word lighting up as it is said, coral and green accents, UI cards.',
+    entry: 'cut',
+  },
   archive: {
     id: 'archive',
     name: 'Archive',
