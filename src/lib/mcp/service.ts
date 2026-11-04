@@ -161,7 +161,17 @@ export async function createProject(caller: Caller, input: CreateInput, bearer: 
 
   if (input.videoUrl) {
     const key = assetKey(project.id, 'source', filename);
-    const { bytes, contentType } = await downloadToStorage(input.videoUrl, key);
+    // A link that cannot be fetched leaves nothing to edit. Deleting the
+    // project rather than leaving it means the person's dashboard never fills
+    // with cards stuck at "Getting started" for links that never worked.
+    let downloaded: { bytes: number; contentType: string };
+    try {
+      downloaded = await downloadToStorage(input.videoUrl, key);
+    } catch (error) {
+      await db.project.delete({ where: { id: project.id } }).catch(() => undefined);
+      throw error;
+    }
+    const { bytes, contentType } = downloaded;
     const started = await startProjectJob({ projectId: project.id, userId: caller.userId, storageKey: key, contentType, sizeBytes: bytes });
     if (!started.ok) throw new McpUserError(started.error);
     return {

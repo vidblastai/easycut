@@ -6,7 +6,7 @@ import { healEdl } from '@/lib/edl/operations';
 import { readStageLog } from '@/worker/process-project';
 import { STAGE_LABELS, type Stage } from '@/lib/pipeline/types';
 import { isCurrentProxy } from '@/lib/media/proxy';
-import { guardProject } from '@/lib/auth';
+import { guardProject, isOperator } from '@/lib/auth';
 import { purgeProject } from '@/worker/sweep';
 
 export const runtime = 'nodejs';
@@ -34,6 +34,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
 
   if (!project) return NextResponse.json({ error: 'Not found' }, { status: 404 });
 
+  const operator = await isOperator();
   const job = project.jobs[0];
   const edl = project.edls[0];
   // A waiting video shows its place in line, and is only "stalled" when the
@@ -94,8 +95,9 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
       // that was built and then stripped looks exactly like one that was never
       // built, and telling those apart took three rounds of guessing.
       layersOff: parseJson<string[]>(project.layersOff, []),
-      costUsd: project.costUsd,
-      costReport: parseJson(project.costReport, {}),
+      // What the video cost to make is the operator's number, not the customer's.
+      costUsd: operator ? project.costUsd : 0,
+      costReport: operator ? parseJson(project.costReport, {}) : {},
       createdAt: project.createdAt,
 
       // Retention, so the editor can be honest rather than failing at render

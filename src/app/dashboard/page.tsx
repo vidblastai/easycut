@@ -8,11 +8,12 @@ import { formatUsd } from '@/lib/pricing/cost';
 import { getStyle } from '@/lib/styles/presets';
 import { recentsFor } from '@/lib/ui/recents';
 import { relativeTime } from '@/lib/ui/relative-time';
-import { ownedProjects } from '@/lib/auth';
+import { isOperator, ownedProjects } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
 
 export default async function DashboardPage() {
+  const operator = await isOperator();
   const projects = await db.project
     .findMany({
       where: await ownedProjects(),
@@ -85,7 +86,7 @@ export default async function DashboardPage() {
                         status={project.status}
                         styleName={style.name}
                         createdAt={project.createdAt}
-                        costUsd={project.costUsd}
+                        costUsd={operator ? project.costUsd : 0}
                         label={job?.progressLabel}
                         progress={job?.progress ?? 0}
                       />

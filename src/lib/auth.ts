@@ -117,3 +117,29 @@ export async function ownedProjects(): Promise<{ userId?: string }> {
   if (!isAuthEnabled()) return {};
   return { userId: (await currentUserId()) ?? '__signed-out__' };
 }
+
+/**
+ * Whether the person looking is the one running EasyCut, not a customer.
+ *
+ * The settings page used to list every server feature with its environment
+ * variable names and a "Get a key" link, and every video card showed what the
+ * video cost to make — useful to the operator, and nothing a customer should
+ * be shown. In development everyone is the operator. In production it is the
+ * signed-in accounts listed in OPERATOR_EMAILS, and nobody while sign-in is
+ * off; /api/health still has the same facts.
+ */
+export async function isOperator(): Promise<boolean> {
+  if (process.env.NODE_ENV !== 'production') return true;
+  const allowed = (process.env.OPERATOR_EMAILS ?? '')
+    .split(',')
+    .map((email) => email.trim().toLowerCase())
+    .filter(Boolean);
+  if (!allowed.length || !isAuthEnabled()) return false;
+  try {
+    const { currentUser } = await import('@clerk/nextjs/server');
+    const user = await currentUser();
+    return Boolean(user?.emailAddresses.some((entry) => allowed.includes(entry.emailAddress.toLowerCase())));
+  } catch {
+    return false;
+  }
+}

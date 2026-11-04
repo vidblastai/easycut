@@ -441,15 +441,11 @@ function Backdrop({ posterUrl }: { posterUrl?: string | null }) {
       <img src={posterUrl} alt="" className="absolute inset-0 h-full w-full object-cover" />
     );
   }
+  // No video of their own yet: a real talking-head frame, for the same reason
+  // as below — a look has to be judged on footage, not on a calm grey.
   return (
-    <span
-      className="absolute inset-0"
-      style={{
-        background:
-          'radial-gradient(120% 90% at 22% 18%, #4a4a63 0%, #26263a 42%, #121218 100%), linear-gradient(200deg, rgba(155,123,255,0.18), transparent 60%)',
-      }}
-      aria-hidden
-    />
+    // eslint-disable-next-line @next/next/no-img-element
+    <img src="/layers/backdrop-short.jpg" alt="" className="absolute inset-0 h-full w-full object-cover" style={{ objectPosition: 'center 35%' }} aria-hidden />
   );
 }
 
