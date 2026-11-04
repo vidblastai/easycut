@@ -126,12 +126,17 @@ const TOOLS = {
   },
   update_edit: {
     description:
-      'Change the edit without re-running it: caption look, caption text fixes, edit style, or switching layers (captions, broll, scenes, music, sfx…) on or off. Saved as a new version; call render_video afterwards.',
+      'Change the edit without re-running it: cut parts out (a retake, a false start, the intro), caption look, caption text fixes, edit style, or switching layers (captions, broll, scenes, music, sfx…) on or off. Saved as a new version; call render_video afterwards.',
     input: z.object({
       project_id: z.string(),
       caption_look: z.string().optional(),
       style: z.string().optional(),
       caption_edits: z.array(z.object({ cue_id: z.string(), text: z.string().max(200) })).optional(),
+      cuts: z
+        .array(z.object({ start_sec: z.number().nonnegative(), end_sec: z.number().positive() }))
+        .max(20)
+        .optional()
+        .describe('Stretches to remove, in the edited video\'s current times (as get_transcript gives them). Cut from the first word to just before the word you keep, e.g. a retake.'),
       layers: z
         .object({
           captions: z.boolean(),
@@ -280,7 +285,7 @@ async function callTool(name: string, rawArgs: unknown, caller: Caller, bearer: 
             captionEdits: (args.caption_edits as unknown as Array<{ cue_id: string; text: string }> | undefined)?.map((edit) => ({ cueId: edit.cue_id, text: edit.text })),
             layers: args.layers,
             music: args.shuffle_music ? { shuffle: true } : undefined,
-          }),
+          }, (args.cuts as unknown as Array<{ start_sec: number; end_sec: number }> | undefined)?.map((cut) => ({ startSec: cut.start_sec, endSec: cut.end_sec }))),
         );
       case 'render_video':
         return result(await renderVideo(caller, args.project_id, args.quality));
