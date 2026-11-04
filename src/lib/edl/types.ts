@@ -1257,6 +1257,8 @@ export const SCENE_LOOKS = [
   'signal',
   'slate',
   'iman',
+  'ledger',
+  'dossier',
 ] as const;
 export type SceneLook = (typeof SCENE_LOOKS)[number];
 
@@ -1336,7 +1338,7 @@ export type AnimatedScene = z.infer<typeof AnimatedSceneSchema>;
  * rendered in one of these puts the line on screen itself, so the captions
  * step aside for it.
  */
-export const TEXT_SCENE_LOOKS: readonly SceneLook[] = ['signal', 'slate', 'iman'];
+export const TEXT_SCENE_LOOKS: readonly SceneLook[] = ['signal', 'slate', 'iman', 'ledger', 'dossier'];
 
 export function sceneHasText(scene: AnimatedScene): boolean {
   if (scene.clipUrl && TEXT_SCENE_LOOKS.includes(scene.look as SceneLook)) return true;

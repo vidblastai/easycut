@@ -164,6 +164,13 @@ export const CAPTION_FONTS: CaptionFont[] = [
     group: 'grotesque',
   },
   {
+    id: 'Courier Prime',
+    module: 'CourierPrime',
+    weights: ['400', '700'],
+    vibe: 'A typewriter. Case files, true stories, receipts — words that feel like evidence.',
+    group: 'serif',
+  },
+  {
     id: 'Playfair Display',
     module: 'PlayfairDisplay',
     weights: ['600', '700', '800'],

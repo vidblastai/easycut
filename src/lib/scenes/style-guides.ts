@@ -853,6 +853,98 @@ export const STYLE_GUIDES: Record<SceneLook, StyleGuide> = {
       'copy — and never more than about 8 words visible at once.',
   },
 
+  ledger: {
+    id: 'ledger',
+    ground: '#EFE9DD',
+    palette: [
+      { role: 'newsprint cream — the page', hex: '#EFE9DD' },
+      { role: 'ink — headlines, axes, the black label boxes', hex: '#141414' },
+      { role: 'newsroom red — the main series, the key figure, the kicker', hex: '#C8201A' },
+      { role: 'navy — the comparison series and its figure', hex: '#1F4E79' },
+      { role: 'warm grey — tick labels, secondary text', hex: '#5E574B' },
+      { role: 'dotted gridlines and rules', hex: '#BFB49D' },
+    ],
+    accent: '#C8201A',
+    rendering:
+      'A newspaper data graphic, built live. The page is warm newsprint with a fine paper-fibre texture (an feTurbulence ' +
+      'noise image, multiply, ~35%). The furniture of a news graphic: a thin black rule across the top, a small red ' +
+      'square and a red caps kicker, a serif headline, then ONE chart — a line chart over time, bars, a stacked bar, a ' +
+      'big single figure, a ranked list or a dot comparison — drawn with exact geometry: a 3px black baseline, dotted ' +
+      'gridlines, round-capped 6–7px lines, sharp bars with no rounded corners. Values are marked by a dot with a black ' +
+      'label box (white bold number, a small pointer) and big serif figures beside the chart; a red bracket measures a ' +
+      'change; the gap between two series is shaded at low opacity. Charts start at zero and are honest about scale. ' +
+      'Every number on screen is one the line states.',
+    lighting: 'Flat and even, like paper under daylight; a very soft darkening towards the corners.',
+    ground_rule: 'Newsprint cream with paper fibre texture; never white, never a gradient you can notice.',
+    motion:
+      'Precise and editorial. Rules and axes draw in (scaleX from the left, 0.6 s, power3.inOut); gridlines fade up in ' +
+      'a stagger; lines DRAW themselves left to right (strokeDashoffset) at the pace of the speech, with a dot and a ' +
+      'label box riding the tip that counts the value up as it climbs; bars grow from the baseline; headline words set ' +
+      'one by one (rise 18px and fade, 0.4 s). A figure sets in with a short slide and blur. When a second idea comes, ' +
+      'earlier elements step back (smaller, aside) rather than vanish.',
+    camera: 'A slow, steady push (scale 1 → 1.04 across the scene); no cuts, no shake.',
+    never: [
+      'invented numbers — no made-up tick values, sources or data points; only the figures said',
+      'dark backgrounds, neon, glow or gradients on the chart',
+      '3D charts, pie charts with many slices, or rounded cartoon bars',
+      'more than about 12 words on screen at once, or any paragraph',
+      'emoji',
+    ],
+    typography:
+      'Headline: Playfair Display 700, 64–80px in a 1920-wide frame (scale by frame width), sentence case, ink. Big ' +
+      'figures: Playfair Display 800, 76–130px, in the series colour, with a small Inter caps label above. Kicker: ' +
+      'Inter 700, 22–26px, caps, letter-spacing 4px, red. Axis and tick labels: Inter 600, 26–30px, warm grey. Label ' +
+      'boxes: Inter 700, 30–36px, white on ink. Only words and figures that are actually said in the line — never ' +
+      'invented copy — and never more than about 12 words visible at once.',
+  },
+
+  dossier: {
+    id: 'dossier',
+    ground: '#16120E',
+    palette: [
+      { role: 'aged card paper — index cards, memos, photo mounts', hex: '#EDE5D3' },
+      { role: 'manila — folders and their tabs', hex: '#DCBC7E' },
+      { role: 'stamp and string red — stamps, red string, push pins, marker circles', hex: '#B8231B' },
+      { role: 'typewriter ink and redaction bars', hex: '#1E1A16' },
+      { role: 'dark cork board', hex: '#16120E' },
+      { role: 'warm lamp light', hex: '#FFC480' },
+    ],
+    accent: '#B8231B',
+    rendering:
+      'An investigator\'s case board under a desk lamp. Each idea in the line is a piece of evidence pinned to dark cork: ' +
+      'an index card (red top rule, faint blue lines), a manila folder with a tab and a sheet inside, a photo file with ' +
+      'a grey head-and-shoulders silhouette in place of a photo, a memo, a receipt, a calendar page, a sticky label of ' +
+      'masking tape. Paper has a fibre texture, soft contact shadows and is pinned slightly off-angle with glossy red ' +
+      'push pins. Red string runs pin to pin in gentle sags and connects the evidence in the order it is told. Text is ' +
+      'typed; verdicts are rubber stamps (red, bordered, slightly rough, multiply blend); secrets are black redaction ' +
+      'bars; the key word gets a hand-drawn red marker circle. Film grain over everything.',
+    lighting:
+      'One warm desk lamp from the upper left — a big soft pool of amber light on the cork that drifts slightly as the ' +
+      'camera moves — and a heavy vignette; the edges of the board fall into darkness.',
+    ground_rule: 'Dark brown cork with a coarse noise texture, the lamp pool, a heavy vignette and grain. Never flat.',
+    motion:
+      'Deliberate, tactile, documentary. Cards drop onto the board (from 50px above, 0.45 s) and their pin pushes in a ' +
+      'beat later; text TYPES letter by letter (40–70 ms a letter, each letter struck at a slightly different weight and ' +
+      'baseline); a stamp SLAMS (from scale 1.9 and off-angle to down hard in 0.16 s, power4.in) and the card and camera ' +
+      'jolt; red string draws itself between pins; redaction bars wipe across one line at a time; the marker circle ' +
+      'draws itself around the word. Nothing bounces.',
+    camera:
+      'The board is wider than the frame; the camera SLIDES along the string to the next piece of evidence (1 s, ' +
+      'power3.inOut) with a slow push throughout, and what it leaves behind falls slightly out of focus (blur 3px).',
+    never: [
+      'real photographs, real faces, real logos or real documents',
+      'bright or clean modern UI',
+      'more than about 10 words on screen at once, or any paragraph',
+      'bouncy easing',
+      'emoji',
+    ],
+    typography:
+      'Typed text: Courier Prime 700, caps for labels (50–84px in a 1920-wide frame, scale by frame width), sentence ' +
+      'case for notes (34–44px). Stamps: Oswald 700 caps, 90–120px, letter-spacing 4px, a 7px border, rotated −15° to ' +
+      '+12°. Tape labels: Courier Prime 700, 28–32px. Only words and figures that are actually said in the line — never ' +
+      'invented copy — and never more than about 10 words visible at once.',
+  },
+
   particles: {
     id: 'particles',
     ground: '#05060D',

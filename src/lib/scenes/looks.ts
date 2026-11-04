@@ -278,6 +278,22 @@ const NAMED: Record<SceneLook, Omit<LookMeta, 'swatch' | 'tone'>> = {
     bestFor: 'Self-improvement, money and business storytelling — flat vector characters acting out the line on a black doodle wall, silver titles, and a compass that counts off numbered rules.',
     entry: 'cut',
   },
+  ledger: {
+    id: 'ledger',
+    name: 'Ledger',
+    ink: '#141414',
+    dim: '#5E574B',
+    bestFor: 'Money, business and economics — a newspaper chart drawing itself on newsprint, serif headlines, red annotations and exact figures.',
+    entry: 'cut',
+  },
+  dossier: {
+    id: 'dossier',
+    name: 'Dossier',
+    ink: '#EDE5D3',
+    dim: '#DCBC7E',
+    bestFor: 'Case studies and true stories — evidence pinned to a case board under a lamp, typed notes, red string, stamps and redactions.',
+    entry: 'cut',
+  },
   archive: {
     id: 'archive',
     name: 'Archive',

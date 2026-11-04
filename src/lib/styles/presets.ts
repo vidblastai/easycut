@@ -28,6 +28,8 @@ export type StyleId =
   | 'signal'
   | 'slate'
   | 'iman'
+  | 'ledger'
+  | 'dossier'
   | 'breakdown'
   | 'clean'
   | 'punchy'
@@ -909,6 +911,96 @@ const RAW_PRESETS: Record<StyleId, Omit<StylePreset, 'captionStyle'>> = {
       'metaphor or story beat (acted out by flat characters and objects) and every key figure — in long form roughly ' +
       'every 20–40 seconds, each one carrying the whole thought (4–12 s). Between them, stay on the speaker with ' +
       'punch-ins on the strong lines.',
+  },
+
+  ledger: {
+    id: 'ledger',
+    sceneLook: 'ledger',
+    name: 'Ledger',
+    tagline: 'The numbers, drawn like a front page.',
+    bestFor: 'Money, business and economics — every figure becomes a newspaper chart that draws itself.',
+    accent: '#C8201A',
+    layout: 'full',
+    formats: ['long', 'short'],
+    captionPreset: 'soft',
+    transitions: ['cut', 'dissolve'],
+    clipTransitions: ['fade', 'slide-left'],
+    brollOverlay: 'none',
+    musicMood: 'calm minimal',
+    musicGainDb: -26,
+    silencePreset: 'balanced',
+    short: {
+      punchInEverySec: [6, 10],
+      punchInScale: [1.06, 1.14],
+      punchMoves: PUNCH_SHORT,
+      brollEverySec: 20,
+      brollDurationSec: [1.5, 2.5],
+      graphicEverySec: 9,
+      graphicDurationSec: 3,
+      transitionDensity: 0.25,
+      sfxDensity: 0.35,
+    },
+    long: {
+      punchInEverySec: [18, 28],
+      punchInScale: [1.05, 1.1],
+      punchMoves: PUNCH_LONG,
+      brollEverySec: 45,
+      brollDurationSec: [3, 5],
+      graphicEverySec: 30,
+      graphicDurationSec: 4,
+      transitionDensity: 0.2,
+      sfxDensity: 0.2,
+    },
+    overlays: { progressBar: false, lowerThird: false, grain: false, vignette: false },
+    directorNotes:
+      'Cut away to a full-screen chart scene for every figure, trend, comparison and before/after number — in long form ' +
+      'roughly every 20–40 seconds, each one carrying the whole thought (5–15 s). Between them, stay on the speaker. ' +
+      'Calm, exact pacing; B-roll only where something concrete is named.',
+  },
+
+  dossier: {
+    id: 'dossier',
+    sceneLook: 'dossier',
+    name: 'Dossier',
+    tagline: 'Every story becomes a case file.',
+    bestFor: 'Case studies, company stories and true stories — evidence pinned to a case board, typed, stamped and connected with red string.',
+    accent: '#B8231B',
+    layout: 'full',
+    formats: ['long', 'short'],
+    captionPreset: 'subtitle',
+    transitions: ['cut', 'dissolve'],
+    clipTransitions: ['fade', 'zoom'],
+    brollOverlay: 'none',
+    musicMood: 'cinematic emotional',
+    musicGainDb: -24,
+    silencePreset: 'balanced',
+    short: {
+      punchInEverySec: [6, 10],
+      punchInScale: [1.06, 1.14],
+      punchMoves: PUNCH_SHORT,
+      brollEverySec: 20,
+      brollDurationSec: [1.5, 2.5],
+      graphicEverySec: 9,
+      graphicDurationSec: 3,
+      transitionDensity: 0.25,
+      sfxDensity: 0.35,
+    },
+    long: {
+      punchInEverySec: [18, 28],
+      punchInScale: [1.05, 1.1],
+      punchMoves: PUNCH_LONG,
+      brollEverySec: 45,
+      brollDurationSec: [3, 5],
+      graphicEverySec: 30,
+      graphicDurationSec: 4,
+      transitionDensity: 0.2,
+      sfxDensity: 0.2,
+    },
+    overlays: { progressBar: false, lowerThird: false, grain: false, vignette: false },
+    directorNotes:
+      'Cut away to the case board for every turning point of the story — a date, a loss, a decision, a person, a ' +
+      'secret — in long form roughly every 20–40 seconds, each one carrying the whole beat (5–15 s), the board ' +
+      'growing as the story goes. Between them, stay on the speaker; slow, suspenseful pacing.',
   },
 
   explainer: {
