@@ -1,3 +1,4 @@
+import { withRenderSlot } from '@/lib/render/slot';
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { env } from '@/lib/config/env';
@@ -44,6 +45,8 @@ export interface SceneClipOptions {
   fps: number;
   lineFor: (scene: AnimatedScene) => string;
   wordsFor: (scene: AnimatedScene) => WordCue[];
+  /** Told what is happening while the scenes are made — they take minutes, and a still bar reads as stuck. */
+  onProgress?: (label: string) => void | Promise<void>;
 }
 
 export interface SceneClipResult {
@@ -162,6 +165,12 @@ export async function composeSceneClips(scenes: AnimatedScene[], options: SceneC
   const chosen = scenes.filter((scene) => photoSlotsFor(scene) === 0).slice(0, MAX_COMPOSED_SCENES);
   if (!chosen.length) return { clips, costUsd, errors, notes };
 
+  const total = chosen.length;
+  const plural = total === 1 ? 'scene' : 'scenes';
+  const say = (label: string) => Promise.resolve(options.onProgress?.(label)).catch(() => undefined);
+  let designed = 0;
+  await say(`Animating ${total} ${plural} — this part takes a few minutes`);
+
   const composed = await Promise.all(
     chosen.map(async (scene) => {
       const frame = frameFor(scene, options);
@@ -181,6 +190,8 @@ export async function composeSceneClips(scenes: AnimatedScene[], options: SceneC
         frame,
         dir,
       );
+      designed += 1;
+      await say(designed < total ? `Animated ${designed} of ${total} ${plural} — still working` : `Rendering ${total} animated ${plural}`);
       return { scene, frame, dir, result };
     }),
   );
@@ -202,7 +213,7 @@ export async function composeSceneClips(scenes: AnimatedScene[], options: SceneC
         .put(assetKey(options.projectId, 'scenes', `${scene.id}.html`), Buffer.from(html), 'text/plain; charset=utf-8')
         .catch(() => undefined);
       const out = join(dir, 'scene.mp4');
-      await renderProject(dir, out, { fps: options.fps });
+      await withRenderSlot(() => renderProject(dir, out, { fps: options.fps }));
       // The last gate: a clip of bare ground is worse than the drawing.
       if (await isBlank(out).catch(() => false)) {
         errors.push('scene clip rendered blank');

@@ -36,6 +36,15 @@ const NEVER_STARTED_MS = 3 * 60_000;
  */
 const NO_PROGRESS_MS = 12 * 60_000;
 
+/**
+ * A clone being run by its developer, where "start the worker" is advice that
+ * helps. A production deployment on local storage is not one: telling a
+ * customer to run `npm run worker` is the one thing this message must not do.
+ */
+function isSelfHosted(): boolean {
+  return env.queue.driver === 'memory' || (env.storage.driver === 'local' && process.env.NODE_ENV !== 'production');
+}
+
 export interface Stalled {
   /** Machine-readable, so the UI can phrase it rather than echo it. */
   reason: 'never-started' | 'no-progress';
@@ -65,24 +74,28 @@ export function stalledProject(
   return {
     reason: 'never-started',
     forSec: Math.round(waited / 1000),
-    selfHosted: env.queue.driver === 'memory' || env.storage.driver === 'local',
+    selfHosted: isSelfHosted(),
   };
 }
 
 export function stalledJob(
   job: { status: string; queuedAt: Date; startedAt: Date | null; updatedAt: Date },
   now = new Date(),
+  workerBusy = false,
 ): Stalled | null {
   // Only a job that is supposed to be moving can be stuck.
   if (job.status !== 'queued' && job.status !== 'running') return null;
 
   // A clone with no queue worker of its own is the commonest cause by far, and
   // the one where naming the fix actually helps.
-  const selfHosted = env.queue.driver === 'memory' || env.storage.driver === 'local';
+  const selfHosted = isSelfHosted();
 
   if (job.status === 'queued' || !job.startedAt) {
     const waited = now.getTime() - job.queuedAt.getTime();
     if (waited < NEVER_STARTED_MS) return null;
+    // Waiting behind other people's videos while the worker is busy with them
+    // is a queue, not a stall — the screen shows its place in line instead.
+    if (workerBusy) return null;
     return { reason: 'never-started', forSec: Math.round(waited / 1000), selfHosted };
   }
 

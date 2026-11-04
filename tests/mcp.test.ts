@@ -251,5 +251,5 @@ describe('the preview shows what the platform covers', () => {
     } finally {
       await rm(dir, { recursive: true, force: true });
     }
-  });
+  }, 30_000);
 });

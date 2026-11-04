@@ -9,7 +9,7 @@ import { SocialProof } from '@/components/marketing/SocialProof';
 import { FlowMap } from '@/components/marketing/FlowMap';
 import { ClaudeSection } from '@/components/marketing/ClaudeSection';
 import { STYLE_LIST, leadsWithCards } from '@/lib/styles/presets';
-import { StylePreview } from '@/components/styles/StylePreview';
+import { StyleExample } from '@/components/styles/StyleExample';
 import { WhoItsFor } from '@/components/marketing/WhoItsFor';
 import { WhatItReplaces } from '@/components/marketing/WhatItReplaces';
 import { Testimonials } from '@/components/marketing/Testimonials';
@@ -231,7 +231,8 @@ export default function HomePage() {
           <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {STYLE_LIST.map((style) => (
               <div key={style.id} className="card flex gap-4 p-5">
-                <StylePreview
+                <StyleExample
+                  style={style.id}
                   layout={style.layout}
                   aspect="9:16"
                   accent={style.accent}

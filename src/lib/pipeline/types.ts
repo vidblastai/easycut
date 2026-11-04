@@ -155,6 +155,8 @@ export interface PipelineContext {
   /** Layers skipped because a provider was missing or failed. */
   degraded: string[];
   log: StageLogEntry[];
+  /** Updates the running stage's label, for a stage that is busy long enough to look stuck. */
+  say?: (label: string) => Promise<void>;
 }
 
 /**

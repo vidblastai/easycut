@@ -1,3 +1,4 @@
+import { withRenderSlot } from './slot';
 import { mkdir } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { tmpdir } from 'node:os';
@@ -388,6 +389,7 @@ async function renderLocally(
   const serveUrl = cachedBundle ?? (cachedBundle = await bundle({ entryPoint: entry }));
 
   const inputProps = { edl, previewAudio: false };
+  await withRenderSlot(async () => {
   const composition = await selectComposition({
     serveUrl,
     id: 'EasyCutVideo',
@@ -453,6 +455,7 @@ async function renderLocally(
       gl: env.render.gl,
       ignoreCertificateErrors: env.render.ignoreCertificateErrors,
     },
+  });
   });
 }
 
