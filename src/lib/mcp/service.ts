@@ -36,6 +36,7 @@ import {
   type WordCue,
 } from '@/lib/director/hyperframe';
 import { wordsBetween, type ClientScene } from './scenes';
+import { cutOperations, type CutRange } from '@/lib/edl/cut-ranges';
 export { wordsBetween, type ClientScene } from './scenes';
 import { allBlank, guideSheet, lintProject, snapshotProject, validateProject, writeProject } from '@/lib/render/hyperframes';
 
@@ -394,11 +395,19 @@ export async function submitScene(caller: Caller, projectId: string, sceneId: st
 
 /* ---------------------------------------------------------------- finishing */
 
-export async function updateEdit(caller: Caller, projectId: string, patch: Partial<EdlPatch>) {
+export async function updateEdit(caller: Caller, projectId: string, patch: Partial<EdlPatch>, cuts?: CutRange[]) {
   const project = await ownProject(caller, projectId);
-  await requireEdl(projectId);
+  const latest = await requireEdl(projectId);
+  let operations: EdlPatch['operations'];
+  if (cuts?.length) {
+    try {
+      operations = cutOperations(latest.edl, cuts);
+    } catch (error) {
+      throw new McpUserError((error as Error).message);
+    }
+  }
   const outcome = await withServerAi(project.aiMode !== 'client', () =>
-    patchProjectEdl(projectId, { render: false, ...patch } as EdlPatch, 'claude'),
+    patchProjectEdl(projectId, { render: false, ...patch, ...(operations ? { operations } : {}) } as EdlPatch, 'claude'),
   );
   if (outcome.status !== 200) throw new McpUserError(String(outcome.body.error ?? 'That change could not be applied.'));
   return { applied: true, rejected: outcome.body.rejected ?? [], next: 'Call render_video when the edit is how you want it.' };

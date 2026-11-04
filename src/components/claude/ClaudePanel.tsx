@@ -63,7 +63,7 @@ export function ClaudePanel({ mcpUrl, authEnabled }: { mcpUrl: string; authEnabl
   const codeCommand = `claude mcp add --transport http easycut ${mcpUrl} --header "Authorization: Bearer ${fresh ?? 'YOUR_TOKEN'}"`;
 
   return (
-    <section className="mt-8">
+    <section id="claude" className="mt-8 scroll-mt-20">
       <h2 className="text-[15px] font-bold">Use EasyCut from Claude</h2>
       <p className="mt-1.5 max-w-[66ch] text-[13px] text-muted">
         Edit videos by talking to your own Claude. EasyCut does the transcription, cuts, captions

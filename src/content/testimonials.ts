@@ -39,7 +39,15 @@ export interface Testimonial {
   photo?: string | null;
 }
 
-export const TESTIMONIALS: Testimonial[] = [
+/**
+ * What the page shows. Empty until there are real customers to quote — the
+ * section renders nothing while it is. Move entries in from the drafts below
+ * once they are real people's words.
+ */
+export const TESTIMONIALS: Testimonial[] = [];
+
+/** Layout-sized drafts. Never rendered: the names are made up. */
+export const DRAFT_TESTIMONIALS: Testimonial[] = [
   {
     stars: 5,
     title: 'The part I always skipped',

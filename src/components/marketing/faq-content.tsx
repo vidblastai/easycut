@@ -78,6 +78,18 @@ export const FAQ_GROUPS: FaqGroup[] = [
     label: 'The app',
     items: [
       {
+        q: 'Can I use it from Claude?',
+        a: (
+          <>
+            Yes. In claude.ai or the Claude desktop app, open Settings → Connectors → Add custom
+            connector and paste the address shown on your EasyCut settings page; in Claude Code it
+            is one command. Then ask Claude for the edit. Your Claude does the creative part on
+            your own plan, and EasyCut does the cutting, captions, sound and rendering — the
+            footage still counts against your plan&rsquo;s minutes.
+          </>
+        ),
+      },
+      {
         q: 'How long does it take?',
         a: (
           <>
