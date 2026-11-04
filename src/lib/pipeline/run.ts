@@ -111,7 +111,18 @@ export async function runPipeline(
     ['edl', stageFinaliseEdl],
   ];
 
-  const resumeIndex = request.resumeFrom ? STAGES.indexOf(request.resumeFrom) : 0;
+  /*
+   * An interrupted edit starts again from the top.
+   *
+   * Every stage reads what the ones before it left on the context — the
+   * transcript, the plan, the timeline — and none of that is saved between
+   * runs. Skipping to the stage a crashed worker was on used to hand that stage
+   * an empty context, which finished in milliseconds and failed the video with
+   * "Pipeline finished without producing an EDL". Redoing the first stages
+   * costs a minute; a failed video costs the customer.
+   */
+  const resumeIndex = 0;
+  void request.resumeFrom;
   let completedWeight = 0;
 
   for (const [stage, handler] of stages) {

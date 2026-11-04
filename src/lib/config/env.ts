@@ -95,6 +95,8 @@ export const env = {
     driver: (str('QUEUE_DRIVER') ?? 'db') as 'memory' | 'db' | 'redis',
     redisUrl: str('REDIS_URL'),
     concurrency: num('QUEUE_CONCURRENCY', 2),
+    /** Requeue exports a crashed worker left running. Turn off when several workers share one queue. */
+    reclaimOnBoot: bool('QUEUE_RECLAIM_ON_BOOT', true),
   },
 
   transcription: {

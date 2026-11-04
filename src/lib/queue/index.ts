@@ -64,6 +64,12 @@ export interface QueueDriver {
   complete(job: QueuedJob): Promise<void>;
   fail(job: QueuedJob, error: Error): Promise<void>;
   size(): Promise<number>;
+  /**
+   * Puts back jobs of these types that a worker had taken and never finished.
+   * Called once when a worker boots, on a deployment with a single worker —
+   * see src/worker/main.ts. Drivers that cannot tell simply do nothing.
+   */
+  reclaimInterrupted?(types: string[]): Promise<number>;
 }
 
 /* ------------------------------------------------------------------ memory */
@@ -310,6 +316,20 @@ class DbQueueDriver implements QueueDriver {
         ? { status: 'queued', attempts, lastError: error.message, reservedAt: null }
         : { status: 'dead', attempts, lastError: error.message },
     }).catch(() => undefined);
+  }
+
+  async reclaimInterrupted(types: string[]): Promise<number> {
+    // A job that has already been tried this often is not retried again: it
+    // may be the one that took the last worker down.
+    await db.queueMessage.updateMany({
+      where: { status: 'running', type: { in: types }, attempts: { gte: 2 } },
+      data: { status: 'dead', lastError: 'interrupted by a worker restart too many times', reservedAt: null },
+    });
+    const back = await db.queueMessage.updateMany({
+      where: { status: 'running', type: { in: types } },
+      data: { status: 'queued', reservedAt: null, attempts: { increment: 1 } },
+    });
+    return back.count;
   }
 
   async size(): Promise<number> {
