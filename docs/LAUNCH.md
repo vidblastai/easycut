@@ -9,14 +9,15 @@ Checked against the live `/api/health` after the MCP work.
 - Scenes never ship blank.
 - The MCP server and its sign-in ([MCP.md](MCP.md)) are in.
 
-**Only you can set these (Railway → Variables).** The live health check flags the first two:
+**Only you can set these (Railway → Variables).** The live health check flags sign-in:
 
 | What | Variables | Why it blocks launch |
 |---|---|---|
 | Sign-in | `CLERK_SECRET_KEY`, `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` | Without it the app is open: anyone with a project link can see it, and there are no accounts or plans |
-| Object storage (Cloudflare R2 or S3) | `STORAGE_DRIVER=s3`, `S3_BUCKET`, `S3_ENDPOINT`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY`, `S3_PUBLIC_BASE_URL` | Uploads and renders currently live on the container and vanish on redeploy unless a volume is mounted |
+| Object storage (Cloudflare R2 or S3), later | `STORAGE_DRIVER=s3`, `S3_BUCKET`, `S3_ENDPOINT`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY`, `S3_PUBLIC_BASE_URL` | Not a blocker: production has a persistent volume at `/data` (files survived two deploys and a crash; `/api/health` now says `local (persistent volume)`). Move to R2/S3 when one volume is too small, or to run more than one container |
 | Payments | `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_PRICE_*` | No upgrades without them |
 | AI credit | Credit on the Anthropic account behind `Antropic`; WaveSpeed balance | Scenes and the AI editor fall back to rule-based work without it. Videos made from Claude through the MCP server don't need it. |
+| Throughput | `QUEUE_CONCURRENCY` (default 2), more CPU/RAM | Two videos edit at once. A short with animated scenes takes about 12 minutes, so ten people uploading together wait up to an hour. Raise it with a bigger machine; renders stay one at a time per process (`RENDER_SLOTS`) so memory holds |
 | Public address | `APP_URL=https://<your domain>` | Links in emails; the MCP server reads the address from the request otherwise |
 
 ---

@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { statfs } from 'node:fs/promises';
+import { stat, statfs } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { db } from '@/lib/db';
 import { env } from '@/lib/config/env';
@@ -33,7 +33,11 @@ export async function GET() {
     healthy = false;
   }
 
-  checks.storage = env.storage.driver;
+  // A mounted volume survives restarts and deploys; the container's own disk
+  // does not. Different devices under the storage folder and the root is the
+  // tell — and the difference between "fine" and "every video vanishes".
+  const persistent = env.storage.driver === 'local' ? await onOwnVolume(env.storage.localDir) : true;
+  checks.storage = env.storage.driver === 'local' ? `local (${persistent ? 'persistent volume' : 'container disk'})` : env.storage.driver;
   /*
    * Free disk, when the uploads land on this container's own disk.
    *
@@ -81,8 +85,8 @@ export async function GET() {
   if (!isAuthEnabled()) {
     warnings.push('No CLERK_SECRET_KEY — every project is reachable by anyone who guesses its id.');
   }
-  if (env.storage.driver === 'local') {
-    warnings.push('STORAGE_DRIVER=local — uploads and renders live on this container and vanish when it restarts.');
+  if (env.storage.driver === 'local' && !persistent) {
+    warnings.push('STORAGE_DRIVER=local on the container disk — uploads and renders vanish when it restarts. Mount a volume at STORAGE_LOCAL_DIR, or use S3/R2.');
   }
   if (env.queue.driver === 'memory') {
     warnings.push('QUEUE_DRIVER=memory — queued jobs are lost on restart and a second worker cannot see them.');
@@ -110,4 +114,14 @@ async function freeSpace(dir: string): Promise<{ free: number; total: number } |
 
 function gb(bytes: number): string {
   return `${(bytes / 1024 ** 3).toFixed(1)} GB`;
+}
+
+/** True when `dir` sits on a different device from the root — a mounted volume. */
+async function onOwnVolume(dir: string): Promise<boolean> {
+  try {
+    const [here, root] = await Promise.all([stat(resolve(dir)), stat('/')]);
+    return here.dev !== root.dev;
+  } catch {
+    return false;
+  }
 }
