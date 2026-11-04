@@ -112,7 +112,7 @@ export function findCleanupTargets(transcript: Transcript, options: CleanupOptio
   if (options.removeFillers) findings.push(...findFillers(transcript.words, language));
   if (options.removeStammers) findings.push(...findStammers(transcript.words));
   if (options.removeFalseStarts) {
-    findings.push(...findWarmUp(transcript.sentences));
+    findings.push(...findWarmUp(transcript.sentences, transcript.words));
     findings.push(...findFalseStarts(transcript.sentences));
     findings.push(...findTrailingOff(transcript.sentences, transcript.words, language));
   }
@@ -381,27 +381,56 @@ const WARMUP_WORDS = new Set([
 ]);
 const WARMUP_CUE = /\b(let'?s go|here we go|los geht'?s|testing|test test|mic check|one,? two,? three|eins,? zwei,? drei|rolling|action)\b|\b(hello|hi|hey|hallo)\b[\s,.!]+\b(hello|hi|hey|hallo)\b|^\s*(all ?right|alright|okay|ok)[.!]?\s*$/i;
 
-function findWarmUp(sentences: TranscriptSentence[]): CleanupFinding[] {
+function findWarmUp(sentences: TranscriptSentence[], words: TranscriptWord[]): CleanupFinding[] {
+  /*
+   * What the speaker said and what the transcript holds are not the same
+   * thing here, and the transcript is all we get. "Hello, hello, hello, all
+   * right… Let's go." came back from speech recognition as "Hello."
+   * "Alright." "Let's" — the repeats collapsed into one word, the "go"
+   * dropped, and "Let's" glued onto the first real sentence. A rule that
+   * waits for the cue words never fires on that.
+   *
+   * So a run of warm-up-only sentences at the top counts when it is clearly
+   * not the opening line: there is more than one of them, or a pause follows
+   * before the speaker starts for real, or a cue word is there. A single
+   * "Hey." said straight into the first line is none of those, and stays.
+   */
   let n = 0;
   let cued = false;
   while (n < sentences.length - 1 && n < 6) {
-    const words = tokenize(sentences[n].text);
-    if (words.length === 0 || words.length > 8 || !words.every((w) => WARMUP_WORDS.has(w))) break;
+    const ws = tokenize(sentences[n].text);
+    if (ws.length === 0 || ws.length > 8 || !ws.every((w) => WARMUP_WORDS.has(w))) break;
     if (WARMUP_CUE.test(sentences[n].text)) cued = true;
     n++;
   }
-  // Something real has to follow, and the run has to look like a warm-up.
-  if (n === 0 || !cued) return [];
+  if (n === 0) return [];
   const keep = sentences[n];
-  if (tokenize(keep.text).length < 3) return [];
+
+  // Warm-up words stuck to the front of the first real sentence ("Let's …
+  // In this video"), cut when a pause separates them from what follows.
+  let cutTo = keep.startSec;
+  let lead = 0;
+  for (let i = keep.wordStart; i < keep.wordEnd - 1 && lead < 3; i++) {
+    const w = normalizeWord(words[i]?.text ?? '');
+    if (!WARMUP_WORDS.has(w)) break;
+    const gap = words[i + 1].startSec - words[i].endSec;
+    if (gap < 0.8) break;
+    lead = i - keep.wordStart + 1;
+    cutTo = words[i + 1].startSec;
+  }
+  const rest = words.slice(keep.wordStart + lead, keep.wordEnd);
+  if (rest.length < 3) return [];
+
+  const pauseAfter = cutTo - sentences[n - 1].endSec;
+  if (!(cued || n >= 2 || pauseAfter >= 1.0)) return [];
   return [
     {
       kind: 'false-start',
       startSec: sentences[0].startSec,
-      endSec: keep.startSec,
-      text: sentences.slice(0, n).map((s) => s.text).join(' '),
+      endSec: cutTo,
+      text: [...sentences.slice(0, n).map((x) => x.text), ...words.slice(keep.wordStart, keep.wordStart + lead).map((w) => w.text)].join(' '),
       confidence: 0.9,
-      keeps: { startSec: keep.startSec, endSec: keep.endSec },
+      keeps: { startSec: cutTo, endSec: keep.endSec },
     },
   ];
 }

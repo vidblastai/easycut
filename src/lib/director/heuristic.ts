@@ -24,7 +24,21 @@ const STOPWORDS = new Set([
   'can','could','should','shall','may','might','must','to','of','in','on','at','by','for','with','from',
   'about','into','over','after','before','just','like','really','very','actually','basically','okay','right',
   'what','when','where','who','how','why','not','no','yes','up','down','out','all','one','because','get','got',
+  // Words that are long without being anything a camera could film. Longest
+  // first is how a query is built, so these won every sentence they were in:
+  // a real upload got stock footage for "thousands millions" and "through
+  // showing".
+  'thousand','thousands','million','millions','billion','billions','hundred','hundreds','dozens',
+  'through','throughout','showing','show','shows','showed','going','gonna','wanna','want','wants','make','making',
+  'made','look','looking','looks','know','knowing','think','thinking','thing','things','something','everything',
+  'anything','nothing','there','here','also','some','many','much','more','most','every','other','another',
+  'exactly','which','while','would','well','even','still','only','start','starting','talking','talk','sure',
+  'give','take','need','last','first','next','couple','finding','found','find','seen','video','videos','today',
+  'around','between','during','without','convinced','trust','basically','literally','definitely','probably',
 ]);
+
+/** The way videos start that says nothing yet — never a title card. */
+const GENERIC_OPENER = /^\s*(in (this|today'?s) video|today|hello|hi|hey|welcome|so\b|okay|ok\b|alright|all right|what'?s up|let'?s)/i;
 
 /** Words that signal a sentence is doing rhetorical work. */
 const HOOK_SIGNALS = [
@@ -219,7 +233,9 @@ export function runHeuristicDirector(brief: DirectorBrief): DirectorPlan {
     sfx,
     punchIns,
     chapters,
-    titleCard: mode === 'long' && isFirstWindow ? { text: headline, subtext: '' } : null,
+    // A card that reads "In this video, I will show" is worse than no card:
+    // only open on the first line when it says something on its own.
+    titleCard: mode === 'long' && isFirstWindow && !GENERIC_OPENER.test(headline) ? { text: headline, subtext: '' } : null,
     lowerThird: null,
     musicMood: style.musicMood,
     deliverable: isFirstWindow
