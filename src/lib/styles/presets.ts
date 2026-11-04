@@ -27,6 +27,7 @@ const PUNCH_SHORT: PunchMove[] = ['speed-ramp', 'snap', 'push', 'bounce'];
 export type StyleId =
   | 'signal'
   | 'slate'
+  | 'iman'
   | 'breakdown'
   | 'clean'
   | 'punchy'
@@ -862,6 +863,52 @@ const RAW_PRESETS: Record<StyleId, Omit<StylePreset, 'captionStyle'>> = {
       'Cut away to a full-screen text scene for every key sentence, list, comparison (old way vs new way) and named ' +
       'product or price — in long form roughly every 20–40 seconds, each one carrying the whole thought (5–15 s). ' +
       'Between them, stay on the speaker. Calm pacing; B-roll only where something concrete is named.',
+  },
+
+  iman: {
+    id: 'iman',
+    sceneLook: 'iman',
+    name: 'Iman',
+    tagline: 'Flat characters, silver titles, a rule at a time.',
+    bestFor: 'Self-improvement, money and business storytelling — numbered rules, metaphors acted out by flat vector characters, big silver titles.',
+    accent: '#1F4FE0',
+    layout: 'full',
+    formats: ['long', 'short'],
+    captionPreset: 'bold-pop',
+    transitions: ['cut', 'whip-pan', 'zoom-punch'],
+    clipTransitions: ['light-leak', 'whip', 'zoom'],
+    brollOverlay: 'none',
+    musicMood: 'cinematic emotional',
+    musicGainDb: -24,
+    silencePreset: 'balanced',
+    short: {
+      punchInEverySec: [5, 9],
+      punchInScale: [1.08, 1.16],
+      punchMoves: PUNCH_SHORT,
+      brollEverySec: 18,
+      brollDurationSec: [1.5, 2.5],
+      graphicEverySec: 8,
+      graphicDurationSec: 3,
+      transitionDensity: 0.35,
+      sfxDensity: 0.45,
+    },
+    long: {
+      punchInEverySec: [14, 24],
+      punchInScale: [1.06, 1.12],
+      punchMoves: PUNCH_LONG,
+      brollEverySec: 40,
+      brollDurationSec: [3, 5],
+      graphicEverySec: 25,
+      graphicDurationSec: 4,
+      transitionDensity: 0.25,
+      sfxDensity: 0.3,
+    },
+    overlays: { progressBar: false, lowerThird: false, grain: false, vignette: false },
+    directorNotes:
+      'Cut away to a full-screen illustrated scene for every numbered rule (the compass turns to its number), every ' +
+      'metaphor or story beat (acted out by flat characters and objects) and every key figure — in long form roughly ' +
+      'every 20–40 seconds, each one carrying the whole thought (4–12 s). Between them, stay on the speaker with ' +
+      'punch-ins on the strong lines.',
   },
 
   explainer: {

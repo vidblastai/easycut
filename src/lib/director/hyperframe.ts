@@ -163,7 +163,7 @@ This is a text-led look: the shot puts the line on screen the way a well-edited 
 - a chain of qualities ("better, faster, smarter") becomes pills joined by dotted lines that fill in word by word;
 - a quote or a strong sentence becomes the sentence itself, each word lighting up on its own timing;
 - a named thing (an email, a price, a search, a tool) becomes one simple interface piece doing exactly that — the email typing itself, the price card with a cursor clicking it.
-Use only words that are in the line (shortened, never invented) and the figures it states. Never more than about 12 words visible at once; when the line moves on, the old words leave and the next idea arrives. Words never sit on top of other words: before a new card or line lands where one already stands, the old one moves aside, shrinks back or leaves — check the frames where two beats meet. Topic-free: the look decides how it is set and how it moves, the line decides what it says.
+Use only words that are in the line (shortened, never invented) and the figures it states. Never more than about 12 words visible at once; when the line moves on, the old words leave and the next idea arrives. When a line is split into one span per word, give the font family, size and weight to the line's container too, not only to the spans: the space between two spans is set in the container's size, and at the default 16px the words run together ("STOPWAITING"). Words never sit on top of other words: before a new card or line lands where one already stands, the old one moves aside, shrinks back or leaves — check the frames where two beats meet. Topic-free: the look decides how it is set and how it moves, the line decides what it says.
 
 `;
 

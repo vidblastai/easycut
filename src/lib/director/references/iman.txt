@@ -1,0 +1,253 @@
+<!-- concept: path, 1920×1080: on a black doodle wall, a half compass rises from the bottom — its ring of seven numbered segments turns to "3", the segment wipes red and reads PROTECT YOUR MORNINGS; a blue light whip cuts to a flat businessman beside a red alarm clock under the silver title THE FIRST HOUR, the clock's hand spinning round the whole day; a second whip cuts to a row of grey task cards where one turns blue and rises under a ONE TASK pointer, ringing out as a check draws on it -->
+<style>
+#ground { position:absolute; inset:0; background: radial-gradient(120% 100% at 50% 40%, #151517 0%, #0B0B0D 60%, #060607 100%); }
+#doodle { position:absolute; left:-60px; top:-40px; width:2040px; height:1160px; }
+#vignette { position:absolute; inset:0; background: radial-gradient(115% 100% at 50% 50%, rgba(0,0,0,0) 55%, rgba(0,0,0,.75) 100%); }
+#grain { position:absolute; inset:0; opacity:.13; mix-blend-mode:overlay;
+  background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='260' height='260'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='3' stitchTiles='stitch'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>"); }
+#whip { position:absolute; left:0; top:-200px; width:1300px; height:1480px; border-radius:50%; opacity:0; mix-blend-mode:screen;
+  background: radial-gradient(closest-side, rgba(150,200,255,.95), rgba(40,110,255,.85) 35%, rgba(20,60,220,.45) 65%, rgba(10,30,140,0) 100%); filter: blur(30px); }
+#cam { position:absolute; inset:0; transform-origin:50% 55%; }
+.beat { position:absolute; inset:0; }
+
+/* Silver display type: Montserrat 800 caps, a white-to-steel gradient, a hard soft-edged drop. */
+.silver { font-family:'Montserrat'; font-weight:800; text-transform:uppercase; letter-spacing:-1px;
+  background:linear-gradient(180deg, #FFFFFF 0%, #F1F1F3 45%, #9A9AA2 100%); -webkit-background-clip:text; background-clip:text; color:transparent;
+  filter: drop-shadow(0 6px 10px rgba(0,0,0,.55)); }
+
+/* Beat 1 — the principle compass. */
+#b1 { }
+#ringwrap { position:absolute; left:260px; top:340px; width:1400px; height:1400px; transform-origin:50% 50%; }
+#ring { position:absolute; inset:0; }
+.seglab { position:absolute; left:500px; top:620px; width:400px; height:160px; display:flex; flex-direction:column; align-items:center; justify-content:center; }
+.num { font-size:118px; line-height:1; }
+.ico { width:64px; height:64px; opacity:.35; }
+#lab3 { position:absolute; left:0; right:0; top:22px; opacity:0; text-align:center; font-family:'Montserrat'; color:#FFFFFF; line-height:1.05; }
+#lab3 .a { font-weight:800; font-size:44px; display:inline-block; }
+#lab3 .b { font-weight:600; font-size:32px; display:inline-block; }
+#face { position:absolute; left:610px; top:690px; width:700px; height:700px; }
+.cp { position:absolute; font-family:'Montserrat'; font-weight:700; font-size:34px; color:#3A352C; }
+
+/* Beat 2 — flat character and clock. */
+#b2 { opacity:0; }
+#title2 { position:absolute; left:0; top:120px; width:1920px; text-align:center; font-size:128px; }
+#man { position:absolute; left:500px; top:262px; width:350px; height:754px; }
+#clock { position:absolute; left:990px; top:400px; width:480px; height:540px; }
+#floor { position:absolute; left:420px; top:965px; width:1000px; height:60px; border-radius:50%; background: radial-gradient(closest-side, rgba(0,0,0,.6), rgba(0,0,0,0)); }
+
+/* Beat 3 — the one task. */
+#b3 { opacity:0; }
+.task { position:absolute; top:450px; width:210px; height:256px; border-radius:20px; background:linear-gradient(180deg, #2C2C31 0%, #202024 100%);
+  border:2px solid rgba(255,255,255,.07); box-shadow: 0 24px 40px rgba(0,0,0,.5); }
+.task i { position:absolute; left:28px; height:12px; border-radius:6px; background:#45454C; }
+#t1 { left:375px; } #t2 { left:615px; } #t3 { left:855px; } #t4 { left:1095px; } #t5 { left:1335px; }
+#t3 { z-index:2; }
+#t3 .blue { position:absolute; inset:-2px; border-radius:20px; background:linear-gradient(180deg, #3D6BFF 0%, #1E44D8 100%); opacity:0; }
+#star { position:absolute; left:61px; top:64px; width:88px; height:88px; opacity:0; }
+#pointer { position:absolute; left:760px; top:262px; width:400px; text-align:center; opacity:0; }
+#pointer .silver { font-size:64px; }
+#pointer svg { display:block; margin:6px auto 0; }
+.ripple { position:absolute; left:845px; top:440px; width:230px; height:276px; border-radius:30px; border:4px solid rgba(255,255,255,.8); opacity:0; }
+</style>
+<div id="scene">
+  <div id="ground"></div>
+  <svg id="doodle" viewBox="0 0 2040 1160"></svg>
+  <div id="cam">
+    <div id="b1" class="beat">
+      <div id="ringwrap">
+        <svg id="ring" viewBox="-700 -700 1400 1400">
+          <circle r="490" fill="none" stroke="#0E0E10" stroke-width="260" />
+          <circle id="seg1" r="490" fill="none" stroke="#1F4FE0" stroke-width="260" pathLength="360" stroke-dasharray="51.43 308.57" transform="rotate(-115.7)" />
+          <circle id="seg2" r="490" fill="none" stroke="#9B1FE8" stroke-width="260" pathLength="360" stroke-dasharray="51.43 308.57" transform="rotate(-64.3)" />
+          <circle id="seg3" r="490" fill="none" stroke="#E0281E" stroke-width="260" pathLength="360" stroke-dasharray="0 360" transform="rotate(-12.9)" />
+          <circle r="378" fill="none" stroke="rgba(0,0,0,.35)" stroke-width="36" />
+          <circle r="620" fill="none" stroke="rgba(255,255,255,.9)" stroke-width="3" />
+          <circle r="360" fill="none" stroke="rgba(255,255,255,.18)" stroke-width="2" />
+          <g id="seps"></g>
+        </svg>
+        <div class="seglab" style="transform: rotate(0deg) translateY(-490px)"><svg class="ico" viewBox="0 0 64 64"><path d="M8 48 L14 18 L26 32 L32 12 L38 32 L50 18 L56 48 Z" fill="#FFFFFF" /></svg></div>
+        <div class="seglab" style="transform: rotate(51.43deg) translateY(-490px)"><svg class="ico" viewBox="0 0 64 64"><circle cx="32" cy="22" r="12" fill="#FFFFFF" /><path d="M10 56 Q32 30 54 56 Z" fill="#FFFFFF" /></svg></div>
+        <div class="seglab" style="transform: rotate(102.86deg) translateY(-490px)"><div id="n3" class="num silver">3</div><div id="lab3"><span class="a">PROTECT</span><br><span class="b">YOUR MORNINGS</span></div></div>
+        <div class="seglab" style="transform: rotate(154.29deg) translateY(-490px)"><div class="num silver">4</div></div>
+        <div class="seglab" style="transform: rotate(205.71deg) translateY(-490px)"><div class="num silver">5</div></div>
+        <div class="seglab" style="transform: rotate(257.14deg) translateY(-490px)"><div class="num silver">6</div></div>
+        <div class="seglab" style="transform: rotate(308.57deg) translateY(-490px)"><div class="num silver">7</div></div>
+      </div>
+      <svg id="face" viewBox="-350 -350 700 700">
+        <defs>
+          <linearGradient id="gold" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#E2CD92" /><stop offset=".5" stop-color="#B39556" /><stop offset="1" stop-color="#7C6434" /></linearGradient>
+          <radialGradient id="cream" cx=".45" cy=".4" r=".7"><stop offset="0" stop-color="#FFFCF3" /><stop offset=".6" stop-color="#EDE4CF" /><stop offset="1" stop-color="#CDBF9F" /></radialGradient>
+        </defs>
+        <circle r="336" fill="#050505" opacity=".5" />
+        <circle r="322" fill="url(#gold)" />
+        <circle r="290" fill="url(#cream)" />
+        <circle r="290" fill="none" stroke="rgba(80,60,20,.35)" stroke-width="4" />
+        <g id="rose" fill="#8A8275" opacity=".85">
+          <polygon points="0,-230 14,-14 0,0 -14,-14" /><polygon points="0,230 14,14 0,0 -14,14" />
+          <polygon points="-230,0 -14,-14 0,0 -14,14" /><polygon points="230,0 14,-14 0,0 14,14" />
+          <polygon points="-130,-130 -6,-18 0,0 -18,-6" /><polygon points="130,-130 6,-18 0,0 18,-6" />
+          <polygon points="-130,130 -6,18 0,0 -18,6" /><polygon points="130,130 6,18 0,0 18,6" />
+        </g>
+        <circle r="150" fill="none" stroke="rgba(90,80,60,.35)" stroke-width="2" />
+        <circle r="200" fill="none" stroke="rgba(90,80,60,.25)" stroke-width="2" stroke-dasharray="3 9" />
+        <g id="needle">
+          <polygon points="0,-250 34,0 0,24 -34,0" fill="#141414" />
+          <polygon points="0,250 34,0 0,-24 -34,0" fill="#141414" opacity=".25" />
+          <polygon points="0,-250 34,0 0,0" fill="#2C2C2C" />
+        </g>
+        <circle r="18" fill="#141414" /><circle r="7" fill="#B39556" />
+      </svg>
+      <div class="cp" style="left:948px; top:764px">N</div>
+      <div class="cp" style="left:1204px; top:1020px">E</div>
+      <div class="cp" style="left:686px; top:1020px">W</div>
+    </div>
+
+    <div id="b2" class="beat">
+      <div id="title2" class="silver">The first hour</div>
+      <div id="floor"></div>
+      <svg id="man" viewBox="0 0 260 560">
+        <ellipse cx="130" cy="548" rx="96" ry="10" fill="rgba(0,0,0,.55)" />
+        <rect x="88" y="330" width="42" height="200" rx="8" fill="#A31B1B" />
+        <rect x="130" y="330" width="42" height="200" rx="8" fill="#B91F1F" />
+        <rect x="80" y="520" width="52" height="20" rx="9" fill="#151515" />
+        <rect x="128" y="520" width="52" height="20" rx="9" fill="#151515" />
+        <path id="armL" d="M72 168 Q50 180 47 250 L45 330 Q45 344 58 344 L70 344 L78 250 Z" fill="#B02020" />
+        <path id="armR" d="M188 168 Q210 180 213 250 L215 330 Q215 344 202 344 L190 344 L182 250 Z" fill="#B02020" />
+        <circle cx="58" cy="352" r="14" fill="#EFAE86" /><circle cx="202" cy="352" r="14" fill="#EFAE86" />
+        <path d="M70 160 Q130 140 190 160 L198 352 Q130 366 62 352 Z" fill="#C62828" />
+        <path d="M130 150 Q170 150 190 160 L198 352 Q166 360 130 362 Z" fill="#000" opacity=".12" />
+        <path d="M108 156 L130 232 L152 156 Z" fill="#F5F5F5" />
+        <path d="M124 164 L136 164 L141 232 L130 250 L119 232 Z" fill="#7D1313" />
+        <path d="M108 156 L130 232 L100 204 L90 162 Z" fill="#A11E1E" />
+        <path d="M152 156 L130 232 L160 204 L170 162 Z" fill="#A11E1E" />
+        <circle cx="130" cy="280" r="5" fill="#7D1313" /><circle cx="130" cy="310" r="5" fill="#7D1313" />
+        <rect x="117" y="116" width="26" height="44" rx="8" fill="#E39E77" />
+        <ellipse cx="96" cy="96" rx="8" ry="11" fill="#E9A57E" /><ellipse cx="164" cy="96" rx="8" ry="11" fill="#E9A57E" />
+        <ellipse cx="130" cy="92" rx="34" ry="40" fill="#F2B48C" />
+        <path d="M95 86 Q96 44 132 44 Q168 44 168 84 Q160 64 132 64 Q108 64 100 92 Z" fill="#2A1A12" />
+      </svg>
+      <svg id="clock" viewBox="-200 -230 400 450">
+        <line x1="-90" y1="110" x2="-120" y2="170" stroke="#7D1313" stroke-width="16" stroke-linecap="round" />
+        <line x1="90" y1="110" x2="120" y2="170" stroke="#7D1313" stroke-width="16" stroke-linecap="round" />
+        <circle cx="-100" cy="-128" r="44" fill="#B71C1C" /><circle cx="100" cy="-128" r="44" fill="#B71C1C" />
+        <rect x="-12" y="-196" width="24" height="40" rx="8" fill="#7D1313" />
+        <circle r="150" fill="#D32F2F" />
+        <circle r="150" fill="none" stroke="#9F1D1D" stroke-width="10" />
+        <circle r="120" fill="#F7F3EA" />
+        <g id="ticks"></g>
+        <line id="hourhand" x1="0" y1="0" x2="0" y2="-58" stroke="#141414" stroke-width="13" stroke-linecap="round" />
+        <line id="minhand" x1="0" y1="0" x2="0" y2="-96" stroke="#141414" stroke-width="8" stroke-linecap="round" />
+        <circle r="12" fill="#D32F2F" />
+      </svg>
+    </div>
+
+    <div id="b3" class="beat">
+      <div id="t1" class="task"><i style="top:60px; width:110px"></i><i style="top:92px; width:124px"></i><i style="top:124px; width:80px"></i></div>
+      <div id="t2" class="task"><i style="top:60px; width:118px"></i><i style="top:92px; width:96px"></i><i style="top:124px; width:120px"></i></div>
+      <div id="t3" class="task"><div class="blue"></div><i style="top:186px; width:150px"></i>
+        <svg id="star" viewBox="0 0 88 88"><circle cx="44" cy="44" r="40" fill="none" stroke="#FFFFFF" stroke-width="6" /><path id="tick" d="M26 45 L39 58 L63 32" fill="none" stroke="#FFFFFF" stroke-width="8" stroke-linecap="round" stroke-linejoin="round" /></svg></div>
+      <div id="t4" class="task"><i style="top:60px; width:100px"></i><i style="top:92px; width:124px"></i><i style="top:124px; width:110px"></i></div>
+      <div id="t5" class="task"><i style="top:60px; width:124px"></i><i style="top:92px; width:84px"></i><i style="top:124px; width:116px"></i></div>
+      <div class="ripple" id="rp1"></div><div class="ripple" id="rp2"></div>
+      <div id="pointer"><div class="silver">One task</div><svg width="44" height="30" viewBox="0 0 44 30"><path d="M0 0 L44 0 L22 30 Z" fill="#FFFFFF" /></svg></div>
+    </div>
+  </div>
+  <div id="whip"></div>
+  <div id="vignette"></div>
+  <div id="grain"></div>
+</div>
+<script>
+const NS = 'http://www.w3.org/2000/svg';
+// The doodle wall: smooth hand-drawn contour lines, faint grey on black, like a topographic map.
+const doodle = document.getElementById('doodle');
+for (let i = 0; i < 26; i++) {
+  const base = i * 46 - 20, p1 = rand(i) * 6.28, p2 = rand(i + 50) * 6.28, a1 = 18 + rand(i + 100) * 26, a2 = 8 + rand(i + 150) * 14;
+  let d = '';
+  for (let x = -20; x <= 2060; x += 20) {
+    const y = base + Math.sin(x * 0.0042 + p1) * a1 + Math.sin(x * 0.011 + p2) * a2 + Math.sin(x * 0.0021 + i * 0.4) * 30;
+    d += (x === -20 ? 'M' : ' L') + x + ' ' + y.toFixed(1);
+  }
+  const p = document.createElementNS(NS, 'path');
+  p.setAttribute('d', d); p.setAttribute('fill', 'none'); p.setAttribute('stroke', 'rgba(255,255,255,.065)');
+  p.setAttribute('stroke-width', '5'); p.setAttribute('stroke-linecap', 'round'); p.setAttribute('stroke-linejoin', 'round');
+  doodle.appendChild(p);
+}
+// Dotted dividers between the seven segments, and the clock's twelve ticks.
+const seps = document.getElementById('seps');
+for (let k = 0; k < 7; k++) {
+  const a = ((k * 51.43 - 25.71) - 90) * Math.PI / 180;
+  const l = document.createElementNS(NS, 'line');
+  l.setAttribute('x1', (Math.cos(a) * 360).toFixed(1)); l.setAttribute('y1', (Math.sin(a) * 360).toFixed(1));
+  l.setAttribute('x2', (Math.cos(a) * 620).toFixed(1)); l.setAttribute('y2', (Math.sin(a) * 620).toFixed(1));
+  l.setAttribute('stroke', 'rgba(255,255,255,.55)'); l.setAttribute('stroke-width', '3'); l.setAttribute('stroke-dasharray', '4 10');
+  seps.appendChild(l);
+}
+const ticks = document.getElementById('ticks');
+for (let k = 0; k < 12; k++) {
+  const a = (k * 30) * Math.PI / 180;
+  const l = document.createElementNS(NS, 'line');
+  l.setAttribute('x1', (Math.sin(a) * 96).toFixed(1)); l.setAttribute('y1', (-Math.cos(a) * 96).toFixed(1));
+  l.setAttribute('x2', (Math.sin(a) * 110).toFixed(1)); l.setAttribute('y2', (-Math.cos(a) * 110).toFixed(1));
+  l.setAttribute('stroke', '#3A3A3A'); l.setAttribute('stroke-width', k % 3 === 0 ? '7' : '4'); l.setAttribute('stroke-linecap', 'round');
+  ticks.appendChild(l);
+}
+// A blue light whip across the frame; the next beat is swapped in under its brightest moment.
+function whip(t, from, to) {
+  tl.fromTo('#whip', { x: -1500, opacity: 0 }, { x: 2200, opacity: 1, duration: 0.55, ease: 'power2.inOut', immediateRender: false }, t);
+  tl.to('#whip', { opacity: 0, duration: 0.15 }, t + 0.42);
+  tl.set(from, { opacity: 0 }, t + 0.24);
+  tl.set(to, { opacity: 1 }, t + 0.24);
+  tl.fromTo('#cam', { x: 40 }, { x: 0, duration: 0.5, ease: 'power3.out', immediateRender: false }, t + 0.24);
+}
+tl.to('#doodle', { x: -50, y: -20, duration: DURATION, ease: 'none' }, 0);
+
+// "Rule number three" — the compass rises; the ring turns from 2 to 3 with a settle; the needle swings.
+tl.fromTo('#b1', { y: 420 }, { y: 0, duration: 0.7, ease: 'power3.out', immediateRender: false }, 0);
+tl.set('#ringwrap', { rotation: -51.43 }, 0);
+tl.to('#ringwrap', { rotation: -102.86, duration: 0.7, ease: 'back.out(1.5)' }, at('three', 0.36) - 0.08);
+tl.set('#needle', { svgOrigin: '0 0', rotation: 70 }, 0);
+tl.to('#needle', { rotation: -12, duration: 0.9, ease: 'back.out(2.2)', svgOrigin: '0 0' }, 0.1);
+tl.to('#needle', { rotation: 6, duration: 0.6, ease: 'sine.inOut', svgOrigin: '0 0' }, 1.0);
+tl.fromTo('#n3', { scale: 0.6, opacity: 0 }, { scale: 1, opacity: 1, duration: 0.35, ease: 'back.out(2)', immediateRender: false }, at('three', 0.36));
+// "protect your mornings" — the segment wipes red and takes the principle's name.
+const tP = at('protect', 1.06) - 0.08;
+tl.to('#seg3', { attr: { 'stroke-dasharray': '51.43 308.57' }, duration: 0.45, ease: 'power2.inOut' }, tP);
+tl.to('#n3', { opacity: 0, scale: 0.8, duration: 0.2 }, tP + 0.1);
+tl.set('#lab3', { opacity: 1 }, tP + 0.2);
+tl.fromTo('#lab3 .a', { opacity: 0, scale: 1.35, filter: 'blur(6px)' }, { opacity: 1, scale: 1, filter: 'blur(0px)', duration: 0.4, ease: 'power3.out', immediateRender: false }, tP + 0.2);
+tl.fromTo('#lab3 .b', { opacity: 0, scale: 1.35, filter: 'blur(6px)' }, { opacity: 1, scale: 1, filter: 'blur(0px)', duration: 0.4, ease: 'power3.out', immediateRender: false }, at('mornings', 1.52) - 0.1);
+
+// "The first hour decides your whole day" — whip to the businessman and his clock.
+const t2 = at('first', 2.16) - 0.32;
+whip(t2, '#b1', '#b2');
+tl.fromTo('#title2', { opacity: 0, scale: 1.3, filter: 'blur(12px)' }, { opacity: 1, scale: 1, filter: 'blur(0px)', duration: 0.6, ease: 'power3.out', immediateRender: false }, t2 + 0.26);
+tl.fromTo('#man', { x: -260, opacity: 0 }, { x: 0, opacity: 1, duration: 0.6, ease: 'power3.out', immediateRender: false }, t2 + 0.28);
+tl.fromTo('#clock', { scale: 0.5, opacity: 0, rotation: -14 }, { scale: 1, opacity: 1, rotation: 0, duration: 0.5, ease: 'back.out(1.8)', immediateRender: false }, at('hour', 2.36) - 0.05);
+tl.to('#clock', { rotation: 4, duration: 0.06, yoyo: true, repeat: 7, ease: 'none' }, at('decides', 2.62));
+tl.to('#minhand', { rotation: 720, svgOrigin: '0 0', duration: 1.0, ease: 'power2.inOut' }, at('whole', 3.2) - 0.25);
+tl.to('#hourhand', { rotation: 60, svgOrigin: '0 0', duration: 1.0, ease: 'power2.inOut' }, at('whole', 3.2) - 0.25);
+tl.to('#armR', { rotation: -8, svgOrigin: '190 170', duration: 0.4, yoyo: true, repeat: 1, ease: 'sine.inOut' }, at('decides', 2.62));
+tl.to('#b2', { scale: 1.05, duration: 2, ease: 'none' }, t2 + 0.24);
+
+// "so spend it on the one task that matters" — whip to the row of tasks; one turns blue and rises.
+const t3 = at('so', 4.0) - 0.3;
+whip(t3, '#b2', '#b3');
+['#t1', '#t2', '#t3', '#t4', '#t5'].forEach((id, i) => {
+  tl.fromTo(id, { y: 120, opacity: 0 }, { y: 0, opacity: 1, duration: 0.45, ease: 'power3.out', immediateRender: false }, t3 + 0.26 + i * 0.06);
+});
+const tOne = at('one', 4.82) - 0.06;
+tl.to('#t3 .blue', { opacity: 1, duration: 0.25 }, tOne);
+tl.to('#t3', { y: -70, scale: 1.18, boxShadow: '0 40px 80px rgba(20,60,220,.45)', duration: 0.5, ease: 'back.out(1.6)' }, tOne);
+tl.to(['#t1', '#t2', '#t4', '#t5'], { scale: 0.9, opacity: 0.4, duration: 0.45, ease: 'power2.out' }, tOne);
+tl.fromTo('#pointer', { opacity: 0, y: -30 }, { opacity: 1, y: -60, duration: 0.4, ease: 'back.out(2)', immediateRender: false }, at('task', 4.96) - 0.08);
+tl.to('#cam', { scale: 1.08, duration: 1.8, ease: 'power2.out' }, tOne);
+// "matters" — a check draws on the card and it rings out.
+const tick = document.getElementById('tick');
+tick.setAttribute('pathLength', '1'); tick.setAttribute('stroke-dasharray', '1'); tick.setAttribute('stroke-dashoffset', '1');
+const tM = at('matters', 5.56) - 0.1;
+tl.set('#star', { opacity: 1 }, tM);
+tl.to('#tick', { strokeDashoffset: 0, duration: 0.3, ease: 'power2.out' }, tM + 0.05);
+['#rp1', '#rp2'].forEach((id, i) => {
+  tl.fromTo(id, { opacity: 0.85, y: -70, scale: 1.1 }, { opacity: 0, scale: 1.9, duration: 0.7, ease: 'power2.out', immediateRender: false }, tM + i * 0.16);
+});
+</script>
