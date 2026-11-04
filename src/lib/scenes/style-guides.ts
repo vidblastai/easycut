@@ -63,6 +63,12 @@ export interface StyleGuide {
    * screen, and the video's captions step aside while its scene plays.
    */
   typography?: string;
+  /**
+   * An illustration-led look that still allows a few labels: the picture
+   * carries the line and words appear only as short labels, numbers or dates.
+   * Only meaningful together with `typography`.
+   */
+  illustrated?: boolean;
 }
 
 /** Looks where words are the picture rather than something to keep off it. */
@@ -943,6 +949,143 @@ export const STYLE_GUIDES: Record<SceneLook, StyleGuide> = {
       'case for notes (34–44px). Stamps: Oswald 700 caps, 90–120px, letter-spacing 4px, a 7px border, rotated −15° to ' +
       '+12°. Tape labels: Courier Prime 700, 28–32px. Only words and figures that are actually said in the line — never ' +
       'invented copy — and never more than about 10 words visible at once.',
+  },
+
+  cosmos: {
+    id: 'cosmos',
+    ground: '#120A4A',
+    illustrated: true,
+    palette: [
+      { role: 'deep indigo space — the ground and far layers', hex: '#1A0F5E' },
+      { role: 'hot pink-red — the warm hero colour', hex: '#F0284F' },
+      { role: 'violet — a second hero or an organ, a planet, a machine', hex: '#8457F0' },
+      { role: 'sunny yellow — energy, light, timers, sparks', hex: '#FFD34D' },
+      { role: 'cyan-teal — water, tech, cool objects', hex: '#2FD3E8' },
+      { role: 'cream — bone, paper, highlights on warm things', hex: '#FFEACB' },
+    ],
+    accent: '#FFD34D',
+    rendering:
+      'Flat vector science illustration in the vibrant "explainer" genre: everything is built from soft, rounded, ' +
+      'chunky shapes with NO outlines. Each object has a base colour, a darker shade side or contact shadow, a lighter ' +
+      'inner area and a curved white highlight stroke at ~40% opacity on its upper-left — a glossy, toy-like finish. ' +
+      'Colours are saturated and warm-on-cool: pinks, oranges, yellows and violets popping against deep indigo. Scale is ' +
+      'part of the story: tiny things (cells, atoms, people) are drawn big and simple; huge things (planets, cities) are ' +
+      'drawn small and friendly. Many small repeated pieces stream, orbit or swarm. Glowing things get a soft radial ' +
+      'glow; light rays fan out behind a hero moment. Generic, simple objects only — no characters with faces, no ' +
+      'mascots, no logos.',
+    lighting:
+      'A deep indigo backdrop with a brighter centre, tiny stars or specks scattered across it, a few soft "+" sparkles, ' +
+      'and big blurred darker blobs far behind for depth. Emissive things glow; nothing is lit harshly.',
+    ground_rule:
+      'Deep indigo (or a deep teal or plum for a different world) radial gradient, a scatter of tiny specks, a few ' +
+      'sparkles, big blurred blobs far behind drifting slower than the subject, a soft vignette.',
+    motion:
+      'Lively and continuous — something always moves: streams flow, things tumble, orbit and bob. Objects pop in with ' +
+      'a friendly overshoot (back.out) or glide in from off frame (power3.out). The camera DIVES between scales: it ' +
+      'pushes into one object until the next beat is inside it, or pulls out to reveal the bigger system. Timers and ' +
+      'rings fill, sparks burst, rays rotate slowly behind a hero. Beats change by diving, gliding or a quick scale-out, ' +
+      'never by a hard cut.',
+    camera:
+      'A slow push throughout, quick dives into a detail between beats (scale 2–3 with blur), and parallax: specks and ' +
+      'far blobs drift slower than the subject.',
+    never: [
+      'outlines or line art',
+      'realistic textures, photos or 3D renders',
+      'characters with faces, mascots or logos — this is a style, not anyone\'s characters',
+      'grey, muddy or pastel colours',
+      'more than about four words on screen at once',
+      'emoji',
+    ],
+    typography:
+      'Fredoka 600–700, white with a soft dark drop (0 6px 0 at 45%), rounded and friendly. A big number or short label ' +
+      '60–100px in a 1920-wide frame (scale by frame width), a smaller second line 40–48px in a pale tint. Only numbers, ' +
+      'names and short labels that the line actually says.',
+  },
+
+  chronicle: {
+    id: 'chronicle',
+    ground: '#E4CD98',
+    illustrated: true,
+    palette: [
+      { role: 'parchment — the page', hex: '#E9D5A6' },
+      { role: 'iron-gall ink — lines, hatching, type', hex: '#2B1A0E' },
+      { role: 'sepia — secondary lines, ground, shading', hex: '#3A2614' },
+      { role: 'wax and blood red — seals, ribbons, territory, the key mark', hex: '#9E1B12' },
+      { role: 'pale vellum — banners, scrolls, labels', hex: '#EEDCB0' },
+      { role: 'ember — fire, ruin, the end of things', hex: '#E8742A' },
+    ],
+    accent: '#9E1B12',
+    rendering:
+      'A history-book engraving brought to life on old parchment. Everything is drawn in ink: crisp sepia outlines ' +
+      '(2–4px) filled with paper tones, shaded by diagonal HATCHING (an SVG pattern of fine parallel lines) on the dark ' +
+      'side, stippled dots for dust and texture. Subjects are period objects and places drawn simply but carefully — ' +
+      'walls and towers built from stone courses, ships, crowns, swords, scrolls, coins, maps with coastlines and dotted ' +
+      'routes, columns, a throne, a quill. Red is the only colour: wax seals, ribbons, a territory, a route, the key ' +
+      'mark. Labels sit on unfurled scroll banners. A timeline (an ink rule with ticks) is the natural home for dates.',
+    lighting:
+      'Candlelight: a warm glow from the upper left that flickers gently, darker burnt edges around the page, ' +
+      'mottled stains and paper fibre across it.',
+    ground_rule:
+      'Parchment with mottled stains (low-frequency noise, multiply), fine fibre texture, a darker burnt vignette at the ' +
+      'edges and a warm candle glow — never a flat colour.',
+    motion:
+      'Unhurried and documentary. Ink WRITES itself (a clip-path wipe for words, strokeDashoffset for lines and tally ' +
+      'marks); seals press down with a squash; banners unfurl; routes draw along a map; armies and ships glide; things ' +
+      'that fall, fall — stones tumble with rotation and stippled dust. Beats change by a slow dissolve of the page or ' +
+      'a slow pan across it, like a camera over an old book.',
+    camera: 'A slow, continuous drift and settle across the page (scale 1.08 → 1 over the scene), small shakes for impacts.',
+    never: [
+      'bright or neon colours, glossy gradients',
+      'modern UI, icons or sans-serif type',
+      'real flags, real coats of arms or real portraits',
+      'more than about four words on screen at once',
+      'emoji',
+    ],
+    typography:
+      'Playfair Display: dates and numbers 700–800 at 96–230px in a 1920-wide frame (scale by frame width), names on ' +
+      'banners in 700 italic at 56–64px, in dark ink, never pure black. Only dates, numbers, names and places the line ' +
+      'actually says.',
+  },
+
+  boardroom: {
+    id: 'boardroom',
+    ground: '#0D1830',
+    palette: [
+      { role: 'navy — the ground', hex: '#0D1830' },
+      { role: 'tile navy — cards and tiles, with a rim of #2C4170', hex: '#1A2B4D' },
+      { role: 'cyan — the first series, highlights, underlines', hex: '#3BC9FF' },
+      { role: 'periwinkle — the second series', hex: '#8C9BFF' },
+      { role: 'green — growth, profit, the good outcome', hex: '#2ED67A' },
+      { role: 'red — loss, decline, the bad outcome', hex: '#FF5A5F' },
+      { role: 'gold — money itself: coins, cash', hex: '#F5C043' },
+    ],
+    accent: '#3BC9FF',
+    rendering:
+      'A business-channel broadcast graphic: clean diagrams that explain how money, companies and markets work. The ' +
+      'pieces: glassy navy tiles with a thin cool rim, soft shadow and a white flat icon (a person, a business building, ' +
+      'a factory, a shop, a bank, a phone, a truck); value cards (label left, big coloured figure right); flow diagrams ' +
+      'where money streams between tiles as smooth curved bands sized to their share (Sankey), with coins running along ' +
+      'them; donut and bar charts; arrows that grow; a gold coin for money. One colour per series. Text is short ' +
+      'labels and the figures said. Generic icons only — no real company logos.',
+    lighting: 'A soft cool light from the top, a faint grid on the ground fading at the edges, a vignette.',
+    ground_rule: 'Deep navy radial gradient with a faint 60px grid (masked to fade at the edges) and a vignette.',
+    motion:
+      'Crisp and explanatory. Tiles rise 30px and fade in (0.45 s, power3.out); coins arc along paths; streams OPEN ' +
+      'from their source (a clip that grows, 0.7 s, power2.inOut) as each share is said, then cards slide in; coins run ' +
+      'along open streams; the key result takes the light while everything else drops to ~30%. Small pulses (scale ' +
+      '1.06 yoyo) when something arrives.',
+    camera: 'A slow push with a gentle drift toward where the diagram grows; no cuts.',
+    never: [
+      'real company logos or brand colours',
+      'photos or 3D',
+      'cluttered dashboards — one diagram per scene',
+      'more than about 12 words on screen at once',
+      'emoji',
+    ],
+    typography:
+      'Inter. Labels 600 at 30–36px, figures 800 at 52–72px in the series colour, titles 800 at 56–72px white with a ' +
+      'short cyan underline, all in a 1920-wide frame (scale by frame width). Only words and figures that are ' +
+      'actually said in the line — never invented copy.',
   },
 
   particles: {

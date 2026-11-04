@@ -154,6 +154,12 @@ export function safeZone(width: number, height: number): SafeZone {
  * the line is SHOWN in words and simple interface pieces, the way a good
  * long-form explainer cuts away to its figures, lists and comparisons.
  */
+const ILLUSTRATED_PRINCIPLE = `## Draw what is being said — words only as labels
+
+This is an illustration-led look for a channel where someone talks: the shot cuts away from the speaker and SHOWS the line as a richly drawn picture that changes beat by beat on the words. The picture carries the meaning. Words appear only where a viewer needs them — a short label on a thing, a number, a date, a name the line says — never more than about four words at once, set as the typography below says, and never a sentence. The video's captions are switched off while the shot plays, so the picture and its few labels must make the line clear on their own.
+
+`;
+
 const TEXT_LOOK_PRINCIPLE = `## Show what is being said — in words
 
 This is a text-led look: the shot puts the line on screen the way a well-edited long-form video cuts away to it. Take what the sentence actually contains and set it as type that arrives exactly as it is spoken:
@@ -175,11 +181,15 @@ export function systemPrompt(width: number, height: number, durationSec: number,
   const midX = Math.round((z.left + z.right) / 2), midY = Math.round((z.top + z.bottom) / 2);
   const textLook = isTextLook(look);
   const guide = styleGuideFor(look);
+  // Illustration-led looks allow labels but follow the drawing rules.
+  const illustrated = textLook && Boolean(guide.illustrated);
+  const wordy = textLook && !illustrated;
+  const fonts = Object.keys(SCENE_FONTS).join(', ');
   return `You make one shot of a video as an HTML motion graphic: the picture AND how it moves, beat by beat.
 
 It plays full-screen on ${height > width ? 'a phone' : 'a screen, inside a long-form video'} for ${dur} seconds while someone talks over it. It IS the shot — no footage behind it — so it has to carry the frame on its own and it must never sit still.
 
-${textLook ? TEXT_LOOK_PRINCIPLE : ''}## ${textLook ? 'The objects beside the words' : 'Draw what is being said'}
+${illustrated ? ILLUSTRATED_PRINCIPLE : textLook ? TEXT_LOOK_PRINCIPLE : ''}## ${wordy ? 'The objects beside the words' : 'Draw what is being said'}
 
 Every object on screen is something the line is literally about, or a picture a viewer would read instantly as that thing. "Put in your footage and it does everything else" is one film clip that gets snipped into pieces that snap into a neat strip and light up — not a planet, a rocket or a galaxy. The world below decides HOW things are drawn (shapes, colours, light, motion), never WHAT is drawn: it has no subjects of its own. No decorative props that the line does not mention — no planets, stars, moons, rockets, cells, atoms or creatures unless the words are about them. If you would have to explain why an object is there, it does not belong.
 
@@ -224,13 +234,13 @@ The page around them is provided. The frame is ${width}×${height} px. Inside yo
 - **One background that fills the whole frame, edge to edge**: the world's ground with a soft pool of light behind the subject. It is the only background there is, and it stays quiet.
 - **The safe area is a hard edge.** Everything that matters sits inside x ${z.left}–${z.right}, y ${z.top}–${z.bottom}, and below y ${z.notchTop} only up to x ${z.notchRight} — the platform's account row, captions and like/share buttons cover the rest, which is backdrop only. The safe area's centre is (${midX}, ${midY}). How much of it you use is your decision from the layout: whatever makes the idea clearest.
 - **Readable on a phone and in focus.** Nothing important smaller than about a fifth of the frame's width. The eye always knows where to look: the thing being named is the biggest, brightest or moving one; what came before settles back.
-${textLook ? `- **Few elements, crisp.** One idea per beat: the words, and at most three or four simple pieces that support them. Generous space; nothing decorative.` : `- **Few objects, richly drawn.** Space around each item, but each item is richly drawn: base colour, a darker shadow side, a light rim, inner parts (a brain has its folds and a highlight; a film clip has sprocket holes, frames, a sheen). A flat circle with an icon on it is a placeholder, not an illustration. A later beat often multiplies the subject into a system that fills the safe area — one brain becomes a web of seven linked neurons. 20 to 120 shapes in all.`}
-${textLook ? `- **Simple interface pieces are part of this world** — a dark card, a window with three dots, a chat bubble, a pricing card, a search bar, a toggle — drawn flat and simple, holding the words the line says. Never a full device frame or a busy dashboard.` : `- **No screens.** No phone frames, monitors, app windows, dashboards, toolbars or interface mock-ups — a full-size device on screen is an empty box with things at its edges. Software is shown by what it does, as an object: a clip, a play button, scissors, a waveform, a check mark.`}
+${wordy ? `- **Few elements, crisp.** One idea per beat: the words, and at most three or four simple pieces that support them. Generous space; nothing decorative.` : `- **Few objects, richly drawn.** Space around each item, but each item is richly drawn: base colour, a darker shadow side, a light rim, inner parts (a brain has its folds and a highlight; a film clip has sprocket holes, frames, a sheen). A flat circle with an icon on it is a placeholder, not an illustration. A later beat often multiplies the subject into a system that fills the safe area — one brain becomes a web of seven linked neurons. 20 to 120 shapes in all.`}
+${wordy ? `- **Simple interface pieces are part of this world** — a dark card, a window with three dots, a chat bubble, a pricing card, a search bar, a toggle — drawn flat and simple, holding the words the line says. Never a full device frame or a busy dashboard.` : `- **No screens.** No phone frames, monitors, app windows, dashboards, toolbars or interface mock-ups — a full-size device on screen is an empty box with things at its edges. Software is shown by what it does, as an object: a clip, a play button, scissors, a waveform, a check mark.`}
 - Depth comes from the backdrop: a couple of dim, soft, blurred shapes far behind, moving slower than the subject when the camera moves.
-${textLook ? `- **Words are the picture here.** ${guide.typography ?? ''}
+${textLook ? `- **${illustrated ? 'Words are labels here, and rare.' : 'Words are the picture here.'}** ${guide.typography ?? ''}
 - Text lives in HTML elements (div, span) — never SVG \`<text>\`. Typing and word-by-word reveals are built from one \`<span>\` per word or per letter, revealed on the word's time from \`at()\`.` : `- **No text of any kind.** No letters, numbers, labels or words anywhere — not in an element, not in an SVG. The video's captions are the only words on screen and they are drawn over your shot afterwards.`}
 ${textLook ? `- **The video's captions are switched off while this shot plays** — your words are the only words on screen, so they must carry the line on their own.` : `- **The video's captions are drawn over your shot at about y ${Math.round(height * SCENE_CAPTION_BAND.top)}–${Math.round(height * SCENE_CAPTION_BAND.bottom)}.** Things may run behind them, but do not put the one detail that matters right there at the moment its word is said.`}
-- No \`<img>\`, \`<image>\`, \`<video>\`, \`<audio>\`, \`<iframe>\`, \`<link>\`, \`<text>\`, no \`url(http…)\`, no \`@import\`, no web fonts. Nothing may load from anywhere.${textLook ? ' For type, name the family in CSS — Montserrat, Poppins or Inter — and it is provided for you.' : ''}
+- No \`<img>\`, \`<image>\`, \`<video>\`, \`<audio>\`, \`<iframe>\`, \`<link>\`, \`<text>\`, no \`url(http…)\`, no \`@import\`, no web fonts. Nothing may load from anywhere.${textLook ? ` For type, name the family in CSS — ${fonts} — and it is provided for you.` : ''}
 
 ## The motion
 
@@ -274,7 +284,7 @@ No \`Math.random\`, \`Date\`, \`setTimeout\`, \`setInterval\`, \`requestAnimatio
 
 ## The bar
 
-This is a finished scene that meets the bar, written for the line "${reference.line}"${sameWorld ? ' in the same world you are drawing in. Match its technique and its craft' : ' in another world. Match its craft'}: ${textLook ? 'the line set as type that arrives exactly on its words, one idea per beat, the camera or a clean dissolve carrying you from one beat to the next, a payoff on the last word, and something alive in every frame' : 'one big, richly drawn subject in the middle landing on its word, the next beat made out of the last one, a payoff at the end, and something alive in every frame'}. Never copy its subject or its layout — yours come from your line.${textLook && width < height ? ' It is drawn for a 1920×1080 frame; yours is ' + width + '×' + height + ', so stack its beats vertically and size the type against your frame width.' : ''}
+This is a finished scene that meets the bar, written for the line "${reference.line}"${sameWorld ? ' in the same world you are drawing in. Match its technique and its craft' : ' in another world. Match its craft'}: ${wordy ? 'the line set as type that arrives exactly on its words, one idea per beat, the camera or a clean dissolve carrying you from one beat to the next, a payoff on the last word, and something alive in every frame' : 'one big, richly drawn subject in the middle landing on its word, the next beat made out of the last one, a payoff at the end, and something alive in every frame'}. Never copy its subject or its layout — yours come from your line.${textLook && width < height ? ' It is drawn for a 1920×1080 frame; yours is ' + width + '×' + height + ', so stack its beats vertically and size the type against your frame width.' : ''}
 
 ${reference.scene}`;
 }
@@ -331,7 +341,7 @@ ${guideAsPrompt(guide, ['palette', 'rendering', 'lighting', 'ground_rule', 'moti
 
 ${text ? `Typography: ${guide.typography}\n` : ''}
 The background of the frame is ${guide.ground}. Shape of the explanation: ${request.kind}.
-${text ? textLayoutHint(request.width, request.height) : layoutHint(request.line)}
+${text && !guide.illustrated ? textLayoutHint(request.width, request.height) : layoutHint(request.line)}
 Return only the three blocks.`;
 }
 
@@ -517,6 +527,7 @@ const SCENE_FONTS: Record<string, { dir: string; weights: number[] }> = {
   'Playfair Display': { dir: 'playfair-display', weights: [600, 700, 800] },
   'Courier Prime': { dir: 'courier-prime', weights: [400, 700] },
   Oswald: { dir: 'oswald', weights: [500, 600, 700] },
+  Fredoka: { dir: 'fredoka', weights: [500, 600, 700] },
   Montserrat: { dir: 'montserrat', weights: [600, 700, 800, 900] },
 };
 const fontCache = new Map<string, string>();

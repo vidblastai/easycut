@@ -30,6 +30,9 @@ export type StyleId =
   | 'iman'
   | 'ledger'
   | 'dossier'
+  | 'cosmos'
+  | 'chronicle'
+  | 'boardroom'
   | 'breakdown'
   | 'clean'
   | 'punchy'
@@ -1001,6 +1004,141 @@ const RAW_PRESETS: Record<StyleId, Omit<StylePreset, 'captionStyle'>> = {
       'Cut away to the case board for every turning point of the story — a date, a loss, a decision, a person, a ' +
       'secret — in long form roughly every 20–40 seconds, each one carrying the whole beat (5–15 s), the board ' +
       'growing as the story goes. Between them, stay on the speaker; slow, suspenseful pacing.',
+  },
+
+  cosmos: {
+    id: 'cosmos',
+    sceneLook: 'cosmos',
+    name: 'Cosmos',
+    tagline: 'Every idea becomes a little animated world.',
+    bestFor: 'Science, health, space and how-things-work channels — vivid flat animation between talking parts.',
+    accent: '#FFD34D',
+    layout: 'full',
+    formats: ['long', 'short'],
+    captionPreset: 'bold-pop',
+    transitions: ['cut', 'zoom-punch'],
+    clipTransitions: ['zoom', 'fade'],
+    brollOverlay: 'none',
+    musicMood: 'light curious',
+    musicGainDb: -24,
+    silencePreset: 'balanced',
+    short: {
+      punchInEverySec: [6, 10],
+      punchInScale: [1.06, 1.14],
+      punchMoves: PUNCH_SHORT,
+      brollEverySec: 20,
+      brollDurationSec: [1.5, 2.5],
+      graphicEverySec: 9,
+      graphicDurationSec: 3,
+      transitionDensity: 0.25,
+      sfxDensity: 0.35,
+    },
+    long: {
+      punchInEverySec: [18, 28],
+      punchInScale: [1.05, 1.1],
+      punchMoves: PUNCH_LONG,
+      brollEverySec: 45,
+      brollDurationSec: [3, 5],
+      graphicEverySec: 30,
+      graphicDurationSec: 4,
+      transitionDensity: 0.2,
+      sfxDensity: 0.2,
+    },
+    overlays: { progressBar: false, lowerThird: false, grain: false, vignette: false },
+    directorNotes:
+      'Cut away to an animated scene whenever the speaker explains a mechanism, a scale, a number or a process — in long ' +
+      'form roughly every 20–40 seconds, each one carrying the whole explanation (5–15 s). Between them, stay on the ' +
+      'speaker. Curious, lively pacing.',
+  },
+
+  chronicle: {
+    id: 'chronicle',
+    sceneLook: 'chronicle',
+    name: 'Chronicle',
+    tagline: 'History, written in ink as you speak.',
+    bestFor: 'History channels — dates, sieges, voyages and empires drawn as ink engravings on parchment.',
+    accent: '#9E1B12',
+    layout: 'full',
+    formats: ['long', 'short'],
+    captionPreset: 'subtitle',
+    transitions: ['cut', 'dissolve'],
+    clipTransitions: ['fade', 'zoom'],
+    brollOverlay: 'none',
+    musicMood: 'cinematic emotional',
+    musicGainDb: -24,
+    silencePreset: 'balanced',
+    short: {
+      punchInEverySec: [6, 10],
+      punchInScale: [1.06, 1.14],
+      punchMoves: PUNCH_SHORT,
+      brollEverySec: 20,
+      brollDurationSec: [1.5, 2.5],
+      graphicEverySec: 9,
+      graphicDurationSec: 3,
+      transitionDensity: 0.25,
+      sfxDensity: 0.35,
+    },
+    long: {
+      punchInEverySec: [18, 28],
+      punchInScale: [1.05, 1.1],
+      punchMoves: PUNCH_LONG,
+      brollEverySec: 45,
+      brollDurationSec: [3, 5],
+      graphicEverySec: 30,
+      graphicDurationSec: 4,
+      transitionDensity: 0.2,
+      sfxDensity: 0.2,
+    },
+    overlays: { progressBar: false, lowerThird: false, grain: false, vignette: false },
+    directorNotes:
+      'Cut away to the parchment for every date, place, battle, journey, ruler and turning point — in long form roughly ' +
+      'every 20–40 seconds, each one carrying the whole moment (5–15 s). Between them, stay on the speaker; slow, ' +
+      'storytelling pacing.',
+  },
+
+  boardroom: {
+    id: 'boardroom',
+    sceneLook: 'boardroom',
+    name: 'Boardroom',
+    tagline: 'How the money moves, drawn live.',
+    bestFor: 'Business channels — company breakdowns, deals, revenue splits and markets as clean broadcast diagrams.',
+    accent: '#3BC9FF',
+    layout: 'full',
+    formats: ['long', 'short'],
+    captionPreset: 'soft',
+    transitions: ['cut', 'dissolve'],
+    clipTransitions: ['fade', 'slide-left'],
+    brollOverlay: 'none',
+    musicMood: 'low-key groove',
+    musicGainDb: -26,
+    silencePreset: 'balanced',
+    short: {
+      punchInEverySec: [6, 10],
+      punchInScale: [1.06, 1.14],
+      punchMoves: PUNCH_SHORT,
+      brollEverySec: 20,
+      brollDurationSec: [1.5, 2.5],
+      graphicEverySec: 9,
+      graphicDurationSec: 3,
+      transitionDensity: 0.25,
+      sfxDensity: 0.35,
+    },
+    long: {
+      punchInEverySec: [18, 28],
+      punchInScale: [1.05, 1.1],
+      punchMoves: PUNCH_LONG,
+      brollEverySec: 45,
+      brollDurationSec: [3, 5],
+      graphicEverySec: 30,
+      graphicDurationSec: 4,
+      transitionDensity: 0.2,
+      sfxDensity: 0.2,
+    },
+    overlays: { progressBar: false, lowerThird: false, grain: false, vignette: false },
+    directorNotes:
+      'Cut away to a diagram whenever money, a company, a deal, a split or a market is explained — in long form roughly ' +
+      'every 20–40 seconds, each one carrying the whole explanation (5–15 s). Between them, stay on the speaker. ' +
+      'Confident, clear pacing.',
   },
 
   explainer: {

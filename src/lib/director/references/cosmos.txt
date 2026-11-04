@@ -1,0 +1,175 @@
+<!-- concept: path, 1920×1080: in a deep indigo space full of tiny stars, a cut-open bone pumps glossy red blood cells into a curving vessel, tumbling as they stream past, and "2 million / every second" pops up; the camera dives in on one cell, light rays turn behind it and a golden ring counts down "4 months" while the cell dulls and wrinkles; a purple spleen glides in, swallows it with a glow, and bright sparks of it fly back out to be used again -->
+<style>
+#space { position:absolute; inset:0; background: radial-gradient(90% 90% at 50% 50%, #2B1B86 0%, #1A0F5E 45%, #0C0634 100%); }
+#stars, #far { position:absolute; inset:0; }
+#far { filter: blur(26px); }
+#vignette { position:absolute; inset:0; background: radial-gradient(120% 110% at 50% 50%, rgba(0,0,0,0) 55%, rgba(6,2,30,.7) 100%); }
+#cam { position:absolute; inset:0; transform-origin:50% 50%; }
+.beat { position:absolute; inset:0; }
+/* Labels: rounded and friendly, white, few. */
+.label { position:absolute; left:0; width:1920px; text-align:center; font-family:'Fredoka'; font-weight:700; color:#FFFFFF; opacity:0;
+  text-shadow: 0 6px 0 rgba(20,8,70,.45); }
+#lab1 { top:190px; font-size:96px; line-height:1; }
+#lab1 small { display:block; font-size:44px; font-weight:600; color:#FFD6E4; margin-top:10px; }
+#lab2 { top:858px; font-size:64px; }
+#lab3 { top:150px; font-size:60px; letter-spacing:2px; }
+#b2, #b3 { opacity:0; }
+</style>
+<div id="scene">
+  <div id="space"></div>
+  <svg id="far" viewBox="0 0 1920 1080"></svg>
+  <svg id="stars" viewBox="0 0 1920 1080"></svg>
+  <div id="cam">
+    <div id="b1" class="beat">
+      <svg viewBox="0 0 1920 1080" width="1920" height="1080" style="position:absolute; left:0; top:0">
+        <defs>
+          <radialGradient id="rbc" cx=".4" cy=".35" r=".7"><stop offset="0" stop-color="#FF6B80" /><stop offset=".7" stop-color="#F0284F" /><stop offset="1" stop-color="#C3123C" /></radialGradient>
+        </defs>
+        <path id="vessel" d="M520 700 C 820 610, 1160 790, 2020 650" fill="none" stroke="#FF4F7B" stroke-width="190" stroke-linecap="round" />
+        <path d="M520 700 C 820 610, 1160 790, 2020 650" fill="none" stroke="#8E0F44" stroke-width="146" stroke-linecap="round" />
+        <path d="M520 650 C 820 560, 1160 740, 2020 600" fill="none" stroke="#FF9BB4" stroke-width="10" stroke-linecap="round" opacity=".55" />
+        <g id="cells"></g>
+        <g transform="translate(330 700) rotate(-12)"><g id="bone">
+          <path d="M-250 -70 C -330 -150 -200 -230 -150 -150 L 150 -150 C 200 -230 330 -150 250 -70 C 330 10 200 90 150 10 L -150 10 C -200 90 -330 10 -250 -70 Z" fill="#F6D9A8" transform="translate(0 70)" />
+          <path d="M-250 -70 C -330 -150 -200 -230 -150 -150 L 150 -150 C 200 -230 330 -150 250 -70 C 330 10 200 90 150 10 L -150 10 C -200 90 -330 10 -250 -70 Z" fill="#FFEACB" transform="translate(0 56) scale(.98)" />
+          <rect x="-150" y="-60" width="300" height="100" rx="40" fill="#FF7A5C" />
+          <g fill="#FF9E7F"><circle cx="-100" cy="-24" r="18" /><circle cx="-40" cy="10" r="22" /><circle cx="30" cy="-28" r="16" /><circle cx="96" cy="6" r="20" /><circle cx="-70" cy="26" r="10" /><circle cx="60" cy="30" r="9" /></g>
+          <rect x="-150" y="-60" width="300" height="14" rx="7" fill="#FFFFFF" opacity=".25" />
+        </g></g>
+        <g id="pops"></g>
+      </svg>
+      <div id="lab1" class="label">2 million<small>every second</small></div>
+    </div>
+
+    <div id="b2" class="beat">
+      <svg viewBox="0 0 1920 1080" width="1920" height="1080" style="position:absolute; left:0; top:0">
+        <defs>
+          <radialGradient id="rbc2" cx=".38" cy=".32" r=".75"><stop offset="0" stop-color="#FF7A8C" /><stop offset=".65" stop-color="#F0284F" /><stop offset="1" stop-color="#B80F38" /></radialGradient>
+          <radialGradient id="old" cx=".38" cy=".32" r=".75"><stop offset="0" stop-color="#C77A92" /><stop offset=".65" stop-color="#9C3F62" /><stop offset="1" stop-color="#6E2647" /></radialGradient>
+        </defs>
+        <g transform="translate(960 500)"><g id="rays" opacity=".12"></g></g>
+        <circle cx="960" cy="500" r="300" fill="none" stroke="#2E1F86" stroke-width="22" />
+        <circle id="timer" cx="960" cy="500" r="300" fill="none" stroke="#FFD34D" stroke-width="22" stroke-linecap="round" transform="rotate(-90 960 500)" />
+        <g id="cell2" transform="translate(960 500)">
+          <ellipse cx="0" cy="14" rx="232" ry="226" fill="#7A0A2C" opacity=".5" />
+          <circle id="cbody" r="230" fill="url(#rbc2)" />
+          <circle id="cold" r="230" fill="url(#old)" opacity="0" />
+          <ellipse cx="6" cy="10" rx="120" ry="112" fill="#C3123C" opacity=".55" />
+          <path d="M-150 -120 A 190 190 0 0 1 60 -190" fill="none" stroke="#FFFFFF" stroke-width="22" stroke-linecap="round" opacity=".45" />
+          <g id="wrinkles" fill="none" stroke="#5A1A38" stroke-width="8" stroke-linecap="round" opacity="0">
+            <path d="M-120 60 Q -80 40 -40 70" /><path d="M40 -60 Q 90 -80 130 -40" /><path d="M-30 140 Q 10 120 60 150" />
+          </g>
+        </g>
+      </svg>
+      <div id="lab2" class="label">4 months</div>
+    </div>
+
+    <div id="b3" class="beat">
+      <svg viewBox="0 0 1920 1080" width="1920" height="1080" style="position:absolute; left:0; top:0">
+        <defs>
+          <radialGradient id="spl" cx=".35" cy=".3" r=".8"><stop offset="0" stop-color="#B898FF" /><stop offset=".6" stop-color="#8457F0" /><stop offset="1" stop-color="#5B2FC4" /></radialGradient>
+          <radialGradient id="glow" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="#C9B3FF" stop-opacity=".65" /><stop offset="1" stop-color="#C9B3FF" stop-opacity="0" /></radialGradient>
+        </defs>
+        <circle id="sglow" cx="1180" cy="560" r="420" fill="url(#glow)" opacity="0" />
+        <g transform="translate(1180 560)"><g id="spleen">
+          <path d="M-250 -60 C -250 -210 -40 -250 110 -190 C 260 -130 300 40 220 160 C 150 260 -20 250 -90 170 C -130 120 -60 80 -110 40 C -170 -10 -250 40 -250 -60 Z" fill="#4A2399" transform="translate(10 18)" />
+          <path d="M-250 -60 C -250 -210 -40 -250 110 -190 C 260 -130 300 40 220 160 C 150 260 -20 250 -90 170 C -130 120 -60 80 -110 40 C -170 -10 -250 40 -250 -60 Z" fill="url(#spl)" />
+          <path d="M-200 -120 C -150 -190 0 -215 100 -180" fill="none" stroke="#FFFFFF" stroke-width="18" stroke-linecap="round" opacity=".35" />
+          <g fill="#6E44D8" opacity=".8"><circle cx="40" cy="-40" r="26" /><circle cx="130" cy="40" r="20" /><circle cx="-60" cy="-90" r="16" /><circle cx="160" cy="-90" r="12" /></g>
+        </g></g>
+        <g transform="translate(560 520)"><g id="oldcell">
+          <circle r="120" fill="url(#old)" /><ellipse cx="4" cy="6" rx="60" ry="56" fill="#6E2647" opacity=".55" />
+        </g></g>
+        <g id="sparks"></g>
+      </svg>
+      <div id="lab3" class="label">Spleen</div>
+    </div>
+  </div>
+  <div id="vignette"></div>
+</div>
+<script>
+const NS = 'http://www.w3.org/2000/svg';
+const el = (tag, attrs, parent) => { const e = document.createElementNS(NS, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); parent.appendChild(e); return e; };
+// Depth: a field of tiny stars, a few soft "+" sparkles, and big dim blobs far behind that drift slower than the subject.
+const stars = document.getElementById('stars');
+for (let i = 0; i < 90; i++) el('circle', { cx: (rand(i) * 1920).toFixed(0), cy: (rand(i + 300) * 1080).toFixed(0), r: (1 + rand(i + 600) * 2.6).toFixed(1), fill: '#B9B2FF', opacity: (0.25 + rand(i + 900) * 0.6).toFixed(2) }, stars);
+for (let i = 0; i < 6; i++) {
+  const x = rand(i + 50) * 1920, y = rand(i + 80) * 1080, s = 10 + rand(i + 90) * 10;
+  el('path', { d: `M${x - s} ${y} L${x + s} ${y} M${x} ${y - s} L${x} ${y + s}`, stroke: '#D9D2FF', 'stroke-width': 5, 'stroke-linecap': 'round', opacity: 0.5 }, stars);
+}
+const far = document.getElementById('far');
+[[200, 160, 220], [1700, 880, 260], [1500, 140, 150], [300, 900, 180]].forEach(([x, y, r]) => el('circle', { cx: x, cy: y, r, fill: '#3A27A0', opacity: 0.45 }, far));
+tl.to('#far', { x: -40, duration: DURATION, ease: 'none' }, 0);
+tl.to('#stars', { x: -90, duration: DURATION, ease: 'none' }, 0);
+
+// Beat 1 — red cells stream out of the bone and along the vessel, tumbling as they go.
+const vessel = document.getElementById('vessel');
+const L = vessel.getTotalLength();
+const cells = document.getElementById('cells');
+const N = 16, STEPS = 36, SPEED = 0.22;
+for (let i = 0; i < N; i++) {
+  const g = el('g', {}, cells);
+  el('ellipse', { cx: 0, cy: 6, rx: 44, ry: 40, fill: '#7A0A2C', opacity: 0.45 }, g);
+  el('circle', { r: 44, fill: 'url(#rbc)' }, g);
+  el('ellipse', { cx: 2, cy: 2, rx: 22, ry: 20, fill: '#C3123C', opacity: 0.6 }, g);
+  el('path', { d: 'M-28 -20 A 34 34 0 0 1 8 -36', fill: 'none', stroke: '#FFFFFF', 'stroke-width': 7, 'stroke-linecap': 'round', opacity: 0.5 }, g);
+  const u0 = i / N, lane = (rand(i + 7) - 0.5) * 70;
+  const at0 = (u) => { const p = vessel.getPointAtLength(((u % 1) + 1) % 1 * L); return { x: p.x, y: p.y + lane }; };
+  const p0 = at0(u0);
+  tl.set(g, { x: p0.x, y: p0.y }, 0);
+  for (let k = 1; k <= STEPS; k++) {
+    const t = (k - 1) * (3.6 / STEPS), u = u0 + SPEED * k * (3.6 / STEPS), p = at0(u);
+    const wrapped = Math.floor(u0 + SPEED * (k - 1) * (3.6 / STEPS)) !== Math.floor(u);
+    if (wrapped) tl.set(g, { x: p.x, y: p.y }, t + 3.6 / STEPS);
+    else tl.to(g, { x: p.x, y: p.y, duration: 3.6 / STEPS, ease: 'none' }, t);
+  }
+  tl.fromTo(g, { scaleX: 1 }, { scaleX: 0.55, duration: 0.6 + rand(i) * 0.5, yoyo: true, repeat: 5, ease: 'sine.inOut', immediateRender: false }, rand(i + 20) * 0.6);
+}
+// New cells bubble out of the marrow.
+const pops = document.getElementById('pops');
+for (let i = 0; i < 5; i++) {
+  const c = el('circle', { cx: 330 + (rand(i + 70) - 0.5) * 200, cy: 600, r: 10, fill: '#FFD1DC', opacity: 0 }, pops);
+  tl.fromTo(c, { opacity: 0.9, attr: { r: 6 } }, { opacity: 0, attr: { r: 26 }, duration: 0.6, ease: 'power2.out', immediateRender: false }, 0.6 + i * 0.5);
+}
+tl.fromTo('#bone', { x: -320, rotation: -10 }, { x: 0, rotation: 0, duration: 0.9, ease: 'power3.out', svgOrigin: '0 0', immediateRender: false }, 0);
+tl.fromTo('#lab1', { opacity: 0, scale: 0.6, y: 20 }, { opacity: 1, scale: 1, y: 0, duration: 0.45, ease: 'back.out(2)', immediateRender: false }, at('2', 1.66) - 0.08);
+tl.to('#cam', { scale: 1.05, duration: 3.3, ease: 'sine.inOut' }, 0);
+
+// Beat 2 — the camera dives into one cell; rays turn behind it; a ring counts down four months while it ages.
+const tDive = at('Each', 3.54) - 0.35;
+tl.to('#b1', { scale: 2.6, opacity: 0, filter: 'blur(10px)', duration: 0.55, ease: 'power3.in', transformOrigin: '62% 55%' }, tDive);
+tl.set('#cam', { scale: 1 }, tDive + 0.5);
+tl.fromTo('#b2', { opacity: 0, scale: 0.6 }, { opacity: 1, scale: 1, duration: 0.6, ease: 'power3.out', immediateRender: false }, tDive + 0.4);
+const rays = document.getElementById('rays');
+for (let i = 0; i < 12; i++) el('path', { d: 'M0 0 L-60 -900 L60 -900 Z', fill: '#BFA8FF', transform: `rotate(${i * 30})` }, rays);
+tl.to('#rays', { rotation: 30, svgOrigin: '0 0', duration: 4, ease: 'none' }, tDive + 0.4);
+const timer = document.getElementById('timer');
+timer.setAttribute('pathLength', '1'); timer.setAttribute('stroke-dasharray', '1'); timer.setAttribute('stroke-dashoffset', '1');
+const t4 = at('4', 4.54) - 0.3;
+tl.to('#timer', { strokeDashoffset: 0, duration: at('then', 5.48) - t4, ease: 'none' }, t4);
+tl.fromTo('#lab2', { opacity: 0, y: 20 }, { opacity: 1, y: 0, duration: 0.4, ease: 'back.out(2)', immediateRender: false }, at('4', 4.54) - 0.05);
+tl.to('#cold', { opacity: 1, duration: 1.0, ease: 'none' }, t4 + 0.2);
+tl.to('#wrinkles', { opacity: 0.8, duration: 0.6 }, t4 + 0.6);
+tl.to('#cell2', { scale: 0.9, svgOrigin: '960 500', duration: 1.0, ease: 'sine.inOut' }, t4 + 0.2);
+
+// Beat 3 — the spleen glides in; the old cell flies into it; it glows and sends sparks back out.
+const tS = at('recycled', 5.82) - 0.45;
+tl.to('#b2', { opacity: 0, scale: 0.4, duration: 0.45, ease: 'power3.in' }, tS);
+tl.set('#b3', { opacity: 1 }, tS + 0.3);
+tl.fromTo('#spleen', { x: 700, rotation: 12 }, { x: 0, rotation: 0, duration: 0.7, ease: 'power3.out', svgOrigin: '0 0', immediateRender: false }, tS + 0.3);
+tl.fromTo('#oldcell', { scale: 0.6, opacity: 0 }, { scale: 1, opacity: 1, duration: 0.3, ease: 'back.out(2)', svgOrigin: '0 0', immediateRender: false }, tS + 0.3);
+const tIn = at('spleen', 6.7) - 0.62;  // "your" is said twice — time it from "spleen"
+tl.to('#oldcell', { x: 600, y: 40, scale: 0.3, duration: 0.5, ease: 'power2.in', svgOrigin: '0 0' }, tIn);
+tl.to('#oldcell', { opacity: 0, duration: 0.1 }, tIn + 0.45);
+tl.to('#sglow', { opacity: 1, duration: 0.25, yoyo: true, repeat: 1 }, tIn + 0.45);
+tl.to('#spleen', { scale: 1.06, svgOrigin: '0 0', duration: 0.15, yoyo: true, repeat: 1 }, tIn + 0.45);
+const sparks = document.getElementById('sparks');
+for (let i = 0; i < 12; i++) {
+  const a = (200 + rand(i + 400) * 140) * Math.PI / 180, d = 260 + rand(i + 450) * 260;
+  const s = el('circle', { cx: 1180, cy: 560, r: 6 + rand(i + 500) * 10, fill: i % 2 ? '#FFD34D' : '#FF7A8C', opacity: 0 }, sparks);
+  tl.fromTo(s, { opacity: 0 }, { opacity: 1, duration: 0.05, immediateRender: false }, tIn + 0.5);
+  tl.to(s, { attr: { cx: 1180 + Math.cos(a) * d, cy: 560 + Math.sin(a) * d }, opacity: 0, duration: 0.8, ease: 'power2.out' }, tIn + 0.5);
+}
+tl.fromTo('#lab3', { opacity: 0, y: 16 }, { opacity: 1, y: 0, duration: 0.4, ease: 'back.out(2)', immediateRender: false }, at('spleen', 6.7) - 0.05);
+tl.to('#cam', { scale: 1.04, duration: 1.6, ease: 'sine.out' }, tS + 0.3);
+</script>
