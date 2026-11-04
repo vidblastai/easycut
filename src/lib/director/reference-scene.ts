@@ -67,3 +67,52 @@ export function referenceFor(look: SceneLook): Reference {
   cache.set(own, reference);
   return reference;
 }
+
+/**
+ * How a shot uses the screen. A hero is one subject that transforms; the rest
+ * spread over the whole safe area — see the layout list in the composer's
+ * prompt, which this mirrors.
+ */
+export type Layout = 'hero' | 'stack' | 'path' | 'split' | 'grid';
+
+/** What each layout reference was written to say, and in which look. */
+export const LAYOUT_REFERENCES: Record<Exclude<Layout, 'hero'>, { line: string; look: SceneLook }> = {
+  stack: { look: 'sticker', line: 'My morning routine is simple: coffee first, a ten minute walk, and only then I open my emails.' },
+  path: { look: 'paper', line: 'Your parcel leaves the warehouse at night, crosses three cities, and lands on your doorstep by breakfast.' },
+  split: { look: 'glass', line: "Editing used to eat your whole weekend, now it's done before your coffee gets cold." },
+  grid: { look: 'poster', line: 'Out of every ten people who try it, nine come back the very next day.' },
+};
+
+/**
+ * The layout a line most likely wants, from its shape alone.
+ *
+ * A suggestion, not a ruling — the composer is told it may pick another — but
+ * left to itself the model draws one centred subject for everything, so it
+ * needs to be shown the alternative that fits. Checked in order: a contrast
+ * reads as a split, a share of a crowd as a grid, a journey as a path, a list
+ * as a stack.
+ */
+export function suggestLayout(line: string): Layout {
+  const l = ` ${line.toLowerCase()} `;
+  const contrast = /\b(used to|before|versus|vs|instead of|compared to|than)\b/.test(l) && /\b(now|today|than|instead|after)\b/.test(l);
+  if (contrast) return 'split';
+  if (/\b(out of|one in|in every|percent)\b|%/.test(l)) return 'grid';
+  if (/\b(leaves?|travels?|crosses|journey|from .+ to|on its way|arrives?|lands?|reaches)\b/.test(l) && /\b(then|and|to|by)\b/.test(l)) return 'path';
+  const commas = (line.match(/,/g) ?? []).length;
+  if (commas >= 2 || /\bfirst\b.*\bthen\b/.test(l) || /\b(two|three|four|five) (things|habits|steps|ways|tips|rules|reasons)\b/.test(l)) return 'stack';
+  return 'hero';
+}
+
+export function layoutPath(layout: Exclude<Layout, 'hero'>): string {
+  return join(process.cwd(), 'src/lib/director/references/layouts', `${layout}.txt`);
+}
+
+const layoutCache = new Map<Layout, string>();
+
+/** The scene that shows a layout, or null for a hero — the look's own reference already is one. */
+export function layoutReferenceFor(layout: Layout): { layout: Layout; line: string; look: SceneLook; scene: string } | null {
+  if (layout === 'hero') return null;
+  const meta = LAYOUT_REFERENCES[layout];
+  if (!layoutCache.has(layout)) layoutCache.set(layout, readFileSync(layoutPath(layout), 'utf8').trim());
+  return { layout, ...meta, scene: layoutCache.get(layout)! };
+}

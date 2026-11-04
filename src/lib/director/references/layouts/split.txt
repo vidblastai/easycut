@@ -1,0 +1,104 @@
+<!-- concept: split: a glass panel on top shows a week whose weekend gets eaten by a spinning clock, and the panel below answers it — a ring snaps shut around a steaming coffee cup that is still hot -->
+<style>
+#bg { position:absolute; inset:0; background: radial-gradient(ellipse at 50% 45%, #1B1F4A 0%, #0E1024 70%); }
+.blob { position:absolute; border-radius:50%; filter: blur(90px); }
+#b1 { left:40px; top:240px; width:620px; height:520px; background:#FF5FA2; opacity:.55; }
+#b2 { left:420px; top:380px; width:520px; height:460px; background:#7B5CFF; opacity:.7; }
+#b3 { left:120px; top:960px; width:700px; height:560px; background:#3FD0FF; opacity:.6; }
+.glass { position:absolute; background: linear-gradient(145deg, rgba(255,255,255,.24), rgba(255,255,255,.07)); backdrop-filter: blur(26px); -webkit-backdrop-filter: blur(26px); border: 2px solid rgba(255,255,255,.36); box-shadow: inset 2px 2px 0 rgba(255,255,255,.32), 0 30px 80px rgba(8,8,30,.45); }
+#top { left:150px; top:260px; width:750px; height:540px; border-radius:56px; }
+#bottom { left:150px; top:920px; width:750px; height:540px; border-radius:56px; opacity:.3; }
+.tile { position:absolute; top:610px; width:80px; height:96px; border-radius:20px; }
+svg.layer { position:absolute; left:0; top:0; overflow:visible; }
+#bottomArt, #arrow { opacity:0; }
+</style>
+<div id="scene">
+  <div id="bg"></div>
+  <div class="blob" id="b1"></div>
+  <div class="blob" id="b2"></div>
+  <div class="blob" id="b3"></div>
+
+  <div class="glass" id="top"></div>
+  <div class="glass tile" style="left:197px"></div><div class="glass tile" style="left:293px"></div><div class="glass tile" style="left:389px"></div><div class="glass tile" style="left:485px"></div><div class="glass tile" style="left:581px"></div>
+  <div class="glass tile wk" style="left:677px"></div><div class="glass tile wk" style="left:773px"></div>
+  <div class="glass" id="bottom"></div>
+
+  <svg class="layer" id="art" width="1080" height="1920" viewBox="0 0 1080 1920">
+    <!-- top: the clock that eats the weekend -->
+    <g id="clock">
+      <circle cx="525" cy="430" r="118" fill="none" stroke="rgba(255,255,255,.35)" stroke-width="10"/>
+      <path id="eaten" d="M525 430 L525 312 A118 118 0 0 1 525 312 Z" fill="#FF5FA2" opacity=".55"/>
+      <line id="hand" x1="525" y1="430" x2="525" y2="336" stroke="#FFFFFF" stroke-width="12" stroke-linecap="round"/>
+      <line x1="525" y1="430" x2="580" y2="430" stroke="#FFFFFF" stroke-width="12" stroke-linecap="round"/>
+      <circle cx="525" cy="430" r="12" fill="#FFFFFF"/>
+    </g>
+    <!-- the weekend getting eaten: a pink bite over the last two tiles -->
+    <rect id="bite" x="671" y="604" width="0" height="108" rx="24" fill="#FF5FA2" opacity=".8"/>
+
+    <!-- between the halves: a chevron down -->
+    <path id="arrow" d="M480 840 L525 880 L570 840" fill="none" stroke="#FFFFFF" stroke-width="12" stroke-linecap="round" stroke-linejoin="round"/>
+
+    <!-- bottom: a ring that snaps shut round a hot cup -->
+    <g id="bottomArt">
+      <circle cx="420" cy="1190" r="170" fill="none" stroke="rgba(255,255,255,.25)" stroke-width="14"/>
+      <circle id="ring" cx="420" cy="1190" r="170" fill="none" stroke="#3FD0FF" stroke-width="14" stroke-linecap="round" pathLength="1" stroke-dasharray="1" stroke-dashoffset="1" transform="rotate(-90 420 1190)" style="filter: drop-shadow(0 0 12px #3FD0FF)"/>
+      <g id="cup" fill="none" stroke="#FFFFFF" stroke-width="12" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M340 1140 L500 1140 L486 1260 C 484 1280 470 1290 450 1290 L390 1290 C 370 1290 356 1280 354 1260 Z" fill="rgba(255,255,255,.12)"/>
+        <path d="M500 1170 C 548 1166 548 1230 492 1232"/>
+        <path d="M320 1300 L520 1300"/>
+      </g>
+      <g id="steam" fill="none" stroke="#FFFFFF" stroke-width="10" stroke-linecap="round" opacity=".85">
+        <path class="sm" d="M380 1110 C 360 1080 400 1060 380 1030"/><path class="sm" d="M420 1110 C 400 1075 440 1055 420 1020"/><path class="sm" d="M460 1110 C 440 1080 480 1060 460 1030"/>
+      </g>
+      <g id="check"><circle cx="740" cy="1190" r="92" fill="#3FD0FF"/><path id="tick" d="M696 1192 L728 1224 L788 1158" fill="none" stroke="#0E1024" stroke-width="16" stroke-linecap="round" stroke-linejoin="round" pathLength="1" stroke-dasharray="1" stroke-dashoffset="1"/></g>
+    </g>
+  </svg>
+</div>
+<script>
+// The colour behind the glass drifts the whole time.
+tl.fromTo("#b1", { x: 0, y: 0 }, { x: 80, y: 40, duration: DURATION, ease: "sine.inOut" }, 0);
+tl.fromTo("#b2", { x: 0 }, { x: -90, duration: DURATION, ease: "sine.inOut" }, 0);
+tl.fromTo("#b3", { x: 0, y: 0 }, { x: 60, y: -40, duration: DURATION, ease: "sine.inOut" }, 0);
+const sweep = { a: 0 };
+const wedge = () => {
+  const deg = sweep.a % 360.0001, r = 118, rad = (deg - 90) * Math.PI / 180;
+  const x = 525 + r * Math.cos(rad), y = 430 + r * Math.sin(rad);
+  document.getElementById("eaten").setAttribute("d", "M525 430 L525 312 A118 118 0 " + (deg > 180 ? 1 : 0) + " 1 " + x.toFixed(1) + " " + y.toFixed(1) + " Z");
+};
+
+tl.fromTo("#bottom", { y: 160, opacity: 0 }, { y: 0, opacity: .3, duration: .6, ease: "expo.out" }, .2);
+
+// Hook: the top panel glides in with its week of tiles and the clock already ticking — "editing used to".
+tl.fromTo("#top", { y: 120, opacity: 0, scale: .9, transformOrigin: "50% 50%" }, { y: 0, opacity: 1, scale: 1, transformOrigin: "50% 50%", duration: .5, ease: "expo.out" }, 0);
+tl.fromTo(".tile", { y: 60, opacity: 0 }, { y: 0, opacity: 1, duration: .35, stagger: .05, ease: "expo.out" }, .15);
+tl.fromTo("#clock", { scale: .6, opacity: 0, svgOrigin: "525 430" }, { scale: 1, opacity: 1, svgOrigin: "525 430", duration: .45, ease: "expo.out" }, .1);
+tl.to("#hand", { rotation: 360 * 4, svgOrigin: "525 430", duration: 2.2, ease: "power1.in" }, .2);
+
+// "eat your whole weekend": the clock's pink wedge sweeps round as a pink bite swallows the last two tiles.
+const eat = at("eat", 1.08) - .1;
+tl.to(sweep, { a: 359.9, duration: .9, ease: "power2.inOut", onUpdate: wedge }, eat);
+tl.to("#bite", { attr: { width: 194 }, duration: .45, ease: "power2.inOut" }, at("weekend", 1.52) - .2);
+tl.to(".wk", { scale: .82, opacity: .6, transformOrigin: "50% 50%", duration: .3, ease: "power2.in" }, at("weekend", 1.52));
+
+// "now": the top dims back, the chevron points down and the bottom panel arrives.
+const now = at("now", 2.34) - .15;
+tl.to("#top, .tile, #clock, #bite", { opacity: .45, duration: .4, ease: "power2.out" }, now);
+tl.set("#arrow", { opacity: 1 }, now);
+tl.fromTo("#arrow", { y: -30 }, { y: 0, duration: .3, ease: "back.out(2)", immediateRender: false }, now);
+tl.fromTo("#bottom", { y: 0, opacity: .3, scale: .94, transformOrigin: "50% 50%" }, { y: 0, opacity: 1, scale: 1, transformOrigin: "50% 50%", duration: .5, ease: "expo.out", immediateRender: false }, now + .05);
+tl.set("#bottomArt", { opacity: 1 }, now + .15);
+tl.fromTo("#cup", { scale: .6, svgOrigin: "420 1220" }, { scale: 1, svgOrigin: "420 1220", duration: .4, ease: "back.out(1.8)", immediateRender: false }, now + .15);
+
+// "it's done": the ring snaps shut in a blink and the check lands.
+const done = at("done", 2.76) - .1;
+tl.to("#ring", { strokeDashoffset: 0, duration: .45, ease: "power3.inOut" }, done);
+tl.fromTo("#check", { scale: 0, svgOrigin: "740 1190" }, { scale: 1, svgOrigin: "740 1190", duration: .4, ease: "back.out(2)" }, done + .3);
+tl.to("#tick", { strokeDashoffset: 0, duration: .25, ease: "power2.out" }, done + .5);
+
+// "before your coffee gets cold": the steam keeps curling — still hot — and the cup glows warm.
+document.querySelectorAll(".sm").forEach((m, i) => {
+  tl.fromTo(m, { y: 20, opacity: 0 }, { y: -40, opacity: 1, duration: .6, repeat: 3, ease: "sine.inOut", immediateRender: false }, at("coffee", 3.46) - .5 + i * .15);
+});
+tl.to("#cup path:first-child", { fill: "rgba(255,181,71,.45)", duration: .4 }, at("cold", 4.02) - .3);
+tl.to("#bottom", { scale: 1.03, transformOrigin: "50% 50%", duration: .2, yoyo: true, repeat: 1, ease: "power2.out" }, at("cold", 4.02) - .1);
+</script>

@@ -16,6 +16,7 @@ svg.layer { position:absolute; left:0; top:0; overflow:visible; }
   <div class="smudge" id="s1"></div>
   <div class="smudge" id="s2"></div>
   <div class="smudge" id="s3"></div>
+  <div id="frame" style="position:absolute; inset:0; transform: translateY(160px)">
   <svg class="layer" id="world" width="1080" height="1920" viewBox="0 0 1080 1920">
     <defs>
       <filter id="chalk" x="-5%" y="-5%" width="110%" height="110%">
@@ -81,6 +82,7 @@ svg.layer { position:absolute; left:0; top:0; overflow:visible; }
       </g>
     </g>
   </svg>
+  </div>
 </div>
 <script>
 // The camera follows the drawing with a slow push; the board's dust drifts.

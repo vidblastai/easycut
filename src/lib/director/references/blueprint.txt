@@ -15,6 +15,7 @@ svg.layer { position:absolute; left:0; top:0; overflow:visible; }
   <div id="bg"></div>
   <div id="grid"></div>
   <div id="fade"></div>
+  <div id="frame" style="position:absolute; inset:0; transform: translateY(160px)">
   <svg class="layer" id="world" width="1080" height="1920" viewBox="0 0 1080 1920">
     <!-- construction first: centre lines and a guide circle -->
     <g id="guides">
@@ -48,6 +49,7 @@ svg.layer { position:absolute; left:0; top:0; overflow:visible; }
       <path d="M210 1046 L182 1060 L210 1074"/><path d="M870 1046 L898 1060 L870 1074"/>
     </g>
   </svg>
+  </div>
 </div>
 <script>
 const draw = (el, t, d, ease) => { tl.set(el, { opacity: 1 }, t); tl.to(el, { strokeDashoffset: 0, duration: d, ease: ease || "power1.inOut" }, t); };

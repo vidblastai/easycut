@@ -13,6 +13,7 @@ svg.layer { position:absolute; left:0; top:0; overflow:visible; }
   <div class="blob" id="b1"></div>
   <div class="blob" id="b2"></div>
   <div id="pool"></div>
+  <div id="frame" style="position:absolute; inset:0; transform: translateY(160px)">
   <svg class="layer" id="world" width="1080" height="1920" viewBox="0 0 1080 1920">
     <defs>
       <radialGradient id="gSoil" cx=".38" cy=".25" r=".8"><stop offset="0" stop-color="#C9674C"/><stop offset=".55" stop-color="#A8432F"/><stop offset="1" stop-color="#7A2E20"/></radialGradient>
@@ -101,6 +102,7 @@ svg.layer { position:absolute; left:0; top:0; overflow:visible; }
       <circle class="sp" cx="640" cy="670" r="9" fill="#4FA3A5"/>
     </g>
   </svg>
+  </div>
 </div>
 <script>
 // Never still: a slow tabletop push, and the colour behind drifts.

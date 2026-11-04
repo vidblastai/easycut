@@ -8,6 +8,7 @@ svg.layer { position:absolute; left:0; top:0; overflow:visible; }
 <div id="scene">
   <div id="bg"></div>
   <div id="pool"></div>
+  <div id="frame" style="position:absolute; inset:0; transform: translateY(160px)">
   <svg class="layer" id="world" width="1080" height="1920" viewBox="0 0 1080 1920">
     <!-- the arch on the back wall, dead centre -->
     <path id="arch" d="M300 1000 L300 420 A240 240 0 0 1 780 420 L780 1000 Z" fill="#FFF4E8" opacity=".7"/>
@@ -75,6 +76,7 @@ svg.layer { position:absolute; left:0; top:0; overflow:visible; }
       <circle class="puff" cx="0" cy="0" r="14"/><circle class="puff" cx="0" cy="0" r="10"/><circle class="puff" cx="0" cy="0" r="8"/>
     </g>
   </svg>
+  </div>
 </div>
 <script>
 // A straight, level push into the set — never tilted.

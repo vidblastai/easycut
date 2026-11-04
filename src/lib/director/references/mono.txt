@@ -8,6 +8,7 @@ svg.layer { position:absolute; left:0; top:0; overflow:visible; }
 <div id="scene">
   <div id="bg"></div>
   <div id="lift"></div>
+  <div id="frame" style="position:absolute; inset:0; transform: translateY(160px)">
   <svg class="layer" id="world" width="1080" height="1920" viewBox="0 0 1080 1920">
     <defs>
       <!-- the noise is revealed and cut through masks, never faded -->
@@ -34,6 +35,7 @@ svg.layer { position:absolute; left:0; top:0; overflow:visible; }
       <path id="bBR" d="M670 880 L790 880 L790 760"/>
     </g>
   </svg>
+  </div>
 </div>
 <script>
 // One smooth, continuous push; nothing else moves the camera.

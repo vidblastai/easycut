@@ -16,6 +16,7 @@ svg.layer { position:absolute; left:0; top:0; overflow:visible; }
   <div id="bg"></div>
   <div id="grid2"></div>
   <div id="grid"></div>
+  <div id="frame" style="position:absolute; inset:0; transform: translateY(160px)">
   <div id="flash"></div>
   <svg class="layer" id="world" width="1080" height="1920" viewBox="0 0 1080 1920">
     <!-- axes of the graticule, slightly brighter -->
@@ -54,6 +55,7 @@ svg.layer { position:absolute; left:0; top:0; overflow:visible; }
       <line class="spk" x1="540" y1="300" x2="625" y2="335"/>
     </g>
   </svg>
+  </div>
   <div id="scan"></div>
   <div id="vig"></div>
 </div>

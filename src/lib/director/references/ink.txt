@@ -10,6 +10,7 @@ svg.layer { position:absolute; left:0; top:0; overflow:visible; }
 <div id="scene">
   <div id="bg"></div>
   <div id="grain"></div>
+  <div id="frame" style="position:absolute; inset:0; transform: translateY(160px)">
   <svg class="layer" id="world" width="1080" height="1920" viewBox="0 0 1080 1920">
     <!-- the napkin: a zigzag-edged square with a grey wash and a fold -->
     <g id="napkin">
@@ -49,6 +50,7 @@ svg.layer { position:absolute; left:0; top:0; overflow:visible; }
       <path class="ray" d="M540 330 L540 270"/><path class="ray" d="M730 400 L775 360"/><path class="ray" d="M350 400 L305 360"/><path class="ray" d="M780 580 L840 580"/><path class="ray" d="M300 580 L240 580"/>
     </g>
   </svg>
+  </div>
 </div>
 <script>
 const draw = (el, t, d, ease) => { tl.set(el, { opacity: 1 }, t); tl.to(el, { strokeDashoffset: 0, duration: d, ease: ease || "power1.inOut" }, t); };

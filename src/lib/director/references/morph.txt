@@ -7,6 +7,7 @@ svg.layer { position:absolute; left:0; top:0; overflow:visible; }
 </style>
 <div id="scene">
   <div id="bg"></div>
+  <div id="frame" style="position:absolute; inset:0; transform: translateY(160px)">
   <svg class="layer" id="world" width="1080" height="1920" viewBox="0 0 1080 1920" style="transform: scale(1.38); transform-origin: 540px 625px">
     <ellipse id="shadow" cx="540" cy="760" rx="220" ry="34" fill="#000000" opacity=".16"/>
     <!-- the one shape -->
@@ -53,6 +54,7 @@ svg.layer { position:absolute; left:0; top:0; overflow:visible; }
     </g>
     <circle id="ripple" cx="560" cy="635" r="40" fill="none" stroke="#3D5AFE" stroke-width="6" opacity="0"/>
   </svg>
+  </div>
 </div>
 <script>
 const spring = "back.out(1.2)";
