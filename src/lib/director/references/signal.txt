@@ -9,7 +9,7 @@
 .big { position:absolute; left:0; width:1920px; text-align:center; font-family:'Montserrat'; font-weight:800; letter-spacing:-2px;
   color:#E8FFEC; text-shadow: 0 0 28px rgba(61,255,110,.45); }
 .green { color:#3DFF6E; }
-.ch { opacity:0; }
+.ch { display:none; }
 .cursor { display:inline-block; width:10px; height:.8em; margin-left:10px; background:#3DFF6E; vertical-align:-.05em; opacity:0; box-shadow:0 0 18px #3DFF6E; }
 #tile { position:absolute; left:470px; top:1340px; width:300px; height:300px; border-radius:64px; background:#0B2410; border:3px solid #1FAE45;
   box-shadow: 0 0 60px rgba(61,255,110,.35), inset 0 0 40px rgba(61,255,110,.12); opacity:0; }
@@ -51,6 +51,7 @@
 </div>
 <script>
 // Split a line into one span per letter so it can type in; the green part keeps its colour.
+// Untyped letters take no space, so a cursor placed after the line sits right after the last typed letter.
 function lettersOf(el) {
   const out = [];
   const walk = (node) => {
@@ -67,7 +68,7 @@ function lettersOf(el) {
 }
 function typeIn(el, t, per) {
   const letters = lettersOf(el);
-  letters.forEach((s, i) => tl.set(s, { opacity: 1 }, t + i * per));
+  letters.forEach((s, i) => tl.set(s, { display: 'inline' }, t + i * per));
   return t + letters.length * per;
 }
 // Something that comes out of the depth: small, blurred and dark to sharp.

@@ -309,7 +309,7 @@ ${example.scene}
 function textLayoutHint(width: number, height: number): string {
   return width >= height
     ? `Layout: widescreen. Pick the beats from what the line contains — a figure, a list, a comparison, a chain of qualities, a sentence, a named thing — usually two or three in a row. Each beat fills the middle of the frame with generous margins; the next one arrives as the camera moves on (Signal) or as the last one dissolves (Slate). Type sizes are given for a 1920-wide frame.`
-    : `Layout: portrait. Pick the beats from what the line contains — a figure, a list, a comparison, a chain of qualities, a sentence, a named thing — usually two or three in a row. Stack them: a figure or sentence across the width, lists and pill chains top to bottom, comparison cards one above the other. Size type against a ${width}-wide frame (the sizes given are for 1920 wide — scale them by about ${(width / 1920 * 1.6).toFixed(2)} so they stay big on a phone), and keep everything inside the safe area.`;
+    : `Layout: portrait. Pick the beats from what the line contains — a figure, a list, a comparison, a chain of qualities, a sentence, a named thing — usually two or three in a row. Stack them: a figure or sentence across the width, lists and pill chains top to bottom, comparison cards one above the other. Size type against a ${width}-wide frame (the sizes given are for 1920 wide — scale them by about ${(width / 1920 * 1.6).toFixed(2)} so they stay big on a phone), and keep everything inside the safe area. Centre each beat's group vertically: its middle sits near the middle of the frame, so the lower half is never left empty while the top is crowded.`;
 }
 
 export function briefFor(request: CompositionRequest): string {
