@@ -1,124 +1,154 @@
-<!-- concept: path, 1920×1080: the camera travels down one tall canvas — "3 things" types in big; it pans down to a mail tile rising out of the depth beside "50,000 readers"; it pans again to a numbered list that builds one line per spoken item, the last one lighting up on "everyone" -->
+<!-- concept: path, 1920×1080: under a big drifting pool of green light, "3 things" pops in word by word in silver type, then lifts to become the header; the camera slides sideways (motion-blurred) to a glass window where 50,000 counts up beside a mail tile; it slides again to a second window whose three rows pop in one per spoken item, the last lighting up green on "everyone" -->
 <style>
-#glow { position:absolute; left:50%; top:50%; width:1500px; height:1100px; margin:-550px 0 0 -750px; border-radius:50%;
-  background: radial-gradient(closest-side, rgba(14,92,28,.95), rgba(8,44,15,.6) 55%, rgba(2,10,4,0) 100%); }
-#vignette { position:absolute; inset:0; background: radial-gradient(120% 100% at 50% 50%, rgba(0,0,0,0) 45%, rgba(1,6,3,.92) 100%); }
-#cam { position:absolute; inset:0; transform-origin: 50% 50%; }
-#world, #far { position:absolute; left:0; top:0; width:1920px; height:3240px; }
-.far { position:absolute; width:150px; height:150px; border-radius:30px; background:#0B2410; border:2px solid #1FAE45; opacity:.22; filter: blur(12px); }
-.big { position:absolute; left:0; width:1920px; text-align:center; font-family:'Montserrat'; font-weight:800; letter-spacing:-2px;
-  color:#E8FFEC; text-shadow: 0 0 28px rgba(61,255,110,.45); }
-.green { color:#3DFF6E; }
-.ch { display:none; }
-.cursor { display:inline-block; width:10px; height:.8em; margin-left:10px; background:#3DFF6E; vertical-align:-.05em; opacity:0; box-shadow:0 0 18px #3DFF6E; }
-#tile { position:absolute; left:470px; top:1340px; width:300px; height:300px; border-radius:64px; background:#0B2410; border:3px solid #1FAE45;
-  box-shadow: 0 0 60px rgba(61,255,110,.35), inset 0 0 40px rgba(61,255,110,.12); opacity:0; }
-#tilelabel { position:absolute; left:470px; top:1662px; width:300px; text-align:center; font-family:'Poppins'; font-weight:500; font-size:30px; color:#E8FFEC; opacity:0; }
-#count { position:absolute; left:860px; top:1360px; font-family:'Montserrat'; font-weight:800; font-size:200px; letter-spacing:-4px; color:#3DFF6E; text-shadow:0 0 34px rgba(61,255,110,.55); }
-#readers { position:absolute; left:870px; top:1600px; font-family:'Poppins'; font-weight:600; font-size:72px; color:#E8FFEC; opacity:0; }
-.row { position:absolute; left:470px; font-family:'Poppins'; font-weight:600; font-size:86px; color:#E8FFEC; opacity:0; white-space:nowrap; }
-.row b { font-family:'Montserrat'; font-weight:800; color:#3DFF6E; margin-right:44px; text-shadow:0 0 22px rgba(61,255,110,.5); }
-#tick { position:absolute; left:1530px; top:2760px; width:92px; height:92px; opacity:0; }
+#light { position:absolute; left:-160px; top:-260px; width:2240px; height:1600px; border-radius:50%;
+  background: radial-gradient(closest-side, rgba(46,178,52,.92) 0%, rgba(26,128,34,.78) 30%, rgba(10,70,18,.5) 60%, rgba(2,14,5,0) 100%); }
+#vignette { position:absolute; inset:0; background: radial-gradient(125% 110% at 50% 45%, rgba(0,0,0,0) 42%, rgba(0,4,1,.82) 100%); }
+#grain { position:absolute; inset:0; opacity:.10; mix-blend-mode:overlay;
+  background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='240' height='240'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>"); }
+#cam { position:absolute; inset:0; transform-origin:50% 50%; }
+#far, #world { position:absolute; left:0; top:0; width:5000px; height:1080px; }
+#world { filter:url(#mb); }
+.far { position:absolute; width:180px; height:180px; border-radius:36px; border:2px solid rgba(214,255,220,.25); background:rgba(10,30,14,.5); filter:blur(14px); opacity:.35; }
+
+/* Type: Figtree, silver gradient per word, a soft bloom on the block — never a hard neon outline. */
+.w { display:inline-block; opacity:0; background:linear-gradient(180deg, #FFFFFF 15%, #BFCDC2 100%); -webkit-background-clip:text; background-clip:text; color:transparent; padding:0 .02em; }
+.g .w, .g { background:linear-gradient(180deg, #9DFF96 0%, #3BE043 100%); -webkit-background-clip:text; background-clip:text; color:transparent; }
+#head { position:absolute; left:0; top:360px; width:1920px; text-align:center; font-family:'Figtree'; font-weight:600; font-size:160px; letter-spacing:-3px;
+  transform-origin:50% 50%; filter: drop-shadow(0 0 26px rgba(150,255,160,.22)); }
+
+/* Glass windows: dark translucent glass, a thin light rim, three green dots, a deep soft shadow. */
+.glass { position:absolute; border-radius:22px; background:linear-gradient(180deg, rgba(30,44,33,.82) 0%, rgba(10,18,12,.86) 100%);
+  border:1.5px solid rgba(214,255,220,.24); box-shadow: 0 40px 100px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.09); }
+.dots { position:absolute; left:22px; top:18px; display:flex; gap:8px; }
+.dots i { width:10px; height:10px; border-radius:50%; background:#46F04A; box-shadow:0 0 8px rgba(70,240,74,.6); }
+#win1 { left:1960px; top:300px; width:1000px; height:440px; }
+#win2 { left:3210px; top:290px; width:900px; height:480px; }
+#tile { position:absolute; left:80px; top:110px; width:220px; height:220px; border-radius:48px;
+  background:linear-gradient(160deg, #1F5A27 0%, #0D2A12 100%); border:1.5px solid rgba(150,255,160,.35);
+  box-shadow: 0 0 50px rgba(70,240,74,.28), inset 0 1px 0 rgba(255,255,255,.12); opacity:0; }
+#tilelabel { position:absolute; left:80px; top:350px; width:220px; text-align:center; font-family:'Figtree'; font-weight:500; font-size:26px; color:#B7C9BA; opacity:0; }
+#count { position:absolute; left:370px; top:96px; font-family:'Figtree'; font-weight:700; font-size:156px; letter-spacing:-4px; line-height:1;
+  background:linear-gradient(180deg, #9DFF96 0%, #3BE043 100%); -webkit-background-clip:text; background-clip:text; color:transparent;
+  filter: drop-shadow(0 0 24px rgba(70,240,74,.35)); opacity:0; }
+#readers { position:absolute; left:378px; top:270px; font-family:'Figtree'; font-weight:500; font-size:56px; }
+.row { position:absolute; left:70px; height:96px; display:flex; align-items:center; gap:34px; font-family:'Figtree'; font-weight:500; font-size:52px; }
+.check { width:58px; height:58px; flex:none; opacity:0; }
+#r1 { top:78px; } #r2 { top:196px; } #r3 { top:314px; }
 </style>
 <div id="scene">
-  <div id="glow"></div>
+  <svg width="0" height="0" style="position:absolute"><filter id="mb" x="-10%" y="-10%" width="120%" height="120%"><feGaussianBlur id="mbg" stdDeviation="0 0" /></filter></svg>
+  <div id="light"></div>
   <div id="cam">
     <div id="far">
-      <div class="far" style="left:180px; top:200px"></div>
-      <div class="far" style="left:1610px; top:720px"></div>
-      <div class="far" style="left:260px; top:1900px"></div>
-      <div class="far" style="left:1580px; top:2350px"></div>
+      <div class="far" style="left:120px; top:120px"></div>
+      <div class="far" style="left:1700px; top:760px"></div>
+      <div class="far" style="left:2500px; top:90px"></div>
+      <div class="far" style="left:3300px; top:820px"></div>
     </div>
     <div id="world">
-      <div id="title" class="big" style="top:370px; font-size:240px;"><span class="green">3</span> things</div>
-      <div id="tile">
-        <svg viewBox="0 0 300 300" width="300" height="300">
-          <rect x="62" y="92" width="176" height="122" rx="16" fill="none" stroke="#E8FFEC" stroke-width="12" />
-          <path d="M66 100 L150 168 L234 100" fill="none" stroke="#E8FFEC" stroke-width="12" stroke-linejoin="round" stroke-linecap="round" />
-          <circle cx="232" cy="92" r="26" fill="#3DFF6E" />
-        </svg>
+      <div id="win1" class="glass">
+        <div class="dots"><i></i><i></i><i></i></div>
+        <div id="tile">
+          <svg viewBox="0 0 220 220" width="220" height="220">
+            <rect x="46" y="66" width="128" height="92" rx="14" fill="none" stroke="#F2FFF3" stroke-width="9" />
+            <path d="M52 74 L110 120 L168 74" fill="none" stroke="#F2FFF3" stroke-width="9" stroke-linejoin="round" stroke-linecap="round" />
+            <circle cx="170" cy="64" r="20" fill="#46F04A" />
+          </svg>
+        </div>
+        <div id="tilelabel">Newsletter</div>
+        <div id="count"><span id="k">0</span>,000</div>
+        <div id="readers">readers</div>
       </div>
-      <div id="tilelabel">Newsletter</div>
-      <div id="count">50,000</div>
-      <div id="readers">readers</div>
-      <div id="r1" class="row" style="top:2460px"><b>1</b>One topic</div>
-      <div id="r2" class="row" style="top:2620px"><b>2</b>One email a week</div>
-      <div id="r3" class="row" style="top:2780px"><b>3</b>Replying to everyone</div>
-      <svg id="tick" viewBox="0 0 92 92"><circle cx="46" cy="46" r="40" fill="none" stroke="#3DFF6E" stroke-width="8"/><path id="tickpath" d="M27 47 L41 61 L66 33" fill="none" stroke="#3DFF6E" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <div id="win2" class="glass">
+        <div class="dots"><i></i><i></i><i></i></div>
+        <div id="r1" class="row"><svg class="check" viewBox="0 0 58 58"><circle class="ring" cx="29" cy="29" r="25" fill="none" stroke="#46F04A" stroke-width="4" /><path class="tick" d="M18 30 L26 38 L41 21" fill="none" stroke="#46F04A" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" /></svg><span class="txt">One topic</span></div>
+        <div id="r2" class="row"><svg class="check" viewBox="0 0 58 58"><circle class="ring" cx="29" cy="29" r="25" fill="none" stroke="#46F04A" stroke-width="4" /><path class="tick" d="M18 30 L26 38 L41 21" fill="none" stroke="#46F04A" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" /></svg><span class="txt">One email a week</span></div>
+        <div id="r3" class="row"><svg class="check" viewBox="0 0 58 58"><circle class="ring" cx="29" cy="29" r="25" fill="none" stroke="#46F04A" stroke-width="4" /><path class="tick" d="M18 30 L26 38 L41 21" fill="none" stroke="#46F04A" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" /></svg><span class="txt">Replying to <span class="g">everyone</span></span></div>
+      </div>
     </div>
+    <div id="head"><span class="g">3</span> things</div>
   </div>
   <div id="vignette"></div>
+  <div id="grain"></div>
 </div>
 <script>
-// Split a line into one span per letter so it can type in; the green part keeps its colour.
-// Untyped letters take no space, so a cursor placed after the line sits right after the last typed letter.
-function lettersOf(el) {
+// Split a block into one span per word (inside accent spans too), so each word can pop in on its own.
+function splitWords(el) {
   const out = [];
   const walk = (node) => {
     [...node.childNodes].forEach((child) => {
-      if (child.nodeType === 3) {
-        const frag = document.createDocumentFragment();
-        [...child.textContent].forEach((c) => { const s = document.createElement('span'); s.className = 'ch'; s.textContent = c; frag.appendChild(s); out.push(s); });
-        node.replaceChild(frag, child);
-      } else walk(child);
+      if (child.nodeType !== 3) return walk(child);
+      const frag = document.createDocumentFragment();
+      child.textContent.split(/(\s+)/).forEach((part) => {
+        if (!part) return;
+        if (/^\s+$/.test(part)) return frag.appendChild(document.createTextNode(' '));
+        const s = document.createElement('span'); s.className = 'w'; s.textContent = part; frag.appendChild(s); out.push(s);
+      });
+      node.replaceChild(frag, child);
     });
   };
   walk(el);
   return out;
 }
-function typeIn(el, t, per) {
-  const letters = lettersOf(el);
-  letters.forEach((s, i) => tl.set(s, { display: 'inline' }, t + i * per));
-  return t + letters.length * per;
+// A word pops: up from just below its baseline, out of a blur, with a small settle.
+function pop(word, t) {
+  tl.fromTo(word, { opacity: 0, y: '0.45em', filter: 'blur(10px)' },
+    { opacity: 1, y: 0, filter: 'blur(0px)', duration: 0.5, ease: 'back.out(1.6)', immediateRender: false }, t);
 }
-// Something that comes out of the depth: small, blurred and dark to sharp.
-function fromDepth(sel, t, d) {
-  tl.fromTo(sel, { opacity: 0, scale: 0.55, filter: 'blur(16px)' }, { opacity: 1, scale: 1, filter: 'blur(0px)', duration: d || 0.6, ease: 'power3.out', immediateRender: false }, t);
+// Something that arrives out of the depth: small, blurred and dark to sharp.
+function fromDepth(sel, t) {
+  tl.fromTo(sel, { opacity: 0, scale: 0.6, filter: 'blur(16px)' }, { opacity: 1, scale: 1, filter: 'blur(0px)', duration: 0.65, ease: 'power3.out', immediateRender: false }, t);
 }
-// The camera: a slow constant push, and pans down the canvas as the line moves on.
+// The camera slides sideways to the next window; the world smears horizontally while it moves, and the light drifts the other way.
+function slide(x, t, lightX) {
+  tl.to('#world', { x: -x, duration: 0.9, ease: 'power3.inOut' }, t);
+  tl.to('#far', { x: -x * 0.4, duration: 0.9, ease: 'power3.inOut' }, t);
+  tl.to('#mbg', { attr: { stdDeviation: '28 0' }, duration: 0.45, ease: 'power2.in' }, t);
+  tl.to('#mbg', { attr: { stdDeviation: '0 0' }, duration: 0.45, ease: 'power2.out' }, t + 0.45);
+  tl.to('#light', { x: lightX, duration: 1.4, ease: 'sine.inOut' }, t);
+}
+// A check draws itself.
+function check(row, t) {
+  const tick = document.querySelector(row + ' .tick');
+  tick.setAttribute('pathLength', '1'); tick.setAttribute('stroke-dasharray', '1'); tick.setAttribute('stroke-dashoffset', '1');
+  tl.fromTo(row + ' .check', { opacity: 0, scale: 0.6 }, { opacity: 1, scale: 1, duration: 0.35, ease: 'back.out(1.8)', immediateRender: false }, t);
+  tl.to(row + ' .tick', { strokeDashoffset: 0, duration: 0.3, ease: 'power2.out' }, t + 0.12);
+}
+
 tl.to('#cam', { scale: 1.05, duration: DURATION, ease: 'none' }, 0);
-tl.to('#glow', { scale: 1.08, opacity: 0.9, duration: DURATION / 2, yoyo: true, repeat: 1, ease: 'sine.inOut' }, 0);
-const pan = (y, t) => {
-  tl.to('#world', { y: -y, duration: 0.95, ease: 'power2.inOut' }, t);
-  tl.to('#far', { y: -y * 0.5, duration: 0.95, ease: 'power2.inOut' }, t);
-};
+tl.to('#light', { scale: 1.08, opacity: 0.88, duration: DURATION / 2, yoyo: true, repeat: 1, ease: 'sine.inOut' }, 0);
 
-// "Three things" — the title types in, with a cursor while it types.
-const title = document.getElementById('title');
-const cursor = document.createElement('span'); cursor.className = 'cursor';
-const end1 = typeIn(title, 0.05, 0.05);
-title.appendChild(cursor);
-tl.set(cursor, { opacity: 1 }, 0.05);
-tl.to(cursor, { opacity: 0, duration: 0.08, repeat: 3, yoyo: true }, end1);
-tl.to('#title', { scale: 1.04, duration: 0.5, ease: 'power2.out' }, end1);
+// "Three things" — each word pops as it is said.
+const head = splitWords(document.getElementById('head'));
+pop(head[0], at('Three', 0) + 0.02);
+pop(head[1], at('things', 0.18));
 
-// "grew our newsletter" — pan down; the mail tile rises out of the depth.
-pan(1080, at('grew', 0.46) - 0.05);
-fromDepth('#tile', at('newsletter', 1.08) - 0.25, 0.65);
-tl.to('#tilelabel', { opacity: 0.85, duration: 0.3 }, at('newsletter', 1.08) + 0.2);
-tl.to('#tile', { boxShadow: '0 0 90px rgba(61,255,110,.55), inset 0 0 40px rgba(61,255,110,.2)', duration: 0.4, yoyo: true, repeat: 1 }, at('50', 1.82));
+// "grew our newsletter" — the title lifts into a header; the camera slides to the first window.
+const t1 = at('newsletter', 1.08) - 0.4;
+tl.to('#head', { y: -372, scale: 0.42, duration: 0.85, ease: 'power3.inOut' }, t1);
+slide(1500, t1, 260);
+fromDepth('#tile', t1 + 0.45);
+tl.fromTo('#tilelabel', { opacity: 0, y: 10 }, { opacity: 1, y: 0, duration: 0.35, ease: 'power2.out', immediateRender: false }, t1 + 0.7);
 
-// "to fifty thousand readers" — the figure types in, then the word under it.
-typeIn(document.getElementById('count'), at('50', 1.82) - 0.1, 0.07);
-tl.fromTo('#readers', { opacity: 0, y: 20 }, { opacity: 1, y: 0, duration: 0.4, ease: 'power2.out', immediateRender: false }, at('readers', 2.58) - 0.05);
+// "to fifty thousand" — the figure counts up as it is said; "readers" pops beside it.
+const t50 = at('50', 1.82) - 0.3;
+tl.fromTo('#count', { opacity: 0, y: 20, filter: 'blur(10px)' }, { opacity: 1, y: 0, filter: 'blur(0px)', duration: 0.4, ease: 'power3.out', immediateRender: false }, t50);
+tl.fromTo('#k', { innerText: 0 }, { innerText: 50, snap: { innerText: 1 }, duration: 0.75, ease: 'power2.out', immediateRender: false }, t50);
+tl.to('#tile', { boxShadow: '0 0 90px rgba(70,240,74,.5), inset 0 1px 0 rgba(255,255,255,.12)', duration: 0.35, yoyo: true, repeat: 1 }, t50 + 0.5);
+splitWords(document.getElementById('readers')).forEach((w) => pop(w, at('readers', 2.58) - 0.08));
 
-// "one topic, one email a week, and replying to everyone" — pan down; one line per item.
-pan(2160, at('readers', 2.58) + 0.35);
-const row = (sel, t) => {
-  tl.fromTo(sel, { opacity: 0, x: -40, filter: 'blur(10px)' }, { opacity: 1, x: 0, filter: 'blur(0px)', duration: 0.45, ease: 'power3.out', immediateRender: false }, t);
-};
-row('#r1', at('topic', 3.4) - 0.2);
-row('#r2', at('email', 4.26) - 0.15);
-row('#r3', at('replying', 5.4) - 0.1);
-// The earlier lines settle back as each new one arrives.
-tl.to('#r1', { opacity: 0.45, duration: 0.3 }, at('email', 4.26));
-tl.to('#r2', { opacity: 0.45, duration: 0.3 }, at('replying', 5.4));
-// "everyone" — the last line lights up and a check draws beside it.
-const tp = document.getElementById('tickpath');
-tp.setAttribute('pathLength', '1'); tp.setAttribute('stroke-dasharray', '1'); tp.setAttribute('stroke-dashoffset', '1');
-tl.set('#tick', { opacity: 1 }, at('everyone', 6.0) - 0.05);
-tl.fromTo('#tick', { scale: 0.6 }, { scale: 1, duration: 0.35, ease: 'power3.out', immediateRender: false }, at('everyone', 6.0) - 0.05);
-tl.to('#tickpath', { strokeDashoffset: 0, duration: 0.3, ease: 'power2.out' }, at('everyone', 6.0) + 0.05);
-tl.to('#r3', { color: '#3DFF6E', textShadow: '0 0 30px rgba(61,255,110,.6)', duration: 0.35 }, at('everyone', 6.0));
-tl.to(['#r1', '#r2'], { opacity: 0.85, duration: 0.4 }, at('everyone', 6.0) + 0.2);
+// "one topic, one email a week, and replying to everyone" — slide to the second window; one row per spoken item.
+const t2 = at('readers', 2.58) + 0.42;
+slide(2700, t2, -200);
+const rows = [['#r1', at('topic', 3.4) - 0.2], ['#r2', at('email', 4.26) - 0.2], ['#r3', at('replying', 5.4) - 0.12]];
+rows.forEach(([row, t], i) => {
+  check(row, t);
+  splitWords(document.querySelector(row + ' .txt')).forEach((w, j) => pop(w, t + 0.06 + j * 0.07));
+  if (i > 0) tl.to(rows[i - 1][0] + ' .txt', { opacity: 0.5, duration: 0.3 }, t);
+});
+// "everyone" — the last row lights up: the check fills, the window rim glows green.
+const tE = at('everyone', 6.0);
+tl.to('#r3 .ring', { fill: 'rgba(70,240,74,.18)', duration: 0.3 }, tE);
+tl.to('#win2', { borderColor: 'rgba(120,255,130,.55)', boxShadow: '0 40px 100px rgba(0,0,0,.5), 0 0 60px rgba(70,240,74,.22), inset 0 1px 0 rgba(255,255,255,.09)', duration: 0.4 }, tE);
+tl.to(['#r1 .txt', '#r2 .txt'], { opacity: 0.85, duration: 0.4 }, tE + 0.25);
 </script>
