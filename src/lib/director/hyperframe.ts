@@ -117,6 +117,24 @@ export interface SafeZone {
   notchRight: number;
 }
 
+/** The band, as fractions of the frame's height, the video's captions are drawn over a scene in. */
+export const SCENE_CAPTION_BAND = { top: 0.55, bottom: 0.75 } as const;
+
+/** The safe area and the caption band as fractions of the frame, for drawing over a preview. */
+export function frameGuides(width: number, height: number) {
+  const z = safeZone(width, height);
+  return {
+    left: z.left / width,
+    right: z.right / width,
+    top: z.top / height,
+    bottom: z.bottom / height,
+    notchTop: z.notchTop / height,
+    notchRight: z.notchRight / width,
+    captionTop: SCENE_CAPTION_BAND.top,
+    captionBottom: SCENE_CAPTION_BAND.bottom,
+  };
+}
+
 export function safeZone(width: number, height: number): SafeZone {
   if (height <= width) {
     const mx = Math.round(width * 0.06), my = Math.round(height * 0.08);
@@ -190,7 +208,7 @@ The page around them is provided. The frame is ${width}×${height} px. Inside yo
 - **No screens.** No phone frames, monitors, app windows, dashboards, toolbars or interface mock-ups — a full-size device on screen is an empty box with things at its edges. Software is shown by what it does, as an object: a clip, a play button, scissors, a waveform, a check mark.
 - Depth comes from the backdrop: a couple of dim, soft, blurred shapes far behind, moving slower than the subject when the camera moves.
 - **No text of any kind.** No letters, numbers, labels or words anywhere — not in an element, not in an SVG. The video's captions are the only words on screen and they are drawn over your shot afterwards.
-- **The video's captions are drawn over your shot at about y ${Math.round(height * 0.55)}–${Math.round(height * 0.75)}.** Things may run behind them, but do not put the one detail that matters right there at the moment its word is said.
+- **The video's captions are drawn over your shot at about y ${Math.round(height * SCENE_CAPTION_BAND.top)}–${Math.round(height * SCENE_CAPTION_BAND.bottom)}.** Things may run behind them, but do not put the one detail that matters right there at the moment its word is said.
 - No \`<img>\`, \`<image>\`, \`<video>\`, \`<audio>\`, \`<iframe>\`, \`<link>\`, \`<text>\`, no \`url(http…)\`, no \`@import\`, no web fonts. Nothing may load from anywhere.
 
 ## The motion
@@ -609,7 +627,7 @@ Look at them the way a motion designer reviewing a colleague's work would, and c
 
 1. Any letters, numbers or words visible anywhere — they must not be.
 2. Anything that matters outside the safe area (x ${z.left}–${z.right}, y ${z.top}–${z.bottom}, and right of x ${z.notchRight} below y ${z.notchTop}); a use of space that does not suit the idea — a list crammed into one corner, or a lone object stranded at the edge; items too small to read on a phone; plain flat placeholder shapes instead of richly drawn objects.
-3. Anything important inside the caption band, ${Math.round(height * 0.55)}–${Math.round(height * 0.75)}px down.
+3. Anything important inside the caption band, ${Math.round(height * SCENE_CAPTION_BAND.top)}–${Math.round(height * SCENE_CAPTION_BAND.bottom)}px down.
 4. Pieces overlapping by accident, cut off by the frame edge unintentionally, or misaligned.
 5. Something rotating about the wrong point, or a shape that looks broken or unfinished.
 6. Two frames that look nearly the same — the scene has stalled between them. Every frame should show the sequence clearly progressing.

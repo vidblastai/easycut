@@ -222,3 +222,34 @@ describe('client-AI projects make no paid model calls', () => {
     });
   });
 });
+
+describe('the preview shows what the platform covers', () => {
+  it('describes the safe area and caption band as fractions of the frame', async () => {
+    const { frameGuides, SCENE_CAPTION_BAND } = await import('@/lib/director/hyperframe');
+    const guides = frameGuides(1080, 1920);
+    expect(guides.left).toBeCloseTo(60 / 1080);
+    expect(guides.bottom).toBeCloseTo(1520 / 1920);
+    expect(guides.notchRight).toBeCloseTo(900 / 1080);
+    expect([guides.captionTop, guides.captionBottom]).toEqual([SCENE_CAPTION_BAND.top, SCENE_CAPTION_BAND.bottom]);
+  });
+
+  it('draws them over the frames as one sheet', async () => {
+    const { mkdtemp, rm } = await import('node:fs/promises');
+    const { existsSync } = await import('node:fs');
+    const { tmpdir } = await import('node:os');
+    const { join } = await import('node:path');
+    const { ffmpeg } = await import('@/lib/media/ffmpeg');
+    const { guideSheet } = await import('@/lib/render/hyperframes');
+    const { frameGuides } = await import('@/lib/director/hyperframe');
+    const dir = await mkdtemp(join(tmpdir(), 'guides-'));
+    try {
+      const frame = join(dir, 'f.png');
+      await ffmpeg(['-y', '-f', 'lavfi', '-i', 'color=c=0xE9E7E3:s=540x960', '-frames:v', '1', frame]);
+      const out = await guideSheet([frame, frame], frameGuides(1080, 1920), join(dir, 'sheet.jpg'));
+      expect(out && existsSync(out)).toBe(true);
+      expect(await guideSheet([], frameGuides(1080, 1920), join(dir, 'none.jpg'))).toBeNull();
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+});

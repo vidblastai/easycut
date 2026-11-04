@@ -110,7 +110,7 @@ const TOOLS = {
   },
   preview_scene: {
     description:
-      'Render four frames of a scene you wrote (at 20/45/70/93 % of its length) and run every check: the audit, a real page load for script errors, the lint and the blank test. Returns the frames as an image — look at them, then fix and preview again until it is right.',
+      'Render four frames of a scene you wrote (at 20/45/70/93 % of its length) and run every check: the audit, a real page load for script errors, the lint and the blank test. Returns the frames as an image, with the safe area and the caption band drawn on — look at them, then fix and preview again until it is right.',
     input: z.object({
       project_id: z.string(),
       scene_id: z.string(),
@@ -263,7 +263,10 @@ async function callTool(name: string, rawArgs: unknown, caller: Caller, bearer: 
         const summary = preview.faults.length
           ? `${preview.ok ? 'Renders, with things to improve' : 'NOT ready'}:\n- ${preview.faults.join('\n- ')}`
           : 'Renders cleanly. Check the frames: on topic, inside the safe area, readable on a phone, never stalled, ending on the payoff.';
-        const content: Content[] = [text(`${summary}\nFrames at ${preview.times.map((t) => `${t}s`).join(', ')}.`)];
+        const legend = preview.guided
+          ? ' Drawn over them: the cyan outline is the safe area, the red band is where the captions sit, the dark corner is the like/share buttons. Nothing that matters may sit in the red band when its word is said.'
+          : '';
+        const content: Content[] = [text(`${summary}\nFrames at ${preview.times.map((t) => `${t}s`).join(', ')}.${legend}`)];
         if (preview.image) content.push({ type: 'image', data: preview.image, mimeType: 'image/jpeg' });
         return { content };
       }

@@ -33,7 +33,7 @@ The endpoint is `https://<your domain>/api/mcp`. It speaks Streamable HTTP, stat
 | `get_transcript` | Captions with times in the edited video |
 | `set_scenes` | Chooses which moments become animated scenes |
 | `get_scene_brief` | The full scene rules + the look's reference scene + timed words for one scene |
-| `preview_scene` | Renders 4 frames of Claude's scene and runs every check (audit, real page load, lint, blank test). Returns the frames as an image. |
+| `preview_scene` | Renders 4 frames of Claude's scene and runs every check (audit, real page load, lint, blank test). Returns the frames as an image with the safe area (cyan), the caption band (red) and the like/share corner (dark) drawn on, so Claude can see what the platform and the captions will cover. |
 | `submit_scene` | Saves a passing scene for the final render |
 | `update_edit` | Caption look, caption fixes, style, layers, music, saved as a new version |
 | `render_video` | Renders submitted scenes to clips (worker job `client-scenes`), lays them in, renders the video |
