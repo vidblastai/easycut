@@ -529,3 +529,16 @@ describe('warm-up cut is unconditional', () => {
     expect(warm?.keeps).toBeUndefined();
   });
 });
+
+describe('warm-up never eats a real opening', () => {
+  it('keeps "So now we start with step one."', () => {
+    const list = words([['So', 0.3, 0.5], ['now', 0.5, 0.7], ['we', 0.7, 0.8], ['start', 0.8, 1.1], ['with', 1.1, 1.3], ['step', 1.3, 1.6], ['one.', 1.6, 2.0], ['First,', 2.4, 2.8], ['open', 2.8, 3.1], ['it.', 3.1, 3.4]]);
+    const spans = applicableFindings(findCleanupTargets(transcriptOf(list), CLEANUP_PRESETS.raw), CLEANUP_PRESETS.raw);
+    expect(spans.some((s) => s.startSec <= 0.3 && s.endSec >= 0.7)).toBe(false);
+  });
+  it('keeps "Hi, I\'m Ben."', () => {
+    const list = words([['Hi,', 0.3, 0.5], ["I'm", 0.6, 0.8], ['Ben.', 0.8, 1.1], ['Today', 1.4, 1.7], ['we', 1.7, 1.8], ['cook.', 1.8, 2.2]]);
+    const spans = applicableFindings(findCleanupTargets(transcriptOf(list), CLEANUP_PRESETS.raw), CLEANUP_PRESETS.raw);
+    expect(spans.some((s) => s.startSec <= 0.3 && s.endSec >= 0.5)).toBe(false);
+  });
+});
