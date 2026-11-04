@@ -281,7 +281,7 @@ function sentenceAt(sentences: TranscriptSentence[], sec: number): TranscriptSen
 function concreteQuery(sentence: TranscriptSentence): string | null {
   const words = contentWords(sentence);
   if (!words.length) return null;
-  return words.slice(0, 2).join(' ');
+  return [...new Set(words)].slice(0, 2).join(' ');
 }
 
 function topKeyword(sentence: TranscriptSentence): string | null {

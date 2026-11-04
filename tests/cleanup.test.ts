@@ -502,3 +502,30 @@ describe('warm-up, as speech recognition actually hears it', () => {
     expect(spans.some((s) => s.startSec <= 0.4 && s.endSec >= 0.9)).toBe(false);
   });
 });
+
+describe('warm-up when the first line is itself retaken', () => {
+  it('still cuts the warm-up', () => {
+    const t = (w: string, s: number, d = 0.25): [string, number, number] => [w, s, s + d];
+    const list = words([
+      t('Hello.', 1.79, 0.8), t('Alright.', 3.5, 0.4), t("Let's", 7.69, 0.5),
+      // a first take, abandoned…
+      t('In', 9.98), t('this', 10.23), t('video,', 10.48), t('I', 10.73), t('will', 10.98), t('show', 11.23), t('you', 11.48), t('some', 11.73), t('of', 11.98), t('the', 12.23), t('newest', 12.48), t('faces.', 12.73),
+      // …and the retake that keeps going.
+      t('In', 13.6), t('this', 13.85), t('video,', 14.1), t('I', 14.35), t('will', 14.6), t('show', 14.85), t('you', 15.1), t('the', 15.35), t('newest', 15.6), t('faceless', 15.85), t('AI', 16.1), t('YouTube', 16.35), t('niches', 16.6), t('that', 16.85), t('are', 17.1), t('blowing', 17.35), t('up.', 17.6),
+    ]);
+    const spans = applicableFindings(findCleanupTargets(transcriptOf(list), CLEANUP_PRESETS.raw), CLEANUP_PRESETS.raw);
+    expect(spans.some((s) => s.startSec <= 1.79 && s.endSec >= 9.9)).toBe(true);
+  });
+});
+
+describe('warm-up cut is unconditional', () => {
+  it('names no keeper, so cutting the first line too can never cancel it', () => {
+    const list = words([
+      ['Hello,', 1.8, 2.2], ['hello,', 2.4, 2.7], ['hello,', 2.9, 3.2], ['all', 3.5, 3.7], ['right.', 3.7, 4.0], ["Let's", 7.7, 8.0], ['go.', 8.0, 8.3],
+      ['In', 9.98, 10.2], ['this', 10.2, 10.4], ['video,', 10.4, 10.8], ['I', 10.8, 10.9], ['will', 10.9, 11.1], ['show', 11.1, 11.4], ['you', 11.4, 11.5], ['things.', 11.5, 12.0],
+    ]);
+    const warm = findCleanupTargets(transcriptOf(list), CLEANUP_PRESETS.raw).find((f) => f.startSec <= 1.8 && f.endSec >= 9.9);
+    expect(warm).toBeDefined();
+    expect(warm?.keeps).toBeUndefined();
+  });
+});
