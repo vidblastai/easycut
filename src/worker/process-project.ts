@@ -507,6 +507,9 @@ export async function rerenderProject(
         data: { status: 'failed', errorMessage: (error as Error).message, finishedAt: new Date() },
       })
       .catch(() => {});
+    // The edit itself is fine — only this file failed. Left "processing", the
+    // project would sit behind a spinner for good with no way to try again.
+    await db.project.update({ where: { id: projectId }, data: { status: 'ready' } }).catch(() => {});
     throw error;
   } finally {
     await rm(workDir, { recursive: true, force: true }).catch(() => {});
