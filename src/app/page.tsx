@@ -5,7 +5,8 @@ import { Logo, LogoMark } from '@/components/Logo';
 import { BeforeAfter } from '@/components/marketing/BeforeAfter';
 import { LayerDemos } from '@/components/marketing/LayerDemos';
 import { MarketingStyles } from '@/components/marketing/styles';
-import { HeroVideo } from '@/components/marketing/HeroVideo';
+import { SocialProof } from '@/components/marketing/SocialProof';
+import { FlowMap } from '@/components/marketing/FlowMap';
 import { ClaudeSection } from '@/components/marketing/ClaudeSection';
 import { STYLE_LIST, leadsWithCards } from '@/lib/styles/presets';
 import { StyleExample } from '@/components/styles/StyleExample';
@@ -75,66 +76,57 @@ export default function HomePage() {
           <Link href="/pricing" className="btn-quiet hidden sm:inline-flex">
             Pricing
           </Link>
-          <Link href="#claude" className="btn-quiet hidden md:inline-flex">
-            Use with Claude
-          </Link>
-          <Link href="#faq" className="btn-quiet hidden lg:inline-flex">
+          <Link href="#faq" className="btn-quiet hidden md:inline-flex">
             FAQ
           </Link>
           <Link href="/dashboard" className="btn-ghost">
             My videos
           </Link>
           <Link href="/new" className="btn-primary">
-            Try it free
+            Upload footage
           </Link>
         </nav>
       </header>
 
       {/* ------------------------------------------------------------ hero */}
-      {/* Words on the left, the actual product on the right: a real export
-          playing in a phone. On a phone the video follows the buttons, so the
-          promise and the way in are both above the fold. */}
-      <section className="relative z-10 mx-auto max-w-6xl px-6 pb-20 pt-6 sm:pt-10">
-        <div className="grid items-center gap-12 lg:grid-cols-[1.35fr_1fr]">
-          <div className="text-center lg:text-left">
-            <Link
-              href="#claude"
-              className="animate-rise inline-flex items-center gap-2 rounded-full border border-line bg-charcoal py-1.5 pl-1.5 pr-4 text-[13px] font-semibold text-muted transition hover:text-chalk"
-            >
-              <span className="rounded-full bg-violet px-2 py-0.5 text-[11px] font-bold uppercase tracking-[0.08em] text-ink">New</span>
-              Edit from inside Claude
-              <span aria-hidden>→</span>
-            </Link>
-
-            {/* One fluid size rather than a jump at `sm`. The promise is a
-                long line, and at a fixed size it broke badly on a tablet. */}
-            <h1 className="animate-rise mt-5 text-[clamp(34px,4.2vw,50px)] font-extrabold leading-[1.03] tracking-[-0.04em]">
-              Upload your footage.
-              <br />
-              <span className="text-violet">Get a video ready to post.</span>
-            </h1>
-
-            <p className="animate-rise mx-auto mt-5 max-w-[46ch] text-[17px] leading-[1.55] text-muted lg:mx-0">
-              You talk to the camera. EasyCut cuts the pauses and &ldquo;umm&rdquo;s, then adds
-              captions, B-roll, animations, sound and music — in minutes, with no editing skills.
-            </p>
-
-            <div className="animate-rise mt-7 flex flex-col items-center gap-3 sm:flex-row sm:justify-center lg:justify-start">
-              <Link href="/new" className="btn-primary w-full px-8 py-4 text-[16px] sm:w-auto">
-                Edit my first video free
-              </Link>
-              <Link href="#pricing" className="btn-ghost w-full px-7 py-4 text-[15px] sm:w-auto">
-                See pricing
-              </Link>
-            </div>
-
-            <p className="mt-4 text-[13px] text-muted/80">
-              First 10 minutes of footage free · No card needed · Vertical and widescreen
-            </p>
-          </div>
-
-          <HeroVideo src="/showcase/easycut-demo.mp4" poster="/showcase/easycut-demo.jpg" />
+      <section className="relative z-10 mx-auto max-w-5xl px-6 pb-3 pt-6 text-center sm:pt-8">
+        <div className="animate-rise">
+          <SocialProof />
         </div>
+
+        {/* One fluid size rather than a jump at `sm`. The promise — "get an
+            edited video, ready to post" — is a long line, and at a fixed 48px
+            it broke in two on a tablet, which delivers the payoff in pieces. */}
+        <h1 className="animate-rise mt-4 text-[clamp(30px,4vw,48px)] font-extrabold leading-[1.04] tracking-[-0.038em]">
+          Upload your footage.
+          <br />
+          <span className="text-violet">Get an edited video, ready to post.</span>
+        </h1>
+
+        <p className="animate-rise mx-auto mt-3 max-w-3xl text-[16px] leading-[1.55] text-muted">
+          You talk to camera. We do the rest — the pauses and &ldquo;umm&rdquo;s cut, captions,
+          B-roll, graphics, sound design and music, in the shape you filmed it.
+        </p>
+
+        <div className="animate-rise mt-5 flex flex-col items-center justify-center gap-3 sm:flex-row">
+          <Link href="/new" className="btn-primary w-full px-7 py-3.5 text-[15px] sm:w-auto">
+            Upload your footage
+          </Link>
+          <Link href="/dashboard" className="btn-ghost w-full px-7 py-3.5 text-[15px] sm:w-auto">
+            See the dashboard
+          </Link>
+        </div>
+
+        <p className="mt-3 text-[13px] text-muted/70">
+          Short video in ~90 seconds. Long form in under six minutes. No editing knowledge of any kind.
+        </p>
+      </section>
+
+      {/* The product in one picture: footage goes in one side, finished videos
+          come out the other. This is the page's whole argument, and it sits
+          above the fold on a laptop for exactly that reason. */}
+      <section className="relative z-10 mx-auto max-w-6xl px-6 pb-20">
+        <FlowMap />
       </section>
 
       {/* ----------------------------------------------------------- steps */}
