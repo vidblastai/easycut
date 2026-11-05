@@ -313,3 +313,28 @@ export function tightenJoins(keeps: Interval[], silence: Interval[], durationSec
   }
   return out;
 }
+
+/**
+ * Drops the short kept pieces that hold no words.
+ *
+ * Between two removals there is sometimes a sliver of sound that is not
+ * speech — a breath, a mic bump, a chair, a sniff. It is not silent, so the
+ * silence pass keeps it; it has no words, so the cleanup pass never sees it.
+ * On a real upload nine of them sat in a row between two sentences, nearly
+ * five seconds of breathing, and four more opened the video before the first
+ * word. A piece with even one spoken word in it is never touched.
+ */
+export function dropWordlessSlivers(
+  keeps: Interval[],
+  words: Array<{ startSec: number; endSec: number }>,
+  maxSec = 1.5,
+): Interval[] {
+  const spoken = (k: Interval) =>
+    words.some((w) => {
+      const overlap = Math.min(k.endSec, w.endSec) - Math.max(k.startSec, w.startSec);
+      return overlap >= Math.min(0.08, (w.endSec - w.startSec) * 0.4);
+    });
+  const kept = keeps.filter((k) => k.endSec - k.startSec >= maxSec || spoken(k));
+  // Never drop everything: footage with no transcript keeps what it had.
+  return kept.length ? kept : keeps;
+}
