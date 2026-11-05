@@ -558,7 +558,7 @@ async function stageTimeline(ctx: PipelineContext): Promise<void> {
 
   let keeps = invertIntervals(removals, duration);
   // The air on either side of every cut goes too, down to a breath.
-  keeps = tightenJoins(keeps, ctx.acousticSilence ?? [], duration);
+  keeps = tightenJoins(keeps, ctx.acousticSilence ?? [], duration, 0.08, ctx.transcript?.words ?? []);
   // Breaths and bumps left between removals are not shots.
   if (ctx.transcript?.words.length) keeps = dropWordlessSlivers(keeps, ctx.transcript.words);
 
