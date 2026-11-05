@@ -18,7 +18,9 @@ export const SILENCE_PRESETS: Record<'aggressive' | 'balanced' | 'gentle' | 'mic
   // Short-form raw footage: rip out everything that isn't a word.
   aggressive: { minSilenceSec: 0.22, paddingSec: 0.05, minKeepSec: 0.12 },
   // Default for raw long-form.
-  balanced: { minSilenceSec: 0.4, paddingSec: 0.11, minKeepSec: 0.2 },
+  // Measured on a real long-form upload: 0.4/0.11 left every 0.3–0.4 s pause
+  // between sentences in place — 7.6 s of dead air in a 59 s edit.
+  balanced: { minSilenceSec: 0.3, paddingSec: 0.08, minKeepSec: 0.15 },
   // Thoughtful / documentary delivery, where pauses carry meaning.
   gentle: { minSilenceSec: 0.75, paddingSec: 0.2, minKeepSec: 0.3 },
   // For footage the user already edited — only truly dead air.
@@ -278,4 +280,36 @@ export function wordsOutsideRemovals(words: TranscriptWord[], removals: Interval
     const mid = (w.startSec + w.endSec) / 2;
     return !merged.some((r) => mid >= r.startSec && mid <= r.endSec);
   });
+}
+
+/**
+ * Pulls the two sides of every cut together.
+ *
+ * A cut removes a retake or a flub from the first word to the word it keeps,
+ * and the silence that stood before the flub and after it stays behind on
+ * either side of the join — each half too short for the silence pass to take,
+ * together half a second or more of air every time the speaker restarted.
+ * Measured on a real upload: joins of 0.4–0.7 s at most of its cuts.
+ *
+ * So wherever a kept piece starts or ends at a cut, any acoustic silence
+ * touching that edge is trimmed down to `padSec`. Speech is never touched:
+ * this only moves an edge through stretches the acoustic detector says are
+ * silent.
+ */
+export function tightenJoins(keeps: Interval[], silence: Interval[], durationSec: number, padSec = 0.08): Interval[] {
+  if (!silence.length) return keeps;
+  const out: Interval[] = [];
+  for (const k of keeps) {
+    let { startSec, endSec } = k;
+    if (startSec > 0.01) {
+      const s = silence.find((x) => x.startSec <= startSec + 0.02 && x.endSec > startSec + 0.02);
+      if (s) startSec = Math.max(startSec, s.endSec - padSec);
+    }
+    if (endSec < durationSec - 0.01) {
+      const s = silence.find((x) => x.endSec >= endSec - 0.02 && x.startSec < endSec - 0.02);
+      if (s) endSec = Math.min(endSec, s.startSec + padSec);
+    }
+    if (endSec - startSec >= 0.12) out.push({ startSec, endSec });
+  }
+  return out;
 }

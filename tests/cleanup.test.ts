@@ -542,3 +542,13 @@ describe('warm-up never eats a real opening', () => {
     expect(spans.some((s) => s.startSec <= 0.3 && s.endSec >= 0.5)).toBe(false);
   });
 });
+
+describe('"like" as a filler', () => {
+  it('cuts ", like," set off by commas, and keeps "I like this"', () => {
+    const filler = words([['about', 0, 0.3], ['his,', 0.35, 0.6], ['like,', 0.85, 1.1], ['gamble.', 1.35, 1.8]]);
+    const f1 = findCleanupTargets(transcriptOf(filler), CLEANUP_PRESETS.raw).filter((f) => f.kind === 'filler');
+    expect(f1.map((f) => f.text)).toEqual(['like,']);
+    const verb = words([['I', 0, 0.2], ['like', 0.25, 0.5], ['this.', 0.55, 0.9]]);
+    expect(findCleanupTargets(transcriptOf(verb), CLEANUP_PRESETS.raw).filter((f) => f.kind === 'filler')).toEqual([]);
+  });
+});

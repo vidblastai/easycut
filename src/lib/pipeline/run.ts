@@ -47,6 +47,7 @@ import {
   SILENCE_PRESETS,
   silenceDensity,
   subtractIntervals,
+  tightenJoins,
   type Interval,
 } from '@/lib/timeline/silence';
 import { layoutSegments, TimeMapper } from '@/lib/timeline/time-mapper';
@@ -553,6 +554,8 @@ async function stageTimeline(ctx: PipelineContext): Promise<void> {
   ]);
 
   let keeps = invertIntervals(removals, duration);
+  // The air on either side of every cut goes too, down to a breath.
+  keeps = tightenJoins(keeps, ctx.acousticSilence ?? [], duration);
 
   // A surviving fragment shorter than this is a stutter, not a shot.
   keeps = keeps.filter((k) => k.endSec - k.startSec >= 0.12);
