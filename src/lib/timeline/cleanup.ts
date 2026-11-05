@@ -206,7 +206,12 @@ function findFillers(words: TranscriptWord[], language: string): CleanupFinding[
   for (let i = 0; i < words.length; i++) {
     const w = words[i];
     const normalized = normalizeWord(w.text);
-    const isFiller = w.isFiller || fillers.has(normalized);
+    // "like" is a word ("I like this") and a filler ("his, like, gamble").
+    // The transcript tells the two apart for us: set off by commas on both
+    // sides, it is the filler.
+    const discourseLike =
+      normalized === 'like' && /,$/.test(w.text) && i > 0 && /,$/.test(words[i - 1].text);
+    const isFiller = w.isFiller || fillers.has(normalized) || discourseLike;
     if (!isFiller) continue;
 
     const gapBefore = i > 0 ? w.startSec - words[i - 1].endSec : Infinity;

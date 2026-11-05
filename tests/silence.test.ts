@@ -42,8 +42,9 @@ describe('silence detection', () => {
     const removals = detectRemovableSilence(transcript, acoustic, SILENCE_PRESETS.balanced);
     expect(removals).toHaveLength(3);
     // Padding leaves a breath on each side of the middle gap.
-    expect(removals[1].startSec).toBeCloseTo(1.9 + 0.11, 5);
-    expect(removals[1].endSec).toBeCloseTo(4.9 - 0.11, 5);
+    const pad = SILENCE_PRESETS.balanced.paddingSec;
+    expect(removals[1].startSec).toBeCloseTo(1.9 + pad, 5);
+    expect(removals[1].endSec).toBeCloseTo(4.9 - pad, 5);
   });
 
   it('refuses to cut a gap that contains sound', () => {
@@ -193,5 +194,21 @@ describe('the pauses the transcript cannot see', () => {
     // is enough of it. 0.2s does not clear the 0.22s floor, so nothing goes.
     const removals = cut(words, [{ startSec: 1.4, endSec: 1.6 }], 5);
     expect(removals.filter((r) => r.startSec < 4.5)).toEqual([]);
+  });
+});
+
+import { tightenJoins as tighten } from '@/lib/timeline/silence';
+
+describe('pulling the two sides of a cut together', () => {
+  it('trims the silence touching each side of a join to a breath', () => {
+    // Kept: 0–5 and 9–15. Silence 4.4–5.0 before the cut, 9.0–9.6 after it.
+    const keeps = tighten([{ startSec: 0, endSec: 5 }, { startSec: 9, endSec: 15 }], [{ startSec: 4.4, endSec: 5.2 }, { startSec: 8.8, endSec: 9.6 }], 15);
+    expect(keeps[0].endSec).toBeCloseTo(4.48, 2);
+    expect(keeps[1].startSec).toBeCloseTo(9.52, 2);
+  });
+
+  it('never moves an edge into speech, nor touches the very start and end', () => {
+    const keeps = tighten([{ startSec: 0, endSec: 5 }, { startSec: 9, endSec: 15 }], [{ startSec: 0, endSec: 0.8 }, { startSec: 14.2, endSec: 15 }], 15);
+    expect(keeps).toEqual([{ startSec: 0, endSec: 5 }, { startSec: 9, endSec: 15 }]);
   });
 });
