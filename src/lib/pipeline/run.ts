@@ -19,6 +19,7 @@ import { fallbackScene } from '@/lib/edl/scene-fallback';
 import { ASPECT_DIMENSIONS, type Aspect, type Edl } from '@/lib/edl/types';
 import {
   detectSilence,
+  silenceThresholdFor,
   extractAudio,
   extractAudioForAsr,
   makeProxy,
@@ -48,6 +49,7 @@ import {
   silenceDensity,
   subtractIntervals,
   tightenJoins,
+  dropWordlessSlivers,
   type Interval,
 } from '@/lib/timeline/silence';
 import { layoutSegments, TimeMapper } from '@/lib/timeline/time-mapper';
@@ -324,7 +326,8 @@ function whyNoTranscript(attempts: Array<{ provider: string; error?: string }>):
 async function stageSilence(ctx: PipelineContext): Promise<void> {
   if (!ctx.asrAudioPath) throw new Error('No audio');
 
-  ctx.acousticSilence = await detectSilence(ctx.asrAudioPath).catch(() => []);
+  const threshold = await silenceThresholdFor(ctx.asrAudioPath).catch(() => -50);
+  ctx.acousticSilence = await detectSilence(ctx.asrAudioPath, threshold).catch(() => []);
 
   if (!ctx.transcript?.words.length) {
     // No transcript: fall back to the acoustic signal alone, conservatively.
@@ -556,6 +559,8 @@ async function stageTimeline(ctx: PipelineContext): Promise<void> {
   let keeps = invertIntervals(removals, duration);
   // The air on either side of every cut goes too, down to a breath.
   keeps = tightenJoins(keeps, ctx.acousticSilence ?? [], duration);
+  // Breaths and bumps left between removals are not shots.
+  if (ctx.transcript?.words.length) keeps = dropWordlessSlivers(keeps, ctx.transcript.words);
 
   // A surviving fragment shorter than this is a stutter, not a shot.
   keeps = keeps.filter((k) => k.endSec - k.startSec >= 0.12);

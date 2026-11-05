@@ -212,3 +212,17 @@ describe('pulling the two sides of a cut together', () => {
     expect(keeps).toEqual([{ startSec: 0, endSec: 5 }, { startSec: 9, endSec: 15 }]);
   });
 });
+
+import { dropWordlessSlivers } from '@/lib/timeline/silence';
+
+describe('wordless slivers between removals', () => {
+  it('drops short pieces with no words and keeps anything with a word in it', () => {
+    const keeps = [{ startSec: 0, endSec: 0.6 }, { startSec: 2, endSec: 5 }, { startSec: 6, endSec: 6.4 }, { startSec: 7, endSec: 7.5 }];
+    const words = [{ startSec: 2.2, endSec: 2.6 }, { startSec: 7.1, endSec: 7.3 }];
+    expect(dropWordlessSlivers(keeps, words)).toEqual([{ startSec: 2, endSec: 5 }, { startSec: 7, endSec: 7.5 }]);
+  });
+  it('keeps everything when there are no words at all', () => {
+    const keeps = [{ startSec: 0, endSec: 0.6 }];
+    expect(dropWordlessSlivers(keeps, [])).toEqual(keeps);
+  });
+});

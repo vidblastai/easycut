@@ -305,6 +305,25 @@ export async function detectSilence(
   return intervals;
 }
 
+/**
+ * The silence threshold for this recording, from its own loudness.
+ *
+ * A fixed -50 dB was tuned on a quiet room, and on a real upload it heard the
+ * speaker's breaths as sound: none of the eleven breath pauses between
+ * sentences (4.3 s in a minute) was ever a candidate, and all of them stayed
+ * in the cut. Seven decibels under the recording's mean level puts the line
+ * between breath and voice for that microphone and that room; it is held
+ * between -50 and -38 dB so a very quiet or very hot recording cannot push it
+ * somewhere silly. Words are protected downstream either way — a silence the
+ * transcript puts a word's centre inside is never cut.
+ */
+export async function silenceThresholdFor(audioPath: string): Promise<number> {
+  const { stderr } = await ffmpeg(['-i', audioPath, '-af', 'volumedetect', '-f', 'null', '-']);
+  const mean = Number(stderr.match(/mean_volume:\s*(-?[\d.]+)\s*dB/)?.[1]);
+  if (!Number.isFinite(mean)) return -50;
+  return Math.max(-50, Math.min(-38, Math.round(mean - 7)));
+}
+
 /** Integrated loudness, so we know how hard to push the normaliser. */
 export async function measureLoudness(audioPath: string): Promise<{ lufs: number; peakDb: number }> {
   const { stderr } = await ffmpeg(['-i', audioPath, '-af', 'ebur128=peak=true', '-f', 'null', '-']);
