@@ -119,8 +119,9 @@ describe('the pauses the transcript cannot see', () => {
     const [removal] = cut(words, [{ startSec: 3.65, endSec: 4.21 }], 5);
     // Into "not…"'s tail only as far as a three-letter word can spare, and
     // not one frame into "Because"'s onset.
-    expect(removal.startSec).toBeCloseTo(3.765, 2);
-    expect(removal.endSec).toBeCloseTo(4.03, 2);
+    // (plus a 0.02 s safety margin around every protected word)
+    expect(removal.startSec).toBeCloseTo(3.785, 2);
+    expect(removal.endSec).toBeCloseTo(4.01, 2);
     expect(removal.endSec).toBeLessThanOrEqual(4.08);
   });
 
@@ -160,12 +161,14 @@ describe('the pauses the transcript cannot see', () => {
 
   it('never proposes a cut that would delete a word', () => {
     // ffmpeg says silent, the ASR says there is a word in the middle of it.
-    // On a disagreement nothing is cut: a dropped word is a worse edit than a
-    // kept pause, and `wordsOutsideRemovals` judges by the same midpoint.
+    // The word is kept whole; only the silence around it can go.
     const words = [word('one', 1, 1.3), word('quiet', 2, 2.6), word('three', 3.4, 3.8)];
     const removals = cut(words, [{ startSec: 1.4, endSec: 3.3 }], 5);
-    // The tail after "three" is still fair game; the disputed stretch is not.
-    expect(removals.filter((r) => r.startSec < 3.8)).toEqual([]);
+    // The word itself is never touched — its onset to its plausible length —
+    // while the air on either side of it may go.
+    const quietSpan = { startSec: 2, endSec: 2.5 };
+    expect(removals.some((r) => r.startSec < quietSpan.endSec && r.endSec > quietSpan.startSec)).toBe(false);
+    expect(removals.some((r) => r.endSec <= 2 && r.startSec >= 1.3)).toBe(true);
   });
 
   it('cuts a trailing pause all the way to the end of the file', () => {

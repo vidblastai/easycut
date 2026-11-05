@@ -69,8 +69,7 @@ export function detectRemovableSilence(
 
   if (acousticSilence.length) {
     for (const quiet of acousticSilence) {
-      const piece = clipToSpeech(quiet, words);
-      if (piece) candidates.push(piece);
+      candidates.push(...clipToSpeech(quiet, words));
     }
   } else {
     /*
@@ -158,44 +157,26 @@ function plausibleSec(text: string): number {
  * back clipped to what the words can spare, which is usually the gap between
  * them and occasionally a little more.
  */
-function clipToSpeech(quiet: Interval, words: TranscriptWord[]): Interval | null {
-  let start = quiet.startSec;
-  let end = quiet.endSec;
-
-  for (const word of words) {
-    // Classified against the ORIGINAL stretch, so one word's clip cannot
-    // change how the next word is read.
-    if (word.endSec <= quiet.startSec || word.startSec >= quiet.endSec) continue;
-
-    const spare = Math.max(0, word.endSec - word.startSec - plausibleSec(word.text));
-    const holdsStart = word.startSec <= quiet.startSec;
-    const holdsEnd = word.endSec >= quiet.endSec;
-
-    if (holdsStart && holdsEnd) {
-      // Wholly inside one word: the pause the ASR welded onto it. Cuttable
-      // only as far as the word can spare, and all or nothing — trimming it
-      // would move the cut into the syllable.
-      if (quiet.endSec - quiet.startSec > spare) return null;
-    } else if (holdsStart) {
-      start = Math.max(start, word.endSec - spare);
-    } else if (holdsEnd) {
-      /*
-       * A word's ONSET is never touched, however much the word can spare.
-       *
-       * The two ends are not equivalent. Clipping a tail removes sound that
-       * has already decayed and is inaudible in the cut; clipping an onset
-       * removes the attack, and "Cloud" becomes "loud". Nothing is lost by
-       * the asymmetry either: every pause worth having is on the far side of
-       * a word, because that is where a speaker pauses.
-       */
-      end = Math.min(end, word.startSec);
-    } else {
-      // The word is inside the silence from end to end. Disagreement.
-      return null;
-    }
-  }
-
-  return end - start > 0.01 ? { startSec: start, endSec: end } : null;
+function clipToSpeech(quiet: Interval, words: TranscriptWord[]): Interval[] {
+  /*
+   * Every word the stretch touches protects its own span — from its onset,
+   * which is never touched, to the longest it could plausibly have taken to
+   * say — and everything else in the stretch is silence that can go.
+   *
+   * This used to return nothing at all when a word sat wholly inside the
+   * stretch ("the two signals disagree"), which threw away the pauses on BOTH
+   * sides of a soft "and" between two breaths. On a real upload, once the
+   * threshold was set from the recording's loudness, that veto kept twelve
+   * pauses over 0.3 s — 4.8 s of air — in a one-minute edit. Keeping the word
+   * and cutting the air around it is what an editor does.
+   */
+  const protectedSpans = words
+    .filter((w) => w.endSec > quiet.startSec && w.startSec < quiet.endSec)
+    .map((w) => ({
+      startSec: w.startSec - 0.02,
+      endSec: Math.min(w.endSec, w.startSec + plausibleSec(w.text)) + 0.02,
+    }));
+  return subtractIntervals([quiet], protectedSpans).filter((piece) => piece.endSec - piece.startSec > 0.01);
 }
 
 /** Proportion of the timeline that is dead air — drives the raw/roughcut hint. */
