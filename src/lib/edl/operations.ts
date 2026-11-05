@@ -820,7 +820,15 @@ export function relayout(edl: Edl, nextSegments: Segment[]): Edl {
     if (a === null && b === null) return null;
 
     // One end surviving is enough — the cue shortens rather than disappearing.
-    const lo = a ?? move(Math.min(end, start + 0.03), 'start') ?? 0;
+    // When the start fell in a removed piece and only the end survives — a cut
+    // that landed a few hundredths of a second into a word — the word keeps its
+    // surviving end and is pulled back from there. Falling back to 0 pinned it
+    // to the first frame of the video, where the de-overlap pass then deleted
+    // whichever real caption was already there.
+    const lo =
+      a ??
+      move(Math.min(end, start + 0.03), 'start') ??
+      (b !== null ? Math.max(0, b - Math.max(0.05, Math.min(end - start, 0.4))) : 0);
     // A span whose ends came to rest in segments that are no longer next to
     // each other has been torn in half by a reorder. Keep the half that starts
     // it, at its original length, rather than stretching the cue across

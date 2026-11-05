@@ -58,3 +58,17 @@ describe('cutting parts out of an edit', () => {
     expect(() => cutOperations(makeEdl(), [{ startSec: 0, endSec: 11.8 }])).toThrow(/whole video/);
   });
 });
+
+describe('captions across a cut that lands inside a word', () => {
+  it('keeps the word where its surviving end is, never at 0:00', () => {
+    const edl = makeEdl();
+    // A word whose start is in the stretch being cut and whose end is after it.
+    edl.captions.push({ id: 'cue-x', startSec: 6.9, endSec: 7.6, words: [{ text: 'Now', startSec: 6.9, endSec: 7.6, emphasis: false }] });
+    const after = cut(edl, [[5, 7]]);
+    const cue = after.captions.find((c) => c.id === 'cue-x');
+    expect(cue).toBeDefined();
+    expect(cue!.startSec).toBeGreaterThan(4.5);
+    // …and the first caption of the video is still there.
+    expect(after.captions.find((c) => c.id === 'cue-0')?.startSec).toBeCloseTo(0.5, 2);
+  });
+});
