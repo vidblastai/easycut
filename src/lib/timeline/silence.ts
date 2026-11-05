@@ -296,18 +296,31 @@ export function wordsOutsideRemovals(words: TranscriptWord[], removals: Interval
  * this only moves an edge through stretches the acoustic detector says are
  * silent.
  */
-export function tightenJoins(keeps: Interval[], silence: Interval[], durationSec: number, padSec = 0.08): Interval[] {
+export function tightenJoins(
+  keeps: Interval[],
+  silence: Interval[],
+  durationSec: number,
+  padSec = 0.08,
+  words: Array<{ startSec: number; endSec: number }> = [],
+): Interval[] {
   if (!silence.length) return keeps;
   const out: Interval[] = [];
   for (const k of keeps) {
     let { startSec, endSec } = k;
+    // The words this piece holds. An edge may move through silence but never
+    // past one of them: a soft first word ("These…") or a trailing one
+    // ("…people.") can sit under the acoustic threshold, and on a real upload
+    // tightening through them cut exactly those words off.
+    const inside = words.filter((w) => w.endSec > startSec + 0.02 && w.startSec < endSec - 0.02);
+    const firstWord = inside.length ? inside[0].startSec - 0.03 : Infinity;
+    const lastWord = inside.length ? inside[inside.length - 1].endSec + 0.03 : -Infinity;
     if (startSec > 0.01) {
       const s = silence.find((x) => x.startSec <= startSec + 0.02 && x.endSec > startSec + 0.02);
-      if (s) startSec = Math.max(startSec, s.endSec - padSec);
+      if (s) startSec = Math.max(startSec, Math.min(s.endSec - padSec, firstWord));
     }
     if (endSec < durationSec - 0.01) {
       const s = silence.find((x) => x.endSec >= endSec - 0.02 && x.startSec < endSec - 0.02);
-      if (s) endSec = Math.min(endSec, s.startSec + padSec);
+      if (s) endSec = Math.min(endSec, Math.max(s.startSec + padSec, lastWord));
     }
     if (endSec - startSec >= 0.12) out.push({ startSec, endSec });
   }

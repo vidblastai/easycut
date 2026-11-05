@@ -226,3 +226,13 @@ describe('wordless slivers between removals', () => {
     expect(dropWordlessSlivers(keeps, [])).toEqual(keeps);
   });
 });
+
+describe('tightening never cuts a word', () => {
+  it('stops at a soft first or last word even when it measures as silence', () => {
+    // The acoustic detector calls 9.0–9.6 silent, but the word "These" is at 9.3–9.6.
+    const keeps = tighten([{ startSec: 0, endSec: 5 }, { startSec: 9, endSec: 15 }], [{ startSec: 4.2, endSec: 5.2 }, { startSec: 8.8, endSec: 9.6 }], 15, 0.08,
+      [{ startSec: 4.3, endSec: 4.7 }, { startSec: 9.3, endSec: 9.6 }, { startSec: 10, endSec: 10.4 }]);
+    expect(keeps[0].endSec).toBeGreaterThanOrEqual(4.7);
+    expect(keeps[1].startSec).toBeLessThanOrEqual(9.3);
+  });
+});
