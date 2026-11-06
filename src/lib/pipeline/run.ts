@@ -20,6 +20,7 @@ import { ASPECT_DIMENSIONS, type Aspect, type Edl } from '@/lib/edl/types';
 import {
   detectSilence,
   silenceThresholdFor,
+  loudnessEnvelope,
   extractAudio,
   extractAudioForAsr,
   makeProxy,
@@ -50,6 +51,7 @@ import {
   subtractIntervals,
   tightenJoins,
   dropWordlessSlivers,
+  dropEdgeFragments,
   type Interval,
 } from '@/lib/timeline/silence';
 import { layoutSegments, TimeMapper } from '@/lib/timeline/time-mapper';
@@ -327,7 +329,13 @@ async function stageSilence(ctx: PipelineContext): Promise<void> {
   if (!ctx.asrAudioPath) throw new Error('No audio');
 
   const threshold = await silenceThresholdFor(ctx.asrAudioPath).catch(() => -50);
-  ctx.acousticSilence = await detectSilence(ctx.asrAudioPath, threshold).catch(() => []);
+  ctx.silenceThresholdDb = threshold;
+  const [silence, loudness] = await Promise.all([
+    detectSilence(ctx.asrAudioPath, threshold).catch(() => []),
+    loudnessEnvelope(ctx.asrAudioPath).catch(() => undefined),
+  ]);
+  ctx.acousticSilence = silence;
+  ctx.loudness = loudness;
 
   if (!ctx.transcript?.words.length) {
     // No transcript: fall back to the acoustic signal alone, conservatively.
@@ -559,6 +567,16 @@ async function stageTimeline(ctx: PipelineContext): Promise<void> {
   let keeps = invertIntervals(removals, duration);
   // The air on either side of every cut goes too, down to a breath.
   keeps = tightenJoins(keeps, ctx.acousticSilence ?? [], duration, 0.08, ctx.transcript?.words ?? []);
+  // No edge may land inside a sound: a scrap of a fumbled take left at a cut
+  // is heard as a glitch before the next sentence.
+  if (ctx.loudness) {
+    const before = keeps;
+    keeps = dropEdgeFragments(keeps, ctx.loudness, ctx.silenceThresholdDb ?? -50, ctx.transcript?.words ?? []);
+    const fixed =
+      before.length - keeps.length +
+      keeps.filter((k) => !before.some((b) => Math.abs(b.startSec - k.startSec) < 1e-6 && Math.abs(b.endSec - k.endSec) < 1e-6)).length;
+    if (fixed) ctx.log.push({ stage: 'timeline', status: 'ok', ms: 0, message: `Cleaned ${fixed} cut edge${fixed === 1 ? '' : 's'} that held a scrap of removed speech` });
+  }
   // Breaths and bumps left between removals are not shots.
   if (ctx.transcript?.words.length) keeps = dropWordlessSlivers(keeps, ctx.transcript.words);
 

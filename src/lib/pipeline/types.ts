@@ -144,6 +144,9 @@ export interface PipelineContext {
 
   transcript?: Transcript;
   acousticSilence?: Interval[];
+  /** RMS loudness every 10 ms, and the line between voice and room for this recording. */
+  loudness?: { stepSec: number; db: Float32Array };
+  silenceThresholdDb?: number;
   silenceRemovals?: Interval[];
   cleanupFindings?: CleanupFinding[];
   cleanupRemovals?: Interval[];

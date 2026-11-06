@@ -5,6 +5,7 @@ import {
   mergeIntervals,
   SILENCE_PRESETS,
   subtractIntervals,
+  dropEdgeFragments,
 } from '@/lib/timeline/silence';
 import { deriveSentences, type Transcript, type TranscriptWord } from '@/lib/transcribe/types';
 
@@ -237,5 +238,62 @@ describe('tightening never cuts a word', () => {
       [{ startSec: 4.3, endSec: 4.7 }, { startSec: 9.3, endSec: 9.6 }, { startSec: 10, endSec: 10.4 }]);
     expect(keeps[0].endSec).toBeGreaterThanOrEqual(4.7);
     expect(keeps[1].startSec).toBeLessThanOrEqual(9.3);
+  });
+});
+
+describe('dropEdgeFragments', () => {
+  // A 10 ms loudness track: quiet room everywhere except the given sounds.
+  const track = (sounds: Array<[number, number]>, totalSec = 8) => {
+    const db = new Float32Array(Math.round(totalSec / 0.01)).fill(-65);
+    for (const [a, b] of sounds) for (let i = Math.round(a / 0.01); i < Math.round(b / 0.01); i++) db[i] = -30;
+    return { stepSec: 0.01, db };
+  };
+  const near = (a: number, b: number) => expect(Math.abs(a - b)).toBeLessThan(0.011);
+
+  it('moves a start off the tail of a fumbled take, to just before the retake', () => {
+    // The retake's first word is stamped early, over the mess-up's last syllable.
+    const env = track([[9.6, 9.73], [10.3, 11.0]], 12);
+    const out = dropEdgeFragments([{ startSec: 0, endSec: 5 }, { startSec: 9.7, endSec: 11.1 }], env, -44, [
+      { startSec: 9.56, endSec: 10.6 },
+    ]);
+    near(out[1].startSec, 10.22);
+    near(out[1].endSec, 11.1);
+  });
+
+  it('pulls an end back off the first syllable of an abandoned take', () => {
+    const env = track([[2.2, 3.5], [4.15, 5.5]]);
+    const out = dropEdgeFragments([{ startSec: 2.0, endSec: 4.27 }, { startSec: 6, endSec: 7 }], env, -44, [
+      { startSec: 2.2, endSec: 3.5 },
+    ]);
+    near(out[0].endSec, 3.58);
+  });
+
+  it('leaves a cut between two words of connected speech alone', () => {
+    const env = track([[5.0, 6.0]]);
+    const keeps = [{ startSec: 1, endSec: 2 }, { startSec: 5.25, endSec: 6.2 }];
+    expect(dropEdgeFragments(keeps, env, -44, [{ startSec: 5.25, endSec: 5.4 }])).toEqual(keeps);
+  });
+
+  it('keeps a real short word at an edge even when what follows it was cut', () => {
+    const env = track([[1.0, 2.5], [3.0, 4.0]]);
+    const keeps = [{ startSec: 1.0, endSec: 3.15 }, { startSec: 5, endSec: 6 }];
+    expect(dropEdgeFragments(keeps, env, -44, [{ startSec: 3.0, endSec: 3.14 }])).toEqual(keeps);
+  });
+
+  it('drops a piece that is nothing but a scrap', () => {
+    const env = track([[1, 2], [3.67, 3.73], [6, 7]]);
+    const out = dropEdgeFragments(
+      [{ startSec: 0.9, endSec: 2.1 }, { startSec: 3.7, endSec: 3.95 }, { startSec: 5.9, endSec: 7.1 }],
+      env,
+      -44,
+      [{ startSec: 3.5, endSec: 4.4 }],
+    );
+    expect(out.map((k) => k.startSec)).toEqual([0.9, 5.9]);
+  });
+
+  it('does not split a word at a stop consonant', () => {
+    const env = track([[1.0, 1.4], [1.46, 1.6], [3, 4]]);
+    const keeps = [{ startSec: 0.5, endSec: 1.55 }, { startSec: 2.9, endSec: 4.1 }];
+    expect(dropEdgeFragments(keeps, env, -44)).toEqual(keeps);
   });
 });
