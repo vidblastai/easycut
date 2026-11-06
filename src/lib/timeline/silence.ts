@@ -332,3 +332,102 @@ export function dropWordlessSlivers(
   // Never drop everything: footage with no transcript keeps what it had.
   return kept.length ? kept : keeps;
 }
+
+/** How loud the audio is, frame by frame (RMS in dBFS, `stepSec` per frame). */
+export interface LoudnessEnvelope {
+  stepSec: number;
+  db: ArrayLike<number>;
+}
+
+/**
+ * Removes the scraps of sound a cut leaves behind at its edges.
+ *
+ * A cut should land in silence. When it lands inside a sound instead, the
+ * kept piece starts or ends with a slice of something that was meant to go:
+ * the first 30 ms of a fumbled take before the retake, the "In th-" of an
+ * abandoned opening. The transcript cannot see these. The word timings drift
+ * by a few hundred milliseconds, a fumbled word is often left out or
+ * stretched over its neighbours, and on a real upload the retake's first word
+ * was stamped as starting on top of the mess-up's last syllable. So this
+ * reads the audio itself.
+ *
+ * Where an edge sits inside a run of sound (dips shorter than 90 ms, such as
+ * a stop consonant, do not break a run), the run is split in two by the cut.
+ * If the kept part is the smaller one, it is a scrap of the removed material,
+ * and the edge moves back across it to the silence before. The kept part must
+ * also be too short to be a word (70 ms), or be under 0.3 s with no word of
+ * the transcript beginning (at a start) or ending (at an end) inside it.
+ * Moving the edge also takes away the dead air the scrap was holding open.
+ * When the kept part is the larger one, the cut fell between two words in
+ * connected speech ("And | I will go…"). That cut is left as it is, because
+ * stretching it would bring back half a word. A piece that is nothing but a
+ * scrap is dropped.
+ */
+export function dropEdgeFragments(
+  keeps: Interval[],
+  env: LoudnessEnvelope,
+  thresholdDb: number,
+  words: Array<{ startSec: number; endSec: number }> = [],
+  padSec = 0.08,
+): Interval[] {
+  const { stepSec, db } = env;
+  if (!db.length || !keeps.length) return keeps;
+  const bridge = Math.round(0.09 / stepSec);
+  const inRange = (i: number) => i >= 0 && i < db.length;
+  const loud = (i: number) => inRange(i) && db[i] > thresholdDb;
+  const frame = (t: number) => Math.floor(t / stepSec + 1e-6);
+  // The far edge of the run of sound around frame i, bridging short dips.
+  const reach = (from: number, dir: 1 | -1) => {
+    let edge = from;
+    for (;;) {
+      let j = edge + dir;
+      let quiet = 0;
+      while (inRange(j) && !loud(j) && quiet < bridge) {
+        j += dir;
+        quiet++;
+      }
+      if (inRange(j) && loud(j) && quiet < bridge) edge = j;
+      else return edge;
+    }
+  };
+  const scrap = (kept: number, hasWord: boolean) => kept <= 0.07 || (kept <= 0.3 && !hasWord);
+
+  const out: Interval[] = [];
+  for (const k of keeps) {
+    let { startSec, endSec } = k;
+    let gone = false;
+
+    const si = frame(startSec + 0.005);
+    if (loud(si)) {
+      const lo = reach(si, -1) * stepSec;
+      const hi = (reach(si, 1) + 1) * stepSec;
+      const kept = hi - startSec;
+      const cut = startSec - lo;
+      const hasWord = words.some((w) => w.startSec >= startSec - 0.05 && w.startSec <= hi - 0.03);
+      if (kept < cut && scrap(kept, hasWord)) {
+        let j = frame(hi);
+        while (j * stepSec < endSec && !loud(j)) j++;
+        if (j * stepSec >= endSec - 0.05) gone = true;
+        else startSec = Math.max(hi, j * stepSec - padSec);
+      }
+    }
+
+    const ei = frame(endSec - 0.005);
+    if (!gone && loud(ei)) {
+      const lo = reach(ei, -1) * stepSec;
+      const hi = (reach(ei, 1) + 1) * stepSec;
+      const kept = endSec - lo;
+      const cut = hi - endSec;
+      const hasWord = words.some((w) => w.endSec >= lo + 0.03 && w.endSec <= endSec + 0.05);
+      if (kept < cut && scrap(kept, hasWord)) {
+        let j = frame(lo) - 1;
+        while (j * stepSec > startSec && !loud(j)) j--;
+        if ((j + 1) * stepSec <= startSec + 0.05) gone = true;
+        else endSec = Math.min(lo, (j + 1) * stepSec + padSec);
+      }
+    }
+
+    if (!gone && endSec - startSec >= 0.12) out.push({ startSec, endSec });
+  }
+  return out.length ? out : keeps;
+}

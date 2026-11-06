@@ -324,6 +324,61 @@ export async function silenceThresholdFor(audioPath: string): Promise<number> {
   return Math.max(-50, Math.min(-38, Math.round(mean - 7)));
 }
 
+/**
+ * How loud the recording is, every `stepSec`, as RMS in dBFS.
+ *
+ * The cut uses it to check that no edge lands inside a sound. The audio is
+ * streamed and folded into frames as it arrives, so a long upload costs a
+ * float per 10 ms, not its whole PCM in memory.
+ */
+export async function loudnessEnvelope(
+  audioPath: string,
+  stepSec = 0.01,
+): Promise<{ stepSec: number; db: Float32Array }> {
+  const rate = 16000;
+  const per = Math.max(1, Math.round(rate * stepSec));
+  return new Promise((resolve, reject) => {
+    const child = spawn(FFMPEG, ['-v', 'error', '-i', audioPath, '-ac', '1', '-ar', String(rate), '-f', 's16le', '-'], {
+      stdio: ['ignore', 'pipe', 'pipe'],
+    });
+    const values: number[] = [];
+    let sum = 0;
+    let count = 0;
+    let carry: Buffer | null = null;
+    let stderr = '';
+    const timer = setTimeout(() => {
+      child.kill('SIGKILL');
+      reject(new Error('loudness scan timed out'));
+    }, 10 * 60_000);
+    child.stdout.on('data', (chunk: Buffer) => {
+      const buf: Buffer = carry ? Buffer.concat([carry, chunk]) : chunk;
+      const samples = buf.length >> 1;
+      for (let i = 0; i < samples; i++) {
+        const v = buf.readInt16LE(i * 2);
+        sum += v * v;
+        if (++count === per) {
+          values.push(10 * Math.log10(Math.max(1, sum / per) / (32768 * 32768)));
+          sum = 0;
+          count = 0;
+        }
+      }
+      carry = buf.length & 1 ? buf.subarray(buf.length - 1) : null;
+    });
+    child.stderr.on('data', (d) => {
+      if (stderr.length < 4000) stderr += d.toString();
+    });
+    child.on('error', (err) => {
+      clearTimeout(timer);
+      reject(err);
+    });
+    child.on('close', (code) => {
+      clearTimeout(timer);
+      if (code === 0) resolve({ stepSec: per / rate, db: Float32Array.from(values) });
+      else reject(new Error(`loudness scan failed: ${stderr.slice(-500)}`));
+    });
+  });
+}
+
 /** Integrated loudness, so we know how hard to push the normaliser. */
 export async function measureLoudness(audioPath: string): Promise<{ lufs: number; peakDb: number }> {
   const { stderr } = await ffmpeg(['-i', audioPath, '-af', 'ebur128=peak=true', '-f', 'null', '-']);
